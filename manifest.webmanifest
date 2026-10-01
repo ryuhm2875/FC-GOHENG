@@ -1,9 +1,0 @@
-{
-  "name": "고흥FC 드림 프로젝트",
-  "short_name": "고흥FC",
-  "start_url": "./",
-  "display": "standalone",
-  "background_color": "#0D1433",
-  "theme_color": "#0D1433",
-  "icons": [{ "src": "assets/img/logo.png", "sizes": "391x512", "type": "image/png" }]
-}
