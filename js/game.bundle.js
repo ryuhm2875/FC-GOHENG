@@ -7506,11 +7506,11 @@ __m["data/story.js"] = (function () {
 // bg: assets/img/ 안의 배경 그림 이름. 없으면 tone 색으로 대신합니다.
 const INTRO = [
   // center: 화면 한가운데에 띄움 / type: 작은 글씨를 한 글자씩 찍음
-  { bg: "bg_sea",   tone: "sea",   big: "전라남도 고흥",          small: "바다 냄새가 운동장까지 넘어오는 동네." },
-  { bg: "title",    tone: "dawn",  big: "여기서는\n로켓도 하늘로 갔다", small: "그러니 공 하나쯤, 어디까지 못 가겠어." },
-  { bg: "bg_field_day", tone: "field", big: "고흥대서중학교",    small: "마지막 종이 울리면, 운동장부터 시끄러워진다." },
-  { bg: "bg_locker", tone: "night", big: "고흥FC U-15",          small: "올봄, 주황색 유니폼 하나가 새로 걸린다." },
-  { bg: null,       tone: "black", big: "3년",                   small: "미래는 어떻게 바뀔지 모른다.", center: true, type: true },
+  { bg: "bg_sea",   tone: "sea",   big: "전라남도 고흥",          small: "조용하고 아름다운 자연이 있는" },
+  { bg: "title",    tone: "dawn",  big: "하늘길이 열리는 곳", small: "그러니 우리의 꿈도 더욱 높이 날 수 있겠지." },
+  { bg: "bg_field_day", tone: "field", big: "고흥대서중학교",    small: "작지만 큰 꿈을 지닌 학생들이 있다." },
+  { bg: "bg_locker", tone: "night", big: "고흥FC U-15",          small: "올봄, 꿈을 품은 유니폼 하나가 새로 걸린다." },
+  { bg: null,       tone: "black", big: "3년의 시간",            small: "미래는 네가 만들어 간다.", center: true, type: true },
 ];
 
 // ── 입단 대화 ─────────────────────────────────

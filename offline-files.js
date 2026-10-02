@@ -42,7 +42,7 @@ self.OFFLINE_FILES = [
   ["data/messages.js","19c93ddd7b"],
   ["data/player.js","7b7bbc25d9"],
   ["data/roster.js","24310d6352"],
-  ["data/story.js","c179af3e93"],
+  ["data/story.js","e0796ae530"],
   ["data/world.js","bf7c5ac9c5"],
   ["assets/img/bg_field_day.webp","90593dbd64"],
   ["assets/img/bg_home.webp","dfe105081e"],
