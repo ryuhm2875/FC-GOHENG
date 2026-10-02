@@ -3,7 +3,7 @@ import { next, resolve, autoChoice, autoPlay, finishMatch, STATUS_LABEL, TAG_LAB
 import { STAFF } from "../../data/roster.js";
 import { getPath } from "../rng.js";
 import { tierLabel, TEAM_NAME } from "../engine/season.js";
-import { esc, img, faceOf } from "./util.js";
+import { esc, img, faceOf, fillText } from "./util.js";
 import { conditionOf } from "../engine/growth.js";
 import { setScene, enter, buzz } from "./fx.js";
 import { sfx } from "./sfx.js";
@@ -295,6 +295,8 @@ export function showMatch(app, m, onDone) {
         <p>"${esc(m.talk.text)}"</p>
         ${m.talk.tag ? `<span class="chip kit">지시: ${TAG_LABEL[m.talk.tag]}</span> <span class="mute" style="font-size:12px">같은 종류를 고르면 성공률 +4%p</span>` : ""}</div></div>` : ""}
     ${fx.school ? `<div class="alert gold">🎓 오늘 ${esc(fx.school.name)}(${tierLabel(fx.school.tier)}) ${esc(fx.school.coach)}님이 직접 보러 오셨습니다. 상대는 고등학생이라 몸싸움이 버겁습니다.</div>` : ""}
+    ${m.oppAce ? `<div class="alert">👀 주목할 상대: ${m.oppAce.pos} ${m.oppAce.number}번 ${esc(m.oppAce.name)} (${m.oppAce.grade}학년${m.oppAce.trait ? `, ${esc(m.oppAce.trait)}` : ""})</div>`
+      : m.oppAceAbsent ? `<div class="alert">${esc(fillText("상대 에이스 {a|이/가} 오늘은 나오지 않습니다.", { a: m.oppAceAbsent }))}</div>` : ""}
     ${fx.ko ? `<div class="alert gold">지면 탈락입니다. 비기면 승부차기.</div>` : ""}
     ${fx.elementary ? `<div class="alert gold">🧒 오늘은 초등학교 팀과의 연습경기. 이겨야 본전, 지면 한동안 놀림감이다.</div>` : ""}
     <div class="power"><span>우리 전력</span><div class="pw"><i style="width:${barPct(m.ours)}%"></i></div>

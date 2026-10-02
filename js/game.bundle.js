@@ -1202,7 +1202,150 @@ const GIVEN_NAMES = [
   "한결", "지안", "은찬", "로운", "하율", "윤호", "태민", "재민", "민혁", "성민",
 ];
 
-return { LEAGUE_OPPONENTS, HIGH_SCHOOLS, HS_TIERS, NATIONAL_OPPONENTS, ELEMENTARY_OPPONENTS, SURNAMES, GIVEN_NAMES };
+// ── 상대 팀 핵심 선수 (모두 가상의 이름) ─────────────
+// [학년, 포지션, 이름, 특징]. 학년은 주인공이 중1일 때 기준입니다.
+//   "3학년선배" "2학년선배" "동기" "1년후배" "2년후배" (우리 팀 명단과 같은 방식으로 해마다 한 학년씩 올라가고, 3학년은 1월에 졸업)
+// 특징은 "OO이/가 무기다"처럼 감독님 분석에 들어갑니다. 나머지 선수는 게임 시작 때 자동으로 만들어 그 판 안에서 고정됩니다.
+// 이름·특징을 고치면 진행 중인 게임에도 바로 반영됩니다.
+const OPPONENT_STARS = {
+  // 주말리그 9팀: 5명씩
+  "목포 갈매기FC U-15": [
+    ["3학년선배", "FW", "남궁현", "뒷공간 침투"],
+    ["2학년선배", "MF", "서지완", "왼발 롱패스"],
+    ["동기", "DF", "오승기", "공중볼"],
+    ["1년후배", "MF", "백시온", "탈압박"],
+    ["2년후배", "FW", "차유건", "스피드"],
+  ],
+  "목포 유달중": [
+    ["3학년선배", "DF", "문태경", "태클"],
+    ["2학년선배", "FW", "길재혁", "헤더"],
+    ["동기", "MF", "위성율", "중거리 슛"],
+    ["1년후배", "DF", "표준영", "롱 스로인"],
+    ["2년후배", "MF", "탁은결", "드리블"],
+  ],
+  "광양 쇠울중": [
+    ["3학년선배", "MF", "구민결", "경기 조율"],
+    ["2학년선배", "DF", "석강현", "몸싸움"],
+    ["동기", "FW", "엄하람", "골 결정력"],
+    ["1년후배", "MF", "반지호", "활동량"],
+    ["2년후배", "DF", "국태린", "빌드업"],
+  ],
+  "광주 빛고을중": [
+    ["3학년선배", "FW", "한고율", "오른발 감아 차기"],
+    ["2학년선배", "MF", "노을찬", "킬패스"],
+    ["동기", "MF", "기세찬", "드리블 돌파"],
+    ["1년후배", "FW", "염도경", "침투"],
+    ["2년후배", "DF", "설지훈", "커버 수비"],
+  ],
+  "순천 새벽별중": [
+    ["3학년선배", "DF", "봉재윤", "제공권"],
+    ["2학년선배", "MF", "김철만", "전방 압박"],
+    ["동기", "FW", "은태하", "빠른 역습"],
+    ["1년후배", "DF", "소하랑", "1 대 1 수비"],
+    ["2년후배", "MF", "금도율", "세트피스 킥"],
+  ],
+  "장흥 정남진중": [
+    ["3학년선배", "MF", "마준서", "거친 몸싸움"],
+    ["2학년선배", "FW", "도한결", "끈질긴 압박"],
+    ["동기", "DF", "팽주원", "투지"],
+    ["1년후배", "FW", "경시율", "헤더"],
+    ["2년후배", "MF", "피재민", "짧은 패스"],
+  ],
+  "해남 땅끝중": [
+    ["3학년선배", "FW", "편승호", "왼발 슛"],
+    ["2학년선배", "DF", "육태민", "롱패스"],
+    ["동기", "MF", "함지운", "지치지 않는 체력"],
+    ["1년후배", "DF", "명재혁", "태클"],
+    ["2년후배", "FW", "옥서준", "스피드"],
+  ],
+  "영광 칠산중": [
+    ["3학년선배", "DF", "변우람", "수비 조율"],
+    ["2학년선배", "MF", "계도하", "침착함"],
+    ["동기", "FW", "선우진", "문전 위치 선정"],
+    ["1년후배", "MF", "하민결", "전진 패스"],
+    ["2년후배", "DF", "우태건", "헤더"],
+  ],
+  "여수 바다솔중": [
+    ["3학년선배", "MF", "진바름", "프리킥"],
+    ["2학년선배", "FW", "공태오", "드리블"],
+    ["동기", "DF", "모성훈", "제공권"],
+    ["1년후배", "FW", "승지안", "침투"],
+    ["2년후배", "MF", "남다온", "활동량"],
+  ],
+  // 전국대회 14팀: 3명씩
+  "서울 한강중": [
+    ["2학년선배", "MF", "강예찬", "경기 조율"],
+    ["동기", "FW", "김도현", "골 결정력"],
+    ["1년후배", "DF", "신해솔", "빌드업"],
+  ],
+  "경기 은하중": [
+    ["2학년선배", "DF", "윤가람", "제공권"],
+    ["동기", "MF", "이서진", "킬패스"],
+    ["1년후배", "FW", "홍이든", "스피드"],
+  ],
+  "부산 파도중": [
+    ["2학년선배", "FW", "배주안", "헤더"],
+    ["동기", "DF", "정우진", "1 대 1 수비"],
+    ["1년후배", "MF", "심로하", "킬패스"],
+  ],
+  "대구 달빛중": [
+    ["2학년선배", "MF", "류건우", "중거리 슛"],
+    ["동기", "FW", "지한별", "드리블"],
+    ["1년후배", "DF", "채도윤", "태클"],
+  ],
+  "인천 갯벌FC U-15": [
+    ["2학년선배", "DF", "조은산", "커버 수비"],
+    ["동기", "FW", "최하준", "침투"],
+    ["1년후배", "MF", "나윤석", "전방 압박"],
+  ],
+  "울산 고래중": [
+    ["2학년선배", "MF", "방재원", "롱패스"],
+    ["동기", "MF", "박지후", "탈압박"],
+    ["1년후배", "FW", "권도하", "침투"],
+  ],
+  "강원 설악중": [
+    ["2학년선배", "FW", "허산", "힘"],
+    ["동기", "DF", "민재겸", "1 대 1 수비"],
+    ["1년후배", "MF", "연우빈", "활동량"],
+  ],
+  "충북 미루나무중": [
+    ["2학년선배", "DF", "길한솔", "헤더"],
+    ["동기", "MF", "왕지석", "패스"],
+    ["1년후배", "FW", "소재율", "골 결정력"],
+  ],
+  "제주 한라FC U-15": [
+    ["2학년선배", "MF", "고산하", "바람을 읽는 롱볼"],
+    ["동기", "FW", "부지환", "스피드"],
+    ["1년후배", "DF", "양태솔", "투지"],
+  ],
+  "전북 모악산중": [
+    ["2학년선배", "FW", "송시헌", "왼발 슛"],
+    ["동기", "MF", "임채운", "드리블"],
+    ["1년후배", "DF", "전하진", "제공권"],
+  ],
+  "대전 한밭별중": [
+    ["2학년선배", "DF", "유건호", "수비 조율"],
+    ["동기", "FW", "장은호", "침투"],
+    ["1년후배", "MF", "서다원", "세트피스 킥"],
+  ],
+  "경남 진주성중": [
+    ["2학년선배", "MF", "하성진", "전방 압박"],
+    ["동기", "DF", "강태빈", "태클"],
+    ["1년후배", "FW", "안시현", "헤더"],
+  ],
+  "경북 솔뫼중": [
+    ["2학년선배", "FW", "권율하", "스피드"],
+    ["동기", "MF", "도재하", "중거리 슛"],
+    ["1년후배", "DF", "이솔민", "빌드업"],
+  ],
+  "세종 호수FC U-15": [
+    ["2학년선배", "MF", "황보준", "경기 조율"],
+    ["동기", "DF", "문지오", "공중볼"],
+    ["1년후배", "FW", "손하율", "드리블"],
+  ],
+};
+
+return { LEAGUE_OPPONENTS, HIGH_SCHOOLS, HS_TIERS, NATIONAL_OPPONENTS, ELEMENTARY_OPPONENTS, SURNAMES, GIVEN_NAMES, OPPONENT_STARS };
 })();
 (__fix["data/world.js"] || []).forEach(f => f());
 
@@ -2506,7 +2649,43 @@ const AFTER_MATCH = {
   ],
 };
 
-return { LIFE, AFTER_MATCH };
+// ── 상대 에이스 (data/world.js의 OPPONENT_STARS) ─────────────
+// {ace} 이름, {gw} 학년(예: 3학년), {posw} 공격수·미드필더·수비수, {trait} 특징, {team} 상대 팀, {goals} 우리에게 넣은 골
+// {mate} {mate2} {friend} {mentor} {name}은 단톡방과 같은 사람들. {ace|이/가}처럼 쓰면 받침에 맞는 조사가 붙습니다.
+const ACE_TALK = {
+  // 경기 분석 메일 (정 코치)
+  intro: ["이 팀은 {gw} {ace|이/가} 중심이다.", "{team}에서 제일 먼저 봐야 할 선수는 {gw} {ace}.", "요즘 {ace} 얘기가 많이 들린다. {gw} {posw}다."],
+  trait: ["{trait|이/가} 무기다."],
+  scoredBefore: ["지금까지 우리한테 {goals}골을 넣은 선수다. 그 이름 잊지 마라.", "우리 상대로만 {goals}골을 넣었다. 이번엔 갚아 줘야지."],
+  metLastYear: ["작년에도 붙어 본 선수다. 그때보다 한 뼘은 더 컸다고 생각해라."],
+  absent: ["{gw} {ace|이/가} 이번 경기엔 못 나온다더라. 그 팀 전력의 한 축이 빠지는 셈이다. 그래도 방심은 하지 마라.",
+           "{ace|이/가} 다쳐서 못 나온다는 얘기가 있다. 남은 선수들이 더 악착같이 뛸 거다."],
+  // 내 포지션 - 상대 에이스 포지션
+  matchup: {
+    "DF-FW": ["네가 제일 많이 붙을 거다. 등 뒤로 돌아 들어가는 움직임을 놓치지 마라.", "결국 너랑 저 선수 싸움이다. 첫 번째 경합에서 밀리지 마라."],
+    "DF-MF": ["앞에서 공이 나오는 출발점이다. 패스 길을 먼저 읽어라."],
+    "DF-DF": ["세트피스 때 저 선수가 올라온다. 코너킥 때 꼭 붙어라."],
+    "MF-FW": ["공이 그쪽으로 가기 전에 끊는 게 네 몫이다."],
+    "MF-MF": ["중원에서 너랑 정면으로 부딪힌다. 공 잡으면 바로 붙어라.", "저 선수가 편하게 공을 잡으면 우리가 진다. 네가 먼저 다가가라."],
+    "MF-DF": ["뒤에서 우리 공격을 끊어 내는 선수다. 그 앞에서는 공을 오래 끌지 마라."],
+    "FW-FW": ["상대 골문 앞에선 네가 저 선수보다 더 무서워야 한다."],
+    "FW-MF": ["그 선수한테서 공이 시작된다. 앞에서부터 붙어서 편하게 못 차게 해라."],
+    "FW-DF": ["너를 막으러 나올 선수다. 한 번 이기면 그 뒤로는 편해진다.", "저 선수를 등지고 버티지 마라. 공 받기 전에 먼저 움직여라."],
+  },
+  // 경기 전 단톡방
+  chatBefore: ["{mate}: 이번 주 상대 {team}. 거기 {ace} 있잖아 ㄷㄷ\n\n{mate2}: {trait} 장난 아니라던데\n\n{mentor}: 이름 듣고 겁먹지 말고 훈련이나 하자",
+               "{mate2}: {ace} 영상 봤는데 진짜 잘함\n\n{friend}: 우리도 {name} 있잖아 ㅋㅋ\n\n{mentor}: 상대 말고 우리 거나 잘하자"],
+  chatRevenge: ["{mate}: 이번 주 {ace} 또 나온다더라\n\n{mate2}: 전에 우리한테 골 넣은 걔?\n\n{mentor}: 이번엔 안 된다. 다들 각오해라"],
+  // 경기 뒤 단톡방
+  chatAfterScored: ["{mentor}: {ace} 잘하긴 하더라. 월요일에 영상 다시 보자", "{mate}: {ace} 막는 법 누가 좀 알려 줘라 ㅠ"],
+  chatAfterHeld: ["{mate}: 오늘 {ace} 한 골도 못 넣음 ㅋㅋ\n\n{mentor}: 수비 다 같이 잘했다"],
+  // 경기 후 면담 (감독님)
+  coachHeldWin: ["오늘 {ace|을/를} 거의 지웠다. 그게 오늘 승리다.", "{ace|이/가} 공 잡을 때마다 네가 먼저 가 있더라. 그게 오늘 경기를 결정했다."],
+  coachHeldDraw: ["{ace|을/를} 묶은 건 잘했다. 그 덕에 승점 하나 챙겼다."],
+  coachScored: ["{ace}한테 {goals}골. 그 선수가 공 잡을 때마다 우리가 한 박자씩 늦었다. 다음엔 먼저 붙어라."],
+};
+
+return { LIFE, AFTER_MATCH, ACE_TALK };
 })();
 (__fix["data/messages.js"] || []).forEach(f => f());
 
@@ -2661,6 +2840,121 @@ return { birthdayWeekOf, isBirthdayWeek, birthdayWeek };
 })();
 (__fix["js/engine/birthday.js"] || []).forEach(f => f());
 
+// ── js/engine/opponents.js
+__m["js/engine/opponents.js"] = (function () {
+const {OPPONENT_STARS, SURNAMES, GIVEN_NAMES} = __m["data/world.js"];
+const {GOALKEEPERS} = __m["data/roster.js"];
+const {pick, weighted, shuffle, rand} = __m["js/rng.js"];
+const {mateGrade} = __m["js/engine/team.js"];
+const {TURNS_PER_YEAR, GRAD_INDEX} = __m["js/engine/calendar.js"];
+// 상대 팀 선수단: 핵심 선수(data/world.js의 OPPONENT_STARS) + 자동으로 만든 선수
+// 한 판 안에서는 같은 이름이 계속 나오고, 해마다 한 학년씩 올라가며 3학년은 1월에 졸업합니다.
+
+
+
+
+
+const COHORTS = ["3학년선배", "2학년선배", "동기", "1년후배", "2년후배"];
+const FILL = { DF: 2, MF: 2, FW: 1 };            // 학년마다 자동으로 만드는 선수 수
+const STAR_NUMBERS = { FW: [9, 10, 11, 7], MF: [10, 8, 7, 6], DF: [4, 5, 3, 2] };
+const NEED = { DF: 4, MF: 4, FW: 2 };            // 경기장에 서는 필드 선수
+
+const randomName = () => weighted(SURNAMES) + pick(GIVEN_NAMES);
+const allStarNames = () => new Set(Object.values(OPPONENT_STARS).flat().map(r => r[2]));
+
+// 핵심 선수 정보는 저장 파일이 아니라 data에서 바로 읽음 (이름을 고치면 진행 중인 게임에도 반영)
+function starOf(team, i) {
+  const r = OPPONENT_STARS[team]?.[i];
+  return r ? { cohort: r[0], pos: r[1], name: r[2], trait: r[3] } : null;
+}
+
+// 팀 선수단을 처음 한 번 만들고 저장 (핵심 선수가 없는 팀은 null)
+function oppSquad(state, team) {
+  if (!OPPONENT_STARS[team]) return null;
+  state.oppSquads ||= {};
+  if (state.oppSquads[team]) return state.oppSquads[team];
+  const stars = OPPONENT_STARS[team].map((r, i) => ({ star: i, cohort: r[0], pos: r[1] }));
+  const used = new Set([state.player.name, ...state.team.roster.map(m => m.name), ...GOALKEEPERS.map(g => g.name), ...allStarNames()]);
+  for (const sq of Object.values(state.oppSquads)) for (const m of sq) if (m.name) used.add(m.name);
+  const numbers = new Set();
+  const list = [];
+  for (const s of stars) {
+    const n = STAR_NUMBERS[s.pos].find(x => !numbers.has(x)) ?? 20 + list.length;
+    numbers.add(n); list.push({ ...s, number: n });
+  }
+  const free = shuffle(Array.from({ length: 34 }, (_, i) => i + 2).filter(n => !numbers.has(n) && n !== 1));
+  for (const cohort of COHORTS) for (const [pos, k] of Object.entries(FILL)) {
+    const have = stars.filter(s => s.cohort === cohort && s.pos === pos).length;
+    for (let i = have; i < k; i++) {
+      let name; do { name = randomName(); } while (used.has(name)); used.add(name);
+      list.push({ name, cohort, pos, number: free.pop() ?? 40 + list.length });
+    }
+  }
+  state.oppSquads[team] = list;
+  return list;
+}
+
+// 지금 뛰는 선수 (학년 1~3, 1월 졸업식 뒤에는 3학년 제외)
+function activeOpp(state, team) {
+  const sq = oppSquad(state, team);
+  if (!sq) return null;
+  const g = state.calendar.grade;
+  const t = (state.calendar.turn - 1) % TURNS_PER_YEAR;
+  const top = t > GRAD_INDEX ? 2 : 3;
+  return sq.map(m => {
+    const s = m.star != null ? starOf(team, m.star) : null;
+    if (m.star != null && !s) return null;
+    const p = s ? { ...m, ...s, number: m.number } : { ...m };
+    p.grade = mateGrade(p, g);
+    return p;
+  }).filter(p => p && p.grade >= 1 && p.grade <= top);
+}
+
+// 이번 경기 에이스: 지금 뛰는 핵심 선수 중 학년이 가장 높은 선수
+function aceOf(state, team) {
+  const act = activeOpp(state, team);
+  if (!act) return null;
+  const order = { FW: 0, MF: 1, DF: 2 };
+  return act.filter(p => p.star != null).sort((a, b) => b.grade - a.grade || order[a.pos] - order[b.pos])[0] || null;
+}
+
+// 에이스 결장 여부: 같은 주·같은 팀이면 언제 물어봐도 같은 답 (경기 분석 메일과 경기가 어긋나지 않게)
+function aceAbsent(state, team, turn = state.calendar.turn) {
+  let h = 2166136261;
+  state.meta ||= {}; state.meta.oppSeed ||= 1 + Math.floor(rand() * 1e9);
+  for (const ch of `${team}|${turn}|${state.meta.oppSeed}`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  return h % 100 < 12;
+}
+
+// 경기에 나서는 필드 선수 10명. 핵심 선수 먼저, 그다음 학년 높은 순
+function oppLineup(state, team, turn) {
+  const act = activeOpp(state, team);
+  if (!act) return null;
+  const ace = aceOf(state, team);
+  const out = aceAbsent(state, team, turn) && ace ? ace.name : null;
+  const lineup = [];
+  for (const [pos, n] of Object.entries(NEED)) {
+    act.filter(p => p.pos === pos && p.name !== out).sort((a, b) => (b.star != null) - (a.star != null) || b.grade - a.grade)
+      .slice(0, n).forEach(p => lineup.push({ name: p.name, number: p.number, pos, star: p.star != null, trait: p.trait || null, grade: p.grade }));
+  }
+  return { lineup, ace: ace && !out ? ace : null, absent: out ? ace : null };
+}
+
+// 맞대결 기록 (에이스 이름별): 경기 수, 우리에게 넣은 골, 마지막으로 만난 학년
+function noteOpp(state, m) {
+  if (!m.oppAce) return;
+  state.oppMemo ||= {};
+  const k = m.oppAce.name;
+  const r = state.oppMemo[k] ||= { games: 0, goals: 0, grade: 0 };
+  r.games++;
+  r.goals += m.goalsLog.filter(g => g.team === "them" && g.name === k).length;
+  r.grade = state.calendar.grade;
+}
+
+return { oppSquad, activeOpp, aceOf, aceAbsent, oppLineup, noteOpp };
+})();
+(__fix["js/engine/opponents.js"] || []).forEach(f => f());
+
 // ── js/engine/advice.js
 __m["js/engine/advice.js"] = (function () {
 const {STAT_LABEL, POSITIONS} = __m["data/player.js"];
@@ -2678,8 +2972,12 @@ const {stillScheduled} = __m["js/engine/season.js"];
 const {chance} = __m["js/rng.js"];
 const {isBirthdayWeek} = __m["js/engine/birthday.js"];
 const {chatText} = __m["js/engine/life.js"];
+const {aceOf, aceAbsent} = __m["js/engine/opponents.js"];
+const {ACE_TALK} = __m["data/messages.js"];
 // 메시지 만들기: 경기 전 분석, 경기 후 피드백, 주간 조언.
 // 모든 문장은 지금 게임 속 숫자(능력치, 순위, 피로, 학업)를 넣어 만듭니다.
+
+
 
 
 
@@ -2708,6 +3006,13 @@ const ro = w => { const t = String(w); const ch = t[t.length - 1]; if (/[0-9]/.t
   const c = t.charCodeAt(t.length - 1); const j = (c - 0xAC00) % 28; return c >= 0xAC00 && c <= 0xD7A3 && j !== 0 && j !== 8 ? "으로" : "로"; };
 const ida = n => `${n}${has(n) ? "이다" : "다"}`;
 const pp = (w, a, b) => (has(w) ? a : b);          // 조사만
+// 상대 에이스 문장: {ace} {gw} {posw} {trait} {team} {goals}를 먼저 채우고, 나머지({mate} 등)는 단톡방 규칙으로 채움
+const POSW = { FW: "공격수", MF: "미드필더", DF: "수비수" };
+function aceText(state, t, ace, extra = {}) {
+  const v = { ace: ace.name, gw: `${ace.grade}학년`, posw: POSW[ace.pos], trait: ace.trait || "", ...extra };
+  const once = t.replace(/\{(ace|gw|posw|trait|team|goals)(?:\|([^/}]+)\/([^}]+))?\}/g, (_, k, a, b) => { const x = String(v[k] ?? ""); return a ? x + (has(x) ? a : b) : x; });
+  return chatText(state, once);
+}
 const josa = (w, a, b) => w + pp(w, a, b);         // 낱말 + 조사
 
 // 그 능력치를 가장 많이 올리는 훈련
@@ -2788,6 +3093,23 @@ function previewMail(state, fx) {
       : diff > -2 ? pick(["해 볼 만한 상대다. 먼저 실수하는 쪽이 진다.", "딱 우리만 한 팀이다. 누가 더 많이 뛰느냐다.", "50 대 50이다. 세트피스 하나가 갈라 놓을 거다."])
       : pick(["우리가 할 것만 하면 된다. 그래도 방심하는 순간 뒤집힌다.", "전력은 우리가 앞선다. 이런 경기를 쉽게 이겨야 강팀이다.", "이겨야 본전인 경기다. 일찍 골 넣고 편하게 가자."]);
     lines.push(`${style.label}이다. ${diffLine}`);
+    // 상대 에이스
+    const ace = aceOf(state, fx.opponent.name);
+    if (ace) {
+      const team = fx.opponent.name;
+      if (aceAbsent(state, team, info.turn)) lines.push(aceText(state, pick(ACE_TALK.absent), ace, { team }));
+      else {
+        const memo = state.oppMemo?.[ace.name];
+        const parts = [aceText(state, pick(ACE_TALK.intro), ace, { team }), aceText(state, pick(ACE_TALK.trait), ace)];
+        if (memo?.goals >= 1) parts.push(aceText(state, pick(ACE_TALK.scoredBefore), ace, { goals: memo.goals }));
+        else if (memo?.games && memo.grade < state.calendar.grade) parts.push(aceText(state, pick(ACE_TALK.metLastYear), ace));
+        const mu = ACE_TALK.matchup[`${p.position}-${ace.pos}`];
+        if (mu?.length) parts.push(aceText(state, pick(mu), ace));
+        lines.push(parts.join(" "));
+        // 경기 전 단톡방 (복수전이면 꼭, 아니면 가끔)
+        if (memo?.goals >= 1 || chance(0.3)) mail(state, "group", `이번 주 상대: ${team}`, aceText(state, pick(memo?.goals >= 1 ? ACE_TALK.chatRevenge : ACE_TALK.chatBefore), ace, { team }));
+      }
+    }
     if (state.league && fx.comp === "league" && state.league.played > 0) {
       const rows = sortTable(state.league.table);
       const them = rows.findIndex(r => r.id === fx.opponent.id);
@@ -2803,7 +3125,10 @@ function previewMail(state, fx) {
     const stLine = lv === "low" ? pick([`네 ${josa(st, "은", "는")} 아직 ${isTech ? "몸에 덜 붙었으니" : "모자라니"} 무리하지 말고.`, `${josa(st, "은", "는")} 아직 네 약점이다. 오늘은 숨기고, 잘하는 걸로 승부해라.`])
       : lv === "high" ? pick([`이런 경기에선 네 ${josa(st, "이", "가")} 오히려 무기가 된다.`, `네 ${josa(st, "이", "가")} 이 팀한테는 제일 귀찮을 거다. 마음껏 써라.`])
       : pick([`네 ${josa(st, "이", "가")} 얼마나 버텨 주느냐가 관건이다.`, `${josa(st, "은", "는")} 딱 중간이다. 오늘 경기가 그걸 끌어올릴 기회다.`]);
-    lines.push(`${pick(style.tips)} ${stLine}`);
+    const aceNow = aceOf(state, fx.opponent.name);
+    let tips = style.tips;
+    if (aceNow && !aceAbsent(state, fx.opponent.name, info.turn)) tips = tips.filter(x => !x.includes("왼발잡이")).map(x => x.replace("10번 하나만", `${aceNow.number}번 ${aceNow.name} 하나만`));
+    lines.push(`${pick(tips)} ${stLine}`);
     const city = Object.keys(TRAVEL).find(c => fx.opponent.name.startsWith(c));
     if (city && fx.comp === "league" && chance(0.4)) lines.push(TRAVEL[city]);
     if (fx.ko) lines.push(pick(["토너먼트다. 지면 그대로 짐 싸서 고흥 내려간다.", "오늘 지면 숙소 짐부터 싸야 한다. 그 생각만 해도 다리가 움직일 거다.", "토너먼트에서 다음은 없다. 70분 동안 후회 남기지 마라."]));
@@ -2833,6 +3158,9 @@ function matchMails(state, m, res, notes) {
   const scorers = side => m.goalsLog.filter(g => g.team === side).map(g => `${g.name} ${g.minute}'${g.assist ? ` (도움 ${g.assist})` : ""}`).join(", ");
   const body = [];
   body.push(afterMatchChat(state, res, fx, res.grade === 3 && noFixtureLeft(state)));
+  const aceGoals = m.oppAce ? m.goalsLog.filter(g => g.team === "them" && g.name === m.oppAce.name).length : 0;
+  if (m.oppAce && aceGoals >= 1 && res.result !== "승" && chance(0.7)) body.push(aceText(state, pick(ACE_TALK.chatAfterScored), m.oppAce));
+  else if (m.oppAce && aceGoals === 0 && res.ga <= 1 && chance(0.45)) body.push(aceText(state, pick(ACE_TALK.chatAfterHeld), m.oppAce));
   const bdayGoal = res.goals > 0 && isBirthdayWeek(state, turnInfo(state));
   if (bdayGoal) body.push(chatText(state, pick(["{friend}: 생일골 ㅋㅋㅋ 이거 평생 우려먹겠네", "{mate}: 생일에 골 넣는 거 실화냐\n\n{friend}: 케이크 두 개 사야 됨"])));
   if (res.gf) body.push(`⚽ 득점: ${scorers("us")}`);
@@ -2909,6 +3237,11 @@ function matchMails(state, m, res, notes) {
       : pick(["공이 너를 거쳐 가는 일이 많아졌다. 팀이 너를 찾기 시작했다는 뜻이다.", "동료들이 공 잡으면 너부터 보더라. 믿음은 그렇게 쌓이는 거다."]));
     if (res.stops >= 2) fb.push(pick(["뒤에서 몇 번이나 끊어 줬다. 그런 건 기록에 안 남아도 감독은 다 본다.", "궂은일 많이 했다. 골 넣은 애들보다 네 이름을 먼저 부르고 싶다.",
       ...(res.ga === 0 ? ["오늘 실점 안 한 건 네가 몇 번 막아 준 덕이 크다."] : [])]));
+    if (m.oppAce) {
+      const guard = (p.position === "DF" && ["FW", "MF"].includes(m.oppAce.pos)) || (p.position === "MF" && ["MF", "FW"].includes(m.oppAce.pos));
+      if (aceGoals >= 2 && ["DF", "MF"].includes(p.position)) fb.push(aceText(state, pick(ACE_TALK.coachScored), m.oppAce, { goals: aceGoals }));
+      else if (aceGoals === 0 && guard && res.minutes >= 45 && res.result !== "패") fb.push(aceText(state, pick(res.result === "승" ? ACE_TALK.coachHeldWin : ACE_TALK.coachHeldDraw), m.oppAce));
+    }
     const cnow = conditionOf(p);
     if (cnow.score < 50) fb.push("경기 내내 다리가 무거워 보였다. 쉬는 것도 훈련이다.");
     if (m.goalsLog.some(g => g.myFault)) fb.push("실점 장면, 너도 마음에 걸릴 거다. 내일 영상으로 같이 보자.");
@@ -3088,7 +3421,7 @@ function welcomeMails(state) {
   mail(state, "mom", "첫날 어땠어?",
     `감독님 무섭지는 않았어? 저녁은 뭐 먹고 싶어?\n\n엄마는 네가 축구하는 거 응원해. 대신 공부 손 놓으면 안 되는 거 알지? 학교 성적표 나오면 같이 보자.`);
   mail(state, "assist", "1학년 생활 안내",
-    [`${p.name}, ${STAFF.assistant}다. 처음이니 몇 가지만 알려 준다.`,
+    [`${p.name}, ${ida(STAFF.assistant)}. 처음이니 몇 가지만 알려 준다.`,
      "한 주는 평일 두 칸, 주말 한 칸이다. 주말에 경기가 있으면 주말 칸은 경기로 고정된다.",
      "개인훈련은 능력치를 올리고, 단체훈련은 감독님 신뢰를 올린다. 선발은 능력치 75%, 감독 신뢰 25%로 정해진다.",
      "피로가 30을 넘으면 훈련 효율이 떨어지기 시작하고, 높을수록 더 크게 떨어진다. 다칠 위험도 커진다. 수면과 가족 시간이 피로를 푼다.",
@@ -3116,8 +3449,10 @@ const {applyResult, TEAM_NAME} = __m["js/engine/season.js"];
 const {matchMails} = __m["js/engine/advice.js"];
 const {isBirthdayWeek} = __m["js/engine/birthday.js"];
 const {turnInfo} = __m["js/engine/calendar.js"];
+const {oppLineup, noteOpp} = __m["js/engine/opponents.js"];
 // 경기 엔진: 시간순 사건을 미리 깔아 두고, 내 장면에서 멈춰 선택을 받습니다.
 // 각 해설 줄에는 공 위치(ball)와 공을 가진 팀(poss)이 붙어 있어 화면이 선수들을 움직입니다.
+
 
 
 
@@ -3322,10 +3657,26 @@ function prepareMatch(state, info, fx) {
   }
   // 상대 필드 선수 10명 (DF 4, MF 4, FW 2). 경기장 위 번호와 중계 이름이 같은 사람
   const usedNames = new Set([p.name, ...roster.map(r => r.name), ...GOALKEEPERS.map(g => g.name)]);
-  const oppPlayers = shuffle([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 17]).slice(0, 10).map((n, i) => {
-    let name; do { name = randomName(); } while (usedNames.has(name)); usedNames.add(name);
-    return { name, number: n, pos: i < 4 ? "DF" : i < 8 ? "MF" : "FW" };
-  });
+  // 핵심 선수가 있는 팀은 그 판에서 고정된 선수단으로 (data/world.js의 OPPONENT_STARS)
+  const known = oppLineup(state, fx.opponent.name, info.turn);
+  let oppPlayers;
+  if (known) {
+    oppPlayers = known.lineup.map(x => ({ name: x.name, number: x.number, pos: x.pos, star: x.star }));
+    oppPlayers.forEach(x => usedNames.add(x.name));
+    for (const [pos, n] of [["DF", 4], ["MF", 4], ["FW", 2]]) {
+      for (let have = oppPlayers.filter(x => x.pos === pos).length; have < n; have++) {
+        let name; do { name = randomName(); } while (usedNames.has(name)); usedNames.add(name);
+        oppPlayers.push({ name, number: 40 + oppPlayers.length, pos });
+      }
+    }
+    oppPlayers.sort((a, b) => ["DF", "MF", "FW"].indexOf(a.pos) - ["DF", "MF", "FW"].indexOf(b.pos));
+  } else {
+    oppPlayers = shuffle([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 17]).slice(0, 10).map((n, i) => {
+      let name; do { name = randomName(); } while (usedNames.has(name)); usedNames.add(name);
+      return { name, number: n, pos: i < 4 ? "DF" : i < 8 ? "MF" : "FW" };
+    });
+  }
+  const oppAce = known?.ace ? { name: known.ace.name, pos: known.ace.pos, trait: known.ace.trait, grade: known.ace.grade, number: known.ace.number } : null;
   // 교체로 들어갈 같은 포지션 후보 (부상 교체용)
   const benchAll = roster.filter(m => !lineup.some(l => l.name === m.name)).sort((a, b) => (b.position === p.position) - (a.position === p.position) || b.ovrNow - a.ovrNow);
   const bench = benchAll.map(m => ({ name: m.name, number: m.number }));
@@ -3333,7 +3684,7 @@ function prepareMatch(state, info, fx) {
   // 내가 뛰면 내 능력치와 컨디션이 팀 전력에 직접 더해짐
   const ours = teamStrength(state, onPitch) * 0.6 + 50 * 0.4 + (onPitch ? (myOvr - teamAvg) * 0.12 + cond.match * 15 : 0)
     + (keeperOf(state).strong ? 1.5 : 0);
-  const theirs = fx.opponent.strength;
+  const theirs = fx.opponent.strength + (oppAce ? 0.6 : known?.absent ? -1.5 : 0);   // 에이스가 뛰면 조금 더 강하고, 빠지면 약해짐
 
   const events = [{ type: "kickoff", minute: 0 }];
   const nOur = poisson(6.8 * Math.exp((ours - theirs) / 14));
@@ -3362,7 +3713,7 @@ function prepareMatch(state, info, fx) {
     fx, turn: info.turn, grade: info.grade, status, reason: elig.ok ? null : elig.reason, restNote,
     star, meRate: onPitch ? clamp(0.09 + star * 0.11 + (hasTrait(p, "ace") ? 0.03 : 0), 0.08, 0.32) : 0, me: p.name, myPos: p.position,
     minIn: status === "sub" ? minIn : 0, onPitch,
-    ours, theirs, lineup, oppPlayers, bench, talk: pickTalk(state, fx, status, star),
+    ours, theirs, lineup, oppPlayers, oppAce, oppAceAbsent: known?.absent?.name || null, bench, talk: pickTalk(state, fx, status, star),
     gk: { us: ourKeeper(state), them: (() => { let n; do { n = randomName(); } while (usedNames.has(n)); usedNames.add(n); return n; })() }, myNumber: p.number,
     events, i: 0, minute: 0, score: [0, 0],
     stats: { us: { shots: 0, on: 0, corners: 0, cards: 0 }, them: { shots: 0, on: 0, corners: 0, cards: 0 },
@@ -3391,13 +3742,19 @@ function namesOf(m, team, pos) {
   if (pos === "GK") return [team === "us" ? m.gk.us : m.gk.them];
   const pool = team === "us" ? m.lineup : m.oppPlayers;
   const list = pool.filter(x => x.pos === pos);
-  return (list.length ? list : pool).map(x => x.name);
+  const names = (list.length ? list : pool).map(x => x.name);
+  const ace = team === "them" && m.oppAce && names.includes(m.oppAce.name) ? m.oppAce.name : null;
+  return ace ? [...names, ace, ace] : names;            // 상대 에이스가 공을 더 자주 잡음
 }
 const mateName = (m, prefer = ["FW", "MF"]) => {
   const pool = m.lineup.filter(x => prefer.includes(x.pos));
   return pick(pool.length ? pool : m.lineup)?.name || "동료";
 };
-const oppName = (m, prefer = ["FW", "MF"]) => pick(m.oppPlayers.filter(x => prefer.includes(x.pos))).name;
+const oppName = (m, prefer = ["FW", "MF"]) => {
+  if (m.oppAce && prefer.includes(m.oppAce.pos) && m.oppPlayers.some(x => x.name === m.oppAce.name) && chance(0.35)) return m.oppAce.name;
+  const pool = m.oppPlayers.filter(x => prefer.includes(x.pos));
+  return pick(pool.length ? pool : m.oppPlayers).name;
+};
 
 // 골이 들어간 뒤 스코어와 흐름을 알려 주는 한 줄
 function goalNote(m, team, min) {
@@ -3628,6 +3985,11 @@ function next(state, m) {
       : zone === "att" ? [range(80, 88), range(24, 44)] : zone === "mid" ? [range(48, 60), range(18, 50)] : [range(20, 30), range(18, 50)];
     const holder = poss === "them" ? sv.opp : m.me;
     if (sit.intro !== false) lines.push(L(fill(pick(TO_ME[poss === "them" ? "def" : zone] || TO_ME.mid), sv), "me", { ball, poss, toMe: poss !== "them", actor: holder, press: poss === "them" }));
+    // 상대 에이스와 처음 마주칠 때 한 줄 (경기마다 한 번)
+    if (poss === "them" && sit.intro !== false && m.oppAce && sv.opp === m.oppAce.name && !m._aceSeen) {
+      m._aceSeen = true;
+      lines.push(L(fill(pick(["{a|이다/다}. 경기 전 분석에서 몇 번이나 들은 이름이다.", "상대 에이스 {a}. 오늘 제일 조심하라던 선수다."]), { a: sv.opp }), "me", { ball, poss, actor: holder, press: true }));
+    }
     else lines.push({ t: "", k: "", minute: min, ball, poss, toMe: poss !== "them", silent: true, actor: holder, press: poss === "them" });
     m._sitPoss = poss;
     const list = sit.choices.filter(c => meets(state, c.requires)).map(c => (c.requires ? { ...c, signature: true } : c));
@@ -3882,6 +4244,7 @@ function finishMatch(state, m) {
     m.feed.push({ t: `승부차기 ${shootout.us} : ${shootout.them}. ${win ? "이겼다!" : "졌다…"}`, k: win ? "goal-us" : "goal-them", minute: LENGTH });
   }
 
+  noteOpp(state, m);                               // 상대 에이스 맞대결 기록
   let minutes = m.status === "start" ? LENGTH : m.status === "sub" ? LENGTH - m.minIn : 0;
   if (m.injured) minutes = Math.max(1, m.injured.minute - (m.status === "sub" ? m.minIn : 0));
   // 후반 승부처 골 (55분 이후, 동점을 만들거나 앞서게 한 내 골)
@@ -7041,7 +7404,7 @@ const {next, resolve, autoChoice, autoPlay, finishMatch, STATUS_LABEL, TAG_LABEL
 const {STAFF} = __m["data/roster.js"];
 const {getPath} = __m["js/rng.js"];
 const {tierLabel, TEAM_NAME} = __m["js/engine/season.js"];
-const {esc, img, faceOf} = __m["js/ui/util.js"];
+const {esc, img, faceOf, fillText} = __m["js/ui/util.js"];
 const {conditionOf} = __m["js/engine/growth.js"];
 const {setScene, enter, buzz} = __m["js/ui/fx.js"];
 const {sfx} = __m["js/ui/sfx.js"];
@@ -7342,6 +7705,8 @@ function showMatch(app, m, onDone) {
         <p>"${esc(m.talk.text)}"</p>
         ${m.talk.tag ? `<span class="chip kit">지시: ${TAG_LABEL[m.talk.tag]}</span> <span class="mute" style="font-size:12px">같은 종류를 고르면 성공률 +4%p</span>` : ""}</div></div>` : ""}
     ${fx.school ? `<div class="alert gold">🎓 오늘 ${esc(fx.school.name)}(${tierLabel(fx.school.tier)}) ${esc(fx.school.coach)}님이 직접 보러 오셨습니다. 상대는 고등학생이라 몸싸움이 버겁습니다.</div>` : ""}
+    ${m.oppAce ? `<div class="alert">👀 주목할 상대: ${m.oppAce.pos} ${m.oppAce.number}번 ${esc(m.oppAce.name)} (${m.oppAce.grade}학년${m.oppAce.trait ? `, ${esc(m.oppAce.trait)}` : ""})</div>`
+      : m.oppAceAbsent ? `<div class="alert">${esc(fillText("상대 에이스 {a|이/가} 오늘은 나오지 않습니다.", { a: m.oppAceAbsent }))}</div>` : ""}
     ${fx.ko ? `<div class="alert gold">지면 탈락입니다. 비기면 승부차기.</div>` : ""}
     ${fx.elementary ? `<div class="alert gold">🧒 오늘은 초등학교 팀과의 연습경기. 이겨야 본전, 지면 한동안 놀림감이다.</div>` : ""}
     <div class="power"><span>우리 전력</span><div class="pw"><i style="width:${barPct(m.ours)}%"></i></div>

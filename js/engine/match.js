@@ -11,6 +11,7 @@ import { applyResult, TEAM_NAME } from "./season.js";
 import { matchMails } from "./advice.js";
 import { isBirthdayWeek } from "./birthday.js";
 import { turnInfo } from "./calendar.js";
+import { oppLineup, noteOpp } from "./opponents.js";
 
 export const LENGTH = 70;
 export const MY_SLOT = { FW: 0, MF: 1, DF: 1 };        // 경기장에서 내가 서는 자리 (포지션 안 순서)          // 중등부 전후반 35분씩
@@ -205,10 +206,26 @@ export function prepareMatch(state, info, fx) {
   }
   // 상대 필드 선수 10명 (DF 4, MF 4, FW 2). 경기장 위 번호와 중계 이름이 같은 사람
   const usedNames = new Set([p.name, ...roster.map(r => r.name), ...GOALKEEPERS.map(g => g.name)]);
-  const oppPlayers = shuffle([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 17]).slice(0, 10).map((n, i) => {
-    let name; do { name = randomName(); } while (usedNames.has(name)); usedNames.add(name);
-    return { name, number: n, pos: i < 4 ? "DF" : i < 8 ? "MF" : "FW" };
-  });
+  // 핵심 선수가 있는 팀은 그 판에서 고정된 선수단으로 (data/world.js의 OPPONENT_STARS)
+  const known = oppLineup(state, fx.opponent.name, info.turn);
+  let oppPlayers;
+  if (known) {
+    oppPlayers = known.lineup.map(x => ({ name: x.name, number: x.number, pos: x.pos, star: x.star }));
+    oppPlayers.forEach(x => usedNames.add(x.name));
+    for (const [pos, n] of [["DF", 4], ["MF", 4], ["FW", 2]]) {
+      for (let have = oppPlayers.filter(x => x.pos === pos).length; have < n; have++) {
+        let name; do { name = randomName(); } while (usedNames.has(name)); usedNames.add(name);
+        oppPlayers.push({ name, number: 40 + oppPlayers.length, pos });
+      }
+    }
+    oppPlayers.sort((a, b) => ["DF", "MF", "FW"].indexOf(a.pos) - ["DF", "MF", "FW"].indexOf(b.pos));
+  } else {
+    oppPlayers = shuffle([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 14, 17]).slice(0, 10).map((n, i) => {
+      let name; do { name = randomName(); } while (usedNames.has(name)); usedNames.add(name);
+      return { name, number: n, pos: i < 4 ? "DF" : i < 8 ? "MF" : "FW" };
+    });
+  }
+  const oppAce = known?.ace ? { name: known.ace.name, pos: known.ace.pos, trait: known.ace.trait, grade: known.ace.grade, number: known.ace.number } : null;
   // 교체로 들어갈 같은 포지션 후보 (부상 교체용)
   const benchAll = roster.filter(m => !lineup.some(l => l.name === m.name)).sort((a, b) => (b.position === p.position) - (a.position === p.position) || b.ovrNow - a.ovrNow);
   const bench = benchAll.map(m => ({ name: m.name, number: m.number }));
@@ -216,7 +233,7 @@ export function prepareMatch(state, info, fx) {
   // 내가 뛰면 내 능력치와 컨디션이 팀 전력에 직접 더해짐
   const ours = teamStrength(state, onPitch) * 0.6 + 50 * 0.4 + (onPitch ? (myOvr - teamAvg) * 0.12 + cond.match * 15 : 0)
     + (keeperOf(state).strong ? 1.5 : 0);
-  const theirs = fx.opponent.strength;
+  const theirs = fx.opponent.strength + (oppAce ? 0.6 : known?.absent ? -1.5 : 0);   // 에이스가 뛰면 조금 더 강하고, 빠지면 약해짐
 
   const events = [{ type: "kickoff", minute: 0 }];
   const nOur = poisson(6.8 * Math.exp((ours - theirs) / 14));
@@ -245,7 +262,7 @@ export function prepareMatch(state, info, fx) {
     fx, turn: info.turn, grade: info.grade, status, reason: elig.ok ? null : elig.reason, restNote,
     star, meRate: onPitch ? clamp(0.09 + star * 0.11 + (hasTrait(p, "ace") ? 0.03 : 0), 0.08, 0.32) : 0, me: p.name, myPos: p.position,
     minIn: status === "sub" ? minIn : 0, onPitch,
-    ours, theirs, lineup, oppPlayers, bench, talk: pickTalk(state, fx, status, star),
+    ours, theirs, lineup, oppPlayers, oppAce, oppAceAbsent: known?.absent?.name || null, bench, talk: pickTalk(state, fx, status, star),
     gk: { us: ourKeeper(state), them: (() => { let n; do { n = randomName(); } while (usedNames.has(n)); usedNames.add(n); return n; })() }, myNumber: p.number,
     events, i: 0, minute: 0, score: [0, 0],
     stats: { us: { shots: 0, on: 0, corners: 0, cards: 0 }, them: { shots: 0, on: 0, corners: 0, cards: 0 },
@@ -274,13 +291,19 @@ function namesOf(m, team, pos) {
   if (pos === "GK") return [team === "us" ? m.gk.us : m.gk.them];
   const pool = team === "us" ? m.lineup : m.oppPlayers;
   const list = pool.filter(x => x.pos === pos);
-  return (list.length ? list : pool).map(x => x.name);
+  const names = (list.length ? list : pool).map(x => x.name);
+  const ace = team === "them" && m.oppAce && names.includes(m.oppAce.name) ? m.oppAce.name : null;
+  return ace ? [...names, ace, ace] : names;            // 상대 에이스가 공을 더 자주 잡음
 }
 const mateName = (m, prefer = ["FW", "MF"]) => {
   const pool = m.lineup.filter(x => prefer.includes(x.pos));
   return pick(pool.length ? pool : m.lineup)?.name || "동료";
 };
-const oppName = (m, prefer = ["FW", "MF"]) => pick(m.oppPlayers.filter(x => prefer.includes(x.pos))).name;
+const oppName = (m, prefer = ["FW", "MF"]) => {
+  if (m.oppAce && prefer.includes(m.oppAce.pos) && m.oppPlayers.some(x => x.name === m.oppAce.name) && chance(0.35)) return m.oppAce.name;
+  const pool = m.oppPlayers.filter(x => prefer.includes(x.pos));
+  return pick(pool.length ? pool : m.oppPlayers).name;
+};
 
 // 골이 들어간 뒤 스코어와 흐름을 알려 주는 한 줄
 function goalNote(m, team, min) {
@@ -511,6 +534,11 @@ export function next(state, m) {
       : zone === "att" ? [range(80, 88), range(24, 44)] : zone === "mid" ? [range(48, 60), range(18, 50)] : [range(20, 30), range(18, 50)];
     const holder = poss === "them" ? sv.opp : m.me;
     if (sit.intro !== false) lines.push(L(fill(pick(TO_ME[poss === "them" ? "def" : zone] || TO_ME.mid), sv), "me", { ball, poss, toMe: poss !== "them", actor: holder, press: poss === "them" }));
+    // 상대 에이스와 처음 마주칠 때 한 줄 (경기마다 한 번)
+    if (poss === "them" && sit.intro !== false && m.oppAce && sv.opp === m.oppAce.name && !m._aceSeen) {
+      m._aceSeen = true;
+      lines.push(L(fill(pick(["{a|이다/다}. 경기 전 분석에서 몇 번이나 들은 이름이다.", "상대 에이스 {a}. 오늘 제일 조심하라던 선수다."]), { a: sv.opp }), "me", { ball, poss, actor: holder, press: true }));
+    }
     else lines.push({ t: "", k: "", minute: min, ball, poss, toMe: poss !== "them", silent: true, actor: holder, press: poss === "them" });
     m._sitPoss = poss;
     const list = sit.choices.filter(c => meets(state, c.requires)).map(c => (c.requires ? { ...c, signature: true } : c));
@@ -765,6 +793,7 @@ export function finishMatch(state, m) {
     m.feed.push({ t: `승부차기 ${shootout.us} : ${shootout.them}. ${win ? "이겼다!" : "졌다…"}`, k: win ? "goal-us" : "goal-them", minute: LENGTH });
   }
 
+  noteOpp(state, m);                               // 상대 에이스 맞대결 기록
   let minutes = m.status === "start" ? LENGTH : m.status === "sub" ? LENGTH - m.minIn : 0;
   if (m.injured) minutes = Math.max(1, m.injured.minute - (m.status === "sub" ? m.minIn : 0));
   // 후반 승부처 골 (55분 이후, 동점을 만들거나 앞서게 한 내 골)

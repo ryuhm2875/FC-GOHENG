@@ -15,6 +15,8 @@ import { stillScheduled } from "./season.js";
 import { chance } from "../rng.js";
 import { isBirthdayWeek } from "./birthday.js";
 import { chatText } from "./life.js";
+import { aceOf, aceAbsent } from "./opponents.js";
+import { ACE_TALK } from "../../data/messages.js";
 
 const f0 = v => Math.floor(v);
 // 받침 판단. 숫자는 읽는 소리 기준 (0 십/영, 1 일, 3 삼, 6 육, 7 칠, 8 팔은 받침 있음)
@@ -29,6 +31,13 @@ const ro = w => { const t = String(w); const ch = t[t.length - 1]; if (/[0-9]/.t
   const c = t.charCodeAt(t.length - 1); const j = (c - 0xAC00) % 28; return c >= 0xAC00 && c <= 0xD7A3 && j !== 0 && j !== 8 ? "으로" : "로"; };
 const ida = n => `${n}${has(n) ? "이다" : "다"}`;
 const pp = (w, a, b) => (has(w) ? a : b);          // 조사만
+// 상대 에이스 문장: {ace} {gw} {posw} {trait} {team} {goals}를 먼저 채우고, 나머지({mate} 등)는 단톡방 규칙으로 채움
+const POSW = { FW: "공격수", MF: "미드필더", DF: "수비수" };
+function aceText(state, t, ace, extra = {}) {
+  const v = { ace: ace.name, gw: `${ace.grade}학년`, posw: POSW[ace.pos], trait: ace.trait || "", ...extra };
+  const once = t.replace(/\{(ace|gw|posw|trait|team|goals)(?:\|([^/}]+)\/([^}]+))?\}/g, (_, k, a, b) => { const x = String(v[k] ?? ""); return a ? x + (has(x) ? a : b) : x; });
+  return chatText(state, once);
+}
 const josa = (w, a, b) => w + pp(w, a, b);         // 낱말 + 조사
 
 // 그 능력치를 가장 많이 올리는 훈련
@@ -109,6 +118,23 @@ export function previewMail(state, fx) {
       : diff > -2 ? pick(["해 볼 만한 상대다. 먼저 실수하는 쪽이 진다.", "딱 우리만 한 팀이다. 누가 더 많이 뛰느냐다.", "50 대 50이다. 세트피스 하나가 갈라 놓을 거다."])
       : pick(["우리가 할 것만 하면 된다. 그래도 방심하는 순간 뒤집힌다.", "전력은 우리가 앞선다. 이런 경기를 쉽게 이겨야 강팀이다.", "이겨야 본전인 경기다. 일찍 골 넣고 편하게 가자."]);
     lines.push(`${style.label}이다. ${diffLine}`);
+    // 상대 에이스
+    const ace = aceOf(state, fx.opponent.name);
+    if (ace) {
+      const team = fx.opponent.name;
+      if (aceAbsent(state, team, info.turn)) lines.push(aceText(state, pick(ACE_TALK.absent), ace, { team }));
+      else {
+        const memo = state.oppMemo?.[ace.name];
+        const parts = [aceText(state, pick(ACE_TALK.intro), ace, { team }), aceText(state, pick(ACE_TALK.trait), ace)];
+        if (memo?.goals >= 1) parts.push(aceText(state, pick(ACE_TALK.scoredBefore), ace, { goals: memo.goals }));
+        else if (memo?.games && memo.grade < state.calendar.grade) parts.push(aceText(state, pick(ACE_TALK.metLastYear), ace));
+        const mu = ACE_TALK.matchup[`${p.position}-${ace.pos}`];
+        if (mu?.length) parts.push(aceText(state, pick(mu), ace));
+        lines.push(parts.join(" "));
+        // 경기 전 단톡방 (복수전이면 꼭, 아니면 가끔)
+        if (memo?.goals >= 1 || chance(0.3)) mail(state, "group", `이번 주 상대: ${team}`, aceText(state, pick(memo?.goals >= 1 ? ACE_TALK.chatRevenge : ACE_TALK.chatBefore), ace, { team }));
+      }
+    }
     if (state.league && fx.comp === "league" && state.league.played > 0) {
       const rows = sortTable(state.league.table);
       const them = rows.findIndex(r => r.id === fx.opponent.id);
@@ -124,7 +150,10 @@ export function previewMail(state, fx) {
     const stLine = lv === "low" ? pick([`네 ${josa(st, "은", "는")} 아직 ${isTech ? "몸에 덜 붙었으니" : "모자라니"} 무리하지 말고.`, `${josa(st, "은", "는")} 아직 네 약점이다. 오늘은 숨기고, 잘하는 걸로 승부해라.`])
       : lv === "high" ? pick([`이런 경기에선 네 ${josa(st, "이", "가")} 오히려 무기가 된다.`, `네 ${josa(st, "이", "가")} 이 팀한테는 제일 귀찮을 거다. 마음껏 써라.`])
       : pick([`네 ${josa(st, "이", "가")} 얼마나 버텨 주느냐가 관건이다.`, `${josa(st, "은", "는")} 딱 중간이다. 오늘 경기가 그걸 끌어올릴 기회다.`]);
-    lines.push(`${pick(style.tips)} ${stLine}`);
+    const aceNow = aceOf(state, fx.opponent.name);
+    let tips = style.tips;
+    if (aceNow && !aceAbsent(state, fx.opponent.name, info.turn)) tips = tips.filter(x => !x.includes("왼발잡이")).map(x => x.replace("10번 하나만", `${aceNow.number}번 ${aceNow.name} 하나만`));
+    lines.push(`${pick(tips)} ${stLine}`);
     const city = Object.keys(TRAVEL).find(c => fx.opponent.name.startsWith(c));
     if (city && fx.comp === "league" && chance(0.4)) lines.push(TRAVEL[city]);
     if (fx.ko) lines.push(pick(["토너먼트다. 지면 그대로 짐 싸서 고흥 내려간다.", "오늘 지면 숙소 짐부터 싸야 한다. 그 생각만 해도 다리가 움직일 거다.", "토너먼트에서 다음은 없다. 70분 동안 후회 남기지 마라."]));
@@ -154,6 +183,9 @@ export function matchMails(state, m, res, notes) {
   const scorers = side => m.goalsLog.filter(g => g.team === side).map(g => `${g.name} ${g.minute}'${g.assist ? ` (도움 ${g.assist})` : ""}`).join(", ");
   const body = [];
   body.push(afterMatchChat(state, res, fx, res.grade === 3 && noFixtureLeft(state)));
+  const aceGoals = m.oppAce ? m.goalsLog.filter(g => g.team === "them" && g.name === m.oppAce.name).length : 0;
+  if (m.oppAce && aceGoals >= 1 && res.result !== "승" && chance(0.7)) body.push(aceText(state, pick(ACE_TALK.chatAfterScored), m.oppAce));
+  else if (m.oppAce && aceGoals === 0 && res.ga <= 1 && chance(0.45)) body.push(aceText(state, pick(ACE_TALK.chatAfterHeld), m.oppAce));
   const bdayGoal = res.goals > 0 && isBirthdayWeek(state, turnInfo(state));
   if (bdayGoal) body.push(chatText(state, pick(["{friend}: 생일골 ㅋㅋㅋ 이거 평생 우려먹겠네", "{mate}: 생일에 골 넣는 거 실화냐\n\n{friend}: 케이크 두 개 사야 됨"])));
   if (res.gf) body.push(`⚽ 득점: ${scorers("us")}`);
@@ -230,6 +262,11 @@ export function matchMails(state, m, res, notes) {
       : pick(["공이 너를 거쳐 가는 일이 많아졌다. 팀이 너를 찾기 시작했다는 뜻이다.", "동료들이 공 잡으면 너부터 보더라. 믿음은 그렇게 쌓이는 거다."]));
     if (res.stops >= 2) fb.push(pick(["뒤에서 몇 번이나 끊어 줬다. 그런 건 기록에 안 남아도 감독은 다 본다.", "궂은일 많이 했다. 골 넣은 애들보다 네 이름을 먼저 부르고 싶다.",
       ...(res.ga === 0 ? ["오늘 실점 안 한 건 네가 몇 번 막아 준 덕이 크다."] : [])]));
+    if (m.oppAce) {
+      const guard = (p.position === "DF" && ["FW", "MF"].includes(m.oppAce.pos)) || (p.position === "MF" && ["MF", "FW"].includes(m.oppAce.pos));
+      if (aceGoals >= 2 && ["DF", "MF"].includes(p.position)) fb.push(aceText(state, pick(ACE_TALK.coachScored), m.oppAce, { goals: aceGoals }));
+      else if (aceGoals === 0 && guard && res.minutes >= 45 && res.result !== "패") fb.push(aceText(state, pick(res.result === "승" ? ACE_TALK.coachHeldWin : ACE_TALK.coachHeldDraw), m.oppAce));
+    }
     const cnow = conditionOf(p);
     if (cnow.score < 50) fb.push("경기 내내 다리가 무거워 보였다. 쉬는 것도 훈련이다.");
     if (m.goalsLog.some(g => g.myFault)) fb.push("실점 장면, 너도 마음에 걸릴 거다. 내일 영상으로 같이 보자.");
@@ -409,7 +446,7 @@ export function welcomeMails(state) {
   mail(state, "mom", "첫날 어땠어?",
     `감독님 무섭지는 않았어? 저녁은 뭐 먹고 싶어?\n\n엄마는 네가 축구하는 거 응원해. 대신 공부 손 놓으면 안 되는 거 알지? 학교 성적표 나오면 같이 보자.`);
   mail(state, "assist", "1학년 생활 안내",
-    [`${p.name}, ${STAFF.assistant}다. 처음이니 몇 가지만 알려 준다.`,
+    [`${p.name}, ${ida(STAFF.assistant)}. 처음이니 몇 가지만 알려 준다.`,
      "한 주는 평일 두 칸, 주말 한 칸이다. 주말에 경기가 있으면 주말 칸은 경기로 고정된다.",
      "개인훈련은 능력치를 올리고, 단체훈련은 감독님 신뢰를 올린다. 선발은 능력치 75%, 감독 신뢰 25%로 정해진다.",
      "피로가 30을 넘으면 훈련 효율이 떨어지기 시작하고, 높을수록 더 크게 떨어진다. 다칠 위험도 커진다. 수면과 가족 시간이 피로를 푼다.",
