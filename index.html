@@ -32,6 +32,10 @@
       if (location.protocol === "file:") s.src = "js/game.bundle.js";
       else { s.type = "module"; s.src = "js/main.js"; }
       document.body.appendChild(s);
+      // 오프라인 모드: 인터넷 주소로 열었을 때만 (파일 더블클릭은 원래 인터넷 없이 됨)
+      if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+        window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(function () {}); });
+      }
     })();
   </script>
 </body>

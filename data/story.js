@@ -6,11 +6,12 @@
 // ── 도입부 (영화처럼 흘러가는 장면) ─────────────
 // bg: assets/img/ 안의 배경 그림 이름. 없으면 tone 색으로 대신합니다.
 export const INTRO = [
-  { bg: "bg_sea",   tone: "sea",   big: "전라남도 고흥",          small: "바다가 세 면을 감싸 안은 작은 반도." },
-  { bg: "title",    tone: "dawn",  big: "이 바다 위로\n로켓이 날아올랐다", small: "누군가의 꿈은 하늘까지 닿기도 한다." },
-  { bg: "bg_field_day", tone: "field", big: "고흥대서중학교",    small: "방과 후면 어김없이 운동장에서 공 차는 소리가 난다." },
-  { bg: "bg_locker", tone: "night", big: "고흥FC U-15",          small: "올봄, 신입생 하나가 축구부 문을 두드린다." },
-  { bg: null,       tone: "black", big: "3년",                   small: "국가대표가 될 수도, 벤치에서 끝날 수도 있다." },
+  // center: 화면 한가운데에 띄움 / type: 작은 글씨를 한 글자씩 찍음
+  { bg: "bg_sea",   tone: "sea",   big: "전라남도 고흥",          small: "바다 냄새가 운동장까지 넘어오는 동네." },
+  { bg: "title",    tone: "dawn",  big: "여기서는\n로켓도 하늘로 갔다", small: "그러니 공 하나쯤, 어디까지 못 가겠어." },
+  { bg: "bg_field_day", tone: "field", big: "고흥대서중학교",    small: "마지막 종이 울리면, 운동장부터 시끄러워진다." },
+  { bg: "bg_locker", tone: "night", big: "고흥FC U-15",          small: "올봄, 주황색 유니폼 하나가 새로 걸린다." },
+  { bg: null,       tone: "black", big: "3년",                   small: "미래는 어떻게 바뀔지 모른다.", center: true, type: true },
 ];
 
 // ── 입단 대화 ─────────────────────────────────
@@ -62,7 +63,7 @@ export const TALK = {
     { who: "coach", text: "1학년은 30번 뒤로 번호를 준다. 앞 번호는 실력으로 뺏어 가는 거다." },
   ],
   farewell: [
-    { who: "coach", text: "훈련은 평일 방과 후, 주말리그는 격주 토요일이다." },
+    { who: "coach", text: "훈련은 평일 방과 후, 주말리그는 주로 토요일이다. 일정표는 늘 확인해 둬라." },
     { who: "coach", text: "그리고 하나 더. 수업 시간에 자는 놈은 경기에 안 내보낸다. 학업이 떨어지면 명단에서 뺀다." },
     { who: "coach", text: "내일부터 나와라." },
   ],

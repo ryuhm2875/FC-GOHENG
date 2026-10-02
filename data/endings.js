@@ -27,7 +27,11 @@ export const ENDINGS = [
 
   { id: "model", grade: "H", title: "모범 학생선수", img: "ending_graduate",
     cond: c => c.academic >= 75 && c.attitude >= 75,
-    story: c => `졸업식에서 ${c.teacherName}께서 ${c.name}의 이름을 한 번 더 불렀다. 학교장상.\n\n훈련 끝나고 도서관, 시험 전날엔 단톡방 대신 문제집. 축구도 공부도 놓지 않은 3년이었다.\n\n${c.schoolName}에서도 그 균형은 계속된다.` },
+    story: c => `졸업식에서 ${c.teacherName}께서 ${c.name}의 이름을 한 번 더 부르셨다. 학교장상.\n\n훈련 끝나고 도서관, 시험 전날엔 단톡방 대신 문제집. 축구도 공부도 놓지 않은 3년이었다.\n\n${c.schoolName}에서도 그 균형은 계속된다.` },
+
+  { id: "injury", grade: "D", title: "부상으로 좌절", img: "ending_setback",
+    cond: c => c.injuryWeeks >= 14 && c.g3Rating < 7.1 && ["footballHS", "general", "regional", "none"].includes(c.tier),
+    story: c => `3년 중 ${c.injuryWeeks}주를 재활실에서 보냈다.\n\n몸이 회복되면 다른 곳이 아팠다. 쉬어야 할 때 쉬지 못했던 날들이 하나씩 떠오른다.\n\n그래도 축구화를 버리지는 않았다. 몸을 아끼는 법을 배운 것도 3년의 결과다.` },
 
   { id: "nationalSchool", grade: "A", title: "전국 강호 진학", img: "ending_highschool",
     cond: c => c.tier === "national",
@@ -41,17 +45,13 @@ export const ENDINGS = [
     cond: c => c.suspended >= 4,
     story: c => `공식 경기에 ${c.suspended}번 나서지 못했다. 이유는 부상이 아니라 성적표였다.\n\n관중석에서 동료들 경기를 보던 날들이 가장 길었다. "공부도 훈련이다." 감독님 말이 그제야 들렸다.\n\n고등학교에서는 다르게 할 수 있다. 아직 늦지 않았다.` },
 
-  { id: "injury", grade: "D", title: "부상으로 좌절", img: "ending_setback",
-    cond: c => c.injuryWeeks >= 22 && ["footballHS", "general", "regional", "none"].includes(c.tier),
-    story: c => `3년 중 ${c.injuryWeeks}주를 재활실에서 보냈다.\n\n몸이 회복되면 다른 곳이 아팠다. 쉬어야 할 때 쉬지 못했던 날들이 하나씩 떠오른다.\n\n그래도 축구화를 버리지는 않았다. 몸을 아끼는 법을 배운 것도 3년의 결과다.` },
+  { id: "dream", grade: "C", title: "벤치의 꿈", img: "ending_bench",
+    cond: c => c.g3StartRatio < 0.3 && c.apps > 0 && c.apps < 50,
+    story: c => `3년 동안 경기에 나선 건 ${c.apps}번. 선발 명단에 이름이 오른 날은 손에 꼽았다.\n\n유니폼은 늘 깨끗했다. 그래도 경기 전날마다 축구화 끈을 새로 묶었다. 언젠가 부를지 모르니까.\n\n꿈은 아직 벤치 위에 그대로 있다.` },
 
   { id: "bench", grade: "C", title: "만년 후보", img: "ending_bench",
     cond: c => c.g3StartRatio < 0.3,
     story: c => `3학년이 돼서도 선발 명단에 이름이 올라간 날은 손에 꼽았다.\n\n그래도 훈련엔 한 번도 빠지지 않았다. 대부분 교체로 나선 ${c.apps}경기, 그 몇 분을 위해 3년을 뛰었다.\n\n${c.schoolName}에서 다시 시작한다. 벤치에서 본 것들도 다 실력이 된다.` },
-
-  { id: "dream", grade: "C", title: "벤치의 꿈", img: "ending_bench",
-    cond: c => c.apps < 25,
-    story: c => `3년 동안 공식 경기에 나선 건 ${c.apps}번.\n\n유니폼은 늘 깨끗했다. 그래도 경기 전날마다 축구화 끈을 새로 묶었다. 언젠가 부를지 모르니까.\n\n꿈은 아직 벤치 위에 그대로 있다.` },
 
   { id: "study", grade: "B", title: "공부형 학생선수", img: "ending_graduate",
     cond: c => c.tier === "general" && c.academic >= 70,

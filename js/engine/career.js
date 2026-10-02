@@ -15,7 +15,7 @@ export const MILESTONES = {
 const at = (info, m) => info && info.grade === m.grade && info.month === m.month && info.week === m.week;
 
 const TIER_NEED = { proYouth: 82, national: 74, regional: 63, footballHS: 48 };
-const BEST_RANK = { "우승": 6, "결승": 5, "4강": 4, "8강": 3, "16강": 2, "토너먼트 진출": 1, "조별리그 탈락": 0, "조별리그": 0 };
+const BEST_RANK = { "우승": 6, "준우승": 5, "결승": 5, "4강": 4, "8강": 3, "16강": 2, "토너먼트 진출": 1, "조별리그 탈락": 0, "조별리그": 0 };
 
 const has = w => { const c = String(w).charCodeAt(String(w).length - 1); if (/[0-9]/.test(String(w).at(-1))) return "013678".includes(String(w).at(-1)); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 !== 0; };
 const j = (w, a, b) => w + (has(w) ? a : b);
@@ -82,7 +82,7 @@ export function chooseSchool(state, id) {
   state.pending = null;
   if (s.tier !== "general") {
     mailFrom(state, s.coach || "고등학교", "scout", `${s.name} 합격`,
-      `${state.player.name}, 반갑다. 내년 봄부터 같이 운동한다.\n\n중학교에서 했던 대로만 해라. 남은 겨울도 몸 관리 잘하고.`);
+      `${state.player.name}, 반갑다. 내년 봄부터 같이 운동한다.\n\n중학교에서 했던 대로만 해라. 졸업할 때까지 몸 관리 잘하고.`);
   }
   mail(state, "coach", "결정했구나",
     s.tier === "general"

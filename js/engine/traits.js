@@ -55,7 +55,7 @@ export function checkTraits(state) {
     }
     state.record.earned ||= [];
     state.record.earned.push({ id, turn: state.calendar.turn });
-    mail(state, "coach", `새 특성: ${info.label}`,
+    mail(state, "system", `새 특성: ${info.label}`,
       `${LINES[id] || ""}\n\n(${info.how}) → ${info.desc}${extra}`);
     got.push({ id, label: info.label, desc: info.desc, changes });
   }

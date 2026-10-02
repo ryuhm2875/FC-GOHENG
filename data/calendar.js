@@ -19,7 +19,7 @@ export const MONTHS = [
   { month: 8,  weeks: 5, phase: "summer"  },
   { month: 9,  weeks: 4, phase: "league2" },
   { month: 10, weeks: 4, phase: "league2" },
-  { month: 11, weeks: 3, phase: "autumn"  },
+  { month: 11, weeks: 3, phase: "league2" },
   { month: 12, weeks: 3, phase: "autumn"  },
   { month: 1,  weeks: 4, phase: "winter"  },
   { month: 2,  weeks: 3, phase: "winter"  },
@@ -62,12 +62,12 @@ export const VACATIONS = [
 // comp: league 주말리그 / summer 하계대회 / winter 동계대회 / friendly 연습경기 / hs 진학 연습경기
 // stage: group 조별리그 / ko 토너먼트 (지면 그 뒤 주간은 경기가 없어집니다)
 // grades: 그 학년에만 열림 (없으면 모든 학년)
-// hsChance: 연습경기가 고등학교 팀과의 진학 연습경기로 바뀔 확률 (학년별)
+// hsChance: 연습경기가 고등학교 팀과의 진학 연습경기로 바뀔 확률 (학년별) / elemChance: 초등학교 팀과 붙을 확률
 export const MATCHES = [
-  // 전반기 주말리그 7라운드
+  // 전반기 주말리그 9라운드 (10팀)
   { month: 3, week: 2, comp: "league" }, { month: 3, week: 4, comp: "league" },
-  { month: 4, week: 2, comp: "league" },
-  { month: 5, week: 1, comp: "league" }, { month: 5, week: 3, comp: "league" },
+  { month: 4, week: 2, comp: "league" }, { month: 4, week: 4, comp: "league" },
+  { month: 5, week: 1, comp: "league" }, { month: 5, week: 3, comp: "league" }, { month: 5, week: 4, comp: "league" },
   { month: 6, week: 1, comp: "league" }, { month: 6, week: 3, comp: "league" },
 
   // 중3 진학 연습경기 (고정)
@@ -82,15 +82,16 @@ export const MATCHES = [
   { month: 8, week: 4, comp: "summer", stage: "ko", round: "4강" },
   { month: 8, week: 5, comp: "summer", stage: "ko", round: "결승" },
 
-  // 후반기 주말리그 7라운드
+  // 후반기 주말리그 9라운드 (10팀). 11월 1주까지
   { month: 9, week: 1, comp: "league" }, { month: 9, week: 2, comp: "league" },
   { month: 9, week: 3, comp: "league" }, { month: 9, week: 4, comp: "league" },
-  { month: 10, week: 1, comp: "league" }, { month: 10, week: 3, comp: "league" },
-  { month: 10, week: 4, comp: "league" },
+  { month: 10, week: 1, comp: "league" }, { month: 10, week: 2, comp: "league" }, { month: 10, week: 3, comp: "league" },
+  { month: 10, week: 4, comp: "league" }, { month: 11, week: 1, comp: "league" },
 
-  // 연습경기 (중2는 절반 확률로 고등학교 팀과)
-  { month: 11, week: 2, comp: "friendly", hsChance: { 2: 0.5 } },
-  { month: 12, week: 1, comp: "friendly", hsChance: { 2: 0.5 } },
+  // 연습경기. hsChance: 고등학교 팀과 붙을 확률 / elemChance: 초등학교 팀과 붙을 확률 (학년별)
+  { month: 11, week: 2, comp: "friendly", hsChance: { 1: 0.15, 2: 0.45, 3: 0.4 }, elemChance: { 1: 0.25, 2: 0.2, 3: 0.2 } },
+  { month: 11, week: 3, comp: "friendly", hsChance: { 1: 0.15, 2: 0.45, 3: 0.4 }, elemChance: { 1: 0.25, 2: 0.2, 3: 0.2 } },
+  { month: 12, week: 1, comp: "friendly", hsChance: { 1: 0.15, 2: 0.45, 3: 0.4 }, elemChance: { 1: 0.25, 2: 0.2, 3: 0.2 } },
 
   // 동계대회: 졸업식·동계훈련 뒤, 3학년 선배 없이. 조별리그 3경기 → 4강 → 결승
   { month: 1, week: 3, comp: "winter", stage: "group", round: "조별리그 1차전" },
@@ -105,5 +106,5 @@ export const COMPS = {
   summer:   { label: "하계대회",     official: true,  tournament: true, name: "전국 중등 하계 축구대회", bonus: 3 },
   winter:   { label: "동계대회",     official: true,  tournament: true, name: "전국 중등 동계 축구대회", bonus: 4 },
   friendly: { label: "연습경기",     official: false, tournament: false },
-  hs:       { label: "진학 연습경기", official: false, tournament: false },
+  hs:       { label: "고교 연습경기", official: false, tournament: false },
 };

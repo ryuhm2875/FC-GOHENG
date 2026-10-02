@@ -6,6 +6,7 @@ import { turnInfo, label } from "./engine/calendar.js";
 import { beginWeek, endWeek, planReady, SLOTS, slotLocked, actionAllowed } from "./engine/week.js";
 import { prepareMatch } from "./engine/match.js";
 import { welcomeMails } from "./engine/advice.js";
+import { birthdayWeek } from "./engine/birthday.js";
 import { initRelations } from "./engine/relations.js";
 import { showMatch } from "./ui/match.js";
 import { ACTION_MAP } from "../data/actions.js";
@@ -17,6 +18,7 @@ import { esc } from "./ui/util.js";
 import { admissionModal, nationalModal, showEnding, galleryModal } from "./ui/career.js";
 import { setScene, enter, preload, SCENES } from "./ui/fx.js";
 import { sfx } from "./ui/sfx.js";
+import { bgm } from "./ui/bgm.js";
 
 // 메뉴 아이콘 (선으로 그린 SVG)
 const ICONS = {
@@ -27,6 +29,7 @@ const ICONS = {
   inbox: '<path d="M4 5h16v11H9l-5 4z"/>',
 };
 const soundIcon = on => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/>${on ? '<path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>' : '<path d="M16 9.5l5 5M21 9.5l-5 5"/>'}</svg>`;
+const musicIcon = on => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 17.5V6l10-2v11.5"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/>${on ? "" : '<path d="M3 3l18 18"/>'}</svg>`;
 const icon = k => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>`;
 const NAV = [["home", "홈"], ["player", "선수"], ["team", "팀"], ["schedule", "일정"], ["inbox", "메시지"]];
 
@@ -44,6 +47,7 @@ const app = {
   startGame(player) {
     this.state = newGame(player);
     welcomeMails(this.state);
+    birthdayWeek(this.state, turnInfo(this.state));      // 입단 첫 주가 생일 주간인 경우
     this.saveTo("auto");
     this.go("home");
     this.toast(`${player.name}, 등번호 ${this.state.player.number}번으로 입단했습니다`);
@@ -61,6 +65,13 @@ const app = {
   summary() { return summaryOf(this.state, turnInfo(this.state)); },
   saveTo(where) { return saveTo(where, this.state, this.summary()); },
 
+  toggleMusic() {
+    this.settings.music = !this.settings.music; saveSettings(this.settings);
+    bgm.set(this.settings.music);
+    this.toast(this.settings.music ? "배경음악을 켰습니다" : "배경음악을 껐습니다");
+    document.querySelectorAll("[data-music]").forEach(b => { b.innerHTML = musicIcon(this.settings.music); b.setAttribute("aria-pressed", this.settings.music); });
+  },
+
   toggleSound() {
     this.settings.sound = !this.settings.sound; saveSettings(this.settings);
     sfx.set(this.settings.sound);
@@ -77,6 +88,7 @@ const app = {
 
   render() {
     if (["title", "intro", "create"].includes(this.view)) setScene(null);
+    if (this.view !== "match" && this.view !== "ending") bgm.play("home");
     if (this.view === "title") return renderTitle(this);
     if (this.view === "intro") return renderIntro(this, () => this.go("create"));
     if (this.view === "create") return renderCreate(this);
@@ -175,6 +187,7 @@ function renderTitle(app) {
     </nav>
     <p class="ft-foot">made by 류봉두</p>
     <button class="snd-btn ft-snd" data-sound aria-label="효과음" aria-pressed="${app.settings.sound}">${soundIcon(app.settings.sound)}</button>
+    <button class="snd-btn ft-mus" data-music aria-label="배경음악" aria-pressed="${!!app.settings.music}">${musicIcon(app.settings.music)}</button>
   </main>`;
   const r = app.root;
   const open = () => { r.querySelector("#press").hidden = true; const m = r.querySelector("#menu"); m.hidden = false; m.querySelector("button").focus({ preventScroll: true }); document.removeEventListener("keydown", key); };
@@ -190,6 +203,7 @@ function renderTitle(app) {
   r.querySelector("[data-loadmenu]").addEventListener("click", () => saveModal(app, { loadOnly: true }));
   r.querySelector("[data-gallery]").addEventListener("click", () => galleryModal());
   r.querySelector("[data-sound]").addEventListener("click", e => { e.stopPropagation(); app.toggleSound(); });
+  r.querySelector("[data-music]").addEventListener("click", e => { e.stopPropagation(); app.toggleMusic(); });
 }
 
 function renderShell(app) {
@@ -213,6 +227,7 @@ function renderShell(app) {
       <div class="tb-when ${flip ? "flip" : ""}"><div class="when">${when}</div><div class="phase">${info ? info.phaseLabel : ""}</div></div>
       <nav class="tabs-top" aria-label="메뉴">${NAV.map(([k, l]) => `<button data-nav="${k}" ${app.view === k ? `aria-current="page"` : ""}>${l}${k === "inbox" && unread ? `<span class="badge num">${unread}</span>` : ""}</button>`).join("")}</nav>
       <span class="spacer"></span>
+      <button class="snd-btn" data-music aria-label="배경음악" aria-pressed="${!!app.settings.music}">${musicIcon(app.settings.music)}</button>
       <button class="snd-btn" data-sound aria-label="효과음" aria-pressed="${app.settings.sound}">${soundIcon(app.settings.sound)}</button>
       <button class="btn btn-sm btn-ghost" data-savemenu>저장</button>
     </header>
@@ -225,6 +240,7 @@ function renderShell(app) {
   if (app._enter) enter(r.querySelector(".main"));
   if (!app._pre) { app._pre = true; preload(SCENES); }
   r.querySelector("[data-sound]").addEventListener("click", () => app.toggleSound());
+  r.querySelector("[data-music]").addEventListener("click", () => app.toggleMusic());
   r.querySelectorAll("[data-nav]").forEach(b => b.addEventListener("click", () => app.go(b.dataset.nav)));
   r.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => app.go(b.dataset.go)));
   r.querySelector("[data-savemenu]").addEventListener("click", () => saveModal(app));
@@ -272,5 +288,6 @@ function renderShell(app) {
 })();
 
 sfx.set(app.settings.sound);
+bgm.set(app.settings.music);
 app.render();
 window.gfc = app; // 개발 확인용

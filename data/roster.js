@@ -36,23 +36,33 @@ export const ROSTER = [
   { name: "한승채", cohort: "2학년선배", position: "DF", number: 2,  ovr: 49, style: "철벽",   face: "mate_08" },
   { name: "이동현", cohort: "2학년선배", position: "DF", number: 12, ovr: 47, style: "파이터", face: "mate_03" },
   { name: "강희주", cohort: "2학년선배", position: "FW", number: 11, ovr: 55, style: "골잡이", face: "mate_02" }, // 강자
+  { name: "양화원", cohort: "2학년선배", position: "MF", number: 13, ovr: 46, style: "테크닉", face: "mate_07" },
+  { name: "강교운", cohort: "2학년선배", position: "DF", number: 20, ovr: 46, style: "철벽",   face: "mate_03" },
 
   // 동기
-  { name: "윤지남", cohort: "동기", position: "MF", number: 33, ovr: 42, style: "테크닉", face: "mate_01" }, // 강자
+  { name: "윤남치", cohort: "동기", position: "MF", number: 33, ovr: 42, style: "테크닉", face: "mate_01" }, // 강자
   { name: "정자원", cohort: "동기", position: "MF", number: 44, ovr: 34, style: "패서",   face: "mate_04" },
   { name: "손은창", cohort: "동기", position: "MF", number: 31, ovr: 36, style: "패서",   face: "mate_01" }, // 중3 때 주장 후보
   { name: "진권우", cohort: "동기", position: "DF", number: 40, ovr: 34, style: "파이터", face: "mate_05" },
-  { name: "김연호", cohort: "동기", position: "FW", number: 36, ovr: 41, style: "스피드", face: "mate_02" }, // 강자
+  { name: "김현오", cohort: "동기", position: "FW", number: 36, ovr: 41, style: "스피드", face: "mate_02" }, // 강자
+  { name: "윤웅남", cohort: "동기", position: "FW", number: 37, ovr: 36, style: "골잡이", face: "mate_06" },
 
   // 1년 후배 (주인공이 중2 될 때 입학)
   { name: "고주희", cohort: "1년후배", position: "DF", number: 39, ovr: 36, style: "철벽",   face: "mate_01" },
   { name: "이경만", cohort: "1년후배", position: "DF", number: 47, ovr: 35, style: "파이터", face: "mate_02" },
   { name: "이창현", cohort: "1년후배", position: "MF", number: 55, ovr: 34, style: "패서",   face: "mate_05" },
+  { name: "박추원", cohort: "1년후배", position: "MF", number: 52, ovr: 35, style: "파이터", face: "mate_04" },
+  { name: "이영만", cohort: "1년후배", position: "FW", number: 49, ovr: 36, style: "스피드", face: "mate_08" },
+  { name: "김하유", cohort: "1년후배", position: "DF", number: 45, ovr: 35, style: "철벽",   face: "mate_07" },
+  { name: "최인후", cohort: "1년후배", position: "MF", number: 54, ovr: 34, style: "테크닉", face: "mate_06" },
 
   // 2년 후배 (주인공이 중3 될 때 입학)
   { name: "임종잔", cohort: "2년후배", position: "FW", number: 42, ovr: 43, style: "골잡이", face: "mate_02" }, // 강자
   { name: "강금총", cohort: "2년후배", position: "FW", number: 61, ovr: 36, style: "스피드", face: "mate_04" },
   { name: "조연태", cohort: "2년후배", position: "DF", number: 58, ovr: 35, style: "철벽",   face: "mate_08" },
+  { name: "권송",   cohort: "2년후배", position: "DF", number: 63, ovr: 34, style: "파이터", face: "mate_03" },
+  { name: "이만송", cohort: "2년후배", position: "MF", number: 66, ovr: 35, style: "패서",   face: "mate_05" },
+  { name: "강범창", cohort: "2년후배", position: "FW", number: 67, ovr: 34, style: "파이터", face: "mate_04" },
 ];
 
 // 골키퍼 (경기 중계에 이름이 나옵니다). 학년이 지나면 위 학년부터 나섭니다.

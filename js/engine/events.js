@@ -10,6 +10,7 @@ import { adjustRel, person, captainScore, REL_ROLES } from "./relations.js";
 import { mail } from "../state.js";
 import { chance, weighted, clamp, rand, pick } from "../rng.js";
 import { injure } from "./injury.js";
+import { isBirthdayWeek } from "./birthday.js";
 
 const EVENT_CHANCE = 0.32;
 const PORTRAIT = { coach: "npc_coach", assistant: "npc_assistant", teacher: "npc_teacher", mom: "npc_mom", dad: "npc_dad" };
@@ -24,7 +25,7 @@ function eligible(state, ev, info) {
   if (ev.needs && !person(state, ev.needs)) return false;
   if (ev.once && state.seenEvents?.includes(ev.id)) return false;
   const last = state.eventLog?.[ev.id];
-  if (last != null && state.calendar.turn - last < (ev.afterLoss ? 4 : 12)) return false;
+  if (last != null && state.calendar.turn - last < (ev.afterLoss ? 8 : 12)) return false;
   try { if (ev.cond && !ev.cond(state)) return false; } catch { return false; }
   return true;
 }
@@ -40,11 +41,40 @@ export function rollEvent(state) {
   // 학교 행사 (그 주에 반드시)
   const day = info.school.find(d => d.event && EVENTS.some(e => e.id === d.event));
   if (day) { state.pendingEvent = { id: day.event }; return; }
+  // 생일 주간: 1년에 한 번, 방학이면 집에서 / 학기 중이면 라커룸에서
+  // (그 주에 학교 행사가 있으면 행사 없는 주까지 최대 3주 미룸. 어느 해 생일인지는 그 주의 턴 번호로 구분)
+  const bday = [0, 1, 2, 3].map(o => turnInfo(state, -o)).find(x => x && isBirthdayWeek(state, x));
+  const given = state.flags.bdayGiven ||= [];
+  if (bday && !given.includes(bday.turn)) {
+    given.push(bday.turn);
+    state.pendingEvent = { id: info.vacation ? "bday_home" : "bday_team" };
+    return;
+  }
+  // 우승·준우승 축하: 대회가 끝난 뒤 3주 안에 (학교 행사 주간이면 다음 주로 미룸)
+  const cel = state.flags.celebrate;
+  if (cel) {
+    state.flags.celebrate = null;
+    if (state.calendar.turn - cel.turn <= 3) {
+      state.flags.lastCelebration = state.calendar.turn;
+      state.celebration = cel;
+      state.pendingEvent = { id: { league: "cel_league", national: "cel_national", runnerUp: "cel_runnerup" }[cel.kind] };
+      return;
+    }
+  }
   // 경기에서 졌다면 해변 모래 훈련이 먼저 찾아옴
   const beach = EVENTS.find(e => e.afterLoss);
-  if (beach && eligible(state, beach, info) && chance(0.6)) { state.pendingEvent = { id: beach.id }; return; }
+  if (beach && eligible(state, beach, info) && chance(0.35)) { state.pendingEvent = { id: beach.id }; return; }
+  // 류봉두의 축복: 관계 70 이상, 2학기(9~12월) 학기 중에 1년에 한 번. 12월이 되도록 안 왔으면 행사 없는 첫 주에 반드시
+  const t = state.relations.teacher ?? 50;
+  if (t >= 70 && !state.flags.blessed?.[info.grade] && [9, 10, 11, 12].includes(info.month) && !info.vacation
+      && !info.school.some(d => d.event) && (chance(0.16) || info.month === 12)) {   // 학교 행사 주간은 피하고, 12월이 되면 반드시
+    state.pendingEvent = { id: "t_blessing" }; return;
+  }
+  // 경기 뒤 면담처럼 급한 이야기는 먼저
+  const urgent = EVENTS.filter(e => e.urgent && eligible(state, e, info));
+  if (urgent.length && chance(0.75)) { state.pendingEvent = { id: pick(urgent).id }; return; }
   if (!chance(EVENT_CHANCE)) return;
-  const list = EVENTS.filter(e => !e.afterLoss && !e.fixed && eligible(state, e, info));
+  const list = EVENTS.filter(e => !e.afterLoss && !e.fixed && !e.urgent && eligible(state, e, info));
   if (!list.length) return;
   const ev = weighted(list.map(e => [e, (e.weight || 1) * (state.seenEvents?.includes(e.id) ? 0.35 : 1)]));
   state.pendingEvent = { id: ev.id };
@@ -53,6 +83,7 @@ export function rollEvent(state) {
 export function eventVars(state) {
   return {
     name: state.player.name, coach: STAFF.coach, assistant: STAFF.assistant, teacher: STAFF.teacher,
+    given: state.player.name.length === 3 ? state.player.name.slice(1) : state.player.name,   // 선생님은 이름만 부름 (민준아)
     friend: person(state, "friend")?.name || "친구", rival: person(state, "rival")?.name || "동기",
     mentor: person(state, "mentor")?.name || "선배", junior: person(state, "junior")?.name || "후배",
     mom: "엄마",
@@ -89,6 +120,14 @@ function applyFx(state, fx, changes) {
     changes.push({ label: "류봉두 선생님", d: state.relations.teacher - b });
   }
   if (fx.camp) state.record.camps = (state.record.camps || 0) + 1;
+  if (fx.blessing) {                                   // 류봉두의 축복: 축구 능력치 하나가 무작위로 +3
+    const pool = ["tech", "phys", "mental"].flatMap(g => Object.keys(p.stats[g]).map(k => `${g}.${k}`));
+    const path = pick(pool);
+    const d = applyGain(state, path, 3, { raw: true });
+    changes.push({ label: STAT_LABEL[path] || path, d });
+    state.lastBlessing = STAT_LABEL[path] || path;
+    (state.flags.blessed ||= {})[state.calendar.grade] = true;
+  }
   for (const [k, v] of Object.entries(fx.rel || {})) {
     const d = adjustRel(state, k, v);
     if (d) changes.push({ label: `${REL_ROLES[k].label} ${person(state, k).name}`, d });

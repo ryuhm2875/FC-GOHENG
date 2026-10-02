@@ -1,13 +1,14 @@
 // 한 주 진행: 행동 → 경기 → 시험 → 부상 → 학업 체크 → 다음 주
 import { ACTION_MAP } from "../../data/actions.js";
 import { STAT_GROUPS } from "../../data/player.js";
-import { turnInfo, label } from "./calendar.js";
+import { turnInfo, label, GRAD_INDEX } from "./calendar.js";
 import { applyGain, expandGains, growBody, weeklyDrift, hasTrait } from "./growth.js";
 import { matchFor } from "./season.js";
 import { prepareMatch, autoPlay, finishMatch } from "./match.js";
 import { previewMail, weeklyAdvice, drillFor } from "./advice.js";
-import { adjustRel, weeklyRelations, relationsNewYear, rivalGap } from "./relations.js";
+import { adjustRel, weeklyRelations, relationsNewYear, rivalGap, seniorsLeave } from "./relations.js";
 import { rollEvent } from "./events.js";
+import { birthdayWeek } from "./birthday.js";
 import { careerMilestones } from "./career.js";
 import { STAT_LABEL, POSITIONS } from "../../data/player.js";
 import { getPath } from "../rng.js";
@@ -122,6 +123,8 @@ export function endWeek(state, ctx, matchResult) {
   if (matchResult) {
     report.match = matchResult;
     risk += 0.006 * (matchResult.minutes / 70);       // 경기 중 부상은 경기 안에서 따로 판정
+    // 경기 경험: 뛴 시간만큼 포지션 능력치가 조금 오름 (주말 훈련 대신 경기를 뛴 몫)
+    if (matchResult.minutes > 0) for (const [path, base] of Object.entries(expandGains(state, { position: 0.15 * matchResult.minutes / 70 }))) applyGain(state, path, base);
   }
 
   // 3. 시험
@@ -154,7 +157,7 @@ export function endWeek(state, ctx, matchResult) {
     if (inj.weeksLeft <= 0) {
       p.condition.injury = null;
       report.recovered = true;
-      if (inj.total >= 6) state.flags.comebackReady = true;
+      if (inj.total >= 6) { state.flags.comebackReady = true; state.flags.returnTurn = state.calendar.turn + 1; }
       mail(state, "medical", `${INJURIES[inj.type].label} 회복`, "훈련에 복귀해도 좋다는 소견이 나왔다. 처음 일주일은 무리하지 말 것.");
     }
   } else if (matchResult?.injury) {
@@ -179,6 +182,7 @@ export function endWeek(state, ctx, matchResult) {
     report.graduation = true;
   } else {
     if (next.grade !== info.grade) report.yearEnd = yearTransition(state, info.grade);
+    else if (next.index === GRAD_INDEX + 1) graduateSeniors(state, info.grade);   // 졸업식 다음 주: 3학년 선배들이 떠남
     state.calendar.grade = next.grade;
     state.calendar.semester = next.semester;
     const k = growthIndex(next);
@@ -195,6 +199,7 @@ export function endWeek(state, ctx, matchResult) {
   if (!state.finished) {
     state.career ||= {};
     careerMilestones(state, next);
+    birthdayWeek(state, next);
     rollEvent(state);
     weeklyAdvice(state, report);
     const nfx = currentFixture(state);
@@ -238,7 +243,7 @@ function runExam(state, info, chosen) {
   }[tier];
   const rank = Math.max(1, Math.round((100 - score) / 100 * 28));
   mail(state, "teacher", `${info.exam.name} 결과: ${tier}`,
-    `평균 ${Math.round(score)}점, 반에서 28명 중 ${rank}등 정도야.\n\n${comment}\n\n${studied ? "시험 주에 공부한 게 점수에 보였어." : "시험 주에 공부를 한 칸도 안 했더구나. 한 칸만 했어도 5점은 더 나왔을 거야."}${score >= 70 ? "\n\n감독님께도 말씀드렸어. 좋아하시더라." : ""}`);
+    `평균 ${Math.round(score)}점, 반에서 28명 중 ${rank}등 정도야.\n\n${comment}\n\n${studied ? "시험 주에 공부한 게 점수에 보였어." : "시험 주에 공부하는 모습을 한 번도 못 봤어. 하루만 책을 폈어도 5점은 더 나왔을 거야."}${score >= 70 ? "\n\n감독님께도 말씀드렸어. 좋아하시더라." : ""}`);
   return { name: info.exam.name, tier, score: Math.round(score) };
 }
 
@@ -287,10 +292,18 @@ function roleMail(state) {
   const gap = last ? last.ovr - ovr(p) : 0;
   const body = [lines[role.id],
     d.rank <= d.slots ? "네 자리는 지금 네 거다. 다만 뒤에서 쫓아오는 발소리도 들어라."
-      : gap > 8 ? "앞에 선 형들과는 아직 거리가 있다. 조급해하지 말고, 하루하루 쌓아라."
+      : gap > 8 ? "앞에 선 선수들과는 아직 거리가 있다. 조급해하지 말고, 하루하루 쌓아라."
       : "선발까지 그리 멀지 않다. 한 학기면 충분히 따라잡을 수 있는 거리다.",
     `이번 학기엔 ${josaWord(STAT_LABEL[weak], "을", "를")} 채워 와라. 네 자리에서 지금 제일 아쉬운 부분이다.${drill ? ` ${josaWord(drill.label, "이", "가")} 도움이 될 거다.` : ""}`];
   mail(state, "coach", `이번 학기 역할: ${role.label}`, body.join("\n\n"));
+}
+
+function graduateSeniors(state, g) {
+  const leaving = state.team.roster.filter(m => mateGrade(m, g) === 3).map(m => m.name);
+  (state.flags.gradMail ||= {})[g] = true;
+  if (leaving.length) mail(state, "group", "선배들이 졸업했습니다",
+    `${leaving.join(", ")} 선배가 졸업했다. 고등학교 가서도 잘하실 거다.\n동계대회부터는 선배들 없이 뛴다. 남긴 자리는 이제 우리가 채워야 한다.`);
+  seniorsLeave(state, g);
 }
 
 function yearTransition(state, oldGrade) {
@@ -317,7 +330,7 @@ function yearTransition(state, oldGrade) {
   const leaving = state.team.roster.filter(m => mateGrade(m, oldGrade) === 3).map(m => m.name);
   const joining = state.team.roster.filter(m => mateGrade(m, oldGrade + 1) === 1 && m.cohort !== "동기").map(m => m.name);
 
-  if (leaving.length) mail(state, "group", "선배들이 졸업했습니다",
+  if (leaving.length && !state.flags.gradMail?.[oldGrade]) mail(state, "group", "선배들이 졸업했습니다",
     `${leaving.join(", ")} 선배가 졸업했다. 고등학교 가서도 잘하실 거다.\n선배들이 남긴 번호와 자리는 이제 우리가 채워야 한다.`);
   if (joining.length) mail(state, "group", "신입생이 들어왔습니다",
     `새 1학년 ${joining.join(", ")} 입단! 이제 너도 선배다. 잘 챙겨 줘라.`);
@@ -346,7 +359,10 @@ function yearTransition(state, oldGrade) {
       : grow >= 8 ? "꾸준히 늘었다. 눈에 확 띄진 않아도, 뒤돌아보면 많이 왔다."
       : "생각보다 덜 늘었다. 열심히 안 했다는 게 아니라, 방향을 한번 돌아보자는 얘기다.",
     best ? `올해 제일 기억에 남는 건 ${best.opponent}전이다. 그날 너는 정말 좋았다.` : "올해는 경기장보다 훈련장에서 더 많은 걸 배웠을 거다.",
-    lg ? "팀으로도 쉽지 않은 한 해였다. 그래도 끝까지 같이 뛰었다." : "",
+    (() => { const ls = state.record.leagues.filter(l => l.grade === oldGrade); if (!ls.length) return "";
+      if (ls.some(l => l.rank === 1)) return "리그 우승도 했다. 그 순간은 오래 기억해라. 다만 내년엔 다들 우리를 잡으러 온다.";
+      const avgR = ls.reduce((a, l) => a + l.rank, 0) / ls.length;
+      return avgR <= 3 ? "팀으로도 좋은 한 해였다. 위에서 버티는 것도 실력이다." : "팀으로도 쉽지 않은 한 해였다. 그래도 끝까지 같이 뛰었다."; })(),
     oldGrade === 1 ? "이제 후배가 들어온다. 선배가 된다는 건 책임이 생긴다는 뜻이다." : "이제 3학년이다. 진학이 걸린 해다. 고등학교 감독님들이 경기를 보러 오실 거다.",
   ].filter(Boolean).join("\n\n"));
   if (oldGrade === 1 && CAPTAINS?.[2]) {
@@ -365,14 +381,16 @@ export function numberChoices(state) { return freeNumbers(state, 1, 99); }
 export function chooseNumber(state, n) {
   const p = state.player;
   if (POPULAR.includes(n)) {
-    const rivals = activeRoster(state).filter(m => m.cohort === "동기").sort((a, b) => b.ovrNow - a.ovrNow);
+    const taken = state.pending?.takenBy || [];      // 이미 다른 번호를 가져간 동기는 빼고
+    const rivals = activeRoster(state).filter(m => m.cohort === "동기" && !taken.includes(m.id)).sort((a, b) => b.ovrNow - a.ovrNow);
     const rival = rivals[0];
     if (rival) {
       const tried = state.pending?.tried || [];
-      if (tried.includes(n)) return { ok: false, msg: `${n}번은 이미 ${rival.name}에게 넘어갔다.` };
+      if (tried.includes(n)) return { ok: false, msg: `${n}번은 이미 ${state.pending?.owners?.[n] || rival.name}에게 넘어갔다.` };
       const pWin = clamp(0.5 + (ovr(p) - rival.ovrNow) / 20 + (state.relations.coach - 50) / 100, 0.15, 0.9);
       if (!chance(pWin)) {
-        state.pending = { type: "number", tried: [...tried, n] };
+        rival.number = n;                              // 그 동기가 실제로 그 번호를 달게 됨
+        state.pending = { type: "number", tried: [...tried, n], takenBy: [...taken, rival.id], owners: { ...(state.pending?.owners || {}), [n]: rival.name } };
         mail(state, "group", `${n}번 쟁탈전`, `${rival.name}도 ${n}번을 원했다. 감독님은 ${rival.name}의 손을 들어 줬다.`);
         return { ok: false, msg: `${rival.name}도 ${n}번을 원했고, 감독님은 ${rival.name}의 손을 들어 줬습니다. 다른 번호를 골라 주세요.` };
       }

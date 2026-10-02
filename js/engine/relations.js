@@ -1,5 +1,5 @@
 // 관계: 친구, 라이벌, 멘토 선배, 후배
-// 게임을 시작할 때 data/roster.js 명단에서 자동으로 정해집니다.
+// 게임을 시작할 때 data/roster.js 명단에서 정해집니다. 같은 포지션 후보 중 무작위라 판마다 달라집니다 (친구는 동기 중 무작위)
 import { ROSTER } from "../../data/roster.js";
 import { mailFrom, mail } from "../state.js";
 import { mateGrade, ovr } from "./team.js";
@@ -14,17 +14,20 @@ export const REL_ROLES = {
 };
 
 const pool = (state, cohort) => state.team.roster.filter(m => m.cohort === cohort);
+// 같은 포지션 후보 중 무작위 하나. 같은 포지션이 없으면 전체 후보 중에서
+const pickSame = (list, pos) => { const same = list.filter(m => m.position === pos); return same.length ? pick(same) : list.length ? pick(list) : null; };
 const pack = (m, value) => m ? { id: m.id, name: m.name, face: m.face, position: m.position, cohort: m.cohort, value } : null;
 
 export function initRelations(state) {
   const p = state.player;
   const mates = pool(state, "동기");
-  const same = mates.filter(m => m.position === p.position);
-  const rival = (same.length ? same : mates).slice().sort((a, b) => b.ovrNow - a.ovrNow)[0];
+  const rival = pickSame(mates, p.position);
   const friendPool = mates.filter(m => m.id !== rival?.id);
   const friend = friendPool.length ? pick(friendPool) : null;
   const seniors = [...pool(state, "2학년선배"), ...pool(state, "3학년선배")];
-  const mentor = seniors.find(m => m.position === p.position && m.cohort === "2학년선배") || seniors.find(m => m.position === p.position) || seniors[0];
+  // 2학년 선배 중 같은 포지션이 둘 이상이면 그중에서, 아니면 3학년 선배까지 넓혀서 (3학년 선배는 졸업 때 다른 선배로 바뀜)
+  const sameG2 = seniors.filter(m => m.cohort === "2학년선배" && m.position === p.position);
+  const mentor = sameG2.length >= 2 ? pick(sameG2) : pickSame(seniors, p.position);
   state.relations.people = {
     friend: pack(friend, 55),
     rival: pack(rival, 40),
@@ -83,6 +86,17 @@ export function rivalGap(state) {
   return mate ? Math.round(ovr(state.player) - mate.ovrNow) : null;
 }
 
+// 1월 졸업식 다음 주: 3학년 멘토 선배가 떠나고 다음 선배가 멘토가 됨
+export function seniorsLeave(state, g) {
+  const P = state.relations.people;
+  if (!P?.mentor || mateGrade(P.mentor, g) !== 3) return;
+  const p = state.player, old = P.mentor.name;
+  const next = pickSame(state.team.roster.filter(m => { const mg = mateGrade(m, g); return mg > g && mg < 3; }), p.position);
+  P.mentor = next ? pack(next, 30) : null;
+  mailFrom(state, old, "friend", "졸업하면서 한마디",
+    `${p.name}, 형 이제 고등학생이다. 같이 훈련한 거 재밌었다.\n\n${next ? `이제 ${next.name}한테 많이 물어봐. 걔도 좋은 형이다.` : "이제 네가 선배다. 후배들 잘 챙겨라."}\n\n동계대회 잘해라. 고등학교 가서 경기 있으면 보러 와라.`);
+}
+
 // 학년이 바뀔 때: 선배 졸업, 후배 생김
 export function relationsNewYear(state) {
   const g = state.calendar.grade;
@@ -91,15 +105,14 @@ export function relationsNewYear(state) {
   const p = state.player;
   if (P.mentor && mateGrade(P.mentor, g) > 3) {
     const old = P.mentor.name;
-    const next = state.team.roster.filter(m => { const mg = mateGrade(m, g); return mg > g && mg <= 3; })
-      .sort((a, b) => (b.position === p.position) - (a.position === p.position))[0];
+    const next = pickSame(state.team.roster.filter(m => { const mg = mateGrade(m, g); return mg > g && mg <= 3; }), p.position);
     P.mentor = pack(next, 30);
     mailFrom(state, old, "friend", "졸업하면서 한마디",
       `${p.name}, 형 이제 고등학생이다. 같이 훈련한 거 재밌었다.\n\n${next ? `이제 ${next.name}한테 많이 물어봐. 걔도 좋은 형이다.` : "이제 네가 선배다. 후배들 잘 챙겨라."}\n\n고등학교 가서 경기 있으면 보러 와라.`);
   }
   if (!P.junior && g >= 2) {
     const juniors = state.team.roster.filter(m => mateGrade(m, g) === 1 && m.cohort !== "동기");
-    const j = juniors.find(m => m.position === p.position) || juniors[0];
+    const j = pickSame(juniors, p.position);
     if (j) {
       P.junior = pack(j, 40);
       mail(state, "assist", "후배 하나 맡아라",
