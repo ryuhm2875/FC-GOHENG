@@ -175,7 +175,7 @@ function captainVote(state, run, changes) {
     changes.push({ label: "사기", d: 12 }, { label: "감독 신뢰", d: 5 });
     mail(state, "coach", "주장 완장",
       `올해 주장은 ${p.name}${/[가-힣]/.test(p.name.at(-1)) && (p.name.at(-1).charCodeAt(0) - 0xAC00) % 28 ? "이다" : "다"}.\n\n주장은 제일 잘하는 선수가 아니라, 제일 먼저 나오고 제일 늦게 들어가는 선수다. 힘들 때 고개 숙이지 마라. 다들 너를 본다.`);
-    return run ? "동기들이 하나둘 손을 들었다. 만장일치. 감독님이 주황색 완장을 건넸다." : "다른 친구를 추천했는데, 동기들이 오히려 네 이름을 불렀다. 감독님이 완장을 건넸다.";
+    return run ? "동기들이 하나둘 손을 들었다. 만장일치. 감독님이 주황색 완장을 건네셨다." : "다른 친구를 추천했는데, 동기들이 오히려 네 이름을 불렀다. 감독님이 완장을 건네셨다.";
   }
   p.condition.morale = clamp(p.condition.morale - (run ? 6 : 0), 0, 100);
   if (run) changes.push({ label: "사기", d: -6 });

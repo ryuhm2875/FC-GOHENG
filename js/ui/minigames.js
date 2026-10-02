@@ -33,6 +33,8 @@ export function playMinigame(kind, statValue, slotLabel) {
   return new Promise(resolve => {
     const info = INFO[kind];
     const lv = levelOf(statValue);
+    // 세로로 긴 휴대폰 화면: 창을 화면 가득 띄우고 장면도 세로형으로 그림
+    const tall = innerHeight / innerWidth > 1.3 && innerWidth < 700;
     let finished = false, stop = () => {};
     const html = `<div class="mg">
       <div class="mg-head"><span class="eyebrow">${info.tag}</span><h2>${info.title}</h2><span class="mg-lv lv${lv}">LV.${lv} ${LV_NAME[lv]}</span><span class="mute">${slotLabel}</span></div>
@@ -43,47 +45,71 @@ export function playMinigame(kind, statValue, slotLabel) {
     </div>`;
     openModal(html, (el, close) => {
       const area = el.querySelector("#mga"), status = el.querySelector("#mgs"), ctl = el.querySelector("#mgc");
-      PREVIEW[kind](area);
+      const mg = el.querySelector(".mg");
+      // 남은 높이에 맞춰 장면 크기를 정함 (가로·세로 비율은 그대로)
+      const fit = () => {
+        if (!tall || !area.isConnected) return;
+        const svg = area.querySelector("svg"); if (!svg) return;
+        const vb = svg.viewBox.baseVal, ar = vb.width / vb.height;
+        // 장면을 뺀 나머지(제목·설명·상태·버튼) 높이를 직접 더해서 남는 높이를 구함
+        const others = [...mg.children].filter(c => c !== area).reduce((t, c) => {
+          const cs = getComputedStyle(c); return t + c.offsetHeight + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom);
+        }, 0);
+        const availH = mg.clientHeight - others - 14;
+        const availW = mg.clientWidth;
+        const h = Math.max(160, Math.min(availH, availW / ar));
+        area.style.width = `${Math.floor(h * ar)}px`;
+      };
+      addEventListener("resize", fit);
+      const ro = typeof ResizeObserver === "function" ? new ResizeObserver(() => fit()) : null;
+      ro?.observe(ctl);
+      PREVIEW[kind](area, tall);
+      requestAnimationFrame(fit);
+      const prevStop = () => { removeEventListener("resize", fit); ro?.disconnect(); };
       const done = grade => {
         if (finished) return; finished = true; stop();
         const mult = GRADES[grade];
         area.insertAdjacentHTML("beforeend", `<div class="mg-result"><span class="mg-bigrade m${grade}">${grade}</span><span>훈련 효과 ×${mult}</span></div>`);
         status.textContent = "";
         ctl.innerHTML = `<button class="btn btn-kit btn-wide" data-ok>확인</button>`;
+        fit(); prevStop();                                   // 확인 버튼이 생긴 만큼 장면 크기를 다시 맞춤
         ctl.querySelector("[data-ok]").addEventListener("click", () => { close(); resolve({ grade, mult }); });
         ctl.querySelector("[data-ok]").focus({ preventScroll: true });
       };
-      ctl.querySelector("[data-skip]").addEventListener("click", () => { finished = true; stop(); close(); resolve({ grade: "B", mult: 1, skipped: true }); });
+      ctl.querySelector("[data-skip]").addEventListener("click", () => { finished = true; stop(); prevStop(); close(); resolve({ grade: "B", mult: 1, skipped: true }); });
       ctl.querySelector("[data-go]").addEventListener("click", () => {
         ctl.innerHTML = info.btn ? `<button class="btn btn-kit btn-wide mg-act" data-act>${info.btn}</button>` : "";
-        stop = GAMES[kind](area, status, ctl, ease(statValue), done, lv) || (() => {});
+        stop = GAMES[kind](area, status, ctl, ease(statValue), done, lv, tall) || (() => {});
+        requestAnimationFrame(fit);
       });
-    }, { dismissable: false });
+    }, { dismissable: false, cls: tall ? "mg-modal mg-tall" : "mg-modal" });
   });
 }
 
 // 시작 전 미리보기 화면
 const PREVIEW = {
-  shooting: area => { area.innerHTML = shootScene(); },
-  passing: area => {
+  shooting: (area, tall) => { area.innerHTML = shootScene(tall); },
+  passing: (area, tall) => {
     const demo = [{ x: 40, y: 30 }, { x: 74, y: 22 }, { x: 116, y: 34 }, { x: 54, y: 66 }, { x: 96, y: 70 }, { x: 132, y: 62 }, { x: 80, y: 74 }];
-    area.innerHTML = passScene(demo, 6).replace("</svg>", `<text x="80" y="54" class="mg-cap mgp-cap">준비되면 시작</text></svg>`);
+    area.innerHTML = passScene(demo, 6, tall).replace(/<\/svg>/, `<text x="${tall ? 48 : 80}" y="${tall ? 84 : 54}" class="mg-cap mgp-cap">준비되면 시작</text></svg>`);
   },
-  dribble: area => { area.innerHTML = `<div class="mgd-wrap">${dribbleScene()}</div>`; },
-  weight: area => { area.innerHTML = weightScene(); wtDraw(area.querySelector("svg"), 1); },
+  dribble: (area, tall) => { area.innerHTML = `<div class="mgd-wrap">${dribbleScene(tall)}</div>`; },
+  weight: (area, tall) => { area.innerHTML = weightScene(tall); wtDraw(area.querySelector("svg"), 1); },
 };
 
 // ── 슈팅 ────────────────────────────
 // 야간 경기장, 원근감 있는 골문, 움직이는 골키퍼. 좌표: 가로 160 × 세로 96
 const GX0 = 30, GX1 = 130, GTOP = 20, GLINE = 62;   // 골대 안쪽 왼쪽·오른쪽, 크로스바, 골라인
-function shootScene() {
-  const crowd = Array.from({ length: 3 }, (_, row) => Array.from({ length: 44 }, (_, i) => {
-    const x = i * 3.7 + (row % 2) * 1.8 + 1, y = 14 + row * 6.2, c = ["#2A3470", "#3A4580", "#FF6B1A", "#F4F6FF", "#1F2A66", "#FFB23F"][(i * 7 + row * 3) % 6];
+// tall: 세로 휴대폰에서는 좌우를 조금 잘라 내고 위(관중석 위층)와 아래(잔디)를 늘려 크게 보여 줌
+function shootScene(tall = false) {
+  const rowsY = tall ? [-28, -21.8, -15.6, -9.4, 14, 20.2, 26.4] : [14, 20.2, 26.4];
+  const crowd = rowsY.map((y, row) => Array.from({ length: 44 }, (_, i) => {
+    const x = i * 3.7 + (row % 2) * 1.8 + 1, c = ["#2A3470", "#3A4580", "#FF6B1A", "#F4F6FF", "#1F2A66", "#FFB23F"][(i * 7 + row * 3) % 6];
     return `<circle cx="${x}" cy="${y}" r="1.35" fill="${c}" opacity="${0.35 + ((i * 13 + row) % 5) * 0.1}"/><rect x="${x - 1.5}" y="${y + 1.2}" width="3" height="2.6" rx="1" fill="${c}" opacity=".35"/>`;
   }).join("")).join("");
-  const stripes = [[40, 45], [45, 51], [51, 58], [58, 66], [66, 76], [76, 88], [88, 96]]
+  const stripes = [[40, 45], [45, 51], [51, 58], [58, 66], [66, 76], [76, 88], [88, 96], ...(tall ? [[96, 106], [106, 120]] : [])]
     .map(([y0, y1], i) => `<rect x="0" y="${y0}" width="160" height="${y1 - y0}" fill="${i % 2 ? "#1A7A43" : "#1E8A4C"}"/>`).join("");
-  return `<svg viewBox="0 0 160 96" class="mg-svg mg-shoot">
+  return `<svg viewBox="${tall ? "20 -40 120 160" : "0 0 160 96"}" class="mg-svg mg-shoot">
     <defs>
       <linearGradient id="shSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#03050F"/><stop offset=".6" stop-color="#101A48"/><stop offset="1" stop-color="#1A2766"/></linearGradient>
       <radialGradient id="shFlood" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFF6DA"/><stop offset=".25" stop-color="rgba(255,240,200,.55)"/><stop offset="1" stop-color="rgba(255,240,200,0)"/></radialGradient>
@@ -94,7 +120,8 @@ function shootScene() {
       <filter id="shGlow"><feGaussianBlur stdDeviation="1.1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
       <filter id="shSoft"><feGaussianBlur stdDeviation=".6"/></filter>
     </defs>
-    <rect width="160" height="96" fill="url(#shSky)"/>
+    <rect y="${tall ? -40 : 0}" width="160" height="${tall ? 160 : 96}" fill="url(#shSky)"/>
+    ${tall ? `<path d="M0 -32 H160 V-4 H0 Z" fill="#0A1030"/><rect x="0" y="-4" width="160" height="2" fill="#FF6B1A" opacity=".7"/>` : ""}
     <!-- 조명탑 -->
     <path d="M14 4 L-10 60 L46 60 Z" fill="url(#shBeam)"/><path d="M146 4 L114 60 L170 60 Z" fill="url(#shBeam)"/>
     <circle cx="14" cy="5" r="11" fill="url(#shFlood)"/><circle cx="146" cy="5" r="11" fill="url(#shFlood)"/>
@@ -155,12 +182,12 @@ function shootScene() {
     <ellipse id="sshadow" cx="80" cy="88.2" rx="3.4" ry="1" fill="rgba(0,0,0,.4)" filter="url(#shSoft)"/>
     <g transform="translate(80,85.6)"><g id="sball">${BALL(2.9)}</g></g>
     <text id="shMsg" x="80" y="52" text-anchor="middle" class="mg-shmsg"></text>
-    <rect width="160" height="96" fill="url(#shVig)" pointer-events="none"/>
+    <rect y="${tall ? -40 : 0}" width="160" height="${tall ? 160 : 96}" fill="url(#shVig)" pointer-events="none"/>
   </svg>
   <div class="mg-hud"><span class="mg-dots" id="dots">${"<i></i>".repeat(5)}</span><span id="pts" class="num">0점</span></div>`;
 }
-function shooting(area, status, ctl, e, done, lv = 1) {
-  area.innerHTML = shootScene();
+function shooting(area, status, ctl, e, done, lv = 1, tall = false) {
+  area.innerHTML = shootScene(tall);
   const aim = area.querySelector("#aim"), gk = area.querySelector("#gk"), keeper = gk.querySelector(".mg-keeper"), ball = area.querySelector("#sball"),
     shadow = area.querySelector("#sshadow"), net = area.querySelector("#shNetG"), msg = area.querySelector("#shMsg"),
     dots = area.querySelectorAll("#dots i"), pts = area.querySelector("#pts");
@@ -261,19 +288,21 @@ function passPlayer(us, num) {
       <path d="M-2.7 -9 Q-2.4 -11.6 0 -11.4 Q2.5 -11.6 2.7 -9 Q1.3 -10.2 0 -10.1 Q-1.3 -10.2 -2.7 -9 Z" fill="#1B1B1F"/>
     </g>`;
 }
-function passScene(spots, nMates) {
-  return `<svg viewBox="0 0 160 96" class="mg-svg mgp">${passPitch()}
+// tall: 세로 휴대폰에서는 경기장을 세워서 그림 (좌표는 그대로, 그룹째 90도 돌리고 선수만 다시 바로 세움)
+function passScene(spots, nMates, tall = false) {
+  const up = tall ? `<g transform="rotate(-90)">` : "<g>";
+  return `<svg viewBox="${tall ? "0 0 96 160" : "0 0 160 96"}" class="mg-svg mgp">${tall ? `<g transform="translate(96,0) rotate(90)">` : "<g>"}${passPitch()}
     <g id="lines"></g><g id="fx"></g>
     ${spots.map((s, i) => [s, i]).sort((a, b) => (a[1] < nMates) - (b[1] < nMates)).map(([s, i]) => i < nMates
-      ? `<g class="mgp-mate" data-n="${i + 1}" transform="translate(${s.x.toFixed(1)},${s.y.toFixed(1)})"><circle r="11" fill="transparent"/>${passPlayer(true, i + 1)}
-          <g class="mgp-check" transform="translate(0,-15)"><circle r="2.6" fill="#18C964"/><path d="M-1.2 0 L-.3 .9 L1.3 -.9" stroke="#fff" stroke-width=".7" fill="none"/></g></g>`
-      : `<g class="mgp-foe" data-foe data-i="${i}" transform="translate(${s.x.toFixed(1)},${s.y.toFixed(1)})"><circle r="10" fill="transparent"/>${passPlayer(false, null)}</g>`).join("")}
+      ? `<g class="mgp-mate" data-n="${i + 1}" transform="translate(${s.x.toFixed(1)},${s.y.toFixed(1)})"><circle r="11" fill="transparent"/>${up}${passPlayer(true, i + 1)}
+          <g class="mgp-check" transform="translate(0,-15)"><circle r="2.6" fill="#18C964"/><path d="M-1.2 0 L-.3 .9 L1.3 -.9" stroke="#fff" stroke-width=".7" fill="none"/></g></g></g>`
+      : `<g class="mgp-foe" data-foe data-i="${i}" transform="translate(${s.x.toFixed(1)},${s.y.toFixed(1)})"><circle r="10" fill="transparent"/>${up}${passPlayer(false, null)}</g></g>`).join("")}
     <g id="pshadow" transform="translate(80,49.4)"><ellipse rx="2" ry=".8" fill="rgba(0,0,0,.45)" filter="url(#psSoft)"/></g>
-    <g id="pball" transform="translate(80,48)"><g id="pspin">${BALL(1.8)}</g></g>
-    <rect width="160" height="96" fill="url(#psVig)" pointer-events="none"/>
+    <g id="pball" transform="translate(80,48)"><g id="pspin">${BALL(1.8)}</g></g></g>
+    <rect width="${tall ? 96 : 160}" height="${tall ? 160 : 96}" fill="url(#psVig)" pointer-events="none"/>
   </svg>`;
 }
-function passing(area, status, ctl, e, done, lv = 1) {
+function passing(area, status, ctl, e, done, lv = 1, tall = false) {
   const limit = (6 + e * 3) * [1, 1, 0.92, 0.86, 0.8][lv];   // 단계가 오를수록 시간이 줄어듦
   const foesN = [0, 2, 3, 4, 5][lv];                          // 상대 수
   const spots = [];
@@ -284,7 +313,7 @@ function passing(area, status, ctl, e, done, lv = 1) {
     if (far(x, y) && Math.hypot(x - 80, y - 48) > 9) spots.push({ x, y });
     if (++tries % 400 === 0) sep *= 0.92;                     // 자리가 안 나오면 간격을 조금씩 줄임 (무한 반복 방지)
   }
-  area.innerHTML = passScene(spots, 6) + `<div class="mg-hud"><span class="mg-timer"><i id="tbar"></i></span><span id="nx" class="num">다음 1</span></div>`;
+  area.innerHTML = passScene(spots, 6, tall) + `<div class="mg-hud"><span class="mg-timer"><i id="tbar"></i></span><span id="nx" class="num">다음 1</span></div>`;
   const lines = area.querySelector("#lines"), fx = area.querySelector("#fx"), pball = area.querySelector("#pball"), pspin = area.querySelector("#pspin"),
     pshadow = area.querySelector("#pshadow"), tbar = area.querySelector("#tbar"), nx = area.querySelector("#nx");
   let nextN = 1, mistakes = 0, start = performance.now(), timer, last = { x: 80, y: 48 }, ended = false;
@@ -310,14 +339,17 @@ function passing(area, status, ctl, e, done, lv = 1) {
       h = ball.peak * 4 * u * (1 - u);
       ball.spin += (ball.x - px) * 22;
       if (u >= 1) {
-        fx.insertAdjacentHTML("beforeend", `<circle class="mgp-ring" cx="${ball.to.x - 3}" cy="${ball.to.y - 1}" r="6"/>`);
+        fx.insertAdjacentHTML("beforeend", `<circle class="mgp-ring" cx="${ball.to.x.toFixed(1)}" cy="${ball.to.y.toFixed(1)}" r="6"/>`);
         const r = fx.lastElementChild; setTimeout(() => r.remove(), 520);
         ball.to = null; kick(now);
       }
     }
-    pball.setAttribute("transform", `translate(${ball.x.toFixed(2)},${(ball.y - h).toFixed(2)}) scale(${(1 + h * 0.05).toFixed(3)})`);
+    // 화면에서 "위"는 세운 경기장에서는 x 쪽이라, 공이 뜨는 방향과 그림자 방향도 바꿔 줌
+    const [lx, ly] = tall ? [ball.x - h, ball.y] : [ball.x, ball.y - h];
+    const [sx2, sy2] = tall ? [ball.x + 1.3, ball.y] : [ball.x, ball.y + 1.3];
+    pball.setAttribute("transform", `translate(${lx.toFixed(2)},${ly.toFixed(2)}) scale(${(1 + h * 0.05).toFixed(3)})`);
     pspin.setAttribute("transform", `rotate(${(ball.spin % 360).toFixed(1)})`);
-    pshadow.setAttribute("transform", `translate(${ball.x.toFixed(2)},${(ball.y + 1.3).toFixed(2)}) scale(${Math.max(0.5, 1 - h * 0.05).toFixed(3)})`);
+    pshadow.setAttribute("transform", `translate(${sx2.toFixed(2)},${sy2.toFixed(2)}) scale(${Math.max(0.5, 1 - h * 0.05).toFixed(3)})${tall ? " rotate(90)" : ""}`);
   };
   const tick = now => {
     if (lv >= 3) foeEls.forEach((g, k) => {          // LV.3부터 상대가 패스 길로 움직임
@@ -340,7 +372,11 @@ function passing(area, status, ctl, e, done, lv = 1) {
   };
   const flash = (g, label, x, y) => {
     g.classList.remove("bad"); void g.getBBox(); g.classList.add("bad"); setTimeout(() => g.classList.remove("bad"), 280);
-    if (label) { fx.insertAdjacentHTML("beforeend", `<text class="mgp-pop" x="${x.toFixed(1)}" y="${(y - 14).toFixed(1)}">${label}</text>`); const t = fx.lastElementChild; setTimeout(() => t.remove(), 720); }
+    if (label) {
+      const [tx, ty] = tall ? [x - 14, y] : [x, y - 14];
+      fx.insertAdjacentHTML("beforeend", `<g transform="translate(${tx.toFixed(1)},${ty.toFixed(1)})${tall ? " rotate(-90)" : ""}"><text class="mgp-pop" x="0" y="0">${label}</text></g>`);
+      const t = fx.lastElementChild; setTimeout(() => t.remove(), 720);
+    }
   };
   area.querySelectorAll("[data-n]").forEach(g => g.addEventListener("pointerdown", () => {
     if (ended) return;
@@ -349,7 +385,7 @@ function passing(area, status, ctl, e, done, lv = 1) {
       g.classList.add("ok");
       [...lines.children].forEach(l => l.classList.add("old"));
       lines.insertAdjacentHTML("beforeend", `<line x1="${last.x.toFixed(1)}" y1="${last.y.toFixed(1)}" x2="${s.x.toFixed(1)}" y2="${s.y.toFixed(1)}" class="mgp-trail"/>`);
-      ball.queue.push({ x: s.x + 3.4, y: s.y + 8.6 });
+      ball.queue.push(tall ? { x: s.x + 8.6, y: s.y - 3.4 } : { x: s.x + 3.4, y: s.y + 8.6 });   // 받는 선수의 발밑
       last = s; nextN++; nx.textContent = nextN <= 6 ? `다음 ${nextN}` : "완료";
       if (nextN > 6) finish();
     } else if (!g.classList.contains("ok")) { mistakes++; flash(g, "", 0, 0); }
@@ -367,9 +403,16 @@ function passing(area, status, ctl, e, done, lv = 1) {
 // ── 드리블 ──────────────────────────
 // 내 등 뒤에서 본 원근 화면. 수비는 멀리 지평선에서 달려와 점점 커짐
 // 판정은 예전과 같음: 수비 위치(fy) 74~92 구간에서 같은 줄이면 부딪힘
-const DRB = { VPY: 6, HOR: 25, BOT: 96, ME: 83 };
+// tall: 세로 휴대폰용 화면 (좌우를 조금 잘라 내고 위아래를 늘림. 판정 규칙은 같음)
+let DRB, DR_ME_Y, DR_VB, DR_TALL = false;
 const drY = fy => DRB.HOR + (DRB.BOT - DRB.HOR) * Math.pow(Math.max(0, (fy + 10) / 110), 1.55);
-const DR_ME_Y = drY(DRB.ME);
+function drSetup(tall) {
+  DR_TALL = !!tall;
+  DRB = tall ? { VPY: 16, HOR: 46, BOT: 178, ME: 83 } : { VPY: 6, HOR: 25, BOT: 96, ME: 83 };
+  DR_ME_Y = drY(DRB.ME);
+  DR_VB = tall ? "16 0 128 178" : "0 0 160 96";
+}
+drSetup(false);
 const drS = y => (y - DRB.VPY) / (DR_ME_Y - DRB.VPY);            // 원근 배율 (내 자리 = 1)
 const drX = (lanePos, y) => 80 + (lanePos - 1) * 40 * drS(y);
 function drRunner(front, legId) {
@@ -391,30 +434,32 @@ function drCone() {
   return `<ellipse cx="0" cy="0" rx="4.6" ry="1.3" fill="rgba(0,0,0,.4)"/><path d="M-4.4 0 H4.4 L3.6 -1.2 H-3.6 Z" fill="#E2560C"/>
     <path d="M-3 -1.2 L0 -11 L3 -1.2 Z" fill="#FF7A1F"/><path d="M-2 -4.4 H2 L1.5 -6.4 H-1.5 Z" fill="#fff"/>`;
 }
-function dribbleScene() {
-  const crowd = Array.from({ length: 2 }, (_, row) => Array.from({ length: 46 }, (_, i) => {
+function dribbleScene(tall = false) {
+  drSetup(tall);
+  const rows = tall ? Math.floor((DRB.HOR - 18) / 4.2) : 2, L1 = tall ? 26 : 10, L2 = tall ? 134 : 150;
+  const crowd = Array.from({ length: rows }, (_, row) => Array.from({ length: 46 }, (_, i) => {
     const x = i * 3.55 + (row % 2) * 1.7, y = 12.6 + row * 4.2, c = ["#2A3470", "#3A4580", "#FF6B1A", "#F4F6FF", "#1F2A66", "#FFB23F"][(i * 5 + row * 2) % 6];
     return `<circle cx="${x.toFixed(1)}" cy="${y}" r="1.1" fill="${c}" opacity="${0.3 + ((i * 11 + row) % 5) * 0.09}"/>`;
   }).join("")).join("");
   const edge = (o, y) => drX(o, y).toFixed(2);
-  return `<svg viewBox="0 0 160 96" class="mg-svg mgd">
+  return `<svg viewBox="${DR_VB}" class="mg-svg mgd">
     <defs>
       <linearGradient id="drSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#03050F"/><stop offset="1" stop-color="#16225E"/></linearGradient>
       <radialGradient id="drFlood" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFF6DA"/><stop offset=".3" stop-color="rgba(255,240,200,.5)"/><stop offset="1" stop-color="rgba(255,240,200,0)"/></radialGradient>
       <linearGradient id="drFade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(5,8,26,.75)"/><stop offset=".3" stop-color="rgba(5,8,26,0)"/></linearGradient>
       <radialGradient id="drVig" cx=".5" cy=".6" r=".8"><stop offset=".6" stop-color="rgba(0,0,0,0)"/><stop offset="1" stop-color="rgba(0,0,0,.5)"/></radialGradient>
     </defs>
-    <rect width="160" height="96" fill="url(#drSky)"/>
+    <rect width="160" height="${DRB.BOT}" fill="url(#drSky)"/>
     <path d="M0 10 H160 V${DRB.HOR} H0 Z" fill="#0B1236"/>${crowd}
     <rect x="0" y="${DRB.HOR - 4}" width="160" height="4" fill="#0A0F2A"/>
     ${Array.from({ length: 8 }, (_, i) => `<rect x="${i * 20 + 1}" y="${DRB.HOR - 3.4}" width="18" height="2.8" rx=".5" fill="${i % 2 ? "#18245E" : "#1F2C8F"}"/>`).join("")}
-    <circle cx="10" cy="5" r="10" fill="url(#drFlood)"/><circle cx="150" cy="5" r="10" fill="url(#drFlood)"/>
-    <g fill="#FFF8E6"><rect x="5.5" y="3" width="9" height="3.4" rx=".7"/><rect x="145.5" y="3" width="9" height="3.4" rx=".7"/></g>
-    <rect x="0" y="${DRB.HOR}" width="160" height="${96 - DRB.HOR}" fill="#176F3D"/>
+    <circle cx="${L1}" cy="5" r="10" fill="url(#drFlood)"/><circle cx="${L2}" cy="5" r="10" fill="url(#drFlood)"/>
+    <g fill="#FFF8E6"><rect x="${L1 - 4.5}" y="3" width="9" height="3.4" rx=".7"/><rect x="${L2 - 4.5}" y="3" width="9" height="3.4" rx=".7"/></g>
+    <rect x="0" y="${DRB.HOR}" width="160" height="${DRB.BOT - DRB.HOR}" fill="#176F3D"/>
     <g id="drStripes"></g>
     <g fill="none" stroke="rgba(255,255,255,.55)" stroke-width=".5">
-      <path d="M${edge(-0.5, DRB.HOR)} ${DRB.HOR} L${edge(-0.5, 96)} 96"/><path d="M${edge(0.5, DRB.HOR)} ${DRB.HOR} L${edge(0.5, 96)} 96" stroke-dasharray="2 2"/>
-      <path d="M${edge(1.5, DRB.HOR)} ${DRB.HOR} L${edge(1.5, 96)} 96" stroke-dasharray="2 2"/><path d="M${edge(2.5, DRB.HOR)} ${DRB.HOR} L${edge(2.5, 96)} 96"/>
+      <path d="M${edge(-0.5, DRB.HOR)} ${DRB.HOR} L${edge(-0.5, DRB.BOT)} ${DRB.BOT}"/><path d="M${edge(0.5, DRB.HOR)} ${DRB.HOR} L${edge(0.5, DRB.BOT)} ${DRB.BOT}" stroke-dasharray="2 2"/>
+      <path d="M${edge(1.5, DRB.HOR)} ${DRB.HOR} L${edge(1.5, DRB.BOT)} ${DRB.BOT}" stroke-dasharray="2 2"/><path d="M${edge(2.5, DRB.HOR)} ${DRB.HOR} L${edge(2.5, DRB.BOT)} ${DRB.BOT}"/>
     </g>
     <g transform="translate(80,${DRB.HOR})"><path d="M-6 0 V-4.4 H6 V0" fill="none" stroke="#fff" stroke-width=".7"/><rect x="-6" y="-4.4" width="12" height="4.4" fill="rgba(255,255,255,.12)"/></g>
     <rect x="0" y="${DRB.HOR}" width="160" height="30" fill="url(#drFade)"/>
@@ -425,15 +470,15 @@ function dribbleScene() {
     </g></g>
     <g id="drFront"></g>
     <g id="drFx"></g>
-    <rect width="160" height="96" fill="url(#drVig)" pointer-events="none"/>
+    <rect width="160" height="${DRB.BOT}" fill="url(#drVig)" pointer-events="none"/>
   </svg>`;
 }
-function dribble(area, status, ctl, e, done, lv = 1) {
+function dribble(area, status, ctl, e, done, lv = 1, tall = false) {
   const DURATION = 12000;
   const speed = (34 - e * 10) * [1, 1, 1.18, 1.3, 1.42][lv];   // 단계가 오를수록 수비가 빨라짐
   const gapMs = (820 - e * 220) * [1, 1, 0.9, 0.95, 0.88][lv];
   const pairP = [0, 0, 0, 0.3, 0.45][lv];                       // LV.3부터 두 명이 한꺼번에 막음
-  area.innerHTML = `<div class="mgd-wrap" id="lanes">${dribbleScene()}</div>
+  area.innerHTML = `<div class="mgd-wrap" id="lanes">${dribbleScene(tall)}</div>
     <div class="mg-hud"><span class="mg-timer"><i id="tbar"></i></span><span id="hits" class="num">부딪힘 0</span></div>`;
   ctl.innerHTML = `<button class="btn mg-dir" data-l>◀ 왼쪽</button><button class="btn mg-dir" data-r>오른쪽 ▶</button>`;
   const lanes = area.querySelector("#lanes"), tbar = area.querySelector("#tbar"), hitsEl = area.querySelector("#hits");
@@ -472,8 +517,8 @@ function dribble(area, status, ctl, e, done, lv = 1) {
     const phase = ((now - start) / 1000 * flow / 120) % 1;
     polys.forEach((pg, i) => {
       const a = ((i + phase) / N) * 120 - 10, b = ((i + 1 + phase) / N) * 120 - 10;
-      const ya = drY(a), yb = Math.min(96, drY(b));
-      if (ya >= 96) { pg.setAttribute("points", ""); return; }
+      const ya = drY(a), yb = Math.min(DRB.BOT, drY(b));
+      if (ya >= DRB.BOT) { pg.setAttribute("points", ""); return; }
       pg.setAttribute("points", `${drX(-1, ya).toFixed(1)},${ya.toFixed(1)} ${drX(3, ya).toFixed(1)},${ya.toFixed(1)} ${drX(3, yb).toFixed(1)},${yb.toFixed(1)} ${drX(-1, yb).toFixed(1)},${yb.toFixed(1)}`);
     });
     // 수비 등장 (예전과 같은 규칙)
@@ -537,7 +582,9 @@ function dribble(area, status, ctl, e, done, lv = 1) {
 
 // ── 웨이트 ──────────────────────────
 // 야간 체력실, 옆에서 본 스쿼트. 원이 줄어드는 판정 규칙(반지름 26→4, 목표 10)은 예전과 같고, 화면에는 0.8배로 그림
-const WT = { CX: 129, CY: 44, K: 0.8 };
+let WT = { CX: 129, CY: 44, K: 0.8 };
+// tall: 세로 휴대폰에서는 타이밍 원을 선수 아래 바닥 쪽에 둠
+const wtSetup = tall => { WT = tall ? { CX: 71, CY: 118, K: 0.8, VB: "20 0 102 150", H: 150, BX: 26, DX: 34 } : { CX: 129, CY: 44, K: 0.8, VB: "0 0 160 96", H: 96, BX: 8, DX: 14 }; };
 const lerp = (a, b, t) => a + (b - a) * t;
 function wtPose(q) {
   // q: 0 = 가장 깊이 앉은 자세, 1 = 다 일어선 자세
@@ -551,11 +598,12 @@ function wtPose(q) {
   const hand = [bar[0] - 1.6, bar[1] + 0.4];
   return { A, K, H, S, head, bar, E, hand, toe: [76.5, 78] };
 }
-function weightScene() {
+function weightScene(tall = false) {
+  wtSetup(tall);
   const bricks = Array.from({ length: 9 }, (_, r) => Array.from({ length: 12 }, (_, c) =>
     `<rect x="${c * 14 + (r % 2) * 7 - 7}" y="${r * 7 + 2}" width="13.2" height="6.2" rx=".6" fill="rgba(255,255,255,${(0.025 + ((r * 7 + c * 3) % 5) * 0.006).toFixed(3)})"/>`).join("")).join("");
   const p = wtPose(1);
-  return `<svg viewBox="0 0 160 96" class="mg-svg mgw">
+  return `<svg viewBox="${WT.VB}" class="mg-svg mgw">
     <defs>
       <linearGradient id="wtWall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0B1030"/><stop offset="1" stop-color="#1A2350"/></linearGradient>
       <radialGradient id="wtSpot" cx=".44" cy="0" r=".9"><stop offset="0" stop-color="rgba(255,236,200,.32)"/><stop offset=".5" stop-color="rgba(255,236,200,.08)"/><stop offset="1" stop-color="rgba(255,236,200,0)"/></radialGradient>
@@ -565,15 +613,15 @@ function weightScene() {
       <filter id="wtSoft"><feGaussianBlur stdDeviation=".8"/></filter>
       <filter id="wtGlow"><feGaussianBlur stdDeviation="1.1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     </defs>
-    <rect width="160" height="96" fill="url(#wtWall)"/>${bricks}
+    <rect width="160" height="${WT.H}" fill="url(#wtWall)"/>${bricks}
     <rect x="0" y="9" width="160" height="5" fill="#FF6B1A" opacity=".85"/><rect x="0" y="14" width="160" height="1.2" fill="#1F2C8F"/>
-    <text x="8" y="12.9" class="mgw-banner">GOHEUNG FC · STRENGTH</text>
+    <text x="${WT.BX}" y="12.9" class="mgw-banner">GOHEUNG FC · STRENGTH</text>
     <!-- 바닥 매트 -->
-    <rect x="0" y="78" width="160" height="18" fill="#101320"/>
-    ${Array.from({ length: 9 }, (_, i) => `<path d="M${i * 20} 78 L${i * 20 - 6} 96" stroke="rgba(255,255,255,.06)" stroke-width=".5"/>`).join("")}
+    <rect x="0" y="78" width="160" height="${WT.H - 78}" fill="#101320"/>
+    ${Array.from({ length: 9 }, (_, i) => `<path d="M${i * 20} 78 L${i * 20 - 6} ${WT.H}" stroke="rgba(255,255,255,.06)" stroke-width=".5"/>`).join("")}
     <path d="M0 78 H160" stroke="rgba(255,255,255,.14)" stroke-width=".5"/>
     <!-- 덤벨 거치대와 초크통 -->
-    <g transform="translate(14,70)"><rect x="-10" y="0" width="22" height="8" rx="1" fill="#1D2236"/>${[-6, 0, 6].map(x => `<g transform="translate(${x + 1},-1)"><rect x="-3" y="-.8" width="6" height="1.6" fill="#8A93AA"/><rect x="-3.6" y="-2.2" width="1.8" height="4.4" rx=".5" fill="#2B3047"/><rect x="1.8" y="-2.2" width="1.8" height="4.4" rx=".5" fill="#2B3047"/></g>`).join("")}</g>
+    <g transform="translate(${WT.DX},70)"><rect x="-10" y="0" width="22" height="8" rx="1" fill="#1D2236"/>${[-6, 0, 6].map(x => `<g transform="translate(${x + 1},-1)"><rect x="-3" y="-.8" width="6" height="1.6" fill="#8A93AA"/><rect x="-3.6" y="-2.2" width="1.8" height="4.4" rx=".5" fill="#2B3047"/><rect x="1.8" y="-2.2" width="1.8" height="4.4" rx=".5" fill="#2B3047"/></g>`).join("")}</g>
     <g transform="translate(100,78)"><path d="M-4 0 L-3 -6 H3 L4 0 Z" fill="#3A4060"/><ellipse cy="-6" rx="3.2" ry=".9" fill="#E9ECF5"/></g>
     <!-- 스쿼트 랙 -->
     <rect width="160" height="96" fill="url(#wtSpot)"/>
@@ -609,7 +657,7 @@ function weightScene() {
       <text id="wtRep" y="-24.5" text-anchor="middle" class="mgw-rep">REP 1 / 6</text>
     </g>
     <text id="wtMsg" x="${WT.CX}" y="${WT.CY + 3}" text-anchor="middle" class="mg-shmsg mgw-msg"></text>
-    <rect width="160" height="96" fill="url(#wtVig)" pointer-events="none"/>
+    <rect width="160" height="${WT.H}" fill="url(#wtVig)" pointer-events="none"/>
   </svg>
   <div class="mg-hud"><span class="mg-dots" id="dots">${"<i></i>".repeat(6)}</span><span id="pts" class="num">0점</span></div>`;
 }
@@ -629,8 +677,8 @@ function wtDraw(root, q, tilt = 0) {
   $("#wtPlates").setAttribute("transform", `rotate(${tilt.toFixed(1)})`);
   return p;
 }
-function weight(area, status, ctl, e, done, lv = 1) {
-  area.innerHTML = weightScene();
+function weight(area, status, ctl, e, done, lv = 1, tall = false) {
+  area.innerHTML = weightScene(tall);
   const svg = area.querySelector("svg"), ring = area.querySelector("#ring"), dots = area.querySelectorAll("#dots i"), ptsEl = area.querySelector("#pts"),
     repEl = area.querySelector("#wtRep"), msg = area.querySelector("#wtMsg"), fx = area.querySelector("#wtFx"), body = area.querySelector("#wtBody");
   const baseDur = (1300 + e * 300) * [1, 1, 0.85, 0.8, 0.72][lv];   // 단계가 오를수록 원이 빨리 줄어듦

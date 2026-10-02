@@ -44,7 +44,7 @@ export const OUTCOMES = {
 export const SITUATIONS = [
   // ── 공격수 ─────────────────────────
   { id: "fw_1v1", pos: ["FW"], zone: "att", weight: 3,
-    text: ["페널티 박스 앞, 수비수 한 명과 1대1로 마주 섰다.", "측면에서 공을 받았다. 앞에는 수비수 한 명뿐이다."],
+    text: ["페널티 박스 앞, 수비수 한 명과 1 대 1로 마주 섰다.", "측면에서 공을 받았다. 앞에는 수비수 한 명뿐이다."],
     choices: [
       { label: "드리블로 제친다", stats: { "tech.dribble": 0.6, "phys.speed": 0.4 }, diff: 0, win: "shot", lose: "turnover",
         winText: ["몸을 한 번 흔들고 수비를 벗겨 냈다!", "공을 툭 치고 스피드로 따돌렸다!"], loseText: ["수비수 발끝에 공이 걸렸다.", "너무 길게 쳤다. 수비가 먼저 걷어 낸다."] },
@@ -139,7 +139,7 @@ export const SITUATIONS = [
       { label: "태클", stats: { "tech.defense": 0.6, "phys.speed": 0.4 }, diff: 4, win: "win", lose: "danger",
         winText: ["미끄러지듯 들어간 태클, 공만 정확히 빼냈다!"], loseText: ["태클이 늦었다! {opp|이/가} 빠져나간다."] },
       { label: "거리를 두고 막기", stats: { "tech.defense": 0.5, "mental.focus": 0.5 }, diff: -3, win: "win", lose: "turnover",
-        winText: ["끝까지 따라붙어 슈팅 각도를 지웠다."], loseText: ["크로스를 허용했다."] },
+        winText: ["거리를 유지하며 슈팅 각도를 지웠다."], loseText: ["크로스를 허용했다."] },
     ] },
   { id: "df_cross", intro: false, poss: "them", pos: ["DF"], zone: "def", weight: 3,
     text: ["상대 측면에서 크로스가 올라온다.", "코너킥. 상대 장신 선수가 들어온다."],
@@ -168,7 +168,7 @@ export const SITUATIONS = [
         winText: ["끝까지 따라붙어 공을 먼저 걷어 냈다."], loseText: ["{opp|이/가} 한 발 빨랐다."] },
     ] },
   { id: "df_corner", intro: false, pos: ["DF"], zone: "att", weight: 1,
-    text: ["우리 팀 코너킥. 감독님이 올라가라고 손짓한다."],
+    text: ["우리 팀 코너킥. 감독님이 올라가라고 손짓하신다."],
     choices: [
       { label: "공격 가담 헤더", stats: { "phys.jump": 0.6, "phys.strength": 0.4 }, diff: 8, win: "head", lose: "miss", physical: true,
         winText: ["상대 수비 머리 위로 솟구쳤다!"], loseText: ["헤더가 골대 위로 넘어갔다."] },
@@ -179,7 +179,7 @@ export const SITUATIONS = [
   // ── 중거리, 코너킥 헤더, 화려한 개인기 ─────────
   // requires: 이 능력치를 넘어야 나오는 장면·선택지 (★ 특기로 표시)
   { id: "df_longshot", intro: false, pos: ["DF", "MF"], zone: "att", weight: 1,
-    text: ["코너킥이 걷혀 나온 공이 페널티 박스 밖, 내 앞으로 굴러온다.", "상대가 걷어 낸 공이 아크 서클 밖에 떨어졌다. 수비 한 명이 뒤늦게 달려온다."],
+    text: ["코너킥 뒤 걷혀 나온 공이 페널티 박스 밖, 내 앞으로 굴러온다.", "상대가 걷어 낸 공이 아크 서클 밖에 떨어졌다. 수비 한 명이 뒤늦게 달려온다."],
     choices: [
       { label: "그대로 중거리 슈팅", stats: { "tech.shoot": 0.8, "mental.confidence": 0.2 }, diff: 10, win: "longShot", lose: "miss",
         winText: ["발등에 제대로 얹었다! 공이 낮게 깔려 날아간다!", "공이 떨어지는 순간 그대로 때렸다!"], loseText: ["너무 힘이 들어갔다. 관중석으로 날아간다.", "발에 빗맞았다. 공이 힘없이 굴러간다."] },
@@ -191,7 +191,7 @@ export const SITUATIONS = [
   { id: "att_corner_head", intro: false, pos: ["FW", "MF", "DF"], zone: "att", weight: 1,
     text: ["코너킥. 문전에 양 팀 선수들이 엉켜 있다. 공이 날아온다.", "우리 팀 코너킥. 키커가 손을 들어 신호를 보내고 공을 올린다."],
     choices: [
-      { label: "니어 포스트로 뛰어들어 헤더", stats: { "phys.jump": 0.5, "phys.speed": 0.2, "tech.shoot": 0.3 }, diff: 6, win: "head", lose: "miss", physical: true,
+      { label: "니어포스트로 뛰어들어 헤더", stats: { "phys.jump": 0.5, "phys.speed": 0.2, "tech.shoot": 0.3 }, diff: 6, win: "head", lose: "miss", physical: true,
         winText: ["수비 앞을 먼저 잘라 들어가 머리를 갖다 댔다!"], loseText: ["한 발 늦었다. 수비가 먼저 걷어 낸다."] },
       { label: "뒤로 빠져 흘러나오는 공 노리기", stats: { "mental.focus": 0.5, "tech.shoot": 0.5 }, diff: 2, win: "longShot", lose: "keep",
         winText: ["예상대로 공이 흘러나왔다. 그대로 발을 휘두른다!"], loseText: ["공이 반대쪽으로 흘렀다. 자리를 지킨다."] },
@@ -252,7 +252,7 @@ export const SITUATIONS = [
         winText: ["침착하게 잡아 놓았다. 골키퍼가 아직 일어나지 못했다!"], loseText: ["잡는 사이 수비 셋이 몰려왔다."] },
     ] },
   { id: "fw_counter", intro: false, pos: ["FW"], zone: "att", weight: 1,
-    text: ["역습! 공을 몰고 달린다. 옆에서 {mate}도 같이 뛴다. 막는 수비는 한 명뿐.", "2대1이다. 수비수 한 명이 뒷걸음질 친다. 오른쪽에 {mate|이/가} 있다."],
+    text: ["역습! 공을 몰고 달린다. 옆에서 {mate}도 같이 뛴다. 막는 수비는 한 명뿐.", "2 대 1이다. 수비수 한 명이 뒷걸음질 친다. 오른쪽에 {mate|이/가} 있다."],
     choices: [
       { label: "끌고 가다 내준다", stats: { "tech.pass": 0.5, "mental.focus": 0.5 }, diff: -2, win: "assist", lose: "turnover",
         winText: ["수비가 나에게 붙는 순간 옆으로 밀어 줬다!"], loseText: ["패스 타이밍이 늦었다. 수비 발에 걸렸다."] },
@@ -298,9 +298,9 @@ export const SITUATIONS = [
 
   // ── 추가 장면: 미드필더 ────────────
   { id: "mf_corner", intro: false, pos: ["MF"], zone: "att", weight: 1,
-    text: ["코너킥. 감독님이 나를 키커로 지목했다."],
+    text: ["코너킥. 감독님이 나를 키커로 지목하셨다."],
     choices: [
-      { label: "니어 포스트로 빠르게", stats: { "tech.cross": 0.8, "mental.focus": 0.2 }, diff: 4, win: "keyPass", lose: "miss",
+      { label: "니어포스트로 빠르게", stats: { "tech.cross": 0.8, "mental.focus": 0.2 }, diff: 4, win: "keyPass", lose: "miss",
         winText: ["낮고 빠르게 감아 찼다! {mate|이/가} 앞으로 끊어 들어간다!"], loseText: ["첫 번째 수비수 머리에 걸렸다."] },
       { label: "먼 쪽으로 높게", stats: { "tech.cross": 1 }, diff: 2, win: "keyPass", lose: "miss",
         winText: ["공이 골키퍼 손을 넘어 먼 쪽 포스트로! {mate|이/가} 뛰어오른다!"], loseText: ["너무 길었다. 반대편 터치라인 밖으로."] },
@@ -398,8 +398,8 @@ export const SITUATIONS = [
     choices: [
       { label: "니어포스트로 뛰어들어 방향만 바꾼다", stats: { "tech.firstTouch": 0.5, "phys.speed": 0.5 }, diff: 5, win: "tapIn", lose: "miss",
         winText: ["수비보다 반 박자 먼저 니어포스트로 뛰어들었다!", "발만 갖다 댔다. 공이 방향을 틀어 골문 구석으로 향한다!"], loseText: ["한 발이 모자랐다. 공이 발끝 앞을 스쳐 지나간다.", "발에 맞긴 했는데 골라인 밖으로 흘러 나간다."] },
-      { label: "흘려 보내 뒤에 양보한다", stats: { "mental.focus": 0.6, "mental.teamwork": 0.4 }, diff: -2, win: "decoy", lose: "turnover",
-        winText: ["다리를 벌려 공을 흘려 보냈다. 수비 둘이 나를 따라 넘어진다!"], loseText: ["흘려 보낸 공을 수비가 먼저 걷어 낸다."] },
+      { label: "흘려보내 뒤에 양보한다", stats: { "mental.focus": 0.6, "mental.teamwork": 0.4 }, diff: -2, win: "decoy", lose: "turnover",
+        winText: ["다리를 벌려 공을 흘려보냈다. 수비 둘이 나를 따라 넘어진다!"], loseText: ["흘려보낸 공을 수비가 먼저 걷어 낸다."] },
     ] },
   { id: "mf_lowblock", pos: ["MF"], zone: "att", weight: 2,
     text: ["상대가 박스 앞에 두 줄로 내려앉았다. 틈이 잘 안 보인다.", "공을 잡고 고개를 들었다. 상대 열 명이 전부 자기 진영에 있다."],
@@ -434,8 +434,8 @@ export const SITUATIONS = [
     choices: [
       { label: "몸을 던져 걷어 낸다", stats: { "tech.defense": 0.5, "phys.agility": 0.5 }, diff: 3, win: "win", lose: "danger",
         winText: ["골라인 바로 앞에서 몸을 던져 걷어 냈다!", "{opp}의 발끝보다 먼저 공을 차 냈다!"], loseText: ["발이 엉켰다! 공이 다시 {opp} 앞으로 떨어진다!"] },
-      { label: "상대를 등으로 막아 선다", stats: { "phys.strength": 0.6, "mental.focus": 0.4 }, diff: 0, win: "win", lose: "danger", physical: true,
-        winText: ["{opp}를 등으로 막아 섰다. 굴러온 공을 침착하게 걷어 냈다."], loseText: ["{opp|이/가} 등을 밀고 들어온다! 골문 바로 앞이다!"] },
+      { label: "상대를 등으로 막아선다", stats: { "phys.strength": 0.6, "mental.focus": 0.4 }, diff: 0, win: "win", lose: "danger", physical: true,
+        winText: ["{opp}를 등으로 막아섰다. 굴러온 공을 침착하게 걷어 냈다."], loseText: ["{opp|이/가} 등을 밀고 들어온다! 골문 바로 앞이다!"] },
     ] },
 ];
 
@@ -478,8 +478,8 @@ export const LINES = {
   secondHalf: ["후반전 시작.", "후반 휘슬이 울린다. 마지막 35분이다.", "진영을 바꿔 후반이 시작된다.", "물병을 내려놓고 다시 운동장으로. 후반전이다."],
   halftime: ["전반 종료.", "전반 종료 휘슬. 선수들이 벤치로 걸어 들어온다.", "전반이 끝났다. 다들 숨이 턱까지 찼다."],
   fulltime: ["경기 종료 휘슬이 울린다.", "주심이 두 팔을 들어 올린다. 경기 끝.", "길게 휘슬이 울린다. 선수들이 그 자리에 주저앉는다.", "경기가 끝났다. 양 팀 선수들이 악수를 나눈다."],
-  subIn: ["교체 투입. 감독님이 등을 두드린다. \"보여 줘라.\"", "감독님이 짧게 말한다. \"생각하지 말고 뛰어.\"",
-    "코치님이 등을 떠민다. \"오른쪽 비었다. 거기로 가.\"", "사이드라인을 넘는 순간 심장이 빨라진다. 이제 내 차례다."],
+  subIn: ["교체 투입. 감독님이 등을 두드리신다. \"보여 줘라.\"", "감독님이 짧게 말씀하신다. \"생각하지 말고 뛰어.\"",
+    "코치님이 등을 떠미신다. \"오른쪽 비었다. 거기로 가.\"", "사이드라인을 넘는 순간 심장이 빨라진다. 이제 내 차례다."],
 };
 
 // 경기 흐름이 바뀔 때 (내 선택이 연달아 통하거나 막힐 때)
@@ -491,11 +491,14 @@ export const FLOW = {
 // 하프타임 감독님 말
 export const HALFTIME_TALK = {
   winning: ["좋다. 그런데 방심하는 순간 뒤집힌다. 하던 대로 해.", "잘하고 있다. 수비 라인 내리지 마라.", "한 골 더 넣으면 끝난다. 물러서지 마.",
-    "점수는 잊어라. 0 대 0이라고 생각하고 다시 들어가.", "상대가 후반에 라인 올린다. 뒷공간 노려."],
+    "점수는 잊어라. 0 대 0이라고 생각하고 다시 들어가.", "상대가 후반에 라인 올린다. 뒷공간 노려.",
+    "앞서고 있을 때 제일 많이 지는 이유가 뭔지 알아? 내려앉아서다. 계속 올라가.", "공 잡으면 서두르지 마. 시간은 우리 편이다.", "잘했다. 그런데 칭찬은 경기 끝나고 한다."],
   drawing: ["아직 아무것도 안 정해졌다. 한 골이면 된다.", "상대도 지쳤다. 더 뛰는 쪽이 이긴다.", "측면이 열린다. 후반엔 더 넓게 벌려라.",
-    "전반은 탐색전이었다. 이제 우리가 먼저 때린다.", "물 마시고 숨 골라. 후반 10분 안에 승부 본다."],
+    "전반은 탐색전이었다. 이제 우리가 먼저 때린다.", "물 마시고 숨 골라. 후반 10분 안에 승부 본다.",
+    "상대 오른쪽 수비가 지쳤다. 그쪽으로 계속 두드려.", "세트피스 하나에 갈린다. 코너킥 얻으면 다 들어가.", "비기는 거 하러 여기 온 거 아니다."],
   losing: ["고개 들어. 35분이면 충분히 뒤집는다.", "겁먹지 마라. 우리 축구 하자.", "실점은 잊어. 지금부터 0 대 0이라고 생각해.",
-    "한 골씩만 생각해라. 한 번에 두 골 넣으려 하지 말고.", "졌다고 생각하는 사람 손 들어 봐. 없지? 그럼 나가."],
+    "한 골씩만 생각해라. 한 번에 두 골 넣으려 하지 말고.", "졌다고 생각하는 사람 손 들어 봐. 없지? 그럼 나가.",
+    "전반은 내가 잘못 짰다. 후반엔 너희 하고 싶은 대로 해 봐.", "첫 골만 넣으면 저쪽이 흔들린다. 그 첫 골을 빨리 가져와.", "누구 탓도 하지 마. 탓할 시간에 한 번 더 뛰어."],
 };
 
 // ── 팀 공격 전개 ─────────────────────────────
@@ -580,7 +583,7 @@ export const PLAYS = [
     { who: "MF", at: [78, "H"], t: ["흘러나온 공을 {a|이/가} 잡아 그대로 몰고 간다!", "{a|이/가} 세컨드볼을 따냈다!"] },
   ] },
   { id: "wingdribble", weight: 2, finish: "shot", steps: [
-    { who: "MF", at: [60, "W"], t: ["측면의 {a|이/가} 수비와 1대1로 마주 섰다.", "{a|이/가} 터치라인 쪽에서 공을 잡는다."] },
+    { who: "MF", at: [60, "W"], t: ["측면의 {a|이/가} 수비와 1 대 1로 마주 섰다.", "{a|이/가} 터치라인 쪽에서 공을 잡는다."] },
     { who: "MF", at: [90, "W"], same: true, t: ["{a|이/가} 헛다리 한 번에 수비를 제쳤다! 엔드라인까지!", "{a|이/가} 속도로 수비를 따돌린다!"] },
     { who: "FW", at: [93, "C"], t: ["낮게 깔아 준 크로스, {a|이/가} 달려든다!", "{a} 앞으로 땅볼 크로스!"] },
   ] },
@@ -670,7 +673,7 @@ export const TO_ME = {
 // 능력치를 키울수록 경기에서 할 수 있는 일이 늘어나는 구조입니다.
 export const SIGNATURE = {
   fw_1v1: { label: "개인기로 무너뜨린다", requires: { "tech.dribble": 68 }, stats: { "tech.dribble": 0.7, "phys.agility": 0.3 }, diff: -4,
-    win: "shot", lose: "turnover", winText: ["헛다리 두 번에 수비수가 주저앉았다! 골키퍼와 1대1!"], loseText: ["너무 많이 보여 줬다. 수비가 공만 걷어 낸다."] },
+    win: "shot", lose: "turnover", winText: ["헛다리 두 번에 수비수가 주저앉았다! 골키퍼와 1 대 1!"], loseText: ["너무 많이 보여 줬다. 수비가 공만 걷어 낸다."] },
   fw_through: { label: "골키퍼 키를 넘긴다", requires: { "tech.shoot": 70 }, stats: { "tech.shoot": 0.6, "mental.confidence": 0.4 }, diff: 6,
     win: "chip", lose: "miss", winText: ["달려 나온 골키퍼 머리 위로 살짝 띄웠다. 공이 천천히 골문으로…"], loseText: ["너무 높았다. 크로스바 위로."] },
   fw_cross: { label: "몸을 날려 다이빙 헤더", requires: { "phys.jump": 68 }, stats: { "phys.jump": 0.6, "mental.competitive": 0.4 }, diff: 4,
@@ -710,7 +713,7 @@ export const ME_IN_PLAY = {
 export const PREMATCH = [
   { who: "coach", when: "start", tag: "shoot", t: "박스 근처에서 망설이지 마라. 보이면 때려. 빗나가도 내가 뭐라 안 한다." },
   { who: "coach", when: "start", tag: "pass", t: "오늘은 공 오래 끌지 마라. 원터치, 투터치. 공이 사람보다 빨라야 한다." },
-  { who: "coach", when: "start", tag: "dribble", t: "측면에서 1대1 붙으면 자신 있게 들어가. 상대 풀백 발이 느리다." },
+  { who: "coach", when: "start", tag: "dribble", t: "측면에서 1 대 1 붙으면 자신 있게 들어가. 상대 풀백 발이 느리다." },
   { who: "coach", when: "start", tag: "defend", t: "오늘은 실점 안 하는 게 먼저다. 태클은 뒤에서 들어가지 말고, 타이밍 봐라." },
   { who: "coach", when: "start", tag: "physical", t: "상대가 몸으로 밀고 들어온다. 첫 번째 부딪힘에서 밀리면 경기 내내 밀린다." },
   { who: "coach", when: "start", tag: "safe", t: "무리하지 마라. 쉽게 쉽게. 실수만 안 하면 우리가 이기는 경기다." },
@@ -723,7 +726,7 @@ export const PREMATCH = [
   { who: "assistant", when: "sub", tag: "pass", t: "벤치에서 보니까 오른쪽이 비더라. 들어가면 그쪽으로 공 돌려." },
   // bench: 벤치에서 시작하는 날 (교체로 들어갈지는 경기 전에 알려 주지 않음)
   { who: "assistant", when: "bench", tag: "safe", t: "벤치에서도 경기 읽어라. 언제 부를지 모른다. 몸은 계속 데워 두고." },
-  { who: "assistant", when: "bench", tag: "dribble", t: "상대 풀백 버릇 하나만 찾아 둬라. 기회 오면 네가 1대1로 붙는 거다." },
+  { who: "assistant", when: "bench", tag: "dribble", t: "상대 풀백 버릇 하나만 찾아 둬라. 기회 오면 네가 1 대 1로 붙는 거다." },
   { who: "coach", when: "bench", tag: "pass", t: "오늘은 선발로 나간 애들 뛰는 거 봐라. 공 없을 때 어디 서 있는지. 그게 공부다." },
   { who: "coach", when: "bench", tag: "shoot", t: "오늘은 벤치에서 시작한다. 혹시 들어가게 되면 망설이지 말고 때려라." },
   { who: "assistant", when: "bench", tag: "pass", t: "벤치라고 쉬는 날 아니다. 들어가면 공 오래 끌지 말고 바로 내줘." },
@@ -739,4 +742,31 @@ export const PREMATCH = [
   { who: "assistant", when: "tired", tag: "pass", t: "오늘은 짧게 주고 많이 움직이지 마라. 아낀 힘은 후반에 써라." },
   { who: "coach", when: "star", tag: "pass", t: "상대가 너만 본다. 그럼 너 말고 다른 애가 비겠지. 그걸 이용해." },
   { who: "assistant", when: "star", tag: "shoot", t: "수비 둘이 붙어도 너는 슈팅 각 나온다. 주눅 들지 마." },
+  // ── 추가 지시 ──
+  { who: "coach", when: "start", tag: "shoot", t: "오늘 골키퍼 발이 느리다. 낮게, 구석으로. 높이 띄우지 마라." },
+  { who: "assistant", when: "start", tag: "shoot", t: "박스 밖에서도 한 번씩 때려 봐. 저 팀 수비는 나와서 막지를 않더라." },
+  { who: "coach", when: "start", tag: "pass", t: "공 받기 전에 다음 패스를 정해 둬라. 받고 나서 생각하면 늦는다." },
+  { who: "assistant", when: "start", tag: "pass", t: "오늘은 측면으로 벌렸다가 가운데로 찌르는 거. 연습한 대로만 해." },
+  { who: "coach", when: "start", tag: "dribble", t: "1 대 1에서 뒤로 돌리는 거 금지다. 오늘은 한 번씩 부딪쳐 봐라." },
+  { who: "assistant", when: "start", tag: "dribble", t: "상대 수비가 발을 먼저 내민다. 한 번 접으면 그대로 넘어간다." },
+  { who: "coach", when: "start", tag: "defend", t: "오늘은 네가 뚫리면 끝이다. 공 말고 사람을 봐라." },
+  { who: "assistant", when: "start", tag: "defend", t: "상대 9번이 등지고 받는 걸 좋아한다. 돌아서기 전에 붙어." },
+  { who: "coach", when: "start", tag: "physical", t: "첫 공중볼 경합, 무조건 이겨라. 그걸로 오늘 경기 분위기가 정해진다." },
+  { who: "assistant", when: "start", tag: "physical", t: "어깨 쓰는 거 겁내지 마. 반칙 아니다. 몸을 먼저 넣어." },
+  { who: "coach", when: "start", tag: "safe", t: "오늘은 공 뺏기지 않는 게 먼저다. 애매하면 뒤로. 그것도 용기다." },
+  { who: "assistant", when: "start", tag: "safe", t: "경기 초반 10분은 단순하게. 몸이 풀리면 그때 하고 싶은 거 해." },
+  { who: "assistant", when: "sub", tag: "defend", t: "들어가면 수비부터 정리해. 지금 오른쪽이 계속 뚫린다." },
+  { who: "coach", when: "sub", tag: "pass", t: "공 잡으면 바로 앞으로. 지금 필요한 건 속도다." },
+  { who: "assistant", when: "sub", tag: "safe", t: "들어가자마자 무리하지 마. 첫 터치는 쉽게, 그다음부터 네 축구 해." },
+  { who: "assistant", when: "bench", tag: "physical", t: "벤치에서도 다리 식히지 마. 들어가면 첫 경합부터다." },
+  { who: "coach", when: "bench", tag: "dribble", t: "후반에 상대 다리 무거워지면 너 같은 선수가 필요하다. 준비해 둬." },
+  { who: "coach", when: "big", tag: "pass", t: "큰 경기일수록 공을 쉽게 차라. 어려운 패스는 연습 때 실컷 했다." },
+  { who: "assistant", when: "big", tag: "defend", t: "관중 많다고 들뜨지 마. 수비는 소리 지르면서 해. 관중보다 크게." },
+  { who: "coach", when: "ko", tag: "shoot", t: "토너먼트는 찬스가 많이 안 온다. 하나 오면 그게 마지막이라고 생각하고 차." },
+  { who: "assistant", when: "ko", tag: "physical", t: "연장까지 갈 수도 있다. 체력 아끼면서, 그래도 경합은 다 이겨." },
+  { who: "coach", when: "hs", tag: "dribble", t: "고등학교 감독님은 1 대 1을 본다. 한 번은 자신 있게 붙어 봐라." },
+  { who: "assistant", when: "hs", tag: "safe", t: "형들 상대로 실수 안 하는 것만 보여도 충분하다. 차분하게." },
+  { who: "assistant", when: "tired", tag: "safe", t: "다리 무거우면 머리를 써라. 뛰는 양보다 서 있는 위치다." },
+  { who: "coach", when: "star", tag: "dribble", t: "상대가 너한테 둘 붙는다. 한 명만 벗기면 그 뒤는 텅 비어 있다." },
+  { who: "assistant", when: "star", tag: "pass", t: "오늘 너 막으려고 상대가 작전을 짰다더라. 그러니까 미끼가 돼. 동료가 빈다." },
 ];

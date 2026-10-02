@@ -50,7 +50,7 @@ export const LIFE = [
   { id: "jr_ask", from: "junior", title: "질문 있어요", body: "형 혹시 왼발 연습 어떻게 하셨어요? 저 왼발로 차면 공이 자꾸 옆으로 가요…" },
   { id: "jr_scared", from: "junior", title: "형 저 내일 선발이래요", body: "떨려서 잠이 안 와요. 형은 처음 선발 때 어땠어요?" },
   // ── 담임 선생님 ──
-  { id: "tc_notice", from: "teacher", title: "가정통신문", body: "내일까지 가정통신문 회신서 가져오기. 축구부라고 안 봐준다. 어머님 서명 꼭 받아 오고." },
+  { id: "tc_notice", from: "teacher", title: "가정통신문", body: "내일까지 가정통신문 회신서 가져오기. 축구부라고 안 봐준다. 부모님 서명 꼭 받아 오고." },
   { id: "tc_cleaning", from: "teacher", title: "청소 당번", body: "이번 주 교실 청소 당번이다. 훈련 때문에 바쁜 건 아는데, 반 친구들이 대신하면 서운하겠지?" },
   { id: "tc_book", from: "teacher", title: "이번 주 한 문장", body: "\"넘어지는 건 실패가 아니다. 그대로 누워 있는 게 실패다.\"\n\n국어 시간에 읽은 문장인데, 너 생각나서 보낸다." },
   { id: "tc_good", from: "teacher", cond: s => (s.relations.teacher ?? 50) >= 65, title: "수업 시간에", body: "요즘 수업 시간에 눈빛이 달라졌더라. 피곤할 텐데 대단하다. 선생님이 다 보고 있어." },
@@ -78,7 +78,7 @@ export const LIFE = [
   // ── 선생님·가족 (추가) ──
   { id: "tc_praise_exam", from: "teacher", cond: s => s.lastExam && s.lastExam.score >= 70 && s.calendar.turn - s.lastExam.turn <= 2, title: "시험 잘 봤더라", body: "이번 시험 생각보다 잘 봤더라. 훈련하면서 공부한 거 다 보인다. 이 정도면 운동장에서도 칭찬받을 일이다." },
   { id: "tc_tired", from: "teacher", cond: s => s.player.condition.fatigue >= 65, title: "보건실 다녀와", body: "얼굴이 많이 안 좋다. 오늘은 5교시에 보건실 가서 좀 쉬어라. 선생님이 체육 선생님께 말해 둘게." },
-  { id: "dad_away", from: "dad", when: { months: [7, 8, 1, 2] }, title: "대회 응원", body: "대회 기간에 아빠 휴가 냈다. 경기장까지는 못 가도 영상은 꼭 본다. 다치지만 마라." },
+  { id: "dad_away", from: "dad", when: { months: [7, 8, 1, 2] }, title: "대회 응원", body: "대회 기간에 맞춰 아빠 휴가 냈다. 관중석에서 보고 있을 테니 다치지만 마라." },
   // ── 감독·코치 ──
   { id: "co_video", from: "assist", cond: s => last(s)?.minutes > 0, title: "영상 보내 줌", body: "지난 경기에서 네가 나온 장면만 잘라서 단톡에 올렸다. 공 받기 전 위치를 봐라. 반 발짝만 앞에 있었으면 됐다." },
   { id: "co_early", from: "coach", cond: s => s.relations.coach >= 65, title: "내일 15분 일찍", body: "내일 훈련 15분 일찍 나와라. 따로 할 얘기 있다. 혼나는 거 아니다." },
@@ -119,7 +119,7 @@ export const AFTER_MATCH = {
     "{mate2}: 오늘 내가 실수했다 미안\n\n{mate}: 아니야 다 같이 진 거야",
     "{mate}: 버스 안 너무 조용하다\n\n{assistant}: 오늘은 그냥 쉬어라. 월요일에 다시 한다",
     "{mentor}: 오늘 진 거 기억해 둬라. 다음에 똑같이 갚으면 된다",
-    "{mate2}: 배고픈데 밥이 안 넘어감\n\n{mate}: 그래도 먹어라 내일 회복훈련이다",
+    "{mate2}: 배고픈데 밥이 안 넘어감\n\n{mate}: 그래도 먹어라 내일 회복 훈련이다",
   ],
   myGoal: [
     "{mate}: {name} 골 뭐냐 ㅋㅋㅋㅋ 영상 있는 사람\n\n{mate2}: 내가 찍음 올림",

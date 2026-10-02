@@ -130,11 +130,38 @@ export function weekReport(app, rep, done) {
   }, { onClose: done, cls: "report" });
 }
 
-export function mailModal(m) {
-  openModal(`<button class="close" data-close aria-label="닫기">×</button>
-    <p class="sub">${esc(m.from)}</p><h2>${esc(m.title)}</h2>
-    <p class="mail-body">${esc(m.body)}</p>
-    <button class="btn btn-wide" data-close>닫기</button>`);
+// list: 메시지함 순서(위에서 아래) 그대로. 이전 = 목록에서 위, 다음 = 목록에서 아래
+export function mailModal(m, { list = [m], onRead } = {}) {
+  let i = Math.max(0, list.indexOf(m)), key = null;
+  openModal(`<button class="close" data-close aria-label="닫기">×</button><div class="mail-view" id="mv"></div>
+    <div class="mail-nav"><button class="btn btn-ghost" data-prev>◀ 이전</button><span class="mail-pos num" id="mpos"></span><button class="btn btn-ghost" data-next>다음 ▶</button></div>
+    <button class="btn btn-wide" data-close>닫기</button>`, (el, close) => {
+    const view = el.querySelector("#mv"), pos = el.querySelector("#mpos"), prev = el.querySelector("[data-prev]"), next = el.querySelector("[data-next]");
+    const show = (k, dir = 0) => {
+      i = Math.max(0, Math.min(list.length - 1, k));
+      const cur = list[i];
+      if (!cur.read) { cur.read = true; onRead?.(); }
+      view.innerHTML = `<p class="sub">${esc(cur.from)}</p><h2>${esc(cur.title)}</h2><p class="mail-body">${esc(cur.body)}</p>`;
+      view.classList.remove("in-l", "in-r"); void view.offsetWidth; if (dir) view.classList.add(dir > 0 ? "in-r" : "in-l");
+      pos.textContent = `${i + 1} / ${list.length}`;
+      prev.disabled = i === 0; next.disabled = i === list.length - 1;
+      el.querySelector(".sheet").scrollTop = 0;
+    };
+    prev.addEventListener("click", () => show(i - 1, -1));
+    next.addEventListener("click", () => show(i + 1, 1));
+    key = e => { if (e.key === "ArrowLeft") show(i - 1, -1); if (e.key === "ArrowRight") show(i + 1, 1); };
+    document.addEventListener("keydown", key);
+    // 손가락으로 옆으로 밀어도 넘어감
+    let sx = null, sy = null;
+    view.addEventListener("touchstart", e => { sx = e.touches[0].clientX; sy = e.touches[0].clientY; }, { passive: true });
+    view.addEventListener("touchend", e => {
+      if (sx == null) return;
+      const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
+      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) show(i + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1);
+      sx = null;
+    });
+    show(i);
+  }, { onClose: () => document.removeEventListener("keydown", key) });
 }
 
 // ── 저장 ────────────────────────────
@@ -233,23 +260,6 @@ export function yearModal(app, y, done) {
       </dl></div>
     <p class="mute" style="font-size:14px">새 시즌 일정과 등번호, 팀 소식은 메시지함에서 확인하세요.</p>
     <button class="btn btn-kit btn-wide" data-close>새 학년 시작</button>`, null, { onClose: done });
-}
-
-export function graduationModal(app) {
-  const s = app.state, p = s.player, r = s.record;
-  const avg = r.ratings.length ? (r.ratings.reduce((a, b) => a + b, 0) / r.ratings.length).toFixed(2) : "–";
-  openModal(`<h2>졸업</h2>
-    <p class="sub">고흥대서중학교에서의 3년이 끝났습니다.</p>
-    <dl class="kv" style="margin-bottom:14px">
-      <dt>최종 능력치</dt><dd class="num">${fl(ovr(p))}</dd>
-      <dt>키</dt><dd class="num">${p.body.height.toFixed(1)}cm</dd>
-      <dt>통산 기록</dt><dd class="num">${r.apps}경기 ${r.goals}골 ${r.assists}도움</dd>
-      <dt>평균 평점</dt><dd class="num">${avg}</dd>
-      <dt>학업</dt><dd class="num">${fl(p.stats.student.academic)}</dd>
-      <dt>등번호</dt><dd class="num">${p.numberHistory.map(h => `${h.number}번`).join(" → ")}</dd>
-    </dl>
-    <div class="alert gold">진학 결정과 엔딩은 다음 업데이트에서 추가됩니다.</div>
-    <button class="btn btn-kit btn-wide" data-close style="margin-top:14px">타이틀로</button>`, null, { onClose: () => app.toTitle() });
 }
 
 // ── 이벤트 ──────────────────────────

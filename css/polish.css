@@ -289,7 +289,8 @@ body { word-break: keep-all; overflow-wrap: anywhere; }   /* 한국어 문장이
    경기장 크기는 js/ui/match.js 의 fitPitch 가 남은 높이에 맞춰 줄임 */
 @media (max-width: 899px) and (orientation: portrait), (max-width: 899px) and (min-height: 621px) {
   .match-screen { height: 100dvh; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-  .match-screen .board { position: relative; flex: none; }
+  /* 아이폰 홈 화면 앱: 원래의 sticky top(상단 안전 영역) 값이 relative에서는 아래로 밀어 경기장을 덮으므로 0으로, 대신 안쪽 여백으로 비킴 */
+  .match-screen .board { position: relative; top: 0; flex: none; padding-top: calc(env(safe-area-inset-top, 0px) + 10px); }
   .match-screen .match-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 8px; padding: 8px 12px; }
   .match-screen .pitch-wrap { flex: none; width: 100%; align-self: center; }
   .match-screen .feed { flex: 1 1 auto; min-height: 0; max-height: none !important; }
@@ -302,4 +303,34 @@ body { word-break: keep-all; overflow-wrap: anywhere; }   /* 한국어 문장이
   .match-screen:has(.ctl.ask) .board .comp { display: none; }
   .match-screen .mo-btn { padding-top: 6px; padding-bottom: 6px; }
   .match-screen .mo-text { margin-bottom: 6px; font-size: 15px; }
+}
+
+/* 가로 화면에서 노치(측면 안전 영역)에 경기장이 가리지 않게 */
+@media (orientation: landscape) and (max-height: 620px) {
+  .match-screen { padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+}
+
+/* 메시지 이전·다음 */
+.mail-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 14px 0 10px; }
+.mail-nav .btn { flex: 0 0 auto; padding: 10px 14px; }
+.mail-nav .btn:disabled { opacity: .35; pointer-events: none; }
+.mail-pos { color: var(--mute); font-size: 13px; }
+.mail-view.in-r { animation: mailInR .26s var(--ease, ease-out); }
+.mail-view.in-l { animation: mailInL .26s var(--ease, ease-out); }
+@keyframes mailInR { from { opacity: 0; transform: translateX(18px); } }
+@keyframes mailInL { from { opacity: 0; transform: translateX(-18px); } }
+@media (prefers-reduced-motion: reduce) { .mail-view.in-r, .mail-view.in-l { animation: none; } }
+
+/* 미니게임: 세로 휴대폰에서는 창을 화면 가득 (장면 크기는 minigames.js 의 fit 이 맞춤) */
+.backdrop.mg-tall { align-items: stretch; }
+.backdrop.mg-tall .sheet { width: 100%; max-width: none; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0;
+  display: flex; flex-direction: column; overflow: hidden;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 14px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); }
+.backdrop.mg-tall .mg { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.backdrop.mg-tall .mg-area { margin: auto auto 10px; flex: none; }
+.backdrop.mg-tall .mg-head h2 { font-size: 22px; }
+.backdrop.mg-tall .sub { margin-bottom: 6px; }
+@media (max-height: 740px) {
+  .backdrop.mg-tall .sub { font-size: 12.5px; line-height: 1.45; }
+  .backdrop.mg-tall .mg-head h2 { font-size: 19px; }
 }

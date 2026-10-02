@@ -258,7 +258,7 @@ function renderShell(app) {
   r.querySelectorAll("[data-mail]").forEach(b => b.addEventListener("click", () => {
     const m = s.inbox.find(x => x.id === b.dataset.mail);
     if (!m) return;
-    m.read = true; mailModal(m); app.render();
+    m.read = true; mailModal(m, { list: s.inbox, onRead: () => app.render() }); app.render();
   }));
   if (app.view === "schedule") r.querySelector(".week.now")?.scrollIntoView({ block: "center" });
 }

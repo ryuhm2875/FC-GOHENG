@@ -302,7 +302,7 @@ function graduateSeniors(state, g) {
   const leaving = state.team.roster.filter(m => mateGrade(m, g) === 3).map(m => m.name);
   (state.flags.gradMail ||= {})[g] = true;
   if (leaving.length) mail(state, "group", "선배들이 졸업했습니다",
-    `${leaving.join(", ")} 선배가 졸업했다. 고등학교 가서도 잘하실 거다.\n동계대회부터는 선배들 없이 뛴다. 남긴 자리는 이제 우리가 채워야 한다.`);
+    `${leaving.join(", ")} ${leaving.length > 1 ? "선배들이" : "선배가"} 졸업했다. 고등학교에 가서도 잘할 거다.\n동계대회부터는 선배들 없이 뛴다. 남긴 자리는 이제 우리가 채워야 한다.`);
   seniorsLeave(state, g);
 }
 
@@ -331,7 +331,7 @@ function yearTransition(state, oldGrade) {
   const joining = state.team.roster.filter(m => mateGrade(m, oldGrade + 1) === 1 && m.cohort !== "동기").map(m => m.name);
 
   if (leaving.length && !state.flags.gradMail?.[oldGrade]) mail(state, "group", "선배들이 졸업했습니다",
-    `${leaving.join(", ")} 선배가 졸업했다. 고등학교 가서도 잘하실 거다.\n선배들이 남긴 번호와 자리는 이제 우리가 채워야 한다.`);
+    `${leaving.join(", ")} ${leaving.length > 1 ? "선배들이" : "선배가"} 졸업했다. 고등학교에 가서도 잘할 거다.\n선배들이 남긴 번호와 자리는 이제 우리가 채워야 한다.`);
   if (joining.length) mail(state, "group", "신입생이 들어왔습니다",
     `새 1학년 ${joining.join(", ")} 입단! 이제 너도 선배다. 잘 챙겨 줘라.`);
 
@@ -367,7 +367,7 @@ function yearTransition(state, oldGrade) {
   ].filter(Boolean).join("\n\n"));
   if (oldGrade === 1 && CAPTAINS?.[2]) {
     mail(state, "group", "새 시즌, 새 주장",
-      `${STAFF.coach}: 올해 주장은 ${CAPTAINS[2]}${_bat(CAPTAINS[2]) ? "이다" : "다"}. 다들 박수.\n\n주장 ${CAPTAINS[2]}: 작년 선배들만큼은 못 해도, 우리 학년은 절대 안 무너진다. 2학년들도 이제 선배다. 후배들 잘 챙겨라.`);
+      `${STAFF.coach}: 올해 주장은 ${CAPTAINS[2]}${_bat(CAPTAINS[2]) ? "이다" : "다"}. 다들 박수.\n\n주장 ${CAPTAINS[2]}: 작년 선배들만큼은 못해도, 우리 학년은 절대 안 무너진다. 2학년들도 이제 선배다. 후배들 잘 챙겨라.`);
   }
 
   state.yearStart = snapshotStats(state);
@@ -391,10 +391,10 @@ export function chooseNumber(state, n) {
       if (!chance(pWin)) {
         rival.number = n;                              // 그 동기가 실제로 그 번호를 달게 됨
         state.pending = { type: "number", tried: [...tried, n], takenBy: [...taken, rival.id], owners: { ...(state.pending?.owners || {}), [n]: rival.name } };
-        mail(state, "group", `${n}번 쟁탈전`, `${rival.name}도 ${n}번을 원했다. 감독님은 ${rival.name}의 손을 들어 줬다.`);
-        return { ok: false, msg: `${rival.name}도 ${n}번을 원했고, 감독님은 ${rival.name}의 손을 들어 줬습니다. 다른 번호를 골라 주세요.` };
+        mail(state, "group", `${n}번 쟁탈전`, `${rival.name}도 ${n}번을 원했다. 감독님은 ${rival.name}의 손을 들어 주셨다.`);
+        return { ok: false, msg: `${rival.name}도 ${n}번을 원했고, 감독님은 ${rival.name}의 손을 들어 주셨습니다. 다른 번호를 골라 주세요.` };
       }
-      mail(state, "group", `${n}번 쟁탈전`, `${rival.name}도 ${n}번을 노렸지만, 감독님은 ${p.name}에게 ${n}번을 맡겼다.`);
+      mail(state, "group", `${n}번 쟁탈전`, `${rival.name}도 ${n}번을 노렸지만, 감독님은 ${p.name}에게 ${n}번을 맡기셨다.`);
     }
   }
   p.number = n;

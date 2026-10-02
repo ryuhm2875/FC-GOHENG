@@ -122,7 +122,7 @@ export function timingKind(c) {
 const TIMING_RULES = [
   [/바이시클/, "바이시클 킥", "몸을 던진다!"],
   [/칩슛/, "칩슛", "살짝 띄운다!"],
-  [/니어포스트/, "니어포스트", "방향을 바꾼다!"],
+  [/방향만 바꾼다/, "니어포스트", "방향을 바꾼다!"],
   [/반칙/, "전술적 반칙", "붙잡는다!"],
   [/몸을 던져/, "육탄 방어", "몸을 던진다!"],
   [/띄워 준다/, "로빙 패스", "띄워 준다!"],
@@ -177,7 +177,7 @@ export function prepareMatch(state, info, fx) {
   let restNote = null;
   if (status === "start" && fx.official && !fx.ko && p.condition.fatigue >= 85) {
     status = "sub"; minIn = int(40, 50);
-    restNote = `피로가 ${Math.round(p.condition.fatigue)}까지 쌓여 감독님이 후반에 넣기로 했다.`;
+    restNote = `피로가 ${Math.round(p.condition.fatigue)}까지 쌓여 감독님이 후반에 넣기로 하셨다.`;
   }
   const onPitch = status === "start" || status === "sub";
   const cond = conditionOf(p);
@@ -746,7 +746,7 @@ const INJURY_LINES = {
     after: ["동료의 부축을 받아 절뚝이며 경기장을 빠져나간다.", "벤치에서 얼음찜질을 한다. 발목이 금세 부어오른다."] },
   hamstring: { cause: "전력 질주 중 허벅지 뒤가 당겼다.",
     lines: ["전력으로 뛰던 {me|이/가} 갑자기 멈춰 선다. 허벅지 뒤를 잡는다.", "{me|이/가} 공을 쫓다가 다리를 절기 시작한다. 햄스트링이다."],
-    after: ["더 뛰겠다고 했지만 감독님은 고개를 저었다.", "벤치에 앉아 수건을 머리에 덮는다."] },
+    after: ["더 뛰겠다고 했지만 감독님은 고개를 저으셨다.", "벤치에 앉아 수건을 머리에 덮는다."] },
   knee: { cause: "몸싸움 끝에 무릎을 다쳤다.",
     lines: ["경합 끝에 넘어진 {me|이/가} 무릎을 감싸 쥔다. 경기가 멈췄다.", "{me}의 무릎이 상대와 부딪혔다. 쉽게 일어나지 못한다."],
     after: ["들것이 들어왔다. 관중석이 조용해진다.", "부축을 받고 나가며 하늘을 올려다본다."] },
