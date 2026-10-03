@@ -4,6 +4,7 @@
 //        friend 단짝 친구, rival 라이벌, mentor 멘토 선배, junior 후배
 // when : months 달 / grades 학년 (없으면 언제나)
 // cond : 게임 상태를 보고 true일 때만
+// school: true면 학기 중에만 (방학에는 숙제·급식·수업 이야기가 오지 않음)
 // body 안의 {name} 나, {friend} {rival} {mentor} {junior} {mate} 동료, {coach} {assistant} {teacher}
 // {name|이/가} 처럼 쓰면 받침에 맞는 조사가 붙습니다.
 
@@ -31,10 +32,10 @@ export const LIFE = [
   { id: "dad_talk", from: "dad", cond: s => s.player.condition.morale < 45, title: "아빠도 그랬다", body: "아빠도 고등학교 때 2년 동안 벤치만 지켰다. 그때 그만뒀으면 지금 너한테 할 말도 없었겠지.\n\n밥 먹고 산책이나 하자." },
   // ── 친구 ──
   { id: "fr_pcroom", from: "friend", title: "ㅋㅋㅋ", body: "야 오늘 훈련 끝나고 PC방 ㄱ? 1시간만. 너 피파 실력 좀 보자. 실제랑 다른지 ㅋㅋ" },
-  { id: "fr_homework", from: "friend", title: "수학 숙제 몇 쪽까지야", body: "나 진짜 몰라서 묻는 거임. 62쪽까지? 64쪽까지? 빨리 답 좀 ㅠ" },
+  { id: "fr_homework", from: "friend", school: true, title: "수학 숙제 몇 쪽까지야", body: "나 진짜 몰라서 묻는 거임. 62쪽까지? 64쪽까지? 빨리 답 좀 ㅠ" },
   { id: "fr_goal", from: "friend", cond: s => last(s)?.goals > 0, title: "야 미쳤다", body: "오늘 골 영상 단톡에 돌던데 ㅋㅋㅋ 반 애들 다 봄. 내일 학교 오면 사인해 줘라" },
   { id: "fr_bench", from: "friend", cond: s => last(s)?.status === "bench", title: "괜찮냐", body: "오늘 경기 못 뛰었다며. 다음엔 뛰겠지. 떡볶이 먹으러 가자. 내가 산다." },
-  { id: "fr_crush", from: "friend", title: "비밀인데", body: "옆 반 걔가 너 축구하는 거 보러 운동장 왔었대. 진짜임. 나한테 들었다고 하지 마라 ㅋㅋ" },
+  { id: "fr_crush", from: "friend", school: true, title: "비밀인데", body: "옆 반 걔가 너 축구하는 거 보러 운동장 왔었대. 진짜임. 나한테 들었다고 하지 마라 ㅋㅋ" },
   { id: "fr_cafe", from: "friend", when: { months: [7, 8] }, title: "덥다", body: "더워 죽겠다. 너 훈련 끝나면 편의점 앞에서 아이스크림 먹자. 바닷바람 맞으면서." },
   // ── 라이벌 ──
   { id: "rv_challenge", from: "rival", title: "내일 일찍 나와", body: "내일 아침 7시 운동장. 슈팅 100개 누가 더 넣나 내기. 지는 사람 음료수." },
@@ -50,17 +51,17 @@ export const LIFE = [
   { id: "jr_ask", from: "junior", title: "질문 있어요", body: "형 혹시 왼발 연습 어떻게 하셨어요? 저 왼발로 차면 공이 자꾸 옆으로 가요…" },
   { id: "jr_scared", from: "junior", title: "형 저 내일 선발이래요", body: "떨려서 잠이 안 와요. 형은 처음 선발 때 어땠어요?" },
   // ── 담임 선생님 ──
-  { id: "tc_notice", from: "teacher", title: "가정통신문", body: "내일까지 가정통신문 회신서 가져오기. 축구부라고 안 봐준다. 어머님 서명 꼭 받아 오고." },
+  { id: "tc_notice", from: "teacher", title: "가정통신문", body: "내일까지 가정통신문 회신서 가져오기. 축구부라고 안 봐준다. 부모님 서명 꼭 받아 오고." },
   { id: "tc_cleaning", from: "teacher", title: "청소 당번", body: "이번 주 교실 청소 당번이다. 훈련 때문에 바쁜 건 아는데, 반 친구들이 대신하면 서운하겠지?" },
   { id: "tc_book", from: "teacher", title: "이번 주 한 문장", body: "\"넘어지는 건 실패가 아니다. 그대로 누워 있는 게 실패다.\"\n\n국어 시간에 읽은 문장인데, 너 생각나서 보낸다." },
   { id: "tc_good", from: "teacher", cond: s => (s.relations.teacher ?? 50) >= 65, title: "수업 시간에", body: "요즘 수업 시간에 눈빛이 달라졌더라. 피곤할 텐데 대단하다. 선생님이 다 보고 있어." },
   { id: "tc_seat", from: "teacher", when: { months: [3, 9] }, title: "자리 바꾸기", body: "이번 달 자리 바꾼다. 창가 자리 원하면 일찍 와. 운동장 보이는 자리 좋아하잖아." },
   // ── 친구 (추가) ──
-  { id: "fr_lunch", from: "friend", title: "급식 뭐 나와?", body: "내일 급식 돈가스래!! 너 훈련 끝나고 늦게 오면 내가 하나 더 챙겨 둠 ㅋㅋ" },
+  { id: "fr_lunch", from: "friend", school: true, title: "급식 뭐 나와?", body: "내일 급식 돈가스래!! 너 훈련 끝나고 늦게 오면 내가 하나 더 챙겨 둠 ㅋㅋ" },
   { id: "fr_game", from: "friend", cond: s => last(s)?.result === "승", title: "이겼다며 ㅋㅋ", body: "반 단톡에 결과 올라옴. 다들 너 얘기 중. 근데 너 골 넣었냐? 안 넣었으면 그냥 넘어가 줄게" },
   { id: "fr_loss", from: "friend", cond: s => last(s)?.result === "패", title: "괜찮아?", body: "졌다며. 너 이럴 때 말 안 하는 거 안다. 그냥 편의점 앞으로 나와. 말 안 해도 됨" },
   { id: "fr_exam_after", from: "friend", cond: afterExam, title: "시험 끝!!!", body: "시험 끝났다!!! 오늘은 축구 얘기 금지, 공부 얘기도 금지. 노래방 ㄱ?" },
-  { id: "fr_sleepy", from: "friend", cond: s => s.player.condition.fatigue >= 55, title: "야 너 수업 시간에", body: "너 오늘 3교시에 졸다가 선생님한테 이름 불렸잖아 ㅋㅋㅋ 훈련 너무 빡센 거 아님?" },
+  { id: "fr_sleepy", from: "friend", school: true, cond: s => s.player.condition.fatigue >= 55, title: "야 너 수업 시간에", body: "너 오늘 3교시에 졸다가 선생님한테 이름 불렸잖아 ㅋㅋㅋ 훈련 너무 빡센 거 아님?" },
   // ── 라이벌 (추가) ──
   { id: "rv_loss", from: "rival", cond: s => last(s)?.rating != null && last(s).rating < 6, title: "어제", body: "어제 경기… 나도 별로였다. 다음 주는 둘 다 잘하자. 이런 말 하는 거 처음이다." },
   { id: "rv_extra", from: "rival", title: "봤냐", body: "나 어제 혼자 남아서 프리킥 50개 찼다. 너는 뭐 했냐." },
@@ -78,7 +79,7 @@ export const LIFE = [
   // ── 선생님·가족 (추가) ──
   { id: "tc_praise_exam", from: "teacher", cond: s => s.lastExam && s.lastExam.score >= 70 && s.calendar.turn - s.lastExam.turn <= 2, title: "시험 잘 봤더라", body: "이번 시험 생각보다 잘 봤더라. 훈련하면서 공부한 거 다 보인다. 이 정도면 운동장에서도 칭찬받을 일이다." },
   { id: "tc_tired", from: "teacher", cond: s => s.player.condition.fatigue >= 65, title: "보건실 다녀와", body: "얼굴이 많이 안 좋다. 오늘은 5교시에 보건실 가서 좀 쉬어라. 선생님이 체육 선생님께 말해 둘게." },
-  { id: "dad_away", from: "dad", when: { months: [7, 8, 1, 2] }, title: "대회 응원", body: "대회 기간에 아빠 휴가 냈다. 경기장까지는 못 가도 영상은 꼭 본다. 다치지만 마라." },
+  { id: "dad_away", from: "dad", when: { months: [7, 8, 1, 2] }, title: "대회 응원", body: "대회 기간에 맞춰 아빠 휴가 냈다. 관중석에서 보고 있을 테니 다치지만 마라." },
   // ── 감독·코치 ──
   { id: "co_video", from: "assist", cond: s => last(s)?.minutes > 0, title: "영상 보내 줌", body: "지난 경기에서 네가 나온 장면만 잘라서 단톡에 올렸다. 공 받기 전 위치를 봐라. 반 발짝만 앞에 있었으면 됐다." },
   { id: "co_early", from: "coach", cond: s => s.relations.coach >= 65, title: "내일 15분 일찍", body: "내일 훈련 15분 일찍 나와라. 따로 할 얘기 있다. 혼나는 거 아니다." },
@@ -119,7 +120,7 @@ export const AFTER_MATCH = {
     "{mate2}: 오늘 내가 실수했다 미안\n\n{mate}: 아니야 다 같이 진 거야",
     "{mate}: 버스 안 너무 조용하다\n\n{assistant}: 오늘은 그냥 쉬어라. 월요일에 다시 한다",
     "{mentor}: 오늘 진 거 기억해 둬라. 다음에 똑같이 갚으면 된다",
-    "{mate2}: 배고픈데 밥이 안 넘어감\n\n{mate}: 그래도 먹어라 내일 회복훈련이다",
+    "{mate2}: 배고픈데 밥이 안 넘어감\n\n{mate}: 그래도 먹어라 내일 회복 훈련이다",
   ],
   myGoal: [
     "{mate}: {name} 골 뭐냐 ㅋㅋㅋㅋ 영상 있는 사람\n\n{mate2}: 내가 찍음 올림",
@@ -196,5 +197,74 @@ export const AFTER_MATCH = {
     "{rival}: 오늘 {name} 컨디션 안 좋던데\n\n{friend}: 그런 날도 있지 ㅋ 다음 경기 보자",
     "{friend}: {name} 괜찮냐? 오늘 너무 신경 쓰지 마라\n\n{mentor}: 다들 한 번씩 그런 날 있다",
     "{mentor}: {name}, 오늘 거 다시 보지 말고 일찍 자라. 내일 이야기하자",
+  ],
+};
+
+// ── 상대 에이스 (data/world.js의 OPPONENT_STARS) ─────────────
+// {ace} 이름, {gw} 학년(예: 3학년), {posw} 공격수·미드필더·수비수, {trait} 특징, {team} 상대 팀, {goals} 우리에게 넣은 골
+// {mate} {mate2} {friend} {mentor} {name}은 단톡방과 같은 사람들. {ace|이/가}처럼 쓰면 받침에 맞는 조사가 붙습니다.
+export const ACE_TALK = {
+  // 경기 분석 메일 (정 코치)
+  intro: ["이 팀은 {gw} {ace|이/가} 중심이다.", "{team}에서 제일 먼저 봐야 할 선수는 {gw} {ace}.", "요즘 {ace} 얘기가 많이 들린다. {gw} {posw}다."],
+  trait: ["{trait|이/가} 무기다."],
+  scoredBefore: ["지금까지 우리한테 {goals}골을 넣은 선수다. 그 이름 잊지 마라.", "우리 상대로만 {goals}골을 넣었다. 이번엔 갚아 줘야지."],
+  metLastYear: ["작년에도 붙어 본 선수다. 그때보다 한 뼘은 더 컸다고 생각해라."],
+  absent: ["{gw} {ace|이/가} 이번 경기엔 못 나온다더라. 그 팀 전력의 한 축이 빠지는 셈이다. 그래도 방심은 하지 마라.",
+           "{ace|이/가} 다쳐서 못 나온다는 얘기가 있다. 남은 선수들이 더 악착같이 뛸 거다."],
+  // 내 포지션 - 상대 에이스 포지션
+  matchup: {
+    "DF-FW": ["네가 제일 많이 붙을 거다. 등 뒤로 돌아 들어가는 움직임을 놓치지 마라.", "결국 너랑 저 선수 싸움이다. 첫 번째 경합에서 밀리지 마라."],
+    "DF-MF": ["앞에서 공이 나오는 출발점이다. 패스 길을 먼저 읽어라."],
+    "DF-DF": ["세트피스 때 저 선수가 올라온다. 코너킥 때 꼭 붙어라."],
+    "MF-FW": ["공이 그쪽으로 가기 전에 끊는 게 네 몫이다."],
+    "MF-MF": ["중원에서 너랑 정면으로 부딪힌다. 공 잡으면 바로 붙어라.", "저 선수가 편하게 공을 잡으면 우리가 진다. 네가 먼저 다가가라."],
+    "MF-DF": ["뒤에서 우리 공격을 끊어 내는 선수다. 그 앞에서는 공을 오래 끌지 마라."],
+    "FW-FW": ["상대 골문 앞에선 네가 저 선수보다 더 무서워야 한다."],
+    "FW-MF": ["그 선수한테서 공이 시작된다. 앞에서부터 붙어서 편하게 못 차게 해라."],
+    "FW-DF": ["너를 막으러 나올 선수다. 한 번 이기면 그 뒤로는 편해진다.", "저 선수를 등지고 버티지 마라. 공 받기 전에 먼저 움직여라."],
+  },
+  // 경기 전 단톡방
+  chatBefore: ["{mate}: 이번 주 상대 {team}. 거기 {ace} 있잖아 ㄷㄷ\n\n{mate2}: {trait} 장난 아니라던데\n\n{mentor}: 이름 듣고 겁먹지 말고 훈련이나 하자",
+               "{mate2}: {ace} 영상 봤는데 진짜 잘함\n\n{friend}: 우리도 {name} 있잖아 ㅋㅋ\n\n{mentor}: 상대 말고 우리 거나 잘하자"],
+  chatRevenge: ["{mate}: 이번 주 {ace} 또 나온다더라\n\n{mate2}: 전에 우리한테 골 넣은 걔?\n\n{mentor}: 이번엔 안 된다. 다들 각오해라"],
+  // 경기 뒤 단톡방
+  chatAfterScored: ["{mentor}: {ace} 잘하긴 하더라. 월요일에 영상 다시 보자", "{mate}: {ace} 막는 법 누가 좀 알려 줘라 ㅠ"],
+  chatAfterHeld: ["{mate}: 오늘 {ace} 한 골도 못 넣음 ㅋㅋ\n\n{mentor}: 수비 다 같이 잘했다"],
+  // 경기 후 면담 (감독님)
+  coachHeldWin: ["오늘 {ace|을/를} 거의 지웠다. 그게 오늘 승리다.", "{ace|이/가} 공 잡을 때마다 네가 먼저 가 있더라. 그게 오늘 경기를 결정했다."],
+  coachHeldDraw: ["{ace|을/를} 묶은 건 잘했다. 그 덕에 승점 하나 챙겼다."],
+  coachScored: ["{ace}한테 {goals}골. 그 선수가 공 잡을 때마다 우리가 한 박자씩 늦었다. 다음엔 먼저 붙어라."],
+};
+
+// ── 상황별 감독님·코치님 메시지 (주 끝에 상황이 맞으면 하나씩). {name} 나, {given} 이름만
+// from: coach 감독님 / assist 코치님
+export const COACH_TALK = {
+  lossStreak: [
+    { from: "coach", title: "연패 중이다", body: "몇 경기째 못 이기고 있다. 이럴 때 제일 먼저 무너지는 건 다리가 아니라 목소리다.\n\n훈련장에서 더 크게 말해라. 나도 그렇게 하겠다." },
+    { from: "assist", title: "지금은 버티는 시간", body: "지는 경기가 이어지면 다들 남 탓부터 한다. 그런데 영상을 보면 다 같이 한 발씩 늦었다.\n\n이번 주는 기본기 위주로 간다. 화려한 거 말고, 쉬운 패스부터 정확하게." },
+    { from: "coach", title: "고개 들어라", body: "결과는 감독 책임이다. 너희는 오늘 훈련 하나만 책임져라. 그거면 된다." },
+  ],
+  winStreak: [
+    { from: "coach", title: "연승이라고 들뜨지 마라", body: "요즘 다들 발걸음이 가볍더라. 좋다. 그런데 이기는 동안 생긴 나쁜 버릇은 질 때 한꺼번에 나온다.\n\n이번 주 훈련은 오히려 더 빡빡하게 한다." },
+    { from: "assist", title: "잘나갈 때일수록", body: "연승 중일 때 상대 팀들은 우리 영상을 돌려 본다. 우리가 뭘 잘하는지 이제 다 안다는 뜻이다.\n\n하나쯤은 새로운 걸 준비하자." },
+  ],
+  comeback: [
+    { from: "assist", title: "복귀 첫 주", body: "다시 운동장에 선 거 축하한다. 첫 주는 70%만 써라. 몸이 '괜찮다'고 말해도 한 번 더 의심해라.\n\n조급해하면 같은 데 또 다친다." },
+    { from: "coach", title: "돌아왔구나", body: "쉬는 동안 많이 답답했을 거다. 그 답답함을 경기장에서 한꺼번에 풀려고 하지는 마라. 천천히, 대신 확실하게." },
+  ],
+  examWeek: [
+    { from: "coach", title: "시험 주간 훈련 안내", body: "이번 주는 시험 주간이다. 훈련은 짧고 굵게 끝낸다.\n\n운동장에서 일찍 보내 주는 이유를 잊지 마라. 성적표도 경기 기록만큼 내가 본다." },
+    { from: "assist", title: "시험 잘 봐라", body: "시험 주라 훈련 시간 줄인다. 남는 시간에 핸드폰 보지 말고 책 봐라.\n\n시험 끝나면 그동안 못 뛴 만큼 실컷 뛰게 해 주마." },
+  ],
+  preTournament: [
+    { from: "coach", title: "대회가 코앞이다", body: "이번 주말부터 대회다. 지금부터 새로 배울 건 없다. 지금까지 한 걸 믿어라.\n\n짐은 가볍게, 마음은 무겁게. 잠은 충분히." },
+    { from: "assist", title: "대회 준비물", body: "축구화 두 켤레, 정강이 보호대, 상비약, 그리고 물병. 하나라도 빠뜨리면 경기 전에 마음이 흔들린다.\n\n대회 기간엔 휴대폰 보는 시간 줄이고 일찍 자라." },
+  ],
+  vacation: [
+    { from: "coach", title: "방학이다", body: "방학 첫 주는 합숙부터 시작이다. 방학이라고 몸이 풀리면 개학하고 바로 티가 난다.\n\n쉬는 날은 확실히 쉬고, 뛰는 날은 확실히 뛰어라. 어중간한 게 제일 나쁘다." },
+    { from: "assist", title: "방학 중 생활", body: "방학엔 밤낮이 바뀌기 쉽다. 아침 훈련 시간에 맞춰서 일어나는 것까지가 훈련이다." },
+  ],
+  scholar: [
+    { from: "coach", title: "성적표 봤다", body: "담임 선생님께 네 성적 얘기 들었다. 운동하면서 그 성적이면 대단한 거다.\n\n공부하는 선수는 경기도 읽는다. 지금처럼만 해라." },
   ],
 };
