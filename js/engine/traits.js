@@ -16,6 +16,7 @@ const RULES = {
   comeback:   s => !!s.flags.comebackReady,
   ironLungs:  s => (s.record.camps || 0) >= 2 && s.player.stats.phys.stamina >= 65,
   scholar:    s => (s.record.topExams || 0) >= 2,
+  modelStudent: s => (s.flags.acad80Weeks || 0) >= 20,
 };
 
 const LINES = {
@@ -29,6 +30,7 @@ const LINES = {
   comeback:   "넘어져 봤으니 일어나는 법도 안다.",
   ironLungs:  "합숙을 두 번 버텼다. 후반 30분에도 다리가 가볍다.",
   scholar:    "운동장에서도 교실에서도 밀리지 않는다. 류봉두 선생님이 웃으셨다.",
+  modelStudent: "감독님이 다른 선수들 앞에서 내 성적표 이야기를 꺼내셨다. \"공부하는 놈이 경기도 읽는다.\"",
 };
 
 export function traitInfo(id) {

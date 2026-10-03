@@ -94,8 +94,6 @@ export const TRAITS = {
                desc: "후반에도 몸이 무뎌지지 않습니다.", bonus: { "phys.stamina": 2 } },
   scholar:   { label: "문무겸비",    good: true, earned: true, how: "정기시험 상위권 2번",
                desc: "공부 효과 +20%, 시험 성적이 잘 나옵니다.", bonus: { "student.academic": 3, "student.attitude": 2 } },
-  modelStudent: { label: "모범생",   good: true, earned: true, how: "학업 80 이상을 20주 동안 유지",
-               desc: "감독님 신뢰가 매주 조금씩 더 오르고, 집중력이 필요한 경기 장면의 성공률이 오릅니다.", bonus: { "mental.focus": 2, "student.attitude": 2 } },
 };
 
 // 기존 특성 중에도 경기와 생활 속에서 새로 얻을 수 있는 것

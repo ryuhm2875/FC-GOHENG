@@ -62,6 +62,9 @@ export function schoolOptions(state) {
     let need = TIER_NEED[s.tier];
     const notes = [];
     if (recommend) { need -= 3; notes.push("감독님 추천서 −3"); }
+    if (p.stats.student.academic >= 80) { need -= 2; notes.push("학업 우수 추천 가산 −2"); }
+    if (state.flags.jnSelected) { need -= 2; notes.push("전남 대표 경력 −2"); }
+    if (state.goals?.done?.award) { need -= 1; notes.push("우수선수상 −1"); }
     if (p.stats.student.attitude < 40) { need += 3; notes.push("생활태도 부족 +3"); }
     if (p.stats.student.academic < 30) { need += 2; notes.push("학업 부족 +2"); }
     if (sc?.interest) { const d = Math.min(5, Math.floor(sc.interest / 15)); if (d) { need -= d; notes.push(`관심도 −${d}`); } }
@@ -136,9 +139,9 @@ export function decideEnding(state) {
 export function teacherLetter(state) {
   const t = state.relations.teacher ?? 50, n = state.player.name;
   const sign = `— ${STAFF.teacher.replace(/\s*선생님$/, "")}`;
-  if (t >= 70) return `${n}에게.\n\n3년 동안 운동장에서 제일 먼저 뛰고, 교실에서도 끝까지 버티던 너를 기억한다. 넘어지는 날도 있었지. 그래도 너는 매번 일어났다.\n\n고등학교에 가서도 그 모습 그대로면 된다. 고흥에 오면 국어실 문 두드려라.\n\n${sign}`;
-  if (t >= 45) return `${n}에게.\n\n축구화 끈 묶는 손이 3년 사이에 많이 커졌더라. 운동장에서 보낸 시간만큼 교실에서 보낸 시간도 너를 만들었다는 걸, 언젠가는 알게 될 거다.\n\n어디서 뛰든 응원한다.\n\n${sign}`;
-  return `${n}에게.\n\n솔직히 말하면, 교실에서는 너와 이야기할 기회가 많지 않았다. 그게 내내 마음에 걸렸다. 그래도 운동장에서 뛰는 너를 창문으로 자주 봤다.\n\n다음 3년은 공도 사람도 조금 더 가까이 두고 지내라. 그렇게 될 거라고 믿는다.\n\n${sign}`;
+  if (t >= 70) return `${n}에게.\n\n3년 동안 운동장에서 제일 먼저 뛰고, 교실에서도 끝까지 버티던 너를 기억한다. 넘어지는 날도 있었지. 그래도 너는 매번 일어났다.\n\n고등학교에 가서도 그 모습 그대로면 된다. 그리고 나중에, 어른이 되어서 꼭 선생님을 찾아와라. 어떻게 컸는지 직접 보고 싶다.\n\n${sign}`;
+  if (t >= 45) return `${n}에게.\n\n축구화 끈 묶는 손이 3년 사이에 많이 커졌더라. 운동장에서 보낸 시간만큼 교실에서 보낸 시간도 너를 만들었다는 걸, 언젠가는 알게 될 거다.\n\n어디서 뛰든 응원한다. 시간이 지나 생각나면 꼭 한번 선생님을 찾아와라.\n\n${sign}`;
+  return `${n}에게.\n\n솔직히 말하면, 교실에서는 너와 이야기할 기회가 많지 않았다. 그게 내내 마음에 걸렸다. 그래도 운동장에서 뛰는 너를 창문으로 자주 봤다.\n\n다음 3년은 공도 사람도 조금 더 가까이 두고 지내라. 그렇게 될 거라고 믿는다. 그리고 언제든 좋으니 꼭 선생님을 찾아와라. 그때는 못다 한 이야기를 길게 하자.\n\n${sign}`;
 }
 
 // 엔딩 도감 (이 기기에 저장)

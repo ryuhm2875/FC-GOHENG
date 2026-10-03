@@ -16,6 +16,8 @@ import { esc, img, faceOf, fl, stars, gauge, statLevel, AVATAR } from "./util.js
 import { getPath } from "../rng.js";
 import { REL_ROLES, rivalGap, captainScore } from "../engine/relations.js";
 import { isBirthdayWeek } from "../engine/birthday.js";
+import { blessedThisTerm } from "../engine/events.js";
+import { goalProgress } from "../engine/goals.js";
 
 const ACADEMIC_ALERT = [
   null,
@@ -219,13 +221,24 @@ function compPanel(state) {
     <button class="linkbtn right" data-go="team">자세히</button></h2>${leagueTable(state, true)}</section>`;
 }
 
+// 나의 목표 (중2부터)
+function goalsPanel(state) {
+  const list = goalProgress(state);
+  const main = list.find(g => g.main);
+  return `<section class="panel goals"><h2>나의 목표 <small>${main ? `가장 이루고 싶은 목표: ${esc(main.label)}` : "3월 3주 감독님 면담에서 정함"}</small></h2>
+    <ul class="goal-list">${list.map(g => `<li class="${g.state} ${g.main ? "is-main" : ""}">
+      <span class="gi" aria-hidden="true">${g.icon}</span>
+      <div class="gb"><div class="gt">${esc(g.label)}${g.main ? ` <span class="chip kit">목표</span>` : ""}${g.state === "done" ? ` <span class="chip ok">달성</span>` : g.state === "fail" ? ` <span class="chip">아쉽게 실패</span>` : ""}</div>
+      <div class="gs mute">${g.state === "done" ? esc(g.desc) : esc(g.text)}</div></div></li>`).join("")}</ul></section>`;
+}
+
 export function homeView(state, opts = {}) {
   // 휴대폰에서는 다음 경기 → 카드 → 이번 주 → 컨디션 → 순위 → 메시지 → 경쟁 순서 (css .home)
   return `<div class="cols home">
     <div class="colwrap"><div class="o2">${jerseyCard(state)}</div><div class="o4">${conditionPanel(state)}</div><div class="o7">${depthPanel(state)}</div></div>
     <div class="colwrap"><div class="o1">${nextMatchTile(state)}</div><div class="o3">${weekPanel(state, opts)}</div>
       <div class="advance o3b"><button class="btn btn-kit btn-go" data-advance><span>이번 주 진행</span></button></div>
-      <div class="o5">${compPanel(state)}</div><div class="o6">${mailPreview(state)}</div><div class="o8">${upcomingPanel(state)}</div></div>
+      <div class="o5">${compPanel(state)}</div>${state.calendar.grade >= 2 ? `<div class="o5g">${goalsPanel(state)}</div>` : ""}<div class="o6">${mailPreview(state)}</div><div class="o8">${upcomingPanel(state)}</div></div>
   </div>`;
 }
 
@@ -325,7 +338,7 @@ export function teamView(state, tab = "league") {
         <div class="rel-main">
           <div class="rel-head"><span class="rel-ic">📒</span><b>${esc(STAFF.teacher)}</b><span class="mute">담임, 국어</span></div>
           <div class="rel-bar"><div class="track"><div class="fill" style="width:${tv}%"></div></div><span class="num">${Math.round(tv)}</span><span class="mute">${word(tv)}</span></div>
-          <p class="rel-desc">시험 성적, 수업 태도, 학교 행사에서의 선택에 따라 관계가 달라지고, 졸업식 날 받는 편지도 바뀝니다. 70 이상이면 1년에 한 번 '류봉두의 축복'이 찾아옵니다${state.flags.blessed?.[state.calendar.grade] ? " (올해 받음 ✨)" : ""}.</p>
+          <p class="rel-desc">시험 성적, 수업 태도, 학교 행사에서의 선택에 따라 관계가 달라지고, 졸업식 날 받는 편지도 바뀝니다. 70 이상이면 학기마다 한 번 '류봉두의 축복'이 찾아옵니다${blessedThisTerm(state) ? " (이번 학기 받음 ✨)" : ""}.</p>
         </div></div>`;
     body = `<h2>관계</h2><div class="rels">${teacherCard}${Object.entries(REL_ROLES).map(([k, r]) => {
       const x = P[k];
@@ -411,8 +424,10 @@ export function scheduleView(state, grade = state.calendar.grade) {
 }
 
 export function inboxView(state) {
-  return `<section class="panel" style="max-width:720px;margin:0 auto;width:100%"><h2>메시지 <small>${state.inbox.filter(m => !m.read).length}개 안 읽음</small>
-    <button class="linkbtn right" data-readall>모두 읽음</button></h2>
+  const unread = state.inbox.filter(m => !m.read).length;
+  return `<section class="panel inbox" style="max-width:720px;margin:0 auto;width:100%"><h2>메시지</h2>
+    <div class="inbox-bar"><span class="mute">${unread ? `안 읽은 메시지 <b class="num">${unread}</b>개` : "모두 읽었습니다"}</span>
+    <button class="btn btn-sm btn-ghost" data-readall ${unread ? "" : "disabled"}>모두 읽음</button></div>
     ${state.inbox.map(m => mailRow(m, state)).join("") || `<p class="mute">아직 받은 메시지가 없습니다.</p>`}</section>`;
 }
 

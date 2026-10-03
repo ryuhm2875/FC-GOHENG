@@ -28,6 +28,7 @@ export function lifeMail(state, info) {
     if (x.when?.months && !x.when.months.includes(info.month)) return false;
     if (x.when?.grades && !x.when.grades.includes(info.grade)) return false;
     if (x.from === "teacher" && info.vacation) return false;          // 방학에는 담임 선생님 학교 이야기 없음
+    if (x.school && info.vacation) return false;                      // 숙제·급식·수업 이야기도 학기 중에만
     if (REL.includes(x.from) && !person(state, x.from)) return false;
     const last = state.lifeLog[x.id];
     if (last != null && state.calendar.turn - last < 30) return false;

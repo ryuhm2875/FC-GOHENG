@@ -1,4 +1,4 @@
-// 메시지 만들기: 경기 전 분석, 경기 후 피드백, 주간 조언.
+// 메시지 만들기: 경기 전 미팅, 경기 후 피드백, 주간 조언.
 // 모든 문장은 지금 게임 속 숫자(능력치, 순위, 피로, 학업)를 넣어 만듭니다.
 import { STAT_LABEL, POSITIONS } from "../../data/player.js";
 import { ACTIONS } from "../../data/actions.js";
@@ -8,7 +8,7 @@ import { turnInfo } from "./calendar.js";
 import { ovr, depthChart, teamStrength } from "./team.js";
 import { sortTable, US, TEAM_NAME } from "./season.js";
 import { getPath, pick } from "../rng.js";
-import { conditionOf } from "./growth.js";
+import { conditionOf, applyGain } from "./growth.js";
 import { lifeMail, afterMatchChat } from "./life.js";
 import { eligibility } from "./match.js";
 import { stillScheduled } from "./season.js";
@@ -16,7 +16,7 @@ import { chance } from "../rng.js";
 import { isBirthdayWeek } from "./birthday.js";
 import { chatText } from "./life.js";
 import { aceOf, aceAbsent } from "./opponents.js";
-import { ACE_TALK } from "../../data/messages.js";
+import { ACE_TALK, COACH_TALK } from "../../data/messages.js";
 
 const f0 = v => Math.floor(v);
 // 받침 판단. 숫자는 읽는 소리 기준 (0 십/영, 1 일, 3 삼, 6 육, 7 칠, 8 팔은 받침 있음)
@@ -85,64 +85,86 @@ function strengthWord(diff) {
   return "전력은 우리가 앞선다";
 }
 
-// ── 경기 전 분석 (코치) ─────────────
-// 숫자를 늘어놓기보다, 코치가 옆에서 툭 건네는 말처럼 씁니다.
+// ── 경기 전 미팅 (정 코치 분석 → 감독님 한마디 → 내 대답) ─────────────
+// 메시지가 아니라 경기 직전 장면으로 보여 줍니다 (js/ui/modals.js meetingModal).
+// 반환: { scene, lines: [{ who: "assist" | "coach" | "nar", t }], choices: [{ label, reply, who, buff, fx }] }
 const levelWord = v => v < 45 ? "low" : v > 65 ? "high" : "mid";
-export function previewMail(state, fx) {
+// 최근 공식 경기 흐름: +n 연승, -n 연패
+function streakOf(state) {
+  const ms = state.record.matches.filter(x => x.official && x.minutes != null);
+  let k = 0;
+  for (let i = ms.length - 1; i >= 0; i--) {
+    const r = ms[i].result;
+    if (k === 0) { if (r === "무") break; k = r === "승" ? 1 : -1; continue; }
+    if ((k > 0 && r === "승") || (k < 0 && r === "패")) k += k > 0 ? 1 : -1; else break;
+  }
+  return k;
+}
+export function meetingScript(state, fx) {
   const info = turnInfo(state);
   const p = state.player;
   const style = styleOf(fx.opponent.name);
   const d = depthChart(state);
-  const lines = [];
-  const opener = pickOr(["이번 주 상대 정리해서 보낸다.", "영상 몇 경기 돌려 봤다. 요점만 적는다.", "이번 경기 준비. 읽고 훈련 들어와라.", "상대 분석이다. 길게 안 쓴다."], 0.6);
-  lines.push(`${opener ? opener + " " : ""}${info.month}월 ${info.week}주 ${fx.compLabel}${fx.round ? ` ${fx.round}` : ""}, 상대는 ${fx.opponent.name}.`);
-  // 지난번 맞대결
+  const L = [];
+  const A = t => L.push({ who: "assist", t }), C = t => L.push({ who: "coach", t }), N = t => L.push({ who: "nar", t });
+  const tour = fx.comp === "summer" || fx.comp === "winter";
+  const place = tour ? pick(["대회 숙소 회의실. 선수들이 바닥에 둘러앉았다.", "숙소 식당 한쪽에 화이트보드가 세워졌다. 다들 숟가락을 내려놓는다."])
+    : fx.comp === "hs" ? "고등학교 운동장 옆 그늘. 형들이 몸 푸는 소리가 들린다."
+    : fx.elementary ? "운동장 벤치 앞. 초등학생들이 공을 차며 떠드는 소리가 들린다."
+    : pick(["라커룸. 화이트보드에 상대 대형이 그려져 있다.", "경기 전 라커룸. 축구화 끈 묶는 소리만 들린다.", `원정 버스에서 내려 라커룸에 모였다. ${STAFF.assistant}님이 마커 뚜껑을 여신다.`, "몸 풀기 전, 다 같이 라커룸에 둘러앉았다."]);
+  N(place);
+  A(`${pick(["자, 다들 모여 봐라. 이번 상대 얘기 짧게 한다.", "화이트보드 봐라. 한 번만 설명한다.", "영상 몇 경기 돌려 봤다. 요점만 말한다.", "길게 안 한다. 귀만 열어 둬라."])} ${fx.compLabel}${fx.round ? ` ${fx.round}` : ""}, 상대는 ${fx.opponent.name}.`);
   const lastVs = state.record.matches.slice().reverse().find(x => x.opponent === fx.opponent.name);
-  if (lastVs && fx.comp !== "hs") lines.push(lastVs.result === "승" ? pick([`지난번엔 ${lastVs.gf}:${lastVs.ga}로 이겼다. 저쪽도 그걸 기억하고 나온다.`, `지난 맞대결은 우리가 이겼다. 그래서 더 조심해야 한다. 갚으러 오는 팀이 제일 무섭다.`])
-    : lastVs.result === "패" ? pick([`지난번엔 ${lastVs.gf}:${lastVs.ga}로 졌다. 이번엔 갚아 줘야지.`, `지난 맞대결에서 졌던 거, 다들 기억하지? 같은 실수는 두 번 안 한다.`])
-    : pick([`지난번엔 ${lastVs.gf}:${lastVs.ga}로 비겼다. 이번엔 결판내자.`, "지난번엔 승부를 못 냈다. 이번엔 한 골 차라도 이기자."]));
+  if (lastVs && fx.comp !== "hs") A(lastVs.result === "승" ? pick([`지난번엔 ${lastVs.gf}:${lastVs.ga}${ro(lastVs.ga)} 이겼다. 저쪽도 그걸 기억하고 나온다.`, "지난 맞대결은 우리가 이겼다. 그래서 더 조심해야 한다. 갚으러 오는 팀이 제일 무섭다."])
+    : lastVs.result === "패" ? pick([`지난번엔 ${lastVs.gf}:${lastVs.ga}${ro(lastVs.ga)} 졌다. 이번엔 갚아 줘야지.`, "지난 맞대결에서 졌던 거, 다들 기억하지? 같은 실수는 두 번 안 한다."])
+    : pick([`지난번엔 ${lastVs.gf}:${lastVs.ga}${ro(lastVs.ga)} 비겼다. 이번엔 결판내자.`, "지난번엔 승부를 못 냈다. 이번엔 한 골 차라도 이기자."]));
 
+  let ace = null;
   if (fx.comp === "hs") {
     const s = fx.school;
     const tierWord = { footballHS: "축구부가 탄탄한 학교", regional: "이 지역에서 손꼽히는 학교", national: "전국대회 단골인 학교", proYouth: "프로 구단 유스팀" }[s.tier];
-    lines.push(`${josa(s.name, "은", "는")} ${ida(tierWord)}. ${s.coach}님께서 직접 보러 오신다는구나.`);
+    A(`${josa(s.name, "은", "는")} ${ida(tierWord)}. 오늘 ${s.coach}님께서 직접 보러 오셨다.`);
     const small = p.body.height < 170 || p.stats.phys.strength < 55;
-    lines.push(small ? "고등학생들은 한 뼘은 더 크고 단단하다. 정면으로 부딪히기보다 한 박자 먼저 움직여라."
+    A(small ? "고등학생들은 한 뼘은 더 크고 단단하다. 정면으로 부딪히기보다 한 박자 먼저 움직여라."
       : "몸으로 밀릴 정도는 아니다. 오히려 형들한테 네 몸을 보여 줄 기회다.");
-    lines.push("이런 경기 하나가 진로를 바꾸기도 한다. 이기는 것보다, 네가 어떤 선수인지 보여 주고 와라.");
+  } else if (fx.elementary) {
+    A(pick(["초등학생들이라고 웃지 마라. 쟤들은 지는 걸 모른다.", "작다고 얕보다가 한 골 먹으면, 그 영상 평생 돈다. 알지?"]));
   } else {
     const ourStr = teamStrength(state, true) * 0.6 + 50 * 0.4;
     const diff = fx.opponent.strength - ourStr;
-    const diffLine = diff > 5 ? pick(["솔직히 쉽지 않은 상대다. 버티는 시간이 길 거다.", "한 수 위인 팀이다. 대신 이런 팀한테 이기면 그게 오래 간다.", "전력만 보면 우리가 밀린다. 그래서 더 재미있는 경기다."])
+    const diffLine = diff > 5 ? pick(["솔직히 쉽지 않은 상대다. 버티는 시간이 길 거다.", "한 수 위인 팀이다. 대신 이런 팀한테 이기면 그게 오래 간다.", "전력만 보면 우리가 밀린다. 그래서 더 재미있는 경기다.", "다들 겁먹은 얼굴 하지 마라. 저쪽도 사람이다."])
       : diff > 2 ? pick(["만만치 않다. 집중력 싸움이 될 거다.", "조금 앞서는 팀이다. 실점만 늦추면 기회는 온다.", "비슷해 보여도 경험이 많은 팀이다. 흔들리지 마라."])
-      : diff > -2 ? pick(["해 볼 만한 상대다. 먼저 실수하는 쪽이 진다.", "딱 우리만 한 팀이다. 누가 더 많이 뛰느냐다.", "50 대 50이다. 세트피스 하나가 갈라 놓을 거다."])
-      : pick(["우리가 할 것만 하면 된다. 그래도 방심하는 순간 뒤집힌다.", "전력은 우리가 앞선다. 이런 경기를 쉽게 이겨야 강팀이다.", "이겨야 본전인 경기다. 일찍 골 넣고 편하게 가자."]);
-    lines.push(`${style.label}이다. ${diffLine}`);
-    // 상대 에이스
-    const ace = aceOf(state, fx.opponent.name);
-    if (ace) {
+      : diff > -2 ? pick(["해 볼 만한 상대다. 먼저 실수하는 쪽이 진다.", "딱 우리만 한 팀이다. 누가 더 많이 뛰느냐다.", "50 대 50이다. 세트피스 하나가 갈라 놓을 거다.", "누가 먼저 한 발 더 뛰느냐. 그게 다다."])
+      : pick(["우리가 할 것만 하면 된다. 그래도 방심하는 순간 뒤집힌다.", "전력은 우리가 앞선다. 이런 경기를 쉽게 이겨야 강팀이다.", "이겨야 본전인 경기다. 일찍 골 넣고 편하게 가자.", "쉬운 경기라고 생각하는 순간 어려워진다."]);
+    A(`${style.label}이다. ${diffLine}`);
+    const a0 = aceOf(state, fx.opponent.name);
+    if (a0) {
       const team = fx.opponent.name;
-      if (aceAbsent(state, team, info.turn)) lines.push(aceText(state, pick(ACE_TALK.absent), ace, { team }));
+      if (aceAbsent(state, team, info.turn)) A(aceText(state, pick(ACE_TALK.absent), a0, { team }));
       else {
+        ace = a0;
         const memo = state.oppMemo?.[ace.name];
         const parts = [aceText(state, pick(ACE_TALK.intro), ace, { team }), aceText(state, pick(ACE_TALK.trait), ace)];
         if (memo?.goals >= 1) parts.push(aceText(state, pick(ACE_TALK.scoredBefore), ace, { goals: memo.goals }));
         else if (memo?.games && memo.grade < state.calendar.grade) parts.push(aceText(state, pick(ACE_TALK.metLastYear), ace));
-        const mu = ACE_TALK.matchup[`${p.position}-${ace.pos}`];
-        if (mu?.length) parts.push(aceText(state, pick(mu), ace));
-        lines.push(parts.join(" "));
-        // 경기 전 단톡방 (복수전이면 꼭, 아니면 가끔)
-        if (memo?.goals >= 1 || chance(0.3)) mail(state, "group", `이번 주 상대: ${team}`, aceText(state, pick(memo?.goals >= 1 ? ACE_TALK.chatRevenge : ACE_TALK.chatBefore), ace, { team }));
+        A(parts.join(" "));
       }
     }
     if (state.league && fx.comp === "league" && state.league.played > 0) {
       const rows = sortTable(state.league.table);
       const them = rows.findIndex(r => r.id === fx.opponent.id);
       const us = rows.findIndex(r => r.id === US);
-      lines.push(them < us && diff <= -2 ? pick(["순위는 저쪽이 위지만, 전력으로는 밀리지 않는다. 여기서 잡으면 판이 달라진다.", "순위표에선 우리보다 위에 있다. 그래도 붙어 보면 우리가 낫다. 증명하고 와라."])
+      A(them < us && diff <= -2 ? pick(["순위는 저쪽이 위지만, 전력으로는 밀리지 않는다. 여기서 잡으면 판이 달라진다.", "순위표에선 우리보다 위에 있다. 그래도 붙어 보면 우리가 낫다. 증명하고 와라."])
         : them < us ? pick(["순위표에서 우리보다 위에 있는 팀이다. 여기서 잡으면 판이 달라진다.", "우리 위에 있는 팀이다. 승점 3점이 아니라 6점짜리 경기라고 생각해라."])
         : them < 3 ? pick(["요즘 기세가 좋은 팀이다.", "최근에 지는 법을 잊은 팀이다. 그 흐름을 우리가 끊자."])
         : pick(["순위는 아래지만, 그런 팀이 제일 독하게 나온다.", "순위표만 보고 들어가면 큰코다친다. 아래 있는 팀일수록 물고 늘어진다."]));
+    }
+    // 따로 불러서 하는 이야기
+    const an = `${STAFF.assistant}님`;
+    N(pick([`미팅이 끝나고 ${an}이 너를 따로 부르신다.`, `다들 일어서는데 ${an}이 네 어깨를 툭 치신다.`, `${an}이 너만 잠깐 남으라고 손짓하신다.`]));
+    if (ace) {
+      const mu = ACE_TALK.matchup[`${p.position}-${ace.pos}`];
+      if (mu?.length) A(aceText(state, pick(mu), ace));
     }
     const lv = levelWord(getPath(p.stats, style.stat));
     const st = STAT_LABEL[style.stat];
@@ -150,31 +172,93 @@ export function previewMail(state, fx) {
     const stLine = lv === "low" ? pick([`네 ${josa(st, "은", "는")} 아직 ${isTech ? "몸에 덜 붙었으니" : "모자라니"} 무리하지 말고.`, `${josa(st, "은", "는")} 아직 네 약점이다. 오늘은 숨기고, 잘하는 걸로 승부해라.`])
       : lv === "high" ? pick([`이런 경기에선 네 ${josa(st, "이", "가")} 오히려 무기가 된다.`, `네 ${josa(st, "이", "가")} 이 팀한테는 제일 귀찮을 거다. 마음껏 써라.`])
       : pick([`네 ${josa(st, "이", "가")} 얼마나 버텨 주느냐가 관건이다.`, `${josa(st, "은", "는")} 딱 중간이다. 오늘 경기가 그걸 끌어올릴 기회다.`]);
-    const aceNow = aceOf(state, fx.opponent.name);
     let tips = style.tips;
-    if (aceNow && !aceAbsent(state, fx.opponent.name, info.turn)) tips = tips.filter(x => !x.includes("왼발잡이")).map(x => x.replace("10번 하나만", `${aceNow.number}번 ${aceNow.name} 하나만`));
-    lines.push(`${pick(tips)} ${stLine}`);
+    if (ace) tips = tips.filter(x => !x.includes("왼발잡이")).map(x => x.replace("10번 하나만", `${ace.number}번 ${ace.name} 하나만`));
+    A(`${pick(tips)} ${stLine}`);
     const city = Object.keys(TRAVEL).find(c => fx.opponent.name.startsWith(c));
-    if (city && fx.comp === "league" && chance(0.4)) lines.push(TRAVEL[city]);
-    if (fx.ko) lines.push(pick(["토너먼트다. 지면 그대로 짐 싸서 고흥 내려간다.", "오늘 지면 숙소 짐부터 싸야 한다. 그 생각만 해도 다리가 움직일 거다.", "토너먼트에서 다음은 없다. 70분 동안 후회 남기지 마라."]));
+    if (city && fx.comp === "league" && chance(0.4)) A(TRAVEL[city]);
   }
 
+  // 감독님: 상황에 맞는 한마디
+  const sk = streakOf(state);
   const elig = eligibility(state, fx);
-  if (!elig.ok) {                                      // 다쳤거나 성적 때문에 못 뛰는 주에는 그 이야기만
-    lines.push(p.condition.injury ? "이번 주는 재활이 먼저다. 벤치 옆에서 경기 흐름이라도 읽어 둬라."
-      : "그리고… 성적 때문에 이번엔 명단에 너를 못 넣는다. 감독님도 아쉬워하신다. 책상 앞에서 먼저 이기고 와라.");
+  const back = state.flags.returnTurn != null && info.turn - state.flags.returnTurn <= 3;
+  const exam = info.exam && !info.exam.free;
+  const ctx = [];
+  if (fx.round === "결승") ctx.push(pick(["결승이다. 여기까지 온 것만으로 잘했다는 말은 안 하겠다. 이기러 왔다.", "결승전은 실력보다 마음이 먼저 지친다. 끝까지 우리 축구 하자.", "오늘 이기면 이 버스 타고 우승 트로피 들고 고흥 간다."]));
+  else if (tour && fx.round === "조별리그 1차전") ctx.push(pick(["대회 첫 경기다. 첫 경기에서 몸이 풀리면 끝까지 간다.", "여기 오려고 합숙하면서 버텼다. 그 땀 오늘 다 꺼내 써라."]));
+  else if (fx.ko) ctx.push(pick(["토너먼트다. 지면 그대로 짐 싸서 고흥 내려간다.", "오늘 지면 숙소 짐부터 싸야 한다. 그 생각만 해도 다리가 움직일 거다.", "토너먼트에서 다음은 없다. 70분 동안 후회 남기지 마라."]));
+  if (sk <= -3) ctx.push(pick([`${-sk}연패다. 남 탓 하지 마라. 나부터 반성하고 있다. 오늘은 한 발씩만 더 뛰자.`, `${-sk}경기째 못 이겼다. 고개 숙이지 마라. 오늘 끊으면 된다.`]));
+  else if (sk <= -2) ctx.push(pick(["두 경기 연속 졌다. 지는 데 익숙해지면 안 된다.", "연패는 오늘 여기서 끊는다. 다들 눈빛부터 바꿔라."]));
+  else if (sk >= 4) ctx.push(pick([`${sk}연승이다. 이럴 때가 제일 위험하다. 들뜨는 순간 무너진다.`, `${sk}연승 했다고 상대가 알아서 져 주지 않는다. 오늘도 처음처럼.`]));
+  else if (sk >= 2) ctx.push(pick(["요즘 흐름 좋다. 그 흐름은 우리가 만든 거다. 오늘도 이어 가자.", "이기는 맛 봤으면, 그 맛 잊지 마라."]));
+  if (exam) ctx.push(pick(["시험 기간인데 경기까지 있다. 공부하느라 고생 많다. 오늘 70분은 축구만 생각해라.", "시험 기간에 운동장 나온 것만으로도 대단하다. 그래도 경기장에선 핑계 없다."]));
+  else if (info.vacation && !tour && chance(0.5)) ctx.push(pick(["방학이라고 몸이 풀리면 안 된다. 다른 팀은 지금 이 순간에도 뛰고 있다.", "방학 동안 쌓은 게 오늘 나온다."]));
+  if (back && elig.ok) ctx.push(pick(["오래 쉬었다. 오늘은 무리하지 말고 감각부터 찾아라. 네가 돌아온 것만으로 팀이 든든하다.", "다쳤던 데는 이제 괜찮지? 겁먹지 말고, 그렇다고 서두르지도 마라."]));
+  if (isBirthdayWeek(state, info) && elig.ok) ctx.push("생일 주간이라며. 선물은 네가 직접 골로 챙겨라.");
+  if (fx.comp === "hs") ctx.push("이런 경기 하나가 진로를 바꾸기도 한다. 이기는 것보다, 네가 어떤 선수인지 보여 주고 와라.");
+  if (fx.elementary) ctx.push("이겨야 본전이다. 그래도 형답게 깔끔하게 이기고, 끝나면 악수 꼭 해라.");
+  const say1 = ctx.length ? ctx.slice(0, 2).join(" ") : pick(["오늘도 우리 축구 하자. 서두르지 말고.", "준비한 대로만 해라. 결과는 내가 책임진다.", "공 없을 때 더 많이 뛰는 팀이 이긴다.", "한 명이 열 걸음 가는 것보다, 열한 명이 한 걸음씩 더 가는 게 낫다."]);
+  C(say1);
+
+  if (!elig.ok) {
+    C(p.condition.injury ? pick(["넌 이번 주 재활이 먼저다. 벤치 옆에서 경기 흐름이라도 읽어 둬라.", "다친 몸으로 뛰는 건 용기가 아니다. 오늘은 보면서 배워라."])
+      : "그리고… 성적 때문에 이번엔 명단에 너를 못 넣는다. 나도 아쉽다. 책상 앞에서 먼저 이기고 와라.");
   } else {
-    lines.push(d.rank <= d.slots ? pick(["감독님은 이번 주도 네 이름을 먼저 적어 두실 것 같다. 기대에 답해라.", "선발 명단에 네 이름 있을 거다. 그 자리, 당연한 거 아니다.", "이번 주도 처음부터 뛴다고 보고 준비해라. 몸 상태 숨기지 말고."])
-      : d.rank <= d.slots + 2 ? pick(["벤치에서 시작할 수도 있다. 그래도 기회는 언제 올지 모른다. 준비하고 있어라.", "선발은 장담 못 한다. 대신 들어가는 순간 바로 뛸 수 있게 몸은 데워 둬라.", "주전이랑 차이가 거의 없다. 이번 주 훈련이 명단을 바꿀 수도 있다."])
-      : pick(["아직은 앞에 선 선수들이 많다. 이번 주 훈련에서 감독님 눈에 띄는 게 먼저다.", "이번 주는 명단이 어렵다. 대신 훈련장에서 감독님 눈을 붙잡아라.", "지금은 순서가 뒤다. 순서는 훈련장에서 바뀐다."]));
+    C(d.rank <= d.slots ? pick(["오늘도 네 이름 먼저 적었다. 기대에 답해라.", "선발 명단에 네 이름 있다. 그 자리, 당연한 거 아니다.", "처음부터 뛴다. 몸 상태 숨기지 말고 말해라."])
+      : d.rank <= d.slots + 2 ? pick(["벤치에서 시작할 수도 있다. 그래도 기회는 언제 올지 모른다. 준비하고 있어라.", "선발은 장담 못 한다. 대신 들어가는 순간 바로 뛸 수 있게 몸은 데워 둬라.", "주전이랑 차이가 거의 없다. 들어가면 보여 줘라."])
+      : pick(["아직은 앞에 선 선수들이 많다. 오늘은 벤치에서 경기 읽는 법부터 배워라.", "이번 주는 명단이 어렵다. 대신 훈련장에서 내 눈을 붙잡아라.", "지금은 순서가 뒤다. 순서는 훈련장에서 바뀐다."]));
     const c = conditionOf(p);
-    if (c.score < 50) lines.push(`그리고 요즘 몸이 많이 무거워 보인다. 이대로면 가진 것의 반도 못 보여 준다.${p.condition.fatigue >= 85 ? " 감독님도 너를 선발로 쓰기 부담스러워하신다." : ""} 주중에 하루는 푹 쉬어라.`);
-    else if (c.score >= 85) lines.push(pick(["몸 상태는 지금이 제일 좋다. 이럴 때 보여 줘야 한다.", "요즘 몸이 가볍다는 거 다 보인다. 그 다리로 이번 경기 뛰어라."]));
-    const close = pickOr(["질문 있으면 훈련 끝나고 와라.", "물 많이 마시고, 경기 전날은 일찍 자라.", "나머지는 경기장에서 말하자.", "축구화 끈 새로 갈아 둬라. 그런 게 경기 날 마음을 편하게 한다."], 0.45);
-    if (close) lines.push(close);
+    if (c.score < 50) C(`요즘 몸이 많이 무거워 보인다.${p.condition.fatigue >= 85 ? " 이 상태면 처음부터 쓰기 어렵다." : ""} 오늘 끝나면 푹 쉬어라.`);
+    else if (c.score >= 85) C(pick(["몸 상태는 지금이 제일 좋다. 이럴 때 보여 줘야 한다.", "요즘 몸이 가볍다는 거 다 보인다. 그 다리로 뛰어라."]));
   }
 
-  mail(state, "assist", `[경기 분석] vs ${fx.opponent.name}`, lines.join("\n\n"));
+  // 내 대답 (작은 효과: 경기 중 해당 종류 선택 성공률 조금 ↑ 등)
+  const ch = [];
+  const coachName = STAFF.coach, asst = STAFF.assistant;
+  if (!elig.ok) {
+    ch.push({ label: "\"벤치에서 목소리로 돕겠습니다\"", who: "coach", reply: "그래. 벤치도 경기장이다. 네 목소리가 들리게 해라.", fx: { coach: 1.5, morale: 2 } });
+    ch.push({ label: "상대 분석 노트를 대신 정리하겠다고 한다", who: "assist", reply: "좋다. 보는 눈도 실력이다. 끝나고 같이 보자.", fx: { s: { "mental.focus": 0.4 } } });
+    ch.push({ label: "말없이 고개만 끄덕인다", who: "coach", reply: "속상한 거 안다. 오늘 이 마음, 잊지 마라.", fx: { s: { "mental.competitive": 0.3 } } });
+  } else {
+    if (ace && (p.position === "DF" || p.position === "MF")) ch.push({ label: `"${ace.name}, 제가 막겠습니다"`, who: "coach",
+      reply: pick([`좋다. ${josa(ace.name, "이", "가")} 공 잡을 때마다 네 얼굴이 보이게 해라.`, "말했으면 책임져라. 대신 혼자 다 하려고 하진 마라."]),
+      buff: { tag: "defend", bonus: 0.03, label: "수비 선택 성공률 +3%p" }, fx: { coach: 1 } });
+    if (p.position !== "DF") ch.push({ label: "\"오늘은 제가 골로 보여 드리겠습니다\"", who: "coach",
+      reply: p.stats.mental.confidence >= 55 ? pick(["그 자신감 좋다. 대신 한 번 놓쳐도 고개 숙이지 마라.", "말한 대로 해 봐라. 기대하겠다."]) : "말은 좋다. 손이 떨리는 거 보니 아직 반은 걱정이구나. 한 번만 침착하게.",
+      buff: { tag: "shoot", bonus: p.stats.mental.confidence >= 55 ? 0.03 : 0.015, label: "슈팅 선택 성공률 상승" }, fx: { morale: 3 } });
+    if (p.position === "DF" && !ace) ch.push({ label: "\"뒤는 제가 책임지겠습니다\"", who: "coach", reply: "좋다. 수비가 버티면 기회는 앞에서 온다.",
+      buff: { tag: "defend", bonus: 0.025, label: "수비 선택 성공률 +2.5%p" }, fx: { coach: 0.5 } });
+    if (fx.comp === "hs") ch.push({ label: "\"형들한테 몸으로 안 밀리겠습니다\"", who: "assist", reply: "그 각오면 됐다. 부딪히기 전에 먼저 자리부터 잡아라.",
+      buff: { tag: "physical", bonus: 0.03, label: "몸싸움 선택 성공률 +3%p" }, fx: { morale: 2 } });
+    ch.push({ label: "\"지시대로 하겠습니다\"", who: "coach", reply: pick(["그래. 오늘은 그게 제일 어렵고, 제일 중요하다.", "좋다. 약속한 대로만 하면 진다고 해도 할 말 있다."]),
+      buff: { tag: null, bonus: 0.015, label: "모든 선택 성공률 +1.5%p" }, fx: { coach: 0.5 } });
+    ch.push({ label: `${asst}님께 궁금한 걸 여쭤본다`, who: "assist", reply: pick(["좋은 질문이다. 그런 걸 물어보는 선수가 오래 간다.", "그건 경기장에서 직접 확인해 봐라. 대신 하나만 기억해라. 공 받기 전에 한 번 더 봐라."]),
+      buff: { tag: null, bonus: 0.01, label: "모든 선택 성공률 +1%p" }, fx: { s: { "mental.focus": 0.3 } } });
+  }
+  return { lines: L, choices: ch.slice(0, 3), coach: coachName, assistant: asst };
+}
+
+// 미팅에서 고른 대답 반영. 경기 중 효과는 state.meetingBuff에 남겨 prepareMatch가 가져감
+export function applyMeeting(state, choice) {
+  const p = state.player, out = [];
+  const f = choice.fx || {};
+  for (const [path, v] of Object.entries(f.s || {})) { const dd = applyGain(state, path, v, { raw: true }); out.push({ label: STAT_LABEL[path], d: dd }); }
+  if (f.coach) { state.relations.coach = Math.min(100, Math.max(0, state.relations.coach + f.coach)); out.push({ label: "감독 신뢰", d: f.coach }); }
+  if (f.morale) { p.condition.morale = Math.min(100, Math.max(0, p.condition.morale + f.morale)); out.push({ label: "사기", d: f.morale }); }
+  state.meetingBuff = choice.buff ? { turn: state.calendar.turn, tag: choice.buff.tag, bonus: choice.buff.bonus, label: choice.buff.label } : null;
+  return out;
+}
+
+// 경기 전 단톡방: 상대 에이스 이야기 (복수전이면 꼭, 아니면 가끔)
+export function previewChat(state, fx) {
+  if (fx.comp === "hs" || fx.elementary) return;
+  const info = turnInfo(state);
+  const ace = aceOf(state, fx.opponent.name);
+  if (!ace || aceAbsent(state, fx.opponent.name, info.turn)) return;
+  const memo = state.oppMemo?.[ace.name];
+  const team = fx.opponent.name;
+  if (memo?.goals >= 1 || chance(0.3)) mail(state, "group", `이번 주 상대: ${team}`, aceText(state, pick(memo?.goals >= 1 ? ACE_TALK.chatRevenge : ACE_TALK.chatBefore), ace, { team }));
 }
 
 // ── 경기 후: 단톡방 결과 + 감독님 피드백 ─
@@ -233,6 +317,7 @@ export function matchMails(state, m, res, notes) {
     if (res.goals > 0 && isBirthdayWeek(state, turnInfo(state))) fb.unshift("생일 주간에 골이라니. 이번 주 케이크는 네가 제일 큰 조각 먹어라.");
     if (res.goals >= 3) fb.unshift("세 골. 공에 날짜 적어서 가져가라. 그리고 내일은 다시 빈손으로 와라.");
     else if (firstGoal) fb.unshift("첫 골이구나. 오늘 밤은 마음껏 기뻐해라. 내일부터는 두 번째 골 준비다.");
+    if (res.subbedOff) fb.unshift(pick(["전반 끝나고 뺀 거, 서운했을 거다. 그런데 그날은 너를 위해서도 그게 맞았다.", "하프타임에 바꾼 이유는 너도 알 거다. 다음 경기에서 내 판단이 틀렸다고 증명해라.", "교체당한 날 밤이 제일 길다. 그 밤을 어떻게 보내는지가 선수를 가른다."]));
     if (m.comeback) fb.push("복귀전 치고는 충분했다. 이번 주는 다리 상태부터 보고 훈련 강도 정하자.");
     if (res.injury) fb.unshift("몸은 좀 어떠냐. 경기 생각은 나중에 해라. 치료부터 제대로 받자.");
     if (m.my.log.some(x => x.out === "card")) fb.push(pick(["경고는 꼭 필요할 때만 받는 거다. 오늘 그 파울, 정말 필요했는지 생각해 봐라.", "카드 하나 받으면 그 뒤로는 태클을 못 한다. 영리하게 끊는 법을 배우자."]));
@@ -422,8 +507,32 @@ export function weeklyAdvice(state, rep) {
     else lines.push("훈련은 고르게 잘 나눠 하고 있다. 그게 제일 어렵다.");
     lines.push(`네 자리에서 지금 제일 아쉬운 건 ${ida(STAT_LABEL[weak])}.${drill ? used === 0 ? ` 그런데 ${josa(drill.label, "은", "는")} 한 번도 안 했더라.` : used <= 1 ? ` ${josa(drill.label, "을", "를")} 조금 더 늘려 보자.` : " 그래도 꾸준히 채우고 있으니 곧 올라올 거다." : ""}`);
     if (cnt.rest === 0) lines.push("쉬는 날이 하나도 없었다. 몸은 쉬는 동안 자란다.");
-    if (cnt.school === 0) lines.push("그리고 담임 선생님이 수업 시간 얘기를 하시더라. 공부 칸도 잊지 마라.");
+    if (cnt.school === 0 && !turnInfo(state)?.vacation) lines.push("그리고 담임 선생님이 수업 시간 얘기를 하시더라. 공부 칸도 잊지 마라.");
     mail(state, "assist", "요즘 훈련 이야기", lines.join("\n\n"));
+    return true;
+  });
+
+  // 상황에 맞는 감독님·코치님 메시지 (연패, 연승, 부상 복귀, 시험 주간, 대회 직전, 방학, 학업 우수)
+  const now = turnInfo(state);
+  const sk = streakOf(state);
+  const ctxKey = !now ? null
+    : sk <= -3 ? "lossStreak"
+    : sk >= 4 ? "winStreak"
+    : state.flags.returnTurn != null && state.calendar.turn - state.flags.returnTurn <= 1 ? "comeback"
+    : now.exam && !now.exam.free ? "examWeek"
+    : (now.month === 7 && now.week === 4) || (now.month === 1 && now.week === 3) ? "preTournament"
+    : (now.month === 7 && now.week === 3) || (now.month === 1 && now.week === 2) ? "vacation"
+    : s.academic >= 80 && !state.flags.academicPraise?.[`${now.grade}-${now.semester}`] ? "scholar" : null;
+  if (ctxKey) push(`ctx_${ctxKey}`, ctxKey === "examWeek" ? 3 : 6, () => {
+    const pool = COACH_TALK[ctxKey];
+    const used = (state.advice.ctxUsed ||= {});
+    const cand = pool.filter((_, i) => !(used[ctxKey] || []).includes(i));
+    const list = cand.length ? cand : pool;
+    if (!cand.length) used[ctxKey] = [];
+    const t = pick(list);
+    (used[ctxKey] ||= []).push(pool.indexOf(t));
+    if (ctxKey === "scholar") (state.flags.academicPraise ||= {})[`${now.grade}-${now.semester}`] = true;
+    mail(state, t.from, t.title, t.body);
     return true;
   });
 

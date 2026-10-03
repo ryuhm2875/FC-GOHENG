@@ -25,7 +25,8 @@ export function setScene(name, mode = "dim") {
   if (name) {
     const im = new Image();
     im.alt = ""; im.decoding = "async";
-    im.onerror = () => { if (!im.dataset.tried) { im.dataset.tried = "1"; im.src = `assets/img/${name}.png`; } else im.remove(); };
+    im.dataset.name = name;
+    im.onerror = () => { if (window.__bgFallback) window.__bgFallback(im); else if (!im.dataset.tried) { im.dataset.tried = "1"; im.src = `assets/img/${name}.png`; } else im.remove(); };
     im.src = `assets/img/${name}.webp`;
     layer.appendChild(im);
   }
@@ -75,7 +76,8 @@ export function preload(names) {
   idle(nextOne);
 }
 export const SCENES = ["bg_home", "bg_prematch", "bg_stadium", "ev_retreat", "ev_singapore", "ev_sportsday", "ev_ski", "ev_festival", "ev_graduation", "bg_field_day",
-  "ev_office", "ev_classroom", "ev_dinner", "ev_birthday", "ev_birthday_home", "ev_jjajang", "ev_welcome", "ev_schooltrip", "bg_sea", "bg_locker"];
+  "ev_office", "ev_classroom", "ev_dinner", "ev_birthday", "ev_birthday_home", "ev_jjajang", "ev_welcome", "ev_schooltrip", "ev_beach", "bg_sea", "bg_locker",
+  "ev_meeting", "ev_halftime", "ev_fight", "ev_hallway", "ev_cram", "ev_groupwork", "ev_newspaper", "ev_award", "ev_selection", "ev_scout"];
 
 // ── 짧은 진동 (휴대폰) ──
 export function buzz(pattern) {

@@ -129,5 +129,6 @@ export function captainScore(state) {
   const relAvg = rels.length ? rels.reduce((a, b) => a + b, 0) / rels.length : 40;
   let s = state.relations.coach * 0.35 + p.stats.mental.teamwork * 0.25 + p.stats.student.attitude * 0.2 + relAvg * 0.2;
   if (hasTrait(p, "leadership")) s += 8;
+  if (state.flags.captainCandidate) s += 6;          // 감독님이 미리 점찍어 둔 주장 후보
   return s;
 }

@@ -7,6 +7,8 @@ import { ovr } from "../engine/team.js";
 import { readSlot, saveTo, deleteSlot, exportCode, importCode } from "../state.js";
 import { esc, fl, signed, img, faceOf, fillText } from "./util.js";
 import { eventView, eventVars, chooseEvent } from "../engine/events.js";
+import { meetingScript, applyMeeting } from "../engine/advice.js";
+import { STAFF } from "../../data/roster.js";
 import { reduced, countUp } from "./fx.js";
 import { sfx } from "./sfx.js";
 
@@ -15,7 +17,8 @@ const root = () => document.getElementById("modal-root");
 export function openModal(html, mount, { dismissable = true, onClose, scene = null, cls = "" } = {}) {
   const el = document.createElement("div");
   el.className = `backdrop ${scene ? "scened" : ""} ${cls}`;
-  el.innerHTML = (scene ? `<div class="ev-scene" aria-hidden="true"><img src="assets/img/${scene}.webp" data-name="${scene}" alt="" onerror="__bgFallback(this)"></div>` : "")
+  // 세로 휴대폰: 흐린 배경(bgblur) 위에 그림 전체를 화면 위쪽에 보여 줌 (가로 화면에서는 bgblur 숨김)
+  el.innerHTML = (scene ? `<div class="ev-scene" aria-hidden="true"><img class="bgblur" src="assets/img/${scene}.webp" data-name="${scene}" alt="" onerror="__bgFallback(this)"><img class="scene-main" src="assets/img/${scene}.webp" data-name="${scene}" alt="" onerror="__bgFallback(this)"></div>` : "")
     + `<div class="sheet" role="dialog" aria-modal="true">${html}</div>`;
   root().appendChild(el);
   let closed = false;
@@ -143,13 +146,22 @@ export function mailModal(m, { list = [m], onRead } = {}) {
       if (!cur.read) { cur.read = true; onRead?.(); }
       view.innerHTML = `<p class="sub">${esc(cur.from)}</p><h2>${esc(cur.title)}</h2><p class="mail-body">${esc(cur.body)}</p>`;
       view.classList.remove("in-l", "in-r"); void view.offsetWidth; if (dir) view.classList.add(dir > 0 ? "in-r" : "in-l");
-      pos.textContent = `${i + 1} / ${list.length}`;
-      prev.disabled = i === 0; next.disabled = i === list.length - 1;
+      const left = list.filter(x => !x.read).length;
+      pos.textContent = `${i + 1} / ${list.length}${left ? ` · 안 읽음 ${left}` : ""}`;
+      prev.disabled = i === 0; next.disabled = nextIdx() < 0;
+      next.textContent = left ? "안 읽은 메시지 ▶" : "다음 ▶";
       el.querySelector(".sheet").scrollTop = 0;
     };
+    // '다음'은 안 읽은 메시지로 바로 건너뜀 (뒤쪽 먼저, 없으면 앞쪽에서). 다 읽었으면 바로 다음 메시지
+    function nextIdx() {
+      const n = list.length;
+      for (let d = 1; d < n; d++) { const k = (i + d) % n; if (!list[k].read) return k; }
+      return i < n - 1 ? i + 1 : -1;
+    }
+    const goNext = () => { const k = nextIdx(); if (k >= 0) show(k, 1); };
     prev.addEventListener("click", () => show(i - 1, -1));
-    next.addEventListener("click", () => show(i + 1, 1));
-    key = e => { if (e.key === "ArrowLeft") show(i - 1, -1); if (e.key === "ArrowRight") show(i + 1, 1); };
+    next.addEventListener("click", goNext);
+    key = e => { if (e.key === "ArrowLeft") show(i - 1, -1); if (e.key === "ArrowRight") goNext(); };
     document.addEventListener("keydown", key);
     // 손가락으로 옆으로 밀어도 넘어감
     let sx = null, sy = null;
@@ -157,7 +169,7 @@ export function mailModal(m, { list = [m], onRead } = {}) {
     view.addEventListener("touchend", e => {
       if (sx == null) return;
       const dx = e.changedTouches[0].clientX - sx, dy = e.changedTouches[0].clientY - sy;
-      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) show(i + (dx < 0 ? 1 : -1), dx < 0 ? 1 : -1);
+      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) { if (dx < 0) goNext(); else show(i - 1, -1); }
       sx = null;
     });
     show(i);
@@ -295,4 +307,51 @@ export function eventModal(app, done) {
       sfx.play(score >= 0 ? "good" : "bad");
     }));
   }, { dismissable: false, onClose: done, scene: v.ev.bg || null, cls: "event" });
+}
+
+// ── 경기 전 미팅: 정 코치 분석 → 감독님 한마디 → 내 대답 ──
+export function meetingModal(app, fx, done) {
+  const state = app.state;
+  const sc = meetingScript(state, fx);
+  const WHO = { assist: { name: STAFF.assistant, face: "npc_assistant" }, coach: { name: STAFF.coach, face: "npc_coach" } };
+  let i = 0;
+  const lineHtml = l => {
+    const w = WHO[l.who];
+    return w ? `<div class="ev mt-line">
+        <div class="ev-por">${img(w.face, w.name)}</div>
+        <div class="ev-body"><div class="ev-who">${esc(w.name)}</div><p class="ev-text">"${esc(l.t)}"</p></div></div>`
+      : `<p class="mt-nar">${esc(l.t)}</p>`;
+  };
+  openModal(`<div class="mt-head"><span class="chip kit">경기 전 미팅</span> <span class="mute">vs ${esc(fx.opponent.name)}</span></div>
+    <div id="mtl" aria-live="polite"></div>
+    <div class="mt-ctl" id="mtc"></div>`, (el, close) => {
+    const box = el.querySelector("#mtl"), ctl = el.querySelector("#mtc");
+    const show = () => {
+      box.innerHTML = lineHtml(sc.lines[i]);
+      box.firstElementChild.classList.add("mt-in");
+      ctl.innerHTML = `<div class="mt-row"><button class="linkbtn" data-skip>건너뛰기</button><span class="mute num">${i + 1} / ${sc.lines.length}</span>
+        <button class="btn btn-kit" data-next>${i < sc.lines.length - 1 ? "다음 ▶" : "대답하기"}</button></div>`;
+      ctl.querySelector("[data-next]").addEventListener("click", () => { if (i < sc.lines.length - 1) { i++; show(); } else answer(); });
+      ctl.querySelector("[data-skip]").addEventListener("click", answer);
+      ctl.querySelector("[data-next]").focus({ preventScroll: true });
+    };
+    const answer = () => {
+      const last = sc.lines.filter(l => WHO[l.who]).at(-1);
+      box.innerHTML = last ? lineHtml(last) : "";
+      ctl.innerHTML = `<p class="mt-q mute">뭐라고 대답할까?</p><div class="vn-choices">${sc.choices.map((c, k) => `<button class="vn-choice" style="--i:${k}" data-k="${k}">${esc(c.label)}</button>`).join("")}</div>`;
+      ctl.querySelectorAll("[data-k]").forEach(b => b.addEventListener("click", () => {
+        const c = sc.choices[+b.dataset.k];
+        const ch = applyMeeting(state, c);
+        const chips = [...(c.buff ? [`<span class="evchip up">⚽ ${esc(c.buff.label)}</span>`] : []),
+          ...ch.filter(x => Math.abs(x.d) >= 0.05).map(x => `<span class="evchip ${x.d > 0 ? "up" : "down"}">${esc(x.label)} ${x.d > 0 ? "+" : ""}${Math.abs(x.d) < 1 ? x.d.toFixed(1) : Math.round(x.d)}</span>`)].join("");
+        box.innerHTML = lineHtml({ who: c.who, t: c.reply });
+        ctl.innerHTML = `${chips ? `<div class="evchips">${chips}</div>` : ""}<button class="btn btn-kit btn-wide" data-close style="margin-top:12px">경기장으로</button>`;
+        ctl.querySelector("[data-close]").addEventListener("click", close);
+        ctl.querySelector("[data-close]").focus({ preventScroll: true });
+        sfx.play("good");
+      }));
+      ctl.querySelector("[data-k]")?.focus({ preventScroll: true });
+    };
+    show();
+  }, { dismissable: false, onClose: done, scene: "ev_meeting", cls: "event meeting" });
 }

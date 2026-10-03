@@ -5,9 +5,10 @@ import { turnInfo, label, GRAD_INDEX } from "./calendar.js";
 import { applyGain, expandGains, growBody, weeklyDrift, hasTrait } from "./growth.js";
 import { matchFor } from "./season.js";
 import { prepareMatch, autoPlay, finishMatch } from "./match.js";
-import { previewMail, weeklyAdvice, drillFor } from "./advice.js";
+import { previewChat, weeklyAdvice, drillFor } from "./advice.js";
 import { adjustRel, weeklyRelations, relationsNewYear, rivalGap, seniorsLeave } from "./relations.js";
 import { rollEvent } from "./events.js";
+import { goalsWeekly } from "./goals.js";
 import { birthdayWeek } from "./birthday.js";
 import { careerMilestones } from "./career.js";
 import { STAT_LABEL, POSITIONS } from "../../data/player.js";
@@ -143,6 +144,13 @@ export function endWeek(state, ctx, matchResult) {
     p.condition.morale -= 15;
     mail(state, "system", "괜히 다 안 되는 한 주", "공이 발에 안 붙는다. 이유는 모르겠다. 슬럼프인가…");
   }
+  // 학업 80 이상: 감독님 신뢰와 집중력이 조금씩 오르고, 오래 지키면 '모범생' 특성
+  if (p.stats.student.academic >= 80) {
+    state.relations.coach += 0.15;
+    applyGain(state, "mental.focus", 0.04, { raw: true });
+    state.flags.acad80Weeks = (state.flags.acad80Weeks || 0) + 1;
+  }
+  if (hasTrait(p, "modelStudent")) state.relations.coach += 0.1;
   if (hasTrait(p, "steelMental")) p.condition.morale = Math.max(p.condition.morale, 30);
   if (hasTrait(p, "comeback")) p.condition.morale = Math.max(p.condition.morale, 25);
   p.condition.morale = clamp(p.condition.morale, 0, 100);
@@ -200,10 +208,11 @@ export function endWeek(state, ctx, matchResult) {
     state.career ||= {};
     careerMilestones(state, next);
     birthdayWeek(state, next);
+    goalsWeekly(state, next);
     rollEvent(state);
     weeklyAdvice(state, report);
     const nfx = currentFixture(state);
-    if (nfx) previewMail(state, nfx);
+    if (nfx) previewChat(state, nfx);              // 경기 분석은 경기 직전 미팅 장면에서
   }
 
   report.deltas = diffStats(before.stats, state.player.stats);

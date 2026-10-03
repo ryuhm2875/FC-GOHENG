@@ -8,6 +8,8 @@ import { chooseEvent, findEvent } from "../js/engine/events.js";
 import { schoolOptions, chooseSchool, decideEnding } from "../js/engine/career.js";
 import { ovr } from "../js/engine/team.js";
 import { GROWTH_TYPES } from "../data/player.js";
+import { turnInfo } from "../js/engine/calendar.js";
+let htSubs = 0, starts1 = 0, examWeeks = 0, examHit = 0, evTotal = 0; const evCount = {}; const goalDone = {}; let goalMain = 0;
 
 const N = +process.argv[2] || 300;
 const policy = process.argv[3] || "balanced";
@@ -49,10 +51,21 @@ for (let i = 0; i < N; i++) {
       return pick(["study", "assessment", "reading", "schoolEvent"]);
     };
     for (const k of ["wd1", "wd2", "we"]) if (!slotLocked(s, k)) s.plan[k] = choose();
-    runWeek(s);
-    if (s.pendingEvent) { const ev = findEvent(s.pendingEvent.id); chooseEvent(s, Math.floor(rand() * ev.choices.length)); }
+    const before = s.calendar.turn;
+    const rep = runWeek(s);
+    if (rep.match?.subbedOff) htSubs++;
+    if (rep.match?.minutes > 0 && rep.match.status === "start") starts1++;
+    if (s.pendingEvent) {
+      const ev = findEvent(s.pendingEvent.id);
+      const info = turnInfo(s);
+      if (info?.exam && !info.exam.free) { examWeeks++; if (ev.exam) examHit++; }
+      evCount[ev.id] = (evCount[ev.id] || 0) + 1; evTotal++;
+      chooseEvent(s, Math.floor(rand() * ev.choices.length));
+    } else { const info = turnInfo(s); if (info?.exam && !info.exam.free) examWeeks++; }
   }
   const p = s.player;
+  for (const k of Object.keys(s.goals?.done || {})) goalDone[k] = (goalDone[k] || 0) + 1;
+  if (s.goals?.main && s.goals.done[s.goals.main]) goalMain++;
   const end = decideEnding(s).ending;
   const ratings = s.record.ratings;
   res.push({ type: p.growthType, pos: p.position, start, end: ovr(p), pot: p.potential, h: p.body.height,
@@ -79,3 +92,6 @@ const tc = {}; res.forEach(r => r.earned.forEach(id => tc[id] = (tc[id] || 0) + 
 console.log("획득 특성(%):", Object.entries(tc).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${(v / N * 100).toFixed(0)}`).join(", "), " 평균 개수", (res.reduce((a, r) => a + r.earned.length, 0) / N).toFixed(2), " 부상 횟수", avg("injN"));
 const ends = res.map(r => r.end).sort((a, b) => a - b);
 console.log("end OVR pct  10:", ends[Math.floor(N*.1)].toFixed(1), " 50:", ends[Math.floor(N*.5)].toFixed(1), " 90:", ends[Math.floor(N*.9)].toFixed(1), " max:", ends[N-1].toFixed(1));
+
+console.log("목표 달성(%):", Object.entries(goalDone).map(([k, v]) => `${k} ${(v / N * 100).toFixed(0)}`).join(", "), " 주목표 달성", (goalMain / N * 100).toFixed(0) + "%");
+console.log("하프타임 교체", htSubs, "/ 선발", starts1, ` (${(htSubs / Math.max(1, starts1) * 100).toFixed(1)}%)`, " 시험 주 이벤트", `${examHit}/${examWeeks}`, " 이벤트/판", (evTotal / N).toFixed(1), " 종류", Object.keys(evCount).length);

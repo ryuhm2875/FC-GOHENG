@@ -1,5 +1,5 @@
 // 경기 화면: 전광판 → 22명이 움직이는 경기장 → 문자 중계 → 내 장면 선택지
-import { next, resolve, autoChoice, autoPlay, finishMatch, STATUS_LABEL, TAG_LABEL, MY_SLOT } from "../engine/match.js";
+import { next, resolve, autoChoice, autoPlay, finishMatch, applyHalftime, STATUS_LABEL, TAG_LABEL, MY_SLOT } from "../engine/match.js";
 import { STAFF } from "../../data/roster.js";
 import { getPath } from "../rng.js";
 import { tierLabel, TEAM_NAME } from "../engine/season.js";
@@ -397,15 +397,38 @@ export function showMatch(app, m, onDone) {
   }
 
   function showHalftime() {
-    let left = 8;
-    ctl.innerHTML = `<div class="ctl-row"><button class="btn btn-kit btn-wide" data-second>후반 시작 <span class="mute" id="htc">(${left})</span></button></div>`;
-    const go = () => { clearInterval(iv); controls(); tick(); };
-    const iv = setInterval(() => { left--; const c = ctl.querySelector("#htc"); if (c) c.textContent = `(${left})`; if (left <= 0) go(); }, 1000);
-    ctl.querySelector("[data-second]").addEventListener("click", go);
+    const t = m.htTalk;
+    const startBtn = (extra = "") => {
+      let left = 8;
+      ctl.innerHTML = `${extra}<div class="ctl-row"><button class="btn btn-kit btn-wide" data-second>${m.subbedOff ? "후반 지켜보기" : "후반 시작"} <span class="mute" id="htc">(${left})</span></button></div>`;
+      const go = () => { clearInterval(iv); root.querySelector(".ht-scene")?.remove(); controls(); tick(); };
+      const iv = setInterval(() => { left--; const c = ctl.querySelector("#htc"); if (c) c.textContent = `(${left})`; if (left <= 0) go(); }, 1000);
+      ctl.querySelector("[data-second]").addEventListener("click", go);
+    };
+    if (!t) return startBtn();
+    // 라커룸: 감독님이 나를 따로 불러서 하는 말과 내 대답 (경기장 자리에 라커룸 그림)
+    root.querySelector("#pitch").insertAdjacentHTML("beforeend", `<div class="ht-scene" aria-hidden="true"><img src="assets/img/ev_halftime.webp" data-name="ev_halftime" alt="" onerror="__bgFallback(this)"></div>`);
+    const face = `<div class="talk-face">${img("npc_coach", "")}</div>`;
+    ctl.innerHTML = `<div class="ht-talk ${t.mood}">
+      <div class="ht-tag">${{ praise: "하프타임 · 칭찬", scold: "하프타임 · 쓴소리", calm: "하프타임 · 주문", off: "하프타임 · 교체" }[t.mood]}</div>
+      <div class="talk">${face}<div><div class="talk-who">${esc(STAFF.coach)}</div><p>"${esc(t.text)}"</p></div></div>
+      <div class="mo-choices">${t.choices.map((c, i) => `<button class="mo-btn" data-h="${i}"><span>${esc(c.label)}</span></button>`).join("")}</div>
+    </div>`;
+    ctl.classList.add("ask");
+    buzz(40);
+    ctl.querySelectorAll("[data-h]").forEach(b => b.addEventListener("click", () => {
+      const r = applyHalftime(state, m, +b.dataset.h);
+      ctl.classList.remove("ask");
+      sfx.play(t.mood === "scold" || t.mood === "off" ? "half" : "good");
+      const buff = m.htBuff ? `<span class="chip kit">후반 ${m.htBuff.tag ? `${TAG_LABEL[m.htBuff.tag]} 선택` : "모든 선택"} 성공률 +${Math.round(m.htBuff.bonus * 1000) / 10}%p</span>` : "";
+      startBtn(`<div class="talk">${face}<div><div class="talk-who">${esc(STAFF.coach)}</div><p>"${esc(r?.reply || "")}"</p>${buff}</div></div>`);
+    }));
+    ctl.querySelector("[data-h]")?.focus({ preventScroll: true });
   }
 
   function skipAll() {
     clearTimeout(timer);
+    root.querySelector(".ht-scene")?.remove();
     setScene("bg_stadium", "match");
     ctl.classList.remove("ask");
     queue.forEach(addLine); queue = []; after = null;
@@ -434,8 +457,12 @@ export function showMatch(app, m, onDone) {
       ${res.minutes > 0 ? `<div class="pm-rating">
           <div class="rt num ${res.rating >= 7.5 ? "hi" : res.rating >= 6.5 ? "mid" : "lo"}">${res.rating.toFixed(1)}</div>
           <div><div>${STATUS_LABEL[res.status]} ${res.minutes}분${res.goals ? `, ${res.goals}골` : ""}${res.assists ? `, ${res.assists}도움` : ""}</div>
-          <div class="mute" style="font-size:13px">선택 ${m.my.decisions}번 중 ${m.my.successes}번 성공${res.mom ? ` <span class="chip kit">경기 최우수 선수</span>` : ""}</div></div>
+          <div class="mute" style="font-size:13px">선택 ${m.my.decisions}번 중 ${m.my.successes}번 성공${res.mom ? ` <span class="chip kit">경기 최우수 선수</span>` : ""}${res.subbedOff ? ` <span class="chip">하프타임 교체</span>` : ""}</div></div>
         </div>` : `<p class="mute">${esc(res.reason || STATUS_LABEL[res.status])}</p>`}
+      ${m.mom ? `<p class="pm-mom">🏅 경기 최우수 선수: ${m.mom.team === "them" ? `${esc(res.opponent)} ` : ""}<b>${esc(m.mom.name)}</b></p>` : ""}
+      ${m.teamRatings?.length ? `<details class="pm-team"><summary>우리 팀 평점 보기</summary><ul>${m.teamRatings.map(t => `<li class="${t.me ? "me" : ""}">
+        <span class="pos-tag ${t.pos === "GK" ? "" : t.pos}">${t.pos}</span><span class="num">${t.number}</span><span class="nm">${esc(t.name)}${t.name === m.mom?.name && m.mom.team === "us" ? " ★" : ""}</span>
+        <b class="rt num ${t.r >= 7.5 ? "hi" : t.r >= 6.5 ? "mid" : "lo"}">${t.r.toFixed(1)}</b></li>`).join("")}</ul></details>` : ""}
       ${res.notes.length ? `<ul class="pm-notes">${res.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
       <p class="mute" style="font-size:13px;margin:0">감독님 면담과 경기 기록은 메시지함에 왔습니다.</p>
       <button class="btn btn-kit btn-wide" data-done>이번 주 마무리</button>

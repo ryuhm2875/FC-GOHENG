@@ -5,8 +5,15 @@ import { esc } from "./util.js";
 const AUTO_MS = 4300;
 
 // 배경 그림: .webp → .png → 없으면 색 그라데이션만
+// 아직 그림 파일이 없는 장면은 비슷한 기존 그림으로 대신 보여 줌 (나중에 같은 이름의 .webp를 넣으면 그 그림이 나옴)
+const BG_STANDIN = {
+  ev_meeting: "bg_locker", ev_halftime: "bg_locker", ev_fight: "ev_classroom", ev_hallway: "ev_classroom",
+  ev_cram: "ev_classroom", ev_groupwork: "ev_classroom", ev_newspaper: "ev_office", ev_award: "ev_festival",
+  ev_selection: "bg_field_day", ev_scout: "bg_stadium",
+};
 window.__bgFallback = el => {
-  if (!el.dataset.tried) { el.dataset.tried = "1"; el.src = `assets/img/${el.dataset.name}.png`; }
+  const name = el.dataset.name, alt = BG_STANDIN[name];
+  if (!el.dataset.tried) { el.dataset.tried = "1"; el.src = alt ? `assets/img/${alt}.webp` : `assets/img/${name}.png`; }
   else el.remove();
 };
 export const bgLayer = (name, tone, extra = "") =>

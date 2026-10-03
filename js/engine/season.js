@@ -7,6 +7,7 @@ import { ovr } from "./team.js";
 export const US = "us";
 export const TEAM_NAME = "고흥FC";
 const KO_BONUS = { "16강": 1, "8강": 2, "4강": 3, "결승": 4 };
+const STRONGEST = "군포FC U-15";
 
 function poisson(lambda) {
   const L = Math.exp(-lambda); let k = 0, p = 1;
@@ -96,6 +97,9 @@ export function matchFor(state, info) {
     const key = `ko-${info.turn}`;
     let opp = state.rolls[key];
     if (!opp) {
+      // 전국 최강 군포FC는 아직 안 만났다면 결승에서 기다리고 있을 때가 많음
+      const gi = t.pool.findIndex(x => x.name === STRONGEST);
+      if (m.round === "결승" && gi > 0 && chance(0.5)) t.pool.unshift(...t.pool.splice(gi, 1));
       const o = t.pool.length ? t.pool.shift() : { id: "Nx", ...pick(NATIONAL_OPPONENTS), strength: 54 };
       opp = state.rolls[key] = { ...o, strength: o.strength + (KO_BONUS[m.round] || 0) };
     }
@@ -188,7 +192,8 @@ export function applyResult(state, fx, gf, ga, { shootoutWin = null, rating = nu
         state.record.titles.push({ grade: t.grade, name: `${t.label} 우승`, national: true });
         state.flags.nationalChampion = true;
         state.flags.celebrate = { kind: "national", label: t.label, turn: state.calendar.turn };
-        notes.push(`${t.name} 우승! 🏆`);
+        state.player.condition.fatigue = 0;              // 우승하면 쌓인 피로가 싹 풀림
+        notes.push(`${t.name} 우승! 🏆 기쁨에 피로가 모두 풀렸다.`);
         finishTour(state);
       } else {
         t.best = { "16강": "8강", "8강": "4강", "4강": "결승" }[fx.round];
@@ -211,8 +216,9 @@ function closeLeague(state, lg) {
   if (rank === 1) {
     state.record.titles.push({ grade: lg.grade, name: `${lg.half} 주말리그 우승` });
     state.flags.celebrate = { kind: "league", label: `${lg.half} 주말리그`, turn: state.calendar.turn };
+    state.player.condition.fatigue = 0;                // 우승하면 쌓인 피로가 싹 풀림
   }
-  return rank === 1 ? `${lg.half} 주말리그 우승! ${lg.teams.length}팀 중 1위로 마쳤다 🏆` : `${lg.half} 주말리그가 끝났다. ${lg.teams.length}팀 중 최종 ${rank}위.`;
+  return rank === 1 ? `${lg.half} 주말리그 우승! ${lg.teams.length}팀 중 1위로 마쳤다 🏆 기쁨에 피로가 모두 풀렸다.` : `${lg.half} 주말리그가 끝났다. ${lg.teams.length}팀 중 최종 ${rank}위.`;
 }
 
 function finishTour(state) {

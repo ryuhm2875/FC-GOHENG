@@ -11,6 +11,7 @@ import { mail } from "../state.js";
 import { chance, weighted, clamp, rand, pick } from "../rng.js";
 import { injure } from "./injury.js";
 import { isBirthdayWeek } from "./birthday.js";
+import { fixedGoalEvent, achieve } from "./goals.js";
 
 const EVENT_CHANCE = 0.32;
 const PORTRAIT = { coach: "npc_coach", assistant: "npc_assistant", teacher: "npc_teacher", mom: "npc_mom", dad: "npc_dad" };
@@ -24,10 +25,28 @@ function eligible(state, ev, info) {
   if (ev.school && info.vacation) return false;
   if (ev.needs && !person(state, ev.needs)) return false;
   if (ev.once && state.seenEvents?.includes(ev.id)) return false;
+  // 한 번 본 이벤트는 한동안 다시 안 나옴 (보통 30주 ≈ 8개월, 시험 주 이벤트 20주, 경기 뒤 면담 12주)
   const last = state.eventLog?.[ev.id];
-  if (last != null && state.calendar.turn - last < (ev.afterLoss ? 8 : 12)) return false;
+  const cool = ev.afterLoss ? 8 : ev.urgent ? 12 : ev.exam ? 20 : 30;
+  if (last != null && state.calendar.turn - last < cool) return false;
   try { if (ev.cond && !ev.cond(state)) return false; } catch { return false; }
   return true;
+}
+
+// 류봉두의 축복: 선생님과의 관계가 70 이상이면 학기마다 한 번.
+// 1학기는 4~6월, 2학기는 9~11월 가운데 학교 행사·시험이 없는 주에 무작위로. 끝까지 안 왔으면 6월 3주·11월 3주에 반드시.
+const BLESS = { 1: { months: [4, 5, 6], last: [6, 3] }, 2: { months: [9, 10, 11], last: [11, 3] } };
+export const blessKey = (grade, sem) => `${grade}-${sem}`;
+export function blessedThisTerm(state, grade = state.calendar.grade, sem = state.calendar.semester) {
+  const b = state.flags.blessed || {};
+  return !!(b[blessKey(grade, sem)] || (sem === 2 && b[grade] === true));   // 예전 저장 파일은 학년 단위(2학기)로 기록됨
+}
+function blessingDue(state, info) {
+  const w = BLESS[info.semester];
+  if ((state.relations.teacher ?? 50) < 70 || !w || !w.months.includes(info.month)) return null;
+  if (info.vacation || info.exam || info.school.some(d => d.event)) return null;
+  if (blessedThisTerm(state, info.grade, info.semester)) return null;
+  return info.month === w.last[0] && info.week === w.last[1] ? "force" : "maybe";
 }
 
 // 주 끝에 호출: 다음 주 시작 때 보여 줄 이벤트를 정해 둠
@@ -41,6 +60,19 @@ export function rollEvent(state) {
   // 학교 행사 (그 주에 반드시)
   const day = info.school.find(d => d.event && EVENTS.some(e => e.id === d.event));
   if (day) { state.pendingEvent = { id: day.event }; return; }
+  // 류봉두의 축복: 학기 마지막 기회 주간이면 생일·축하보다 먼저
+  const due = blessingDue(state, info);
+  if (due === "force") { state.pendingEvent = { id: "t_blessing" }; return; }
+  // 중간 목표: 정해진 날의 이벤트 (목표 면담, 선발전, 시상식, 중간 점검)
+  const gfix = fixedGoalEvent(state, info);
+  if (gfix) { state.pendingEvent = { id: gfix }; return; }
+  // 정기시험 주간: 시험 이벤트 하나는 반드시 (중1 1학기 수행평가 주간은 수행평가 이야기)
+  if (info.exam) {
+    const pool = EVENTS.filter(e => (info.exam.free ? e.assess : e.exam) && eligible(state, e, info));
+    const all = EVENTS.filter(e => (info.exam.free ? e.assess : e.exam) && (!e.needs || person(state, e.needs)));
+    const pickFrom = pool.length ? pool : all.sort((a, b) => (state.eventLog?.[a.id] ?? -99) - (state.eventLog?.[b.id] ?? -99)).slice(0, 2);
+    if (pickFrom.length) { state.pendingEvent = { id: weighted(pickFrom.map(e => [e, (e.weight || 1) * (state.seenEvents?.includes(e.id) ? 0.35 : 1)])).id }; return; }
+  }
   // 생일 주간: 1년에 한 번, 방학이면 집에서 / 학기 중이면 라커룸에서
   // (그 주에 학교 행사가 있으면 행사 없는 주까지 최대 3주 미룸. 어느 해 생일인지는 그 주의 턴 번호로 구분)
   const bday = [0, 1, 2, 3].map(o => turnInfo(state, -o)).find(x => x && isBirthdayWeek(state, x));
@@ -61,22 +93,22 @@ export function rollEvent(state) {
       return;
     }
   }
+  // 조건을 채운 목표 이야기 (스카우트, 신문 인터뷰, 주장 언질, 목표 실패 면담)
+  const gq = state.goals?.queue;
+  if (gq?.length) { state.pendingEvent = { id: gq.shift() }; return; }
   // 경기에서 졌다면 해변 모래 훈련이 먼저 찾아옴
   const beach = EVENTS.find(e => e.afterLoss);
   if (beach && eligible(state, beach, info) && chance(0.35)) { state.pendingEvent = { id: beach.id }; return; }
-  // 류봉두의 축복: 관계 70 이상, 2학기(9~12월) 학기 중에 1년에 한 번. 12월이 되도록 안 왔으면 행사 없는 첫 주에 반드시
-  const t = state.relations.teacher ?? 50;
-  if (t >= 70 && !state.flags.blessed?.[info.grade] && [9, 10, 11, 12].includes(info.month) && !info.vacation
-      && !info.school.some(d => d.event) && (chance(0.16) || info.month === 12)) {   // 학교 행사 주간은 피하고, 12월이 되면 반드시
-    state.pendingEvent = { id: "t_blessing" }; return;
-  }
+  // 류봉두의 축복 (무작위)
+  if (blessingDue(state, info) && chance(0.16)) { state.pendingEvent = { id: "t_blessing" }; return; }
   // 경기 뒤 면담처럼 급한 이야기는 먼저
   const urgent = EVENTS.filter(e => e.urgent && eligible(state, e, info));
   if (urgent.length && chance(0.75)) { state.pendingEvent = { id: pick(urgent).id }; return; }
   if (!chance(EVENT_CHANCE)) return;
-  const list = EVENTS.filter(e => !e.afterLoss && !e.fixed && !e.urgent && eligible(state, e, info));
+  const list = EVENTS.filter(e => !e.afterLoss && !e.fixed && !e.urgent && !e.exam && eligible(state, e, info));
   if (!list.length) return;
-  const ev = weighted(list.map(e => [e, (e.weight || 1) * (state.seenEvents?.includes(e.id) ? 0.35 : 1)]));
+  // 처음 보는 이벤트를 더 자주, 방학에는 가족·고흥 이야기를 더 자주
+  const ev = weighted(list.map(e => [e, (e.weight || 1) * (state.seenEvents?.includes(e.id) ? 0.3 : 1) * (e.family && info.vacation ? 1.8 : 1)]));
   state.pendingEvent = { id: ev.id };
 }
 
@@ -126,7 +158,7 @@ function applyFx(state, fx, changes) {
     const d = applyGain(state, path, 3, { raw: true });
     changes.push({ label: STAT_LABEL[path] || path, d });
     state.lastBlessing = STAT_LABEL[path] || path;
-    (state.flags.blessed ||= {})[state.calendar.grade] = true;
+    (state.flags.blessed ||= {})[blessKey(state.calendar.grade, state.calendar.semester)] = true;
   }
   for (const [k, v] of Object.entries(fx.rel || {})) {
     const d = adjustRel(state, k, v);
@@ -143,6 +175,7 @@ export function chooseEvent(state, idx) {
   let result;
   if (ev.id === CAPTAIN_EVENT.id) result = captainVote(state, c.run, changes);
   else {
+    try { c.act?.(state); } catch (e) { console.warn(e); }   // 목표 기록 같은 일
     applyFx(state, c.fx, changes);
     applyFx(state, c.fxAfter, changes);
     result = typeof c.result === "function" ? c.result(state) : c.result;
@@ -170,6 +203,7 @@ function captainVote(state, run, changes) {
   const win = score >= need;
   if (win) {
     state.flags.captain = true;
+    achieve(state, "captain");                         // 주장이 되면 '주장 후보' 목표도 이룬 셈
     p.condition.morale = clamp(p.condition.morale + 12, 0, 100);
     state.relations.coach = clamp(state.relations.coach + 5, 0, 100);
     changes.push({ label: "사기", d: 12 }, { label: "감독 신뢰", d: 5 });

@@ -13,7 +13,7 @@ import { ACTION_MAP } from "../data/actions.js";
 import { renderCreate } from "./ui/create.js";
 import { renderIntro } from "./ui/intro.js";
 import { homeView, playerView, teamView, scheduleView, inboxView } from "./ui/views.js";
-import { ask, eventModal, actionPicker, weekReport, mailModal, saveModal, numberModal, yearModal } from "./ui/modals.js";
+import { ask, eventModal, actionPicker, weekReport, mailModal, saveModal, numberModal, yearModal, meetingModal } from "./ui/modals.js";
 import { esc } from "./ui/util.js";
 import { admissionModal, nationalModal, showEnding, galleryModal } from "./ui/career.js";
 import { setScene, enter, preload, SCENES } from "./ui/fx.js";
@@ -133,10 +133,13 @@ const app = {
     const s = this.state;
     const ctx = beginWeek(s);
     if (ctx.fx) {
-      const m = prepareMatch(s, ctx.info, ctx.fx);
-      this.view = "match";
-      window.scrollTo(0, 0);
-      showMatch(this, m, result => { this.view = "home"; this.finishWeek(ctx, result); });
+      // 경기 전 미팅 장면 → 경기
+      meetingModal(this, ctx.fx, () => {
+        const m = prepareMatch(s, ctx.info, ctx.fx);
+        this.view = "match";
+        window.scrollTo(0, 0);
+        showMatch(this, m, result => { this.view = "home"; this.finishWeek(ctx, result); });
+      });
     } else this.finishWeek(ctx, null);
   },
 
