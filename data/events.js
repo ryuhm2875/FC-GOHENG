@@ -1,4 +1,5 @@
 import { CAPTAINS } from "./roster.js";
+import { EVENTS_MORE } from "./events2.js";
 import { turnInfo } from "../js/engine/calendar.js";
 import { pick } from "../js/rng.js";
 // 이번 주(이벤트가 보이는 주)에 경기가 있는지 / 다음 주에 정기시험이 있는지
@@ -25,7 +26,7 @@ const lastMatch = s => { const m = s.record.matches.at(-1); return m && s.calend
 
 export const EVENTS = [
   // ── 학교생활 ──────────────────────────────────
-  { id: "group_project", school: true, who: "friend", needs: "friend", weight: 1.2,
+  { id: "group_project", bg: "ev_groupwork", school: true, who: "friend", needs: "friend", weight: 1.2,
     text: "야, 사회 수행평가 모둠 과제 이번 주까지래. 우리 둘이 같은 모둠인데… 너 훈련 끝나고 시간 돼?",
     choices: [
       { label: "밤에 같이 끝내자", fx: { s: { "student.academic": 2, "student.attitude": 1 }, fatigue: 8, rel: { friend: 6 } }, result: "밤 11시까지 편의점 테이블에서 PPT를 만들었다. 발표 점수가 꽤 잘 나왔다." },
@@ -161,7 +162,7 @@ export const EVENTS = [
       { label: "페이스 조절한다", fx: { s: { "phys.stamina": 0.8 }, fatigue: 5 }, result: "중간쯤 들어왔다. 다리는 멀쩡하다." },
     ] },
   // 경기에서 지면 다음 주에 자주 나옵니다 (엔진이 패배 직후 확률을 크게 올림)
-  { id: "beach_training", bg: "bg_sea", who: "assistant", afterLoss: true, when: { months: [3, 4, 5, 6, 7, 8, 9, 10] },
+  { id: "beach_training", bg: "ev_beach", who: "assistant", afterLoss: true, when: { months: [3, 4, 5, 6, 7, 8, 9, 10] },
     cond: s => { const m = s.record.matches.at(-1); return !!m && m.result === "패" && s.calendar.turn - m.turn <= 2; },
     text: () => pick(["지난 경기 그렇게 지고 그냥 넘어갈 순 없지. 오늘은 해변 모래 훈련이다. 다리 터질 각오 해라.",
       "진 경기는 모래가 기억하게 한다. 신발 벗고 따라와.", "오늘은 공 없다. 해변 끝까지 왕복이다. 지난 경기 실점 장면 떠올리면서 뛰어라."]),
@@ -184,7 +185,7 @@ export const EVENTS = [
       { label: "나도 노린다고 말한다", fx: { s: { "mental.competitive": 1 }, rel: { rival: 4 } }, result: "둘 다 웃었지만 눈은 웃고 있지 않았다." },
       { label: "번호는 상관없다고 한다", fx: { s: { "mental.focus": 0.5 } }, result: "{rival|이/가} \"너답다\" 하고 어깨를 쳤다." },
     ] },
-  { id: "scout_rumor", who: "friend", needs: "friend", when: { grades: [3] }, cond: s => Object.keys(s.scouting || {}).length > 0,
+  { id: "scout_rumor", bg: "ev_scout", who: "friend", needs: "friend", when: { grades: [3] }, cond: s => Object.keys(s.scouting || {}).length > 0,
     text: "야, 저번에 온 고등학교 감독님이 네 이름 물어봤다던데? 진짜야?",
     choices: [
       { label: "더 열심히 해야겠다", fx: { s: { "mental.confidence": 1 }, morale: 5 }, result: "괜히 그날 훈련 내내 몸이 가벼웠다." },
@@ -308,7 +309,7 @@ export const EVENTS = [
       { label: "맡겠다고 한다", fx: { s: { "mental.teamwork": 1, "student.attitude": 1 }, fatigue: 3, teacher: 2 }, result: "체육 시간마다 준비물을 챙기느라 바빠졌다. 그래도 반 아이들과 훨씬 가까워졌다." },
       { label: "훈련 때문에 어렵다고 한다", fx: { fatigue: -2 }, result: "다른 친구가 맡았다. 조금 미안했지만 훈련에 집중하기로 했다." },
     ] },
-  { id: "t_hallway", who: "teacher", school: true, cond: s => { const m = s.record.matches.at(-1); return m && m.turn >= s.calendar.turn - 1; },
+  { id: "t_hallway", bg: "ev_hallway", who: "teacher", school: true, cond: s => { const m = s.record.matches.at(-1); return m && m.turn >= s.calendar.turn - 1; },
     text: "복도에서 {teacher}께서 부르신다. \"{given|아/야}, 지난 주말 경기 결과 봤다. 선생님도 축구 좀 아는 사람이야.\"",
     choices: [
       { label: "경기 이야기를 신나게 한다", fx: { teacher: 4, morale: 3 }, result: "선생님은 쉬는 시간이 끝날 때까지 들어 주셨다. \"다음 경기는 선생님도 보러 갈게.\"" },
@@ -487,9 +488,9 @@ export const EVENTS = [
         result: "결승 마지막 10분이 머릿속에서 자꾸 다시 돌아갔다. 감독님이 옆에 앉으며 말씀하셨다. \"그 기분, 잊지 마라. 그게 다음 대회 연료다.\"" },
     ] },
 
-  // ── 류봉두의 축복: 선생님과의 관계가 70 이상이면 1년에 한 번, 2학기 중 무작위로 찾아옴 (js/engine/events.js) ──
+  // ── 류봉두의 축복: 선생님과의 관계가 70 이상이면 학기마다 한 번, 무작위로 찾아옴 (js/engine/events.js) ──
   { id: "t_blessing", bg: "ev_classroom", fixed: true, who: "teacher",
-    text: "방과 후, {teacher}께서 국어실로 부르셨다. \"한 해 동안 운동장에서도 교실에서도 한 번도 손을 놓지 않더라. 선생님이 주는 선물이다.\" 작은 봉투 안에 손글씨 쪽지가 한 장 들어 있다.",
+    text: "방과 후, {teacher}께서 국어실로 부르셨다. \"이번 학기 내내 운동장에서도 교실에서도 손을 놓지 않더라. 선생님이 주는 선물이다.\" 작은 봉투 안에 손글씨 쪽지가 한 장 들어 있다.",
     choices: [
       { label: "고개 숙여 감사드린다", fx: { blessing: true, teacher: 2 },
         result: s => `쪽지에는 한 줄이 적혀 있었다. "너는 이미 충분히 잘하고 있다." 그날부터 이상하게 몸이 가벼웠다. ✨ 류봉두의 축복: ${s.lastBlessing || "능력치"} 상승` },
@@ -549,6 +550,8 @@ export const EVENTS = [
       { label: "내 생각을 먼저 말한다", fx: { s: { "mental.confidence": 1.5, "student.attitude": 1 }, teacher: 5, morale: 4 }, result: "가고 싶은 학교와 이유를 말했다. 엄마와 선생님이 동시에 고개를 끄덕이셨다." },
       { label: "어른들 이야기를 듣는다", fx: { s: { "mental.focus": 1 }, teacher: 2 }, result: "고등학교 이야기가 내 머리 위로 오갔다. 끝나고 엄마가 떡볶이를 사 주셨다." },
     ] },
+  // ── 추가 이벤트 86개 (data/events2.js) ──
+  ...EVENTS_MORE,
 ];
 
 // 주장 선거 (중3 3월 2주차에 반드시 일어남). 결과는 엔진이 계산합니다.
