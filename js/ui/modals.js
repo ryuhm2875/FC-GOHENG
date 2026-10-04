@@ -6,7 +6,7 @@ import { STATUS_LABEL } from "../engine/match.js";
 import { ovr } from "../engine/team.js";
 import { readSlot, saveTo, deleteSlot, exportCode, importCode } from "../state.js";
 import { esc, fl, signed, img, faceOf, fillText } from "./util.js";
-import { eventView, eventVars, chooseEvent } from "../engine/events.js";
+import { eventView, eventVars, chooseEvent, reqOk, reqText } from "../engine/events.js";
 import { meetingScript, applyMeeting } from "../engine/advice.js";
 import { STAFF } from "../../data/roster.js";
 import { reduced, countUp } from "./fx.js";
@@ -287,7 +287,12 @@ export function eventModal(app, done) {
         <p class="ev-text">${esc(fillText(v.text, vars))}</p>
       </div>
     </div>
-    <div class="vn-choices" id="evc">${v.ev.choices.map((c, i) => `<button class="vn-choice" style="--i:${i}" data-i="${i}">${esc(fillText(c.label, vars))}</button>`).join("")}</div>`;
+    <div class="vn-choices" id="evc">${v.ev.choices.map((c, i) => {
+      if (!c.req) return `<button class="vn-choice" style="--i:${i}" data-i="${i}">${esc(fillText(c.label, vars))}</button>`;
+      const ok = reqOk(state, c);
+      return `<button class="vn-choice special ${ok ? "open" : "locked"}" style="--i:${i}" ${ok ? `data-i="${i}"` : `disabled aria-disabled="true"`}>
+        <span class="sp-tag">${ok ? "★ 열린 선택" : "🔒 잠김"}</span>${esc(fillText(c.label, vars))}<small class="sp-req">${esc(reqText(c))} 이상${ok ? "" : " 필요"}</small></button>`;
+    }).join("")}</div>`;
   openModal(html, (el, close) => {
     el.querySelectorAll("[data-i]").forEach(b => b.addEventListener("click", () => {
       const r = chooseEvent(state, +b.dataset.i);

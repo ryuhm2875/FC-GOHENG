@@ -3,6 +3,7 @@ import { LEAGUE_OPPONENTS, NATIONAL_OPPONENTS, HIGH_SCHOOLS, HS_TIERS, ELEMENTAR
 import { COMPS } from "../../data/calendar.js";
 import { rand, normal, shuffle, chance, weighted, pick } from "../rng.js";
 import { ovr } from "./team.js";
+import { jnFixture, jnAfter } from "./jn.js";
 
 export const US = "us";
 export const TEAM_NAME = "고흥FC";
@@ -72,7 +73,7 @@ export function ensureSeason(state, info) {
 
 // ── 이번 주 경기 상대 ───────────────
 export function matchFor(state, info) {
-  if (!info?.match) return null;
+  if (!info?.match) return jnFixture(state, info);            // 경기 없는 주: 전남 대표 소년체전이 있을 수 있음
   ensureSeason(state, info);
   const m = info.match, comp = COMPS[m.comp];
   const base = { comp: m.comp, compLabel: comp.label, round: m.round || null, official: comp.official, tournament: comp.tournament, ko: m.stage === "ko" };
@@ -202,6 +203,7 @@ export function applyResult(state, fx, gf, ga, { shootoutWin = null, rating = nu
     }
   }
 
+  if (fx.comp === "jn") notes.push(...jnAfter(state, fx, gf, ga, shootoutWin, rating));
   if (fx.comp === "hs") notes.push(...scoutAfter(state, fx, rating, my, gf, ga));
   if (fx.elementary) notes.push(...elementaryAfter(state, fx, rating, my, gf, ga));
   return notes;

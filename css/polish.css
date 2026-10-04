@@ -425,3 +425,82 @@ body:has(#modal-root .backdrop) .fs-btn { opacity: 0; pointer-events: none; }
 .ht-scene { position: absolute; inset: 0; z-index: 20; border-radius: inherit; overflow: hidden; animation: fade .5s ease both; }
 .ht-scene img { width: 100%; height: 100%; object-fit: cover; object-position: 45% 40%; }
 .ht-scene::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5,7,15,.05), rgba(5,7,15,.45)); }
+
+/* ── 수비 훈련 ── */
+.df-good { fill: rgba(57, 217, 138, .22); stroke: rgba(120, 255, 180, .8); stroke-width: .45; }
+.df-perfect { fill: rgba(120, 255, 180, .38); }
+.df-cue path { fill: none; stroke: #FF8A3D; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.df-cue { animation: dfcue .5s ease-out forwards; }
+@keyframes dfcue { from { opacity: 0; } 25% { opacity: 1; } to { opacity: 0; } }
+.mg .mg-tackle { flex: 1.4; font-weight: 800; letter-spacing: .04em; }
+.df-ball { will-change: transform; }
+
+/* ── 스프린트 ── */
+.mgs .sp-mark { font: 700 3px var(--fc, sans-serif); fill: rgba(255,255,255,.75); }
+.mgs .sp-tag { font: 800 3.4px var(--fc, sans-serif); fill: #FFC93C; paint-order: stroke; stroke: rgba(0,0,0,.6); stroke-width: .6; }
+.mgs #spTape { transition: opacity .4s; }
+.mgs #spTape.broken { opacity: 0; }
+.sp-count { font-family: var(--fc); font-style: italic; font-weight: 900; font-size: 18px; fill: #fff; opacity: 0; paint-order: stroke; stroke: rgba(0,0,0,.55); stroke-width: 1; transform-box: fill-box; transform-origin: center; }
+.sp-count.show { animation: shmsg .45s cubic-bezier(.2,1.4,.4,1) both; }
+.sp-count.go { fill: #FFC93C; }
+.sp-speed i { transition: width .08s linear; background: linear-gradient(90deg, #3B50E6, #39D98A); }
+.sp-speed i.hot { background: linear-gradient(90deg, #FF6B1A, #FFC93C); }
+.mg .sp-foot { font-weight: 800; user-select: none; -webkit-user-select: none; }
+.mg .sp-foot.hit { animation: spfoot .14s ease-out; }
+@keyframes spfoot { from { transform: scale(.94); filter: brightness(1.35); } to { transform: none; filter: none; } }
+@media (prefers-reduced-motion: reduce) { .df-cue, .sp-foot.hit, .sp-count.show { animation: none; } .df-cue { opacity: 1; } .sp-count.show { opacity: 1; } }
+
+/* ── 경기 화면 연출: 공 그림자·골 카메라·날씨 ── */
+.pitch .ball, .pitch .bshadow { transition: none !important; }
+.pitch .bshadow { fill: rgba(0, 0, 0, .35); }
+.pitch .ball circle { filter: drop-shadow(0 0 .25px rgba(0,0,0,.6)); }
+.match-screen .pitch { transition: transform .45s cubic-bezier(.2,.8,.3,1); transform-origin: 50% 50%; }
+.match-screen .pitch.cam-r { transform: scale(1.16); transform-origin: 96% 50%; }
+.match-screen .pitch.cam-l { transform: scale(1.16); transform-origin: 4% 50%; }
+.pitch .net-wave { fill: none; stroke: rgba(255,255,255,.85); stroke-width: .35; opacity: 0; animation: netwave .7s ease-out forwards; }
+@keyframes netwave { 0% { opacity: .9; transform: scaleX(.3); } 100% { opacity: 0; transform: scaleX(1.6); } }
+.pitch .net-wave { transform-box: fill-box; transform-origin: center; }
+.pitch .net-burst { fill: rgba(255, 201, 60, .5); transform-box: fill-box; transform-origin: center; animation: netburst .8s ease-out forwards; }
+@keyframes netburst { from { transform: scale(.4); opacity: .9; } to { transform: scale(3.2); opacity: 0; } }
+.pitch-wrap .wx-layer { position: absolute; inset: 0; pointer-events: none; z-index: 2; border-radius: inherit; }
+.pitch-wrap.wx-rain .wx-layer {
+  background-image: repeating-linear-gradient(104deg, transparent 0 9px, rgba(205, 225, 255, .22) 9px 10px, transparent 10px 23px),
+                    repeating-linear-gradient(98deg, transparent 0 14px, rgba(205, 225, 255, .14) 14px 15px, transparent 15px 31px);
+  background-size: 120px 160px, 90px 120px; animation: rainfall .45s linear infinite;
+}
+@keyframes rainfall { to { background-position: -40px 160px, -26px 120px; } }
+.pitch-wrap.wx-rain .pitch { filter: saturate(.78) brightness(.88); }
+.pitch-wrap.wx-hot .wx-layer { background: radial-gradient(120% 90% at 50% -10%, rgba(255, 196, 90, .22), transparent 60%); }
+.pitch-wrap.wx-cold .wx-layer { background: linear-gradient(180deg, rgba(200, 225, 255, .14), rgba(200, 225, 255, .04)); }
+.pitch-wrap.wx-cold .pitch { filter: saturate(.85) hue-rotate(-6deg); }
+.pitch-wrap.wx-wind .wx-layer {
+  background-image: repeating-linear-gradient(0deg, transparent 0 34px, rgba(255,255,255,.07) 34px 35px, transparent 35px 70px);
+  background-size: 200px 70px; animation: windblow 1.6s linear infinite;
+}
+@keyframes windblow { to { background-position: -200px 0; } }
+.pitch-wrap.sky-night::after, .pitch-wrap.sky-dusk::after { content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 1; border-radius: inherit; }
+.pitch-wrap.sky-night::after { background: radial-gradient(40% 50% at 0 0, rgba(255, 248, 220, .18), transparent 70%), radial-gradient(40% 50% at 100% 0, rgba(255, 248, 220, .18), transparent 70%),
+  radial-gradient(40% 50% at 0 100%, rgba(255, 248, 220, .14), transparent 70%), radial-gradient(40% 50% at 100% 100%, rgba(255, 248, 220, .14), transparent 70%), rgba(4, 8, 30, .22); }
+.pitch-wrap.sky-night .pitch { filter: brightness(.95) contrast(1.06); }
+.pitch-wrap.sky-dusk::after { background: linear-gradient(160deg, rgba(255, 140, 60, .24), rgba(120, 40, 90, .12) 60%, rgba(10, 10, 40, .15)); }
+.chip.wx { background: rgba(120, 160, 255, .14); border-color: rgba(120, 160, 255, .3); }
+@media (prefers-reduced-motion: reduce) { .pitch-wrap .wx-layer { animation: none !important; } .match-screen .pitch { transition: none; } }
+.pitch-wrap .goal-flash { z-index: 4; }
+
+/* 능력치·관계로 열리는 선택지 */
+.vn-choice.special { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; }
+.vn-choice.special .sp-tag { font-size: 11px; font-weight: 800; letter-spacing: .04em; }
+.vn-choice.special .sp-req { font-size: 11.5px; opacity: .75; font-weight: 500; }
+.vn-choice.special.open { border-color: rgba(255, 201, 60, .65); background: linear-gradient(90deg, rgba(255, 201, 60, .14), rgba(255, 107, 26, .06)); }
+.vn-choice.special.open .sp-tag { color: #FFC93C; }
+.vn-choice.special.locked { opacity: .55; cursor: not-allowed; filter: grayscale(.6); }
+.vn-choice.special.locked .sp-tag { color: #AEB5CC; }
+
+/* 엔딩: 5년 후 */
+.end-later { margin: 18px 0 6px; padding: 14px 18px 16px; border-left: 3px solid #FFC93C; background: linear-gradient(90deg, rgba(255, 201, 60, .1), rgba(255, 201, 60, 0)); text-align: left;
+  animation: laterIn .9s cubic-bezier(.2,.8,.3,1) both; }
+.end-later .eyebrow { color: #FFC93C; letter-spacing: .14em; }
+.end-later p { white-space: pre-line; line-height: 1.8; margin: 6px 0 0; font-size: 15px; color: rgba(255,255,255,.9); }
+@keyframes laterIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .end-later { animation: none; } }
+.kit-dot.jn-dot { background: #FFC93C; border-color: #1A237E; }

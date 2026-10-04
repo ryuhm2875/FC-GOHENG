@@ -105,6 +105,7 @@ export function showEnding(app) {
       <h1 class="end-title">${esc(ending.title)}</h1>
       <div class="end-face">${img(faceOf(p, 3), p.name)}</div>
       <p class="end-story" id="story"></p>
+      ${ending.later ? `<div class="end-later" id="later" hidden><span class="eyebrow">5년 후</span><p>${esc(ending.later(c))}</p></div>` : ""}
       <div class="end-letter" id="letter" hidden><span class="eyebrow">LETTER</span><p>${esc(teacherLetter(state))}</p></div>
       <dl class="end-recap" id="recap" hidden>${recap.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
       <div class="end-btns" id="eb" hidden>
@@ -117,7 +118,7 @@ export function showEnding(app) {
   const text = ending.story(c);
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let n = 0;
-  const finish = () => { story.textContent = text; app.root.querySelector("#letter").hidden = false; app.root.querySelector("#recap").hidden = false; app.root.querySelector("#eb").hidden = false; };
+  const finish = () => { story.textContent = text; const lt = app.root.querySelector("#later"); if (lt) lt.hidden = false; app.root.querySelector("#letter").hidden = false; app.root.querySelector("#recap").hidden = false; app.root.querySelector("#eb").hidden = false; };
   const t = setInterval(() => { n += 2; story.textContent = text.slice(0, n); if (n >= text.length) { clearInterval(t); finish(); } }, reduce ? 1 : 32);
   app.root.querySelector(".ending").addEventListener("click", e => { if (!e.target.closest("button")) { clearInterval(t); finish(); } });
   app.root.querySelector("[data-gallery]").addEventListener("click", () => galleryModal());

@@ -97,6 +97,51 @@ export const LIFE = [
   { id: "nw_rocket", from: "news", title: "나로우주센터 소식", body: "나로우주센터에서 발사 준비 소식이 들려왔다. 반 아이들이 그날 운동장에서 하늘을 보자고 난리다." },
   { id: "nw_palyeong", from: "news", when: { months: [4, 5, 10] }, title: "팔영산 산행", body: "주말에 팔영산 등산하는 사람들이 많다. 감독님이 '다음 체력 훈련은 저기다'라고 하셨다는 소문이 돈다." },
   { id: "nw_fest", from: "news", when: { months: [10] }, title: "지역 축제", body: "읍내에서 축제가 열린다. 단톡방이 '훈련 몇 시에 끝나요'로 도배됐다." },
+  { id: "nw_sunset", from: "news", when: { months: [9, 10, 11] }, title: "고흥만 노을", body: "고흥만 방조제에 노을 보러 오는 사람이 많아졌다. 훈련 끝나고 돌아오는 버스 창밖이 온통 주황색이다.\n\n우리 유니폼 색이랑 똑같다고 누가 그랬다." },
+  { id: "nw_ssukseom", from: "news", when: { months: [4, 5] }, title: "쑥섬에 꽃이 폈다", body: "쑥섬 꽃길이 한창이라고 동네가 들썩인다. 엄마가 주말에 배 타고 들어가 보자고 하신다. 훈련 없는 날이면." },
+  { id: "nw_bridge", from: "news", when: { months: [5, 6, 9] }, title: "거금대교 자전거길", body: "거금대교 자전거길이 새로 단장했다는 소식. 체력 훈련 삼아 다리 건너 보자는 말이 단톡방에 올라왔다." },
+  // ── 친구 (더) ──
+  { id: "fr_lunch", from: "friend", school: true, title: "급식 ㄹㅇ", body: "오늘 급식 돈가스 나옴 ㄷㄷ 너 훈련 때문에 늦게 오면 내가 하나 챙겨 둘게. 소스는 못 지킴" },
+  { id: "fr_test", from: "friend", school: true, cond: examWeek, title: "범위 어디까지?", body: "국어 시험 범위 소설 두 편 맞지? 나 하나밖에 안 읽었는데 ㅋㅋ 줄거리 요약해 줄 사람 구함" },
+  { id: "fr_rain", from: "friend", when: { months: [6, 7] }, title: "비 오는데 훈련함?", body: "이 비에 훈련한다고? 진짜 대단하다… 끝나면 분식집 와라. 어묵 국물 시켜 놓을게" },
+  { id: "fr_game", from: "friend", title: "어제 경기 봤냐", body: "어제 국가대표 경기 마지막 골 봤냐 ㄷㄷ 너도 언젠가 저런 거 넣어라. 그럼 내가 너 초등학교 때 사진 팔 거임 ㅋㅋ" },
+  { id: "fr_tired", from: "friend", cond: s => s.player.condition.fatigue >= 60, title: "너 좀비 같음", body: "오늘 수업 시간에 너 눈 반쯤 감겨 있던데 ㅋㅋ 선생님이 깨우려다 말았다. 좀 자라 진짜" },
+  { id: "fr_win", from: "friend", cond: s => last(s)?.result === "승", title: "이겼다며!", body: "이겼다며! 반 단톡에 벌써 소문 다 남 ㅋㅋ 내일 매점 너가 쏘는 거지?" },
+  { id: "fr_lose", from: "friend", cond: s => last(s)?.result === "패", title: "…", body: "졌다며. 뭐 말 안 해도 됨. 내일 학교 오면 그냥 평소처럼 할게." },
+  { id: "fr_bday_plan", from: "friend", school: true, title: "체육 시간", body: "체육 시간에 축구 하는데 우리 팀 하자. 너 있으면 무조건 이김. 대신 살살 해라 애들 운다 ㅋㅋ" },
+  { id: "fr_future", from: "friend", when: { grades: [3] }, title: "진로 상담 했냐", body: "나 오늘 진로 상담했는데 아직도 뭐 할지 모르겠음. 너는 하고 싶은 거 있어서 좋겠다. 진심임" },
+  // ── 멘토 선배 ──
+  { id: "mt_boots", from: "mentor", title: "축구화 끈", body: "{name}, 경기 전에 축구화 끈 두 번 묶어라. 지난번에 너 풀려서 뛰는 거 봤다. 그거 하나로 경기 망친다." },
+  { id: "mt_bench", from: "mentor", cond: s => last(s)?.status === "bench", title: "나도 그랬다", body: "나도 1년 동안 벤치였다. 그때 형들 플레이 다 노트에 적었다. 그 노트가 지금 나를 만들었다.\n\n너도 적어 봐라." },
+  { id: "mt_exam", from: "mentor", cond: examWeek, title: "시험 기간 팁", body: "시험 기간엔 저녁 훈련 끝나고 바로 씻고 한 시간만 책 봐라. 두 시간 하려다 0시간 한다. 경험담이다." },
+  { id: "mt_hs", from: "mentor", when: { grades: [2, 3] }, title: "고등학교 오니까", body: "고등학교 와 보니까 중학교 때 기본기 안 다진 애들이 제일 먼저 밀리더라.\n\n화려한 거 말고 패스, 퍼스트 터치. 그게 다다." },
+  { id: "mt_goal", from: "mentor", cond: s => last(s)?.goals > 0, title: "골 봤다", body: "골 영상 봤다. 마무리 좋더라. 그런데 그 전에 공 뺏긴 장면도 봤다. 둘 다 기억해라." },
+  { id: "mt_food", from: "mentor", title: "편의점 말고", body: "훈련 끝나고 편의점 컵라면 그만 먹어라. 나도 그러다 2학년 때 체력 바닥났다. 집밥이 최고다." },
+  // ── 후배 ──
+  { id: "jr_ask", from: "junior", when: { grades: [2, 3] }, title: "선배님!", body: "선배님 저 오늘 패스 연습 같이 해 주실 수 있어요? 코치님이 선배님한테 배우라고 하셨어요!!" },
+  { id: "jr_fan", from: "junior", when: { grades: [2, 3] }, cond: s => last(s)?.goals > 0, title: "선배님 골 ㄷㄷ", body: "선배님 오늘 골 진짜 멋있었어요ㅠㅠ 저 그 장면 폰 배경화면 했어요" },
+  { id: "jr_water", from: "junior", when: { grades: [2, 3] }, title: "물통 당번", body: "선배님, 내일 물통 당번 저인데 몇 개 챙겨야 돼요? 지난번에 모자라서 혼났어요 ㅠ" },
+  { id: "jr_scared", from: "junior", when: { grades: [2, 3] }, title: "감독님 무서워요", body: "선배님도 1학년 때 감독님 무서웠어요? 저 오늘 혼나서 아직도 심장 뛰어요…" },
+  { id: "jr_thanks", from: "junior", when: { grades: [3] }, title: "감사합니다", body: "선배님이 알려 주신 대로 디딤발 고쳤더니 슈팅이 진짜 달라졌어요! 오늘 코치님한테 칭찬받았어요!!" },
+  // ── 라이벌 ──
+  { id: "rv_hello", from: "rival", title: "{rival}", body: "다음 경기 너네랑이더라. 이번엔 안 봐준다. 원래도 안 봐줬지만." },
+  { id: "rv_goal", from: "rival", cond: s => last(s)?.goals > 0, title: "봤다", body: "골 넣었다며. 운 좋았네. …솔직히 잘 찼더라. 이건 비밀이다." },
+  { id: "rv_injury", from: "rival", cond: s => !!s.player.condition.injury, title: "다쳤다며", body: "다쳤다는 얘기 들었다. 빨리 낫고 와라. 너 없는 팀 이기면 재미없다." },
+  // ── 단톡방 ──
+  { id: "gr_photo", from: "group", title: "단체 사진", body: "{mate}: 오늘 훈련 끝나고 찍은 단체 사진 올림\n\n{mate2}: 나 눈 감음 ㅡㅡ 다시 찍자\n\n{assistant}: 다시 안 찍는다" },
+  { id: "gr_late", from: "group", title: "누가 지각함", body: "{assistant}: 오늘 지각한 사람 운동장 다섯 바퀴. 본인은 알 거다\n\n{mate}: …\n\n{mate2}: ㅋㅋㅋㅋ" },
+  { id: "gr_rain", from: "group", when: { months: [6, 7, 8] }, title: "훈련 취소?", body: "{mate}: 비 오는데 훈련 함?\n\n{assistant}: 한다. 비 온다고 경기 취소 안 된다\n\n{mate2}: ㅠㅠ" },
+  { id: "gr_snack", from: "group", title: "간식", body: "{assistant}: 오늘 감독님이 통닭 쏘신다. 훈련 끝나고 다 남아라\n\n{mate}: 감독님 사랑합니다\n\n{mentor}: 1학년들 먼저 먹어라" },
+  { id: "gr_cold", from: "group", when: { months: [12, 1, 2] }, title: "핫팩", body: "{mate2}: 핫팩 남는 사람?\n\n{mate}: 나 세 개 있음\n\n{assistant}: 핫팩 붙이고 뛰다 화상 입는다. 주머니에만 넣어라" },
+  { id: "gr_bus", from: "group", title: "원정 버스", body: "{assistant}: 내일 원정 버스 7시 출발. 7시 1분에 오면 걸어서 와라\n\n{mate}: 넵!!\n\n{mate2}: 알람 세 개 맞춤" },
+  // ── 담임 선생님 ──
+  { id: "tc_note", from: "teacher", school: true, title: "알림장", body: "이번 주 금요일까지 진로 희망 조사서 제출입니다. 축구부 친구들은 훈련 일정 때문에 늦어도 되니 꼭 내 주세요." },
+  { id: "tc_book", from: "teacher", school: true, title: "책 한 권", body: "운동하느라 바쁘겠지만, 한 달에 책 한 권은 읽자. 선생님이 교실 뒤에 몇 권 꽂아 놨다. 빌려 가도 된다." },
+  { id: "tc_cheer", from: "teacher", cond: matchWeek, title: "주말 경기", body: "이번 주말 경기 있다면서? 반 친구들이랑 응원 메시지 모아 봤다. 다치지만 말고 오너라." },
+  // ── 부모님 (더) ──
+  { id: "mom_lunchbox", from: "mom", cond: matchWeek, title: "도시락", body: "내일 경기라며. 엄마가 새벽에 김밥 쌀게. 시금치 빼 달라는 말은 안 들은 걸로 한다." },
+  { id: "dad_car", from: "dad", title: "데리러 간다", body: "오늘 훈련 끝나면 아빠가 데리러 간다. 차에서 하고 싶은 말 있으면 하고, 없으면 그냥 자도 된다." },
+  { id: "dad_hurt", from: "dad", cond: s => !!s.player.condition.injury, title: "아픈 데는", body: "다친 데는 좀 어떠냐. 아빠는 축구 잘 모르지만, 아픈 걸 참는 게 용기는 아니라는 건 안다. 병원 가자고 하면 바로 말해." },
 ];
 
 // 경기 뒤 단톡방 대화 (결과와 내 활약에 따라)
@@ -266,5 +311,40 @@ export const COACH_TALK = {
   ],
   scholar: [
     { from: "coach", title: "성적표 봤다", body: "담임 선생님께 네 성적 얘기 들었다. 운동하면서 그 성적이면 대단한 거다.\n\n공부하는 선수는 경기도 읽는다. 지금처럼만 해라." },
+    { from: "assist", title: "감독님이 웃으시더라", body: "교무실 다녀오신 감독님이 네 성적표 얘기를 하시면서 웃으셨다. 그 양반 웃는 거 일 년에 몇 번 못 본다.\n\n그렇다고 훈련 빼먹으면 안 된다." },
+  ],
+  // 벤치가 길어질 때 (최근 세 경기 연속 선발이 아님)
+  benchLong: [
+    { from: "coach", title: "벤치에 오래 있었지", body: "요즘 네 이름을 명단 위쪽에 못 적고 있다. 네가 못해서만은 아니다. 지금 그 자리 형들이 잘하고 있어서다.\n\n훈련장에서 나를 곤란하게 만들어라. 안 쓸 수 없게." },
+    { from: "assist", title: "기다리는 것도 실력", body: "벤치에 앉아 있으면 시간이 안 간다. 나도 그랬다.\n\n그런데 들어갔을 때 바로 뛰는 놈이 결국 자리를 뺏더라. 몸은 늘 70도로 데워 둬라." },
+    { from: "coach", title: "한 가지만 보여 줘라", body: "다 잘하려고 하지 마라. 한 가지만 확실하면 된다. 그게 뭔지는 너도 알 거다.\n\n다음 훈련 때 그거 하나만 보여 줘라." },
+  ],
+  // 크게 이긴 다음 주 (세 골 차 이상)
+  afterBigWin: [
+    { from: "coach", title: "어제 일은 어제 일이다", body: "크게 이겼다고 다음 경기도 그렇게 될 거라 생각하면 오산이다. 상대는 우리 영상을 보고 있다.\n\n오늘 훈련, 평소보다 10분 더 한다." },
+    { from: "assist", title: "기분 좋은 월요일", body: "다들 표정이 밝더라. 좋다. 그 기분은 오늘까지만.\n\n영상 보니 실점할 뻔한 장면이 세 번은 있었다. 이긴 경기에서 배우는 게 진짜다." },
+    { from: "coach", title: "잘했다. 딱 한 번 말한다", body: "어제는 잘했다. 이 말은 딱 한 번만 한다.\n\n칭찬 오래 들으면 다리가 무거워진다." },
+  ],
+  // 크게 진 다음 주 (세 골 차 이상)
+  afterBigLoss: [
+    { from: "coach", title: "어제 경기", body: "할 말은 많은데 하나만 하겠다. 세 번째 골 먹고 고개 숙인 사람, 다음 경기 명단에서 지울 생각이었다.\n\n지는 건 괜찮다. 포기하는 건 안 된다." },
+    { from: "assist", title: "영상은 내가 본다", body: "어제 경기 영상은 너희가 보지 마라. 내가 보고 필요한 장면만 잘라 줄게.\n\n지금 필요한 건 반성보다 잠이다. 일찍 자라." },
+    { from: "coach", title: "다시 시작이다", body: "어제 점수는 잊어라. 기억할 건 점수가 아니라 우리가 어디서 무너졌는지다.\n\n오늘은 공 없이 뛰는 것부터 다시 한다." },
+  ],
+  // 공격수인데 골이 오래 없을 때
+  goalDrought: [
+    { from: "coach", title: "골은 케첩 같은 거다", body: "안 나올 땐 아무리 흔들어도 안 나온다. 그러다 한꺼번에 쏟아진다.\n\n골문 앞에 서 있는 횟수만 늘려라. 나머지는 때가 되면 온다." },
+    { from: "assist", title: "슈팅 영상", body: "네 슈팅 장면만 모아서 봤다. 다리가 너무 빨리 나간다. 공을 끝까지 보고 차라.\n\n이번 주 개인훈련 때 나랑 슈팅 50개만 하자." },
+    { from: "coach", title: "골 못 넣는 공격수", body: "골 못 넣는 공격수도 쓸모는 있다. 수비를 끌고 다니면 동료가 넣는다.\n\n그런데 너는 거기서 멈출 선수가 아니잖아." },
+  ],
+  // 새 학년 첫 주 (2·3학년)
+  newYear: [
+    { from: "coach", title: "새 학기다", body: "한 학년 올라갔다. 이제 네 뒤에 후배가 있다.\n\n후배들은 네 말보다 네 행동을 본다. 훈련장에 제일 먼저 나와라." },
+    { from: "assist", title: "올해 목표 적어 와라", body: "종이 한 장에 올해 목표 세 개만 적어 와라. 하나는 축구, 하나는 공부, 하나는 아무거나.\n\n연말에 다시 꺼내 볼 거다." },
+  ],
+  // 3학년 마지막 몇 주
+  lastDays: [
+    { from: "coach", title: "남은 시간", body: "이제 너희랑 운동장에 서는 날이 손에 꼽는다. 3년 동안 나는 너희한테 칭찬보다 잔소리를 더 많이 했다.\n\n그게 내 방식이었다. 미안하다는 말은 안 한다. 대신 고맙다." },
+    { from: "assist", title: "마지막 훈련 일지", body: "3년 치 훈련 일지를 넘겨 봤다. 처음 왔을 때 네 50m 기록 기억나냐? 지금이랑 비교하면 웃음 나온다.\n\n어디 가서도 첫날 마음 잊지 마라." },
   ],
 };

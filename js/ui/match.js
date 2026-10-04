@@ -73,10 +73,10 @@ function layout(players, ball, poss, opt = {}) {
     x = pl.team === "us" ? Math.min(hi, Math.max(lo, x)) : Math.min(105 - lo, Math.max(105 - hi, x));
     pl.x = x; pl.y = Math.min(65, Math.max(3, y));
   }
-  if (bx < 1 || bx > 104) return;                                   // 골망·라인 밖
+  if (bx < 1 || bx > 104) return [];                                // 골망·라인 밖
   const named = opt.actor ? players.find(p => p.name === opt.actor) : null;
   const team = named ? named.team : poss;
-  if (!team) return;
+  if (!team) return [];
   const holder = named || (opt.holderIsMe ? players.find(p => p.me) : null)
     || players.filter(p => p.team === team && p.pos !== "GK").sort((a, b) => dist(a, ball) - dist(b, ball))[0];
   const side = team === "us" ? 1 : -1;
@@ -92,6 +92,34 @@ function layout(players, ball, poss, opt = {}) {
     const m = p === holder ? 0 : 1.5;
     p.x = Math.min(105 - m, Math.max(m, p.x)); p.y = Math.min(68 - m, Math.max(m, p.y));
   }
+  return [holder, foes[0], foes[1]].filter(Boolean);
+}
+
+// 겹친 점 떼어 놓기 + 공과 상관없는 선수들의 작은 움직임 (화면 연출만. 엔진 판정과 무관)
+function spread(players, fixed) {
+  const lock = new Set(fixed);
+  for (const pl of players) {
+    if (lock.has(pl) || pl.pos === "GK") continue;
+    pl.x += (Math.random() - 0.5) * 1.6; pl.y += (Math.random() - 0.5) * 1.6;
+  }
+  const MIN = 3.6;
+  for (let it = 0; it < 3; it++) {
+    for (let i = 0; i < players.length; i++) for (let j = i + 1; j < players.length; j++) {
+      const a = players[i], b = players[j];
+      let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
+      if (d >= MIN) continue;
+      if (d < 0.01) { dx = 0; dy = 1; d = 1; }
+      const push = (MIN - d) / 2, ux = dx / d, uy = dy / d;
+      const fa = lock.has(a) || a.pos === "GK", fb = lock.has(b) || b.pos === "GK";
+      if (fa && fb) continue;
+      const ka = fa ? 0 : fb ? 2 : 1, kb = fb ? 0 : fa ? 2 : 1;
+      a.x -= ux * push * ka; a.y -= uy * push * ka; b.x += ux * push * kb; b.y += uy * push * kb;
+    }
+  }
+  for (const pl of players) {
+    if (lock.has(pl)) continue;
+    pl.x = Math.min(103.5, Math.max(1.5, pl.x)); pl.y = Math.min(66.5, Math.max(1.5, pl.y));
+  }
 }
 const dist = (p, [x, y]) => Math.hypot(p.x - x, p.y - y);
 
@@ -103,6 +131,8 @@ function pitchSvg(players, kit) {
       <circle cx="52.5" cy="34" r="9.15"/><rect x="1" y="13.85" width="16.5" height="40.3"/><rect x="87.5" y="13.85" width="16.5" height="40.3"/>
       <rect x="1" y="24.85" width="5.5" height="18.3"/><rect x="98.5" y="24.85" width="5.5" height="18.3"/>
       <rect x="-1" y="30.3" width="2" height="7.4" class="goal"/><rect x="104" y="30.3" width="2" height="7.4" class="goal"/></g>
+    <g class="netfx"></g>
+    <ellipse class="bshadow" rx="1.25" ry=".55" style="transform:translate(52.5px,34.7px)"/>
     ${players.map(p => `<g class="dot ${p.team} ${p.pos === "GK" ? "gk" : ""} ${p.me ? "me" : ""}" data-id="${p.id}" style="transform:translate(${p.x}px,${p.y}px)">
       <circle r="4" class="ring"/><circle r="2.3" class="body"/><text y="0.75" class="no">${p.number}</text><text y="-4.3" class="tag">나</text></g>`).join("")}
     <g class="ball" style="transform:translate(52.5px,34px)"><circle r="1.2"/></g>
@@ -118,6 +148,7 @@ export function showMatch(app, m, onDone) {
   const p = state.player;
   const fx = m.fx;
   let speed = "normal", timer = null, paused = false, queue = [], after = null;
+  const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const players = buildPlayers(state, m);
   layout(players, [52.5, 34], null);
 
@@ -125,14 +156,14 @@ export function showMatch(app, m, onDone) {
     <header class="board">
       <div class="comp">${esc(fx.compLabel)}${fx.round ? ` ${esc(fx.round)}` : ""}</div>
       <div class="teams">
-        <span class="tm home"><img src="assets/img/logo.png" alt="">${TEAM_NAME}</span>
+        <span class="tm home">${fx.jn ? `<i class="kit-dot jn-dot"></i>${esc(fx.usName)}` : `<img src="assets/img/logo.png" alt="">${TEAM_NAME}`}</span>
         <span class="sc num" id="sc">0 : 0</span>
         <span class="tm away"><i class="kit-dot" style="background:${kitOf(fx.opponent).fill};border-color:${kitOf(fx.opponent).stroke}"></i>${esc(fx.opponent.name)}</span>
       </div>
       <div class="clock num" id="clock">경기 전</div>
     </header>
     <div class="match-body">
-      <div class="pitch-wrap" id="pitch">${pitchSvg(players, kitOf(fx.opponent))}<div class="goal-flash" id="flash" hidden>GOAL</div><div class="atk-dir" id="atk">공격 방향 ▶</div></div>
+      <div class="pitch-wrap sky-${m.sky || "day"} wx-${m.weather || "clear"}" id="pitch">${pitchSvg(players, kitOf(fx.opponent))}${m.weather && m.weather !== "clear" ? `<div class="wx-layer" aria-hidden="true"></div>` : ""}<div class="goal-flash" id="flash" hidden>GOAL</div><div class="atk-dir" id="atk">공격 방향 ▶</div></div>
       <ol class="feed" id="feed" aria-live="polite"></ol>
     </div>
     <footer class="ctl" id="ctl"></footer>
@@ -147,7 +178,7 @@ export function showMatch(app, m, onDone) {
   const svg = root.querySelector(".pitch");
   const flash = root.querySelector("#flash");
   const dotEls = Object.fromEntries([...svg.querySelectorAll(".dot")].map(el => [el.dataset.id, el]));
-  const ballEl = svg.querySelector(".ball");
+  const ballEl = svg.querySelector(".ball"), shadowEl = svg.querySelector(".bshadow"), netFx = svg.querySelector(".netfx");
   // 세로 화면: 전광판·선택지 높이를 빼고 남은 만큼만 경기장을 키움 (중계 줄은 최소 64px 남김)
   const pitchWrap = root.querySelector("#pitch"), boardEl = root.querySelector(".board");
   const narrow = () => innerWidth < 900 && !(matchMedia("(orientation: landscape) and (max-height: 620px)").matches);
@@ -167,8 +198,30 @@ export function showMatch(app, m, onDone) {
   // 화면에 그릴 때만 좌표를 돌림: 후반에는 우리 팀이 왼쪽으로 공격 (엔진 좌표는 그대로)
   let flipped = false, lastBall = [52.5, 34];
   const SX = x => (flipped ? 105 - x : x), SY = y => (flipped ? 68 - y : y);
+  // 공: 짧은 패스는 땅으로 굴러가고, 먼 거리는 포물선으로 떠서 날아감 (그림자는 땅에 남음)
+  let bCur = [52.5, 34], bRaf = 0;
+  function moveBall(tx, ty, ms) {
+    cancelAnimationFrame(bRaf);
+    const [fx0, fy0] = bCur, d = Math.hypot(tx - fx0, ty - fy0);
+    const put = (x, y, z) => {
+      ballEl.style.transform = `translate(${x.toFixed(2)}px,${(y - z).toFixed(2)}px) scale(${(1 + z * 0.06).toFixed(3)})`;
+      shadowEl.style.transform = `translate(${x.toFixed(2)}px,${(y + 0.7).toFixed(2)}px) scale(${Math.max(0.5, 1 - z * 0.07).toFixed(3)})`;
+      shadowEl.style.opacity = Math.max(0.25, 1 - z * 0.1).toFixed(2);
+    };
+    if (calm || d < 0.3) { bCur = [tx, ty]; return put(tx, ty, 0); }
+    const air = d > 17, h = air ? Math.min(7, d * 0.15) : 0, T = Math.max(140, Math.min(ms * 0.85, air ? 300 + d * 9 : 200 + d * 12)), t0 = performance.now();
+    const stepB = now => {
+      const u = Math.min(1, (now - t0) / T);
+      const e = air ? (u < 0.5 ? 2 * u * u : 1 - (-2 * u + 2) ** 2 / 2) : 1 - (1 - u) ** 3;
+      const x = fx0 + (tx - fx0) * e, y = fy0 + (ty - fy0) * e;
+      bCur = [x, y];
+      put(x, y, h * 4 * u * (1 - u));
+      if (u < 1) bRaf = requestAnimationFrame(stepB);
+    };
+    bRaf = requestAnimationFrame(stepB);
+  }
   function draw(ball, poss, ms, opt = {}) {
-    if (ball) { layout(players, ball, poss, opt); lastBall = ball; }
+    if (ball) { const fixed = layout(players, ball, poss, opt); if (!calm) spread(players, fixed); lastBall = ball; }
     const dur = `${Math.max(120, ms * 0.85)}ms`;
     for (const pl of players) {
       const el = dotEls[pl.id];
@@ -176,7 +229,18 @@ export function showMatch(app, m, onDone) {
       el.style.transform = `translate(${SX(pl.x).toFixed(2)}px,${SY(pl.y).toFixed(2)}px)`;
     }
     const b = ball || lastBall;
-    ballEl.style.transitionDuration = dur; ballEl.style.transform = `translate(${SX(b[0]).toFixed(2)}px,${SY(b[1]).toFixed(2)}px)`;
+    moveBall(SX(b[0]), SY(b[1]), ms);
+  }
+  // 골 장면: 골문 쪽으로 화면이 살짝 다가가고, 골망이 출렁임
+  function goalCam(k) {
+    if (calm) return;
+    const right = SX(lastBall[0]) > 52.5, gx = right ? 104.2 : 0.8;
+    netFx.innerHTML = [0, 1, 2].map(i => `<path class="net-wave" style="animation-delay:${i * 0.12}s" d="M${gx} 30.3 Q${(gx + (right ? 2.4 : -2.4)).toFixed(1)} 34 ${gx} 37.7"/>`).join("")
+      + `<circle class="net-burst" cx="${gx}" cy="34" r="2"/>`;
+    svg.classList.remove("cam-l", "cam-r"); void svg.getBoundingClientRect();
+    svg.classList.add(right ? "cam-r" : "cam-l");
+    clearTimeout(svg._cam);
+    svg._cam = setTimeout(() => { svg.classList.remove("cam-l", "cam-r"); netFx.innerHTML = ""; }, 1500);
   }
   function setHalf(second) {
     if (second === flipped) return;
@@ -224,6 +288,7 @@ export function showMatch(app, m, onDone) {
     flash.hidden = false;
     clearTimeout(flash._t);
     flash._t = setTimeout(() => { flash.hidden = true; }, 1300);
+    goalCam(k);
     const scr = root.querySelector(".match-screen");
     scr.classList.remove("shake"); void scr.offsetWidth; scr.classList.add(k === "goal-them" ? "shake-soft" : "shake");
     setTimeout(() => scr.classList.remove("shake", "shake-soft"), 700);
@@ -287,7 +352,10 @@ export function showMatch(app, m, onDone) {
     </div>
     ${(() => { const c = conditionOf(p); const mp = Math.round(c.match * 100);
       const role = m.status !== "start" ? "" : m.star >= 1 ? "에이스. 상대가 집중 견제합니다" : m.star >= 0.4 ? "핵심 선수" : "팀의 일원";
+      const wx = { rain: "☔ 비, 미끄러운 잔디", hot: "☀️ 무더위", cold: "❄️ 매서운 추위", wind: "🌬️ 강한 바닷바람" }[m.weather];
+      const sk = { night: "🌙 조명 경기", dusk: "🌇 해 질 녘" }[m.sky];
       return `<div class="pm-tags"><span class="cond ${c.cls}">컨디션 ${c.label}</span><span class="mute">선택 성공률 ${mp > 0 ? "+" : ""}${mp}%p</span>
+        ${wx ? `<span class="chip wx">${wx}</span>` : ""}${sk ? `<span class="chip wx">${sk}</span>` : ""}
         ${role ? `<span class="chip ${m.star >= 1 ? "kit" : ""}">영향력: ${role}</span>` : ""}</div>`; })()}
     ${m.talk ? `<div class="talk">
       <div class="talk-face">${img(m.talk.who === "coach" ? "npc_coach" : "npc_assistant", "")}</div>
@@ -297,6 +365,7 @@ export function showMatch(app, m, onDone) {
     ${fx.school ? `<div class="alert gold">🎓 오늘 ${esc(fx.school.name)}(${tierLabel(fx.school.tier)}) ${esc(fx.school.coach)}님이 직접 보러 오셨습니다. 상대는 고등학생이라 몸싸움이 버겁습니다.</div>` : ""}
     ${m.oppAce ? `<div class="alert">👀 주목할 상대: ${m.oppAce.pos} ${m.oppAce.number}번 ${esc(m.oppAce.name)} (${m.oppAce.grade}학년${m.oppAce.trait ? `, ${esc(m.oppAce.trait)}` : ""})</div>`
       : m.oppAceAbsent ? `<div class="alert">${esc(fillText("상대 에이스 {a|이/가} 오늘은 나오지 않습니다.", { a: m.oppAceAbsent }))}</div>` : ""}
+    ${fx.jn ? `<div class="alert gold">🎽 전남 대표로 나선 전국소년체전 ${esc(fx.round)}. 도내 여러 학교에서 뽑힌 선수들과 함께 뜁니다. 감독은 김 감독님이 맡으셨습니다.</div>` : ""}
     ${fx.ko ? `<div class="alert gold">지면 탈락입니다. 비기면 승부차기.</div>` : ""}
     ${fx.elementary ? `<div class="alert gold">🧒 오늘은 초등학교 팀과의 연습경기. 이겨야 본전, 지면 한동안 놀림감이다.</div>` : ""}
     <div class="power"><span>우리 전력</span><div class="pw"><i style="width:${barPct(m.ours)}%"></i></div>
@@ -451,7 +520,7 @@ export function showMatch(app, m, onDone) {
     const goals = m.goalsLog.map(g => `<li class="${g.team}">${g.minute}' ${esc(g.name)}${g.assist ? ` <span class="mute">(도움 ${esc(g.assist)})</span>` : ""}</li>`).join("");
     ctl.innerHTML = `<div class="postmatch">
       <div class="pm-head"><span class="badge-res ${resCls}">${res.result}</span>
-        <span class="num">${TEAM_NAME} ${res.gf} : ${res.ga} ${esc(res.opponent)}</span>
+        <span class="num">${fx.usName ? esc(fx.usName) : TEAM_NAME} ${res.gf} : ${res.ga} ${esc(res.opponent)}</span>
         ${res.shootout ? `<span class="mute">(승부차기 ${res.shootout.us}:${res.shootout.them})</span>` : ""}</div>
       ${goals ? `<ul class="pm-goals">${goals}</ul>` : ""}
       ${res.minutes > 0 ? `<div class="pm-rating">
@@ -465,9 +534,9 @@ export function showMatch(app, m, onDone) {
         <b class="rt num ${t.r >= 7.5 ? "hi" : t.r >= 6.5 ? "mid" : "lo"}">${t.r.toFixed(1)}</b></li>`).join("")}</ul></details>` : ""}
       ${res.notes.length ? `<ul class="pm-notes">${res.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
       <p class="mute" style="font-size:13px;margin:0">감독님 면담과 경기 기록은 메시지함에 왔습니다.</p>
-      <button class="btn btn-kit btn-wide" data-done>이번 주 마무리</button>
+      <button class="btn btn-kit btn-wide" data-done>${fx.jn && state.jnCup?.alive && !p.condition.injury ? `다음 경기로 (${["1회전", "준결승", "결승"][state.jnCup.stage]})` : "이번 주 마무리"}</button>
     </div>`;
-    ctl.querySelector("[data-done]").addEventListener("click", () => { ro?.disconnect(); removeEventListener("resize", fitPitch); onDone(res); });
+    ctl.querySelector("[data-done]").addEventListener("click", () => { ro?.disconnect(); removeEventListener("resize", fitPitch); cancelAnimationFrame(bRaf); onDone(res); });
     ctl.querySelector("[data-done]").focus({ preventScroll: true });
   }
 }

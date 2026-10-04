@@ -62,10 +62,12 @@ function academicLevel(v) {
 export function runWeek(state) {
   const ctx = beginWeek(state);
   let result = null;
-  if (ctx.fx) {
-    const m = prepareMatch(state, ctx.info, ctx.fx);
+  for (let fx = ctx.fx; fx;) {
+    const m = prepareMatch(state, ctx.info, fx);
     autoPlay(state, m);
     result = finishMatch(state, m);
+    const nx = fx.jn && result.result === "승" ? currentFixture(state) : null;   // 소년체전은 이기면 같은 주에 다음 경기
+    fx = nx?.jn ? nx : null;
   }
   return endWeek(state, ctx, result);
 }

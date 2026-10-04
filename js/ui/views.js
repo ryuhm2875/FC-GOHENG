@@ -18,6 +18,7 @@ import { REL_ROLES, rivalGap, captainScore } from "../engine/relations.js";
 import { isBirthdayWeek } from "../engine/birthday.js";
 import { blessedThisTerm } from "../engine/events.js";
 import { goalProgress } from "../engine/goals.js";
+import { jnFixture, JN_WEEK } from "../engine/jn.js";
 
 const ACADEMIC_ALERT = [
   null,
@@ -59,7 +60,7 @@ export const jerseyCard = state => `<section class="cardwrap">${fcCard(state)}
 
 // 다음 경기 타일
 function shield(name) {
-  const ch = name.replace(/^(서울|경기|부산|대구|인천|울산|강원|충북|제주|여수|순천|광양|목포|보성|해남|완도|광주|남해안)\s?/, "").slice(0, 1);
+  const ch = / 대표$/.test(name) ? name.slice(0, 1) : name.replace(/^(서울|경기|부산|대구|인천|울산|강원|충북|제주|여수|순천|광양|목포|보성|해남|완도|광주|남해안)\s?/, "").slice(0, 1);
   let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   const hue = h % 360;
   return `<svg class="shield" viewBox="0 0 40 46" aria-hidden="true"><path d="M20 2 L37 8 V24 C37 35 29 41 20 44 C11 41 3 35 3 24 V8 Z" fill="hsl(${hue} 55% 38%)" stroke="hsl(${hue} 60% 70%)" stroke-width="1.5"/>
@@ -67,7 +68,20 @@ function shield(name) {
 }
 function nextMatchTile(state) {
   let info = null, k = 0;
-  for (let i = 0; i < 10; i++) { const x = turnInfo(state, i); if (!x) break; if (x.match && stillScheduled(state, x)) { info = x; k = i; break; } }
+  for (let i = 0; i < 10; i++) {
+    const x = turnInfo(state, i); if (!x) break;
+    const jf = jnFixture(state, x);                    // 전남 대표 소년체전이 먼저 오면 그걸 보여 줌
+    if (jf) return `<section class="tile next cup">
+      <div class="nm-head"><span class="eyebrow">NEXT MATCH · 전남 대표</span><span class="nm-when">${i === 0 ? "이번 주" : `${i}주 뒤`}</span></div>
+      <div class="nm-teams">
+        <div class="nm-team">${shield("전남 대표")}<b>전남 대표</b></div>
+        <span class="nm-vs">VS</span>
+        <div class="nm-team">${shield(jf.opponent.name)}<b>${esc(jf.opponent.name)}</b></div>
+      </div>
+      <div class="nm-comp">전국소년체전, ${esc(jf.round)}<span>${x.month}월 ${x.week}주차</span></div>
+    </section>`;
+    if (x.match && stillScheduled(state, x)) { info = x; k = i; break; }
+  }
   if (!info) return `<section class="tile next empty"><span class="eyebrow">NEXT MATCH</span><p class="mute">당분간 경기가 없습니다. 몸을 만들 시간입니다.</p></section>`;
   const locked = k === 0 ? slotLocked(state, "we") : null;
   let opp = locked?.fx?.opponent?.name;
@@ -140,9 +154,11 @@ function weekPanel(state, opts = {}) {
 // 이미 탈락한 대회의 토너먼트 주간은 일정에서 뺍니다
 
 function upcomingPanel(state) {
-  const list = upcoming(state, 8).filter(i => stillScheduled(state, i) || i.exam || i.school.some(d => !d.hidden));
+  const list = [];
+  for (let k = 0; k < 8; k++) { const i = turnInfo(state, k); if (!i) break; if ((i.match && stillScheduled(state, i)) || i.exam || i.school.some(d => !d.hidden) || jnFixture(state, i)) list.push(i); }
   return `<section class="panel"><h2>다가오는 일정</h2>
     ${list.length ? list.map(i => `<div class="fixture"><span class="d">${i.month}월 ${i.week}주</span><span>
+      ${jnFixture(state, i) ? `<span class="chip kit">전국소년체전</span>전남 대표` : ""}
       ${i.match && stillScheduled(state, i) ? `<span class="chip ${i.comp.tournament ? "kit" : i.match.comp === "hs" ? "gold" : "turf"}">${i.comp.label}</span>${i.match.round || (i.leagueRound != null ? `${i.leagueRound + 1}라운드` : "")}` : ""}
       ${i.exam ? `<span class="chip gold">시험</span>${i.exam.name}` : ""}
       ${i.school.filter(d => !d.hidden).map(d => `<span class="chip">학교</span>${d.label}`).join(" ")}
@@ -414,6 +430,7 @@ export function scheduleView(state, grade = state.calendar.grade) {
         const cls = t.turn === now ? "now" : t.turn < now ? "past" : "";
         const items = [];
         if (info.match) items.push(`<span class="chip ${info.comp.tournament ? "kit" : info.match.comp === "hs" ? "gold" : "turf"}">${info.comp.label}</span>${info.match.round || (info.leagueRound != null ? `${info.leagueRound + 1}라운드` : info.match.hsChance?.[grade] ? (info.match.elemChance?.[grade] ? "고교·초등 팀일 수도" : "고교 팀일 수도") : "")}`);
+        if (state.jnCup?.grade === grade && t.month === JN_WEEK.month && t.week === JN_WEEK.week && (state.jnCup.alive || state.jnCup.medal)) items.push(`<span class="chip kit">전국소년체전</span>전남 대표${state.jnCup.medal ? ` (${{ gold: "금메달", silver: "은메달", bronze: "동메달", first: "1회전" }[state.jnCup.medal]})` : ""}`);
         if (info.exam) items.push(`<span class="chip gold">시험</span>${info.exam.name}`);
         if (t.week === 1 && (t.month === 3 || t.month === 9)) items.push(`<span class="chip">측정</span>신체 측정`);
         for (const d of info.school.filter(d => !d.hidden)) items.push(`<span class="chip">학교</span>${d.label}`);

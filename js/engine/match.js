@@ -73,6 +73,12 @@ function pickTalk(state, fx, status, star) {
     if (star >= 1) keys.push("star");
   }
   if (!keys.length) return null;
+  if (fx.jn && status === "start") return pick([
+    { who: "coach", text: "여기 있는 애들, 다 자기 학교에서 제일 잘하는 애들이다. 그러니까 공을 혼자 들고 있지 마라. 믿고 줘라.", tag: "pass" },
+    { who: "coach", text: "전남 마크 달고 뛰는 거다. 고흥에서 온 걸 부끄러워하지 마라. 오늘은 네가 고흥이다.", tag: null },
+    { who: "assistant", text: "상대 지역 대표는 몸싸움이 세다. 첫 번째 부딪힘에서 밀리지 마라.", tag: "physical" },
+    { who: "coach", text: "하루 걸러 한 경기다. 다리 아끼지 말고, 대신 머리는 차갑게 써라.", tag: "safe" },
+  ].filter(t => !t.tag || tagFit(p.position, t.tag) >= 0.18));
   if (status === "start" && !(state.record.starts > 0))
     return { who: "coach", text: "첫 선발이다. 떨리는 거 안다. 첫 패스 하나만 정확하게 해라. 나머지는 몸이 알아서 한다.", tag: tagFit(p.position, "pass") >= 0.18 ? "pass" : "safe" };
   // 내 포지션에서 실제로 따를 수 있는 지시만 (공격수에게 '수비 먼저' 같은 지시가 가지 않게)
@@ -176,17 +182,19 @@ export function prepareMatch(state, info, fx) {
     else if (depth.rank <= depth.slots + 3) status = "bench";
   }
   let restNote = null;
+  const cup = fx.jn ? state.jnCup : null;           // 전남 대표 경기: 뽑힌 선수라 늘 선발
+  if (cup) { status = elig.ok ? "start" : "out"; minIn = 0; }
   if (status === "start" && fx.official && !fx.ko && p.condition.fatigue >= 85) {
     status = "sub"; minIn = int(40, 50);
     restNote = `피로가 ${Math.round(p.condition.fatigue)}까지 쌓여 감독님이 후반에 넣기로 하셨다.`;
   }
   const onPitch = status === "start" || status === "sub";
   const cond = conditionOf(p);
-  const teamAvg = teamStrength(state, false);
+  const teamAvg = cup ? cup.str : teamStrength(state, false);
   const myOvr = ovr(p);
   const star = onPitch ? clamp((myOvr - teamAvg) / 15 + (hasTrait(p, "ace") ? 0.2 : 0), 0, 1.7) : 0;
 
-  const roster = activeRoster(state);
+  const roster = cup ? cup.squad.map(x => ({ name: x.name, number: x.number, position: x.pos, ovrNow: cup.str })) : activeRoster(state);
   const lineup = [];
   for (const [pos, def] of Object.entries(POSITIONS)) {
     const n = def.slots - (status === "start" && pos === p.position ? 1 : 0);
@@ -231,7 +239,8 @@ export function prepareMatch(state, info, fx) {
   const bench = benchAll.map(m => ({ name: m.name, number: m.number }));
 
   // 내가 뛰면 내 능력치와 컨디션이 팀 전력에 직접 더해짐
-  const ours = teamStrength(state, onPitch) * 0.6 + 50 * 0.4 + (onPitch ? (myOvr - teamAvg) * 0.12 + cond.match * 15 : 0)
+  const ours = cup ? cup.str * 0.6 + 50 * 0.4 + (onPitch ? (myOvr - teamAvg) * 0.12 + cond.match * 15 : 0)
+    : teamStrength(state, onPitch) * 0.6 + 50 * 0.4 + (onPitch ? (myOvr - teamAvg) * 0.12 + cond.match * 15 : 0)
     + (keeperOf(state).strong ? 1.5 : 0);
   const theirs = fx.opponent.strength + (oppAce ? 0.6 : known?.absent ? -1.5 : 0);   // 에이스가 뛰면 조금 더 강하고, 빠지면 약해짐
 
@@ -255,6 +264,13 @@ export function prepareMatch(state, info, fx) {
   events.push({ type: "ht", minute: HALF + 0.5 }, { type: "2h", minute: HALF + 0.6 }, { type: "ft", minute: LENGTH + 0.5 });
   events.sort((a, b) => a.minute - b.minute);
 
+  // 날씨와 시간대 (화면 연출과 중계 문장에만 쓰임. 승패 계산에는 영향 없음)
+  const mo = info.month;
+  const weather = [6, 7].includes(mo) ? (chance(0.38) ? "rain" : mo === 7 && chance(0.4) ? "hot" : "clear")
+    : mo === 8 ? (chance(0.18) ? "rain" : chance(0.5) ? "hot" : "clear")
+    : [12, 1, 2].includes(mo) ? (chance(0.45) ? "cold" : chance(0.2) ? "wind" : "clear")
+    : chance(0.1) ? "rain" : chance(0.22) ? "wind" : "clear";
+  const sky = ["summer", "winter"].includes(fx.comp) ? (chance(0.5) ? "night" : "day") : fx.comp === "league" && chance(0.3) ? "dusk" : "day";
   let physGap = 0;
   if (fx.comp === "hs") physGap = clamp((172 - p.body.height) / 120 + (58 - p.stats.phys.strength) / 160, 0, 0.12);
 
@@ -265,7 +281,7 @@ export function prepareMatch(state, info, fx) {
     prep: state.meetingBuff?.turn === info.turn ? state.meetingBuff : null,    // 경기 전 미팅에서 한 대답
     lineupStart: lineup.map(x => ({ ...x })),
     ours, theirs, lineup, oppPlayers, oppAce, oppAceAbsent: known?.absent?.name || null, bench, talk: pickTalk(state, fx, status, star),
-    gk: { us: ourKeeper(state), them: (() => { let n; do { n = randomName(); } while (usedNames.has(n)); usedNames.add(n); return n; })() }, myNumber: p.number,
+    gk: { us: cup ? cup.gk : ourKeeper(state), them: (() => { let n; do { n = randomName(); } while (usedNames.has(n)); usedNames.add(n); return n; })() }, myNumber: p.number,
     events, i: 0, minute: 0, score: [0, 0],
     stats: { us: { shots: 0, on: 0, corners: 0, cards: 0 }, them: { shots: 0, on: 0, corners: 0, cards: 0 },
              poss: Math.round(clamp(50 + (ours - theirs) * 1.1 + normal(0, 4), 28, 72)) },
@@ -273,6 +289,7 @@ export function prepareMatch(state, info, fx) {
     my: { goals: 0, assists: 0, delta: 0, decisions: 0, successes: 0, log: [], followed: 0, timing: [] },
     formSwing: hasTrait(p, "inconsistent") ? normal(0, 0.06) : 0, physGap,
     feed: [], pending: null, half: 1, done: false, used: {}, trailed: { us: false, them: false },
+    weather, sky,
     flow: 0,                                       // 경기 흐름 −1(상대) ~ +1(우리). 내 선택의 성공·실패로 바뀜
   };
 }
@@ -508,8 +525,8 @@ export function next(state, m) {
   if (ev.type === "ours") lines = runPlay(m, "us");
   if (ev.type === "theirs") lines = runPlay(m, "them");
   if (ev.type === "ambient") {
-    const fit = AMBIENT.filter(x => (!x.early || min < 15) && (!x.late || min >= 58) && (!x.min || min >= x.min) && !m.used[`amb${AMBIENT.indexOf(x)}`]);
-    const a = pick(fit.length ? fit : AMBIENT);
+    const fit = AMBIENT.filter(x => (!x.wx || x.wx.includes(m.weather || "clear")) && (!x.sky || x.sky === m.sky) && (!x.early || min < 15) && (!x.late || min >= 58) && (!x.min || min >= x.min) && !m.used[`amb${AMBIENT.indexOf(x)}`]);
+    const a = pick(fit.length ? fit : AMBIENT.filter(x => !x.wx && !x.sky));
     m.used[`amb${AMBIENT.indexOf(a)}`] = true;                  // 같은 경기에서 같은 문장은 한 번만
     if (a.card) m.stats[a.card].cards++;
     const poss = a.side === "them" ? "them" : a.side === "us" ? "us" : chance(m.stats.poss / 100) ? "us" : "them";
@@ -530,7 +547,7 @@ export function next(state, m) {
     if (sit.once) m.used[sit.id] = true;
     const myPos = state.player.position;
     const oppPref = poss === "them" ? ({ DF: ["FW"], MF: ["MF", "FW"], FW: ["DF"] }[myPos]) : (myPos === "DF" ? ["FW", "MF"] : ["DF", "MF"]);
-    const sv = { mate: mateName(m), opp: oppName(m, oppPref), gk: m.gk.us, ogk: m.gk.them };
+    const sv = { mate: mateName(m), opp: oppName(m, oppPref), gk: m.gk.us, ogk: m.gk.them, coach: STAFF.coach };
     const zone = sit.zone;
     const ball = sit.spot ? [range(...sit.spot[0]), range(...sit.spot[1])]      // 장면마다 정해 둔 자리 (골문 앞 혼전 등)
       : zone === "att" ? [range(80, 88), range(24, 44)] : zone === "mid" ? [range(48, 60), range(18, 50)] : [range(20, 30), range(18, 50)];
@@ -600,6 +617,7 @@ function pickSituation(state, m) {
   const [a, b] = m.score;
   const late = m.minute >= 55;
   const pool = SITUATIONS.filter(s => s.pos.includes(pos) && (!s.once || !m.used[s.id]) && meets(state, s.requires)
+    && (!s.wx || s.wx.includes(m.weather || "clear"))
     && (!s.late || late) && (!s.leading || a > b) && (!s.trailing || a < b));
   const losingLate = a < b && m.minute > 50;
   return weighted(pool.map(s => [s, s.weight * (losingLate && s.zone === "att" ? 1.6 : 1)]));
@@ -888,7 +906,7 @@ export function finishMatch(state, m) {
     rec.goals += m.my.goals; rec.assists += m.my.assists; rec.ratings.push(rating);
     if (mom) rec.mom = (rec.mom || 0) + 1;
     state.relations.coach = clamp(state.relations.coach + (rating - 6.6) * 0.8, 0, 100);
-    p.condition.fatigue = clamp(p.condition.fatigue + 16 * minutes / LENGTH, 0, 100);
+    p.condition.fatigue = clamp(p.condition.fatigue + (fx.jn ? 9 : 16) * minutes / LENGTH, 0, 100);   // 소년체전은 하루 걸러 한 경기씩
     if (m.my.goals) applyGain(state, "mental.confidence", m.my.goals * 1.2, { raw: true });
     applyGain(state, "mental.competitive", 0.4, { raw: true });
     if (rating >= 7.5) applyGain(state, "mental.confidence", 0.5, { raw: true });

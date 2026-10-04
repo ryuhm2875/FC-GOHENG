@@ -3,7 +3,7 @@ import { newGame, saveTo, readSlot, summaryOf, loadSettings, saveSettings } from
 import { playMinigame, statFor } from "./ui/minigames.js";
 import { getPath } from "./rng.js";
 import { turnInfo, label } from "./engine/calendar.js";
-import { beginWeek, endWeek, planReady, SLOTS, slotLocked, actionAllowed } from "./engine/week.js";
+import { beginWeek, endWeek, planReady, SLOTS, slotLocked, actionAllowed, currentFixture } from "./engine/week.js";
 import { prepareMatch } from "./engine/match.js";
 import { welcomeMails } from "./engine/advice.js";
 import { birthdayWeek } from "./engine/birthday.js";
@@ -60,7 +60,13 @@ const app = {
     this.toast("불러왔습니다");
     if (state.finished) { showEnding(this); return; }
     if (state.pending) this.pendingFlow(() => this.render());
-    else if (state.pendingEvent) eventModal(this, () => this.render());
+    else if (state.pendingEvent) this.eventChain(() => this.render());
+  },
+  // 남은 이벤트를 차례로 보여 줌 (같은 주 두 번째 이야기까지)
+  eventChain(done) {
+    const s = this.state;
+    if (!s?.pendingEvent) { done(); return; }
+    eventModal(this, () => { this.saveTo("auto"); this.render(); this.eventChain(done); });
   },
   summary() { return summaryOf(this.state, turnInfo(this.state)); },
   saveTo(where) { return saveTo(where, this.state, this.summary()); },
@@ -132,15 +138,19 @@ const app = {
   startWeek() {
     const s = this.state;
     const ctx = beginWeek(s);
-    if (ctx.fx) {
-      // 경기 전 미팅 장면 → 경기
-      meetingModal(this, ctx.fx, () => {
-        const m = prepareMatch(s, ctx.info, ctx.fx);
-        this.view = "match";
-        window.scrollTo(0, 0);
-        showMatch(this, m, result => { this.view = "home"; this.finishWeek(ctx, result); });
+    // 전남 대표 소년체전은 이기면 같은 주에 다음 경기로 바로 이어짐
+    const play = fx => {
+      const m = prepareMatch(s, ctx.info, fx);
+      this.view = "match";
+      window.scrollTo(0, 0);
+      showMatch(this, m, result => {
+        const nx = fx.jn && result?.result === "승" ? currentFixture(s) : null;
+        if (nx?.jn) return play(nx);
+        this.view = "home"; this.finishWeek(ctx, result);
       });
-    } else this.finishWeek(ctx, null);
+    };
+    if (ctx.fx) meetingModal(this, ctx.fx, () => play(ctx.fx));   // 경기 전 미팅 장면 → 경기
+    else this.finishWeek(ctx, null);
   },
 
   finishWeek(ctx, result) {
@@ -153,7 +163,7 @@ const app = {
       const chain = [];
       if (rep.yearEnd) chain.push(next => yearModal(this, rep.yearEnd, next));
       if (s.pending) chain.push(next => this.pendingFlow(next));
-      if (s.pendingEvent) chain.push(next => eventModal(this, next));
+      if (s.pendingEvent) chain.push(next => this.eventChain(next));   // 한 주에 이야기가 두 개일 수도 있음
       if (rep.graduation) chain.push(() => showEnding(this));
       const run = () => { const f = chain.shift(); if (f) f(() => { this.saveTo("auto"); this.render(); run(); }); };
       this.render();

@@ -122,7 +122,7 @@ export function summarize(state) {
     nationalTeam: !!state.flags.nationalTeam, wasBenchInG1: !!state.flags.wasBenchInG1,
     academic: p.stats.student.academic, attitude: p.stats.student.attitude,
     injuryWeeks: r.injuryWeeks || 0, suspended: r.matches.filter(m => m.reason?.includes("학업")).length,
-    teacherName: STAFF.teacher, friendName: person(state, "friend")?.name, juniorName: person(state, "junior")?.name,
+    teacherName: STAFF.teacher, friendName: person(state, "friend")?.name, juniorName: person(state, "junior")?.name, rivalName: person(state, "rival")?.name,
     height: p.body.height, titles: r.titles, teacher: state.relations.teacher ?? 50,
     earned: (r.earned || []).length,
   };

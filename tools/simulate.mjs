@@ -4,7 +4,7 @@ import { setSeed, pick, rand } from "../js/rng.js";
 import { rollPlayer, newGame } from "../js/state.js";
 import { runWeek, slotLocked, chooseNumber, numberChoices, actionAllowed } from "../js/engine/week.js";
 import { ACTIONS } from "../data/actions.js";
-import { chooseEvent, findEvent } from "../js/engine/events.js";
+import { chooseEvent, findEvent, reqOk } from "../js/engine/events.js";
 import { schoolOptions, chooseSchool, decideEnding } from "../js/engine/career.js";
 import { ovr } from "../js/engine/team.js";
 import { GROWTH_TYPES } from "../data/player.js";
@@ -55,13 +55,13 @@ for (let i = 0; i < N; i++) {
     const rep = runWeek(s);
     if (rep.match?.subbedOff) htSubs++;
     if (rep.match?.minutes > 0 && rep.match.status === "start") starts1++;
-    if (s.pendingEvent) {
+    { const info = turnInfo(s); if (info?.exam && !info.exam.free) { examWeeks++; if (s.pendingEvent && findEvent(s.pendingEvent.id).exam) examHit++; } }
+    while (s.pendingEvent) {
       const ev = findEvent(s.pendingEvent.id);
-      const info = turnInfo(s);
-      if (info?.exam && !info.exam.free) { examWeeks++; if (ev.exam) examHit++; }
       evCount[ev.id] = (evCount[ev.id] || 0) + 1; evTotal++;
-      chooseEvent(s, Math.floor(rand() * ev.choices.length));
-    } else { const info = turnInfo(s); if (info?.exam && !info.exam.free) examWeeks++; }
+      const open = ev.choices.map((c, i) => i).filter(i => reqOk(s, ev.choices[i]));
+      chooseEvent(s, open[Math.floor(rand() * open.length)]);
+    }
   }
   const p = s.player;
   for (const k of Object.keys(s.goals?.done || {})) goalDone[k] = (goalDone[k] || 0) + 1;
@@ -95,3 +95,4 @@ console.log("end OVR pct  10:", ends[Math.floor(N*.1)].toFixed(1), " 50:", ends[
 
 console.log("목표 달성(%):", Object.entries(goalDone).map(([k, v]) => `${k} ${(v / N * 100).toFixed(0)}`).join(", "), " 주목표 달성", (goalMain / N * 100).toFixed(0) + "%");
 console.log("하프타임 교체", htSubs, "/ 선발", starts1, ` (${(htSubs / Math.max(1, starts1) * 100).toFixed(1)}%)`, " 시험 주 이벤트", `${examHit}/${examWeeks}`, " 이벤트/판", (evTotal / N).toFixed(1), " 종류", Object.keys(evCount).length);
+if (process.env.EVTOP) console.log(Object.entries(evCount).sort((a, b) => b[1] - a[1]).slice(0, 30).map(([k, v]) => `${k} ${(v / N).toFixed(2)}`).join(", "));

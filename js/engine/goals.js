@@ -14,7 +14,7 @@ export function jnScore(state) {
   const avg = ms.length ? ms.reduce((a, m) => a + m.rating, 0) / ms.length : 6.4;
   return ovr(state.player) + (avg - 6.6) * 6 + (state.relations.coach - 50) * 0.08 + (state.flags.jnBoost || 0);
 }
-export const JN_NEED = { 2: 62, 3: 76 };          // 이 점수를 넘기면 선발 (중3은 경쟁이 훨씬 세다)
+export const JN_NEED = { 2: 61, 3: 75 };          // 이 점수를 넘기면 선발 (중3은 경쟁이 훨씬 세다)
 export const AWARD_NEED = { 2: 4, 3: 12 };        // 한 해 경기 최우수 선수 횟수
 export const NEWS_NEED = { 2: { FW: 20, MF: 12, DF: 6 }, 3: { FW: 40, MF: 24, DF: 12 } };   // 한 해 공격 포인트
 export const CAP_NEED = { coach: 72, teamwork: 64 };
@@ -28,7 +28,7 @@ export function goalProgress(state) {
   return GOAL_ORDER.map(id => {
     const d = GOALS[id];
     let text = "";
-    if (id === "jn") text = `선발 점수 ${Math.round(jnScore(state))} / 기준 ${JN_NEED[gr(g)]} (5월 선발전)`;
+    if (id === "jn") text = `선발 점수 ${Math.round(jnScore(state))} / 기준 ${JN_NEED[gr(g)]} (4월 선발전)`;
     if (id === "award") text = `올해 최우수 선수 ${ys.filter(m => m.mom).length} / ${AWARD_NEED[gr(g)]}번`;
     if (id === "captain") text = `감독 신뢰 ${Math.round(state.relations.coach)} / ${CAP_NEED.coach} · 팀워크 ${Math.round(p.stats.mental.teamwork)} / ${CAP_NEED.teamwork}`;
     if (id === "scout") { const best = Math.max(0, ...ys.filter(m => m.rating != null).map(m => m.rating)); text = best ? `올해 최고 평점 ${best.toFixed(1)} (고교 연습경기 7.8 · 토너먼트 8.3)` : "아직 기록 없음"; }
@@ -82,7 +82,7 @@ export function goalsWeekly(state, info) {
   // 가장 이루고 싶은 목표가 마감까지 안 됐을 때 (실패 면담)
   const m = G.main;
   if (m && !G.done[m] && !G.failed[m]) {
-    const dead = { jn: info.grade === 3 && info.month === 6 && info.week === 3,
+    const dead = { jn: info.grade === 3 && info.month === 5 && info.week === 1,
       award: info.grade === 3 && info.month === 11 && info.week === 3,
       captain: info.grade === 3 && info.month === 3 && info.week === 3,
       scout: info.grade === 3 && info.month === 11 && info.week === 2,
@@ -101,14 +101,15 @@ export function fixedGoalEvent(state, info) {
   const tooLate = info.grade === 3 && (info.month >= 9 || info.month <= 2);
   if (!G.metAt && !G.main && after33 && !tooLate && !info.exam) return "goal_meeting";
   if (info.grade === 2 && at(9, 2) && !G.checkAt) return "goal_check";
-  if (at(5, 3) && !G.done.jn && !(G.jnCalled?.[info.grade])) {
+  // 전남 대표: 4월 1주 선발전 명단 → 4월 3주 발표 → 5월 2주 전국소년체전 (예전 저장 파일은 4월 2주·4주까지 기다려 줌)
+  if ((at(4, 1) || at(4, 2)) && !G.done.jn && !(G.jnCalled?.[info.grade])) {
     if (jnScore(state) >= JN_NEED[info.grade] - JN_CALL) return "goal_jn_call";
     if (G.main === "jn" && !(G.jnMissed?.[info.grade])) {
       (G.jnMissed ||= {})[info.grade] = true;
       mail(state, "coach", "전남 대표 선발전 명단", `이번 선발전 명단에 네 이름은 없었다.\n\n${info.grade === 2 ? "내년에 한 번 더 기회가 있다. 그때는 내가 먼저 네 이름을 적게 만들어라." : "속상하겠지만 여기서 멈추면 안 된다. 고등학교에도 대표팀은 있다."}`);
     }
   }
-  if (at(6, 1) && G.jnCalled?.[info.grade] && !G.jnResult?.[info.grade]) {
+  if ((at(4, 3) || at(4, 4) || at(6, 1)) && G.jnCalled?.[info.grade] && !G.jnResult?.[info.grade]) {
     const sc = jnScore(state);
     G.jnOutcome = sc >= JN_NEED[info.grade];
     G.jnLast = Math.round(sc);

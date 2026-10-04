@@ -266,7 +266,7 @@ export function matchMails(state, m, res, notes) {
   const p = state.player, fx = m.fx;
   const scorers = side => m.goalsLog.filter(g => g.team === side).map(g => `${g.name} ${g.minute}'${g.assist ? ` (도움 ${g.assist})` : ""}`).join(", ");
   const body = [];
-  body.push(afterMatchChat(state, res, fx, res.grade === 3 && noFixtureLeft(state)));
+  body.push(fx.jn ? jnChat(state, res) : afterMatchChat(state, res, fx, res.grade === 3 && noFixtureLeft(state)));
   const aceGoals = m.oppAce ? m.goalsLog.filter(g => g.team === "them" && g.name === m.oppAce.name).length : 0;
   if (m.oppAce && aceGoals >= 1 && res.result !== "승" && chance(0.7)) body.push(aceText(state, pick(ACE_TALK.chatAfterScored), m.oppAce));
   else if (m.oppAce && aceGoals === 0 && res.ga <= 1 && chance(0.45)) body.push(aceText(state, pick(ACE_TALK.chatAfterHeld), m.oppAce));
@@ -281,12 +281,14 @@ export function matchMails(state, m, res, notes) {
     body.push(`📊 리그 ${us + 1}위 (승점 ${rows[us].pts}, ${state.league.played}/${state.league.rounds.length}라운드)`);
   }
   for (const n of notes) if (typeof n === "string") body.push(n);
-  const nxt = nextFixtureText(state);
+  const cup = fx.jn ? state.jnCup : null;
+  const nxt = cup ? (cup.alive ? `이틀 뒤 소년체전 ${["1회전", "준결승", "결승"][cup.stage]}` : null) : nextFixtureText(state);
   if (nxt) body.push(`다음 경기: ${nxt}`);
-  body.push(`${STAFF.assistant}: ${res.result === "패" ? pick(["월요일엔 영상 보면서 실점 장면 짚고 간다.", "오늘 진 거 오늘까지만 생각해라. 월요일에 다시 시작한다.", "고개 숙이고 집에 가지 마라. 월요일에 영상 보자."])
+  if (cup) body.push(`${STAFF.assistant}: ${res.result === "승" ? pick(["숙소 들어가서 바로 얼음찜질. 다음 경기까지 하루밖에 없다.", "잘했다. 오늘 밤엔 휴대폰 보지 말고 일찍 자라."]) : pick(["고개 들어라. 전남에서 뽑힌 것부터가 실력이다.", "버스 타기 전에 같이 뛴 애들한테 인사하고 와라. 고등학교 가면 또 만난다."])}`);
+  else body.push(`${STAFF.assistant}: ${res.result === "패" ? pick(["월요일엔 영상 보면서 실점 장면 짚고 간다.", "오늘 진 거 오늘까지만 생각해라. 월요일에 다시 시작한다.", "고개 숙이고 집에 가지 마라. 월요일에 영상 보자."])
     : res.result === "승" ? pick(["월요일은 회복 훈련. 무리하지 마라.", "오늘 잘했다. 월요일엔 가볍게 몸만 푼다.", "이긴 날일수록 일찍 자라. 월요일 회복 훈련 빠지지 말고."])
     : pick(["월요일은 회복 훈련. 무리하지 마라.", "비긴 경기는 아쉬움이 오래 간다. 월요일에 털고 가자.", "승점 1점도 소중하다. 월요일은 가볍게 간다."])}`);
-  mail(state, "group", `${fx.compLabel}${fx.round ? ` ${fx.round}` : ""}: ${TEAM_NAME} ${res.gf} : ${res.ga} ${fx.opponent.name}${res.shootout ? ` (승부차기 ${res.shootout.us}:${res.shootout.them})` : ""}`, body.join("\n\n"));
+  mail(state, "group", `${fx.compLabel}${fx.round ? ` ${fx.round}` : ""}: ${fx.usName || TEAM_NAME} ${res.gf} : ${res.ga} ${fx.opponent.name}${res.shootout ? ` (승부차기 ${res.shootout.us}:${res.shootout.them})` : ""}`, body.join("\n\n"));
 
   for (const n of notes) if (typeof n === "object") mailFrom(state, n.from, "scout", n.title, n.body);
 
@@ -414,6 +416,19 @@ function noFixtureLeft(state) {
   return true;
 }
 
+// 전남 대표 경기를 고흥에서 지켜본 친구들 단톡방
+function jnChat(state, res) {
+  const win = res.result === "승";
+  return chatText(state, pick(win ? [
+    "{mate}: 소년체전 중계 봤냐?? {name} 전남 유니폼 입은 거 실화냐 ㅋㅋ\n\n{mentor}: 고흥 이름 걸고 뛰는 거다. 잘했다",
+    "{friend}: 반 애들 다 같이 봄 ㅋㅋㅋ 선생님도 보심\n\n{mate}: 다음 경기도 이겨라!!",
+    "{mate2}: 전남 대표 이겼다 ㅋㅋ 우리 학교에서 나간 애가 뛰고 있음\n\n{mate}: 돌아오면 사인 받자",
+  ] : [
+    "{mate}: 고생했다… 전남 대표까지 간 것만 해도 대단한 거임\n\n{mentor}: 돌아오면 다시 우리 팀에서 보자",
+    "{friend}: 졌다고 기죽지 마라. 고흥에서 너만큼 간 애 없음\n\n{mate2}: ㄹㅇ",
+  ]));
+}
+
 function nextFixtureText(state) {
   for (let i = 1; i < 8; i++) {
     const info = turnInfo(state, i);
@@ -515,15 +530,24 @@ export function weeklyAdvice(state, rep) {
   // 상황에 맞는 감독님·코치님 메시지 (연패, 연승, 부상 복귀, 시험 주간, 대회 직전, 방학, 학업 우수)
   const now = turnInfo(state);
   const sk = streakOf(state);
+  const recent = state.record.matches.filter(x => x.official).slice(-3);
+  const lastM = state.record.matches.at(-1), fresh = lastM && lastM.turn >= state.calendar.turn - 1;
+  const myApps = state.record.matches.filter(x => x.minutes > 0).slice(-5);
   const ctxKey = !now ? null
+    : now.grade === 3 && ((now.month === 2) || (now.month === 1 && now.week >= 3)) && !state.flags.lastDaysMail ? "lastDays"
+    : now.grade >= 2 && now.month === 3 && now.week === 1 ? "newYear"
+    : fresh && lastM.gf - lastM.ga >= 3 ? "afterBigWin"
+    : fresh && lastM.ga - lastM.gf >= 3 ? "afterBigLoss"
     : sk <= -3 ? "lossStreak"
     : sk >= 4 ? "winStreak"
     : state.flags.returnTurn != null && state.calendar.turn - state.flags.returnTurn <= 1 ? "comeback"
     : now.exam && !now.exam.free ? "examWeek"
     : (now.month === 7 && now.week === 4) || (now.month === 1 && now.week === 3) ? "preTournament"
     : (now.month === 7 && now.week === 3) || (now.month === 1 && now.week === 2) ? "vacation"
-    : s.academic >= 80 && !state.flags.academicPraise?.[`${now.grade}-${now.semester}`] ? "scholar" : null;
-  if (ctxKey) push(`ctx_${ctxKey}`, ctxKey === "examWeek" ? 3 : 6, () => {
+    : s.academic >= 80 && !state.flags.academicPraise?.[`${now.grade}-${now.semester}`] ? "scholar"
+    : recent.length === 3 && recent.every(x => x.status !== "start") && !p.condition.injury ? "benchLong"
+    : p.position === "FW" && myApps.length === 5 && myApps.every(x => !x.goals) ? "goalDrought" : null;
+  if (ctxKey) push(`ctx_${ctxKey}`, ctxKey === "examWeek" ? 3 : ["benchLong", "goalDrought"].includes(ctxKey) ? 8 : 6, () => {
     const pool = COACH_TALK[ctxKey];
     const used = (state.advice.ctxUsed ||= {});
     const cand = pool.filter((_, i) => !(used[ctxKey] || []).includes(i));
@@ -531,6 +555,7 @@ export function weeklyAdvice(state, rep) {
     if (!cand.length) used[ctxKey] = [];
     const t = pick(list);
     (used[ctxKey] ||= []).push(pool.indexOf(t));
+    if (ctxKey === "lastDays") state.flags.lastDaysMail = true;
     if (ctxKey === "scholar") (state.flags.academicPraise ||= {})[`${now.grade}-${now.semester}`] = true;
     mail(state, t.from, t.title, t.body);
     return true;

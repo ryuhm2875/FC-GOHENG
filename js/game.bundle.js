@@ -1043,11 +1043,11 @@ const ACTIONS = [
     desc: "콘 사이를 빠져나가는 볼 터치",
     gains: { "tech.dribble": 2.2, "phys.agility": 0.9, "tech.firstTouch": 0.6 },
     fatigue: 12, risk: 0.012, injured: "block" },
-  { id: "defend", cat: "personal", label: "수비 훈련", icon: "🛡️",
+  { id: "defend", cat: "personal", label: "수비 훈련", icon: "🛡️", minigame: "defend",
     desc: "1 대 1 수비, 위치 잡기",
     gains: { "tech.defense": 2.2, "mental.focus": 0.6, "phys.strength": 0.4 },
     fatigue: 12, risk: 0.012, injured: "block" },
-  { id: "sprint", cat: "personal", label: "스프린트 훈련", icon: "⚡",
+  { id: "sprint", cat: "personal", label: "스프린트 훈련", icon: "⚡", minigame: "sprint",
     desc: "짧은 거리 전력 질주 반복",
     gains: { "phys.speed": 2.0, "phys.agility": 0.8 },
     fatigue: 14, risk: 0.022, injured: "block" },
@@ -1359,13 +1359,97 @@ return { LEAGUE_OPPONENTS, HIGH_SCHOOLS, HS_TIERS, NATIONAL_OPPONENTS, ELEMENTAR
 })();
 (__fix["data/world.js"] || []).forEach(f => f());
 
+// ── js/engine/jn.js
+__m["js/engine/jn.js"] = (function () {
+const {SURNAMES, GIVEN_NAMES, HIGH_SCHOOLS} = __m["data/world.js"];
+const {POSITIONS} = __m["data/player.js"];
+const {shuffle, weighted, pick} = __m["js/rng.js"];
+const {teamStrength} = __m["js/engine/team.js"];
+// 전남 대표: 선발되면 5월 2주 전국소년체전에 나감 (1회전 → 준결승 → 결승, 지면 그 자리에서 끝)
+// 같은 주에 경기를 이어서 치르고, 결과는 고흥FC 리그·대회 기록과 따로 남음
+
+
+
+
+const JN_WEEK = { month: 5, week: 2 };
+const JN_ROUNDS = ["1회전", "준결승", "결승"];
+const JN_NAME = "전남 대표";
+const PROVINCES = [
+  { name: "경기 대표", color: "#1E88E5", color2: "#FFFFFF" }, { name: "서울 대표", color: "#C62828", color2: "#FFFFFF" },
+  { name: "경북 대표", color: "#2E7D32", color2: "#FFFFFF" }, { name: "부산 대표", color: "#212121", color2: "#29B6F6" },
+  { name: "충남 대표", color: "#6A1B9A", color2: "#FFFFFF" }, { name: "경남 대표", color: "#00897B", color2: "#FFFFFF" },
+  { name: "대구 대표", color: "#F3F5FB", color2: "#1F2C8F" }, { name: "인천 대표", color: "#FDD835", color2: "#1A237E" },
+  { name: "강원 대표", color: "#F3F5FB", color2: "#2E7D32" }, { name: "전북 대표", color: "#43A047", color2: "#FFFFFF" },
+];
+const ROUND_EDGE = [-0.5, 1, 2.5];                 // 라운드가 오를수록 상대가 강해짐
+
+// 선발 발표 때 한 번 만듦: 도내 다른 학교에서 뽑힌 동료들과 세 상대
+function startJnCup(state) {
+  const p = state.player, g = state.calendar.grade;
+  const used = new Set([p.name, ...state.team.roster.map(m => m.name)]);
+  const name = () => { let n; do { n = weighted(SURNAMES) + pick(GIVEN_NAMES); } while (used.has(n)); used.add(n); return n; };
+  const nums = shuffle([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].filter(n => n !== p.number));
+  const squad = [];
+  for (const [pos, def] of Object.entries(POSITIONS)) for (let i = 0; i < def.slots + 1; i++) squad.push({ name: name(), number: nums.shift(), pos });
+  const str = Math.max(60, teamStrength(state, false) + 4) + (g === 3 ? 1 : 0);
+  const base = str * 0.6 + 20;
+  const opps = shuffle(PROVINCES).slice(0, 3).map((o, i) => ({ id: `JN${i}`, ...o, strength: Math.round((base + ROUND_EDGE[i]) * 10) / 10 }));
+  state.jnCup = { grade: g, str, squad, gk: name(), opps, stage: 0, alive: true, medal: null, log: [] };
+}
+
+// 이번 주 전남 대표 경기 (없으면 null). 다쳤으면 나가지 못함
+function jnFixture(state, info) {
+  const c = state.jnCup;
+  if (!c || !c.alive || !info || info.grade !== c.grade || info.month !== JN_WEEK.month || info.week !== JN_WEEK.week) return null;
+  if (state.player.condition.injury) return null;
+  if (c.stage >= JN_ROUNDS.length) return null;
+  return { comp: "jn", compLabel: "전국소년체전", round: JN_ROUNDS[c.stage], official: false, tournament: true, ko: true, jn: true,
+    usName: JN_NAME, opponent: c.opps[c.stage] };
+}
+
+// 경기 결과 반영. 메시지에 붙일 소식을 돌려줌
+function jnAfter(state, fx, gf, ga, shootoutWin, rating) {
+  const c = state.jnCup, notes = [];
+  if (!c) return notes;
+  const win = gf > ga || (gf === ga && shootoutWin);
+  c.log.push({ round: fx.round, opponent: fx.opponent.name, gf, ga, win });
+  // 전국에서 고등학교 감독들이 보러 옴
+  if (rating != null) {
+    const bonus = Math.max(0, Math.round((rating - 6.4) * 6));
+    if (bonus) {
+      for (const s of HIGH_SCHOOLS) { const sc = state.scouting[s.id] ||= { interest: 10, seen: 0, offered: false }; sc.interest = Math.min(100, sc.interest + bonus); }
+      notes.push(`관중석의 고등학교 감독들이 수첩에 무언가를 적었다. (모든 학교 관심도 +${bonus})`);
+    }
+  }
+  if (!win) {
+    c.alive = false;
+    c.medal = fx.round === "결승" ? "silver" : fx.round === "준결승" ? "bronze" : "first";
+    notes.push(fx.round === "결승" ? "결승에서 졌다. 전남 대표 은메달." : fx.round === "준결승" ? "준결승에서 졌다. 전남 대표 동메달." : "1회전에서 졌다. 소년체전은 여기까지다.");
+  } else {
+    c.stage++;
+    if (c.stage >= JN_ROUNDS.length) {
+      c.alive = false; c.medal = "gold";
+      state.record.titles.push({ grade: c.grade, name: "전국소년체전 금메달 (전남 대표)", national: true });
+      state.player.condition.fatigue = Math.max(0, state.player.condition.fatigue - 20);
+      notes.push("전국소년체전 우승! 전남 대표 금메달 🥇");
+    } else notes.push(`${fx.round} 통과! 다음은 ${JN_ROUNDS[c.stage]}.`);
+  }
+  return notes;
+}
+
+return { JN_WEEK, JN_ROUNDS, JN_NAME, startJnCup, jnFixture, jnAfter };
+})();
+(__fix["js/engine/jn.js"] || []).forEach(f => f());
+
 // ── js/engine/season.js
 __m["js/engine/season.js"] = (function () {
 const {LEAGUE_OPPONENTS, NATIONAL_OPPONENTS, HIGH_SCHOOLS, HS_TIERS, ELEMENTARY_OPPONENTS} = __m["data/world.js"];
 const {COMPS} = __m["data/calendar.js"];
 const {rand, normal, shuffle, chance, weighted, pick} = __m["js/rng.js"];
 const {ovr} = __m["js/engine/team.js"];
+const {jnFixture, jnAfter} = __m["js/engine/jn.js"];
 // 시즌 운영: 주말리그 순위표, 전국대회 조별리그·토너먼트, 진학 연습경기 상대 정하기
+
 
 
 
@@ -1438,7 +1522,7 @@ function ensureSeason(state, info) {
 
 // ── 이번 주 경기 상대 ───────────────
 function matchFor(state, info) {
-  if (!info?.match) return null;
+  if (!info?.match) return jnFixture(state, info);            // 경기 없는 주: 전남 대표 소년체전이 있을 수 있음
   ensureSeason(state, info);
   const m = info.match, comp = COMPS[m.comp];
   const base = { comp: m.comp, compLabel: comp.label, round: m.round || null, official: comp.official, tournament: comp.tournament, ko: m.stage === "ko" };
@@ -1568,6 +1652,7 @@ function applyResult(state, fx, gf, ga, { shootoutWin = null, rating = null, my 
     }
   }
 
+  if (fx.comp === "jn") notes.push(...jnAfter(state, fx, gf, ga, shootoutWin, rating));
   if (fx.comp === "hs") notes.push(...scoutAfter(state, fx, rating, my, gf, ga));
   if (fx.elementary) notes.push(...elementaryAfter(state, fx, rating, my, gf, ga));
   return notes;
@@ -2432,6 +2517,186 @@ const SITUATIONS = [
         winText: ["한 걸음 떨어져 따라가며 시간을 벌었다. 동료가 돌아왔다."], loseText: ["{opp|이/가} 공을 안으로 빼냈다."] },
       { label: "남은 힘을 짜내 먼저 붙는다", stats: { "phys.stamina": 0.6, "tech.defense": 0.4 }, diff: 4, win: "win", lose: "danger",
         winText: ["마지막 힘을 짜냈다. 공을 걷어 냈다!"], loseText: ["다리가 따라 주지 않았다. {opp|이/가} 지나간다!"] },
+    ] },  // ── 날씨·경기장 분위기에 따라 나오는 장면 (wx: 그 날씨에만) ─────────
+  { id: "wx_rain_shot", pos: ["FW", "MF"], zone: "att", weight: 3, wx: ["rain"],
+    text: ["빗물에 젖은 잔디. 박스 바깥에서 공이 내 앞으로 굴러온다. 골키퍼 장갑도 젖어 있을 거다."],
+    choices: [
+      { label: "낮고 빠르게 깔아 찬다", stats: { "tech.shoot": 0.7, "mental.focus": 0.3 }, diff: 2, win: "longShot", lose: "miss",
+        winText: ["젖은 잔디 위로 공이 미끄러지듯 빨라졌다! 골키퍼가 몸을 던진다!"], loseText: ["디딤발이 미끄러졌다. 공이 힘없이 굴러간다."] },
+      { label: "한 번 더 치고 들어간다", stats: { "tech.dribble": 0.6, "phys.agility": 0.4 }, diff: 6, win: "shot", lose: "turnover",
+        winText: ["수비가 미끄러졌다! 그 틈으로 파고든다!"], loseText: ["공이 물웅덩이에 멈췄다. 수비가 먼저 걷어 낸다."] },
+    ] },
+  { id: "wx_rain_back", intro: false, poss: "them", pos: ["DF"], zone: "def", weight: 3, wx: ["rain"], spot: [[10, 20], [24, 44]],
+    text: ["우리 골키퍼 쪽으로 백패스를 해야 한다. 그런데 잔디에 물이 고여 있다."],
+    choices: [
+      { label: "공을 띄워서 골키퍼 가슴에 준다", stats: { "tech.pass": 0.6, "mental.focus": 0.4 }, diff: 2, win: "keep", lose: "danger",
+        winText: ["살짝 띄운 공이 {gk}의 가슴에 정확히 안겼다."], loseText: ["공이 너무 짧았다! {opp|이/가} 달려든다!"] },
+      { label: "그냥 터치라인 밖으로 걷어 낸다", stats: { "mental.focus": 0.7, "tech.defense": 0.3 }, diff: -8, win: "win", lose: "turnover",
+        winText: ["무리하지 않았다. 관중석으로 공을 차 냈다. 다시 정비할 시간이다."], loseText: ["빗물에 발이 미끄러져 공이 상대에게 갔다."] },
+    ] },
+  { id: "wx_wind_cross", intro: false, pos: ["MF", "DF"], zone: "att", weight: 2, wx: ["wind"],
+    text: ["측면에서 크로스를 올릴 차례. 바다 쪽 맞바람이 세다."],
+    choices: [
+      { label: "바람을 계산해 낮게 감아 올린다", stats: { "tech.cross": 0.7, "mental.focus": 0.3 }, diff: 4, win: "assist", lose: "turnover",
+        winText: ["바람을 뚫고 낮게 휘어 들어간 공이 {mate}의 머리에 정확히 떨어진다!"], loseText: ["바람에 밀린 공이 골키퍼 품으로 들어갔다."] },
+      { label: "크로스 대신 짧게 내준다", stats: { "tech.pass": 0.8, "mental.teamwork": 0.2 }, diff: -6, win: "keep", lose: "turnover",
+        winText: ["바람 싸움은 하지 않았다. 짧게 주고받으며 다시 기회를 본다."], loseText: ["패스가 바람에 밀려 라인 밖으로 나갔다."] },
+    ] },
+  { id: "wx_hot_late", pos: ["FW", "MF", "DF"], zone: "mid", weight: 3, wx: ["hot"], late: true,
+    text: ["햇볕에 달궈진 운동장. 다리가 천근만근이다. 공이 나에게 온다."],
+    choices: [
+      { label: "공을 지키며 템포를 늦춘다", stats: { "phys.stamina": 0.5, "tech.firstTouch": 0.5 }, diff: -4, win: "keep", lose: "turnover",
+        winText: ["서두르지 않았다. 공을 지키는 동안 동료들이 숨을 골랐다."], loseText: ["다리가 따라 주지 않았다. 공을 뺏겼다."] },
+      { label: "마지막 힘을 짜내 앞으로 달린다", stats: { "phys.stamina": 0.7, "phys.speed": 0.3 }, diff: 6, win: "keyPass", lose: "turnover",
+        winText: ["다들 걷는 시간에 혼자 뛰었다. 상대 수비가 따라오지 못한다!"], loseText: ["몇 걸음 못 가서 다리가 풀렸다."] },
+    ] },
+  { id: "wx_cold_touch", pos: ["FW", "MF"], zone: "mid", weight: 2, wx: ["cold"],
+    text: ["꽁꽁 언 운동장. 공이 딱딱하게 튄다. 높게 뜬 공이 내 쪽으로 떨어진다."],
+    choices: [
+      { label: "발등으로 부드럽게 죽인다", stats: { "tech.firstTouch": 0.8, "mental.focus": 0.2 }, diff: 4, win: "keyPass", lose: "turnover",
+        winText: ["딱딱한 공을 발등에 사뿐히 얹었다. 관중석에서 \"오오\" 소리가 나온다."], loseText: ["공이 발에 맞고 멀리 튀었다."] },
+      { label: "원바운드 시켜서 안전하게 받는다", stats: { "tech.firstTouch": 0.5, "phys.agility": 0.5 }, diff: -4, win: "keep", lose: "turnover",
+        winText: ["한 번 튀긴 뒤 침착하게 잡았다."], loseText: ["언 땅에 맞은 공이 예상보다 높이 튀었다."] },
+    ] },
+  // ── 관중·벤치·상대 ─────────────────
+  { id: "crowd_boo", pos: ["FW", "MF"], zone: "att", weight: 1, once: true,
+    text: ["원정 응원석 바로 앞에서 공을 잡았다. 야유가 쏟아진다. 귀가 먹먹하다."],
+    choices: [
+      { label: "아무것도 안 들린다. 내 플레이만 한다", stats: { "mental.focus": 0.6, "tech.dribble": 0.4 }, diff: 2, win: "shot", lose: "turnover",
+        winText: ["소리가 멀어졌다. 공과 골문만 보인다!"], loseText: ["순간 머릿속이 하얘졌다. 공이 발에서 떨어졌다."] },
+      { label: "빠르게 내주고 소리에서 벗어난다", stats: { "tech.pass": 0.7, "mental.teamwork": 0.3 }, diff: -5, win: "keyPass", lose: "turnover",
+        winText: ["원터치로 {mate}에게. 야유가 머쓱하게 잦아든다."], loseText: ["서두르다 패스가 짧았다."] },
+    ] },
+  { id: "opp_coach_shout", intro: false, poss: "them", pos: ["MF", "DF"], zone: "def", weight: 1, once: true,
+    text: ["상대 감독이 사이드라인에서 \"저 친구 약해! 저쪽으로 밀어!\" 하고 나를 가리킨다. {opp|이/가} 나를 향해 온다."],
+    choices: [
+      { label: "보란 듯이 정면으로 막아선다", stats: { "tech.defense": 0.6, "mental.competitive": 0.4 }, diff: 3, win: "win", lose: "danger",
+        winText: ["깔끔하게 공을 빼앗았다. 상대 감독이 팔짱을 낀다."], loseText: ["흥분했다. 너무 일찍 발을 뻗었다!"] },
+      { label: "흥분하지 않고 거리를 지킨다", stats: { "mental.focus": 0.7, "tech.defense": 0.3 }, diff: -3, win: "win", lose: "turnover",
+        winText: ["차분히 따라가며 길을 막았다. {opp|이/가} 결국 뒤로 돌린다."], loseText: ["너무 물러섰다. {opp|이/가} 여유 있게 공을 앞으로 보낸다."] },
+    ] },
+  { id: "mate_yellow", intro: false, poss: "them", pos: ["MF", "DF"], zone: "def", weight: 1, once: true, late: true,
+    text: ["경고 한 장이 있는 {mate|이/가} {opp}에게 또 붙으려 한다. 한 번 더 걸리면 퇴장이다."],
+    choices: [
+      { label: "\"내가 갈게!\" 외치고 대신 붙는다", stats: { "tech.defense": 0.5, "mental.teamwork": 0.5 }, diff: 2, win: "win", lose: "danger",
+        winText: ["{mate|을/를} 밀어내고 대신 붙었다. 공을 끊어 냈다. {mate|이/가} 고맙다며 손을 든다."], loseText: ["대신 나섰지만 {opp|이/가} 한 발 빨랐다!"] },
+      { label: "\"물러서!\" 하고 소리친다", stats: { "mental.teamwork": 0.6, "mental.focus": 0.4 }, diff: -4, win: "keep", lose: "card",
+        winText: ["{mate|이/가} 멈췄다. 동료들이 둘러싸며 공을 걷어 냈다."], loseText: ["늦었다. {mate|이/가} 발을 뻗었고, 주심이 카드를 꺼낸다. 나도 항의하다 경고를 받았다."] },
+    ] },
+  { id: "parents_cheer", pos: ["FW", "MF", "DF"], zone: "mid", weight: 1, once: true, trailing: true,
+    text: ["지고 있다. 관중석에서 아빠 목소리가 들린다. \"괜찮아! 하던 대로 해!\" 공이 내 발밑에 있다."],
+    choices: [
+      { label: "고개를 들고 앞으로 찔러 준다", stats: { "tech.pass": 0.6, "mental.confidence": 0.4 }, diff: 2, win: "keyPass", lose: "turnover",
+        winText: ["떨리던 다리가 멈췄다. 앞으로 뻗은 패스가 정확히 {mate}에게!"], loseText: ["마음만 앞섰다. 패스가 길었다."] },
+      { label: "직접 몰고 올라간다", stats: { "tech.dribble": 0.5, "mental.competitive": 0.5 }, diff: 5, win: "shot", lose: "turnover",
+        winText: ["한 명, 두 명. 관중석이 일어선다! 슈팅 각이 열렸다!"], loseText: ["세 번째 수비수에게 걸렸다."] },
+    ] },
+  { id: "elder_shout", pos: ["FW"], zone: "att", weight: 1, once: true,
+    text: ["울타리 너머 동네 어르신이 소리치신다. \"때려! 때려 부러!\" 박스 모서리에서 공을 잡았다."],
+    choices: [
+      { label: "어르신 말씀대로 때린다", stats: { "tech.shoot": 0.8, "mental.confidence": 0.2 }, diff: 8, win: "longShot", lose: "miss",
+        winText: ["시원하게 발등에 걸렸다! 어르신의 \"그라제!\" 소리가 들린다!"], loseText: ["허공을 가른 공이 울타리를 넘어 논두렁으로 갔다."] },
+      { label: "한 번 접고 더 좋은 각을 만든다", stats: { "tech.dribble": 0.5, "tech.shoot": 0.5 }, diff: 4, win: "shot", lose: "turnover",
+        winText: ["수비가 속았다! 더 가까이서 때릴 수 있다!"], loseText: ["접는 사이 수비가 발을 뻗었다."] },
+    ] },
+  { id: "bench_signal", intro: false, pos: ["MF"], zone: "mid", weight: 1, once: true,
+    text: ["{coach}님께서 벤치에서 두 손가락을 펴 보이신다. 약속한 전술 변화 신호다. 공이 나에게 왔다."],
+    choices: [
+      { label: "약속대로 반대쪽으로 크게 전환한다", stats: { "tech.pass": 0.6, "mental.focus": 0.4 }, diff: 3, win: "keyPass", lose: "turnover",
+        winText: ["반대편 {mate}에게 한 번에 날아갔다. 상대 수비가 우르르 이동한다!"], loseText: ["너무 길었다. 공이 라인을 넘어간다."] },
+      { label: "신호를 동료들에게 전달하고 공을 지킨다", stats: { "mental.teamwork": 0.6, "tech.firstTouch": 0.4 }, diff: -3, win: "keep", lose: "turnover",
+        winText: ["손을 들어 신호를 돌렸다. 다들 자리를 바꾼다."], loseText: ["손짓하는 사이 공을 뺏겼다."] },
+    ] },
+  // ── 경기 흐름이 만드는 장면 ──────────────
+  { id: "counter_3v2", intro: false, pos: ["FW", "MF"], zone: "att", weight: 2,
+    text: ["역습! 우리 셋, 상대 수비 둘. 내가 가운데에서 공을 몰고 있다."],
+    choices: [
+      { label: "왼쪽 동료에게 내준다", stats: { "tech.pass": 0.7, "mental.focus": 0.3 }, diff: -2, win: "assist", lose: "turnover",
+        winText: ["수비 둘이 나에게 붙었다. 그 순간 왼쪽 {mate}에게!"], loseText: ["패스가 수비 발끝에 걸렸다."] },
+      { label: "수비 사이로 직접 파고든다", stats: { "tech.dribble": 0.6, "phys.speed": 0.4 }, diff: 6, win: "shot", lose: "turnover",
+        winText: ["수비가 동료를 보는 사이 가운데를 찢었다!"], loseText: ["수비 둘이 동시에 좁혀 왔다."] },
+      { label: "속도를 줄이고 동료를 기다린다", stats: { "mental.focus": 0.6, "tech.firstTouch": 0.4 }, diff: 0, win: "keyPass", lose: "keep",
+        winText: ["한 박자 쉬자 뒤에서 {mate|이/가} 뛰어 들어왔다. 4 대 2다!"], loseText: ["기다리는 사이 상대 수비가 다 돌아왔다."] },
+    ] },
+  { id: "rebound_box", intro: false, pos: ["FW"], zone: "att", weight: 2,
+    text: ["{mate}의 슈팅을 골키퍼가 쳐 냈다! 공이 내 앞으로 흘러나온다."],
+    choices: [
+      { label: "그대로 밀어 넣는다", stats: { "mental.focus": 0.5, "tech.shoot": 0.5 }, diff: -2, win: "tapIn", lose: "miss",
+        winText: ["넘어진 골키퍼 옆으로 툭!"], loseText: ["서두르다 공이 정강이에 맞았다."] },
+      { label: "골키퍼 반대쪽으로 침착하게 찬다", stats: { "tech.shoot": 0.6, "mental.confidence": 0.4 }, diff: 3, win: "shot", lose: "miss",
+        winText: ["골키퍼가 일어서는 방향의 반대쪽!"], loseText: ["수비가 몸을 던져 막았다."] },
+    ] },
+  { id: "throw_in_trick", pos: ["MF", "DF"], zone: "mid", weight: 1,
+    text: ["스로인. 내가 던져야 한다. 상대가 우리 선수들에게 바짝 붙어 있다."],
+    choices: [
+      { label: "던지는 척하고 바로 돌려받는다", stats: { "mental.focus": 0.5, "tech.firstTouch": 0.5 }, diff: 2, win: "keyPass", lose: "turnover",
+        winText: ["{mate}에게 던지고 바로 돌려받았다. 수비 하나가 따돌려졌다."], loseText: ["돌려받는 공을 상대가 가로챘다."] },
+      { label: "길게 던져 박스 쪽을 노린다", stats: { "phys.strength": 0.7, "mental.focus": 0.3 }, diff: 4, win: "keyPass", lose: "turnover",
+        winText: ["팔에 힘을 실어 길게 던졌다. 박스 안이 혼전이다!"], loseText: ["던지기가 짧았다."] },
+    ] },
+  { id: "keeper_rush", intro: false, pos: ["FW"], zone: "att", weight: 1, requires: { "mental.confidence": 56 },
+    text: ["골키퍼가 박스 밖까지 뛰쳐나왔다! 공은 나와 골키퍼 사이에 떠 있다."],
+    choices: [
+      { label: "머리로 골키퍼 너머 띄운다", stats: { "phys.jump": 0.5, "mental.confidence": 0.5 }, diff: 6, win: "chip", lose: "miss", physical: true,
+        winText: ["이마에 살짝 맞힌 공이 텅 빈 골문을 향해 날아간다!"], loseText: ["골키퍼 주먹이 먼저 닿았다."] },
+      { label: "공을 끌고 골키퍼를 지나간다", stats: { "phys.speed": 0.5, "tech.dribble": 0.5 }, diff: 4, win: "shot", lose: "turnover",
+        winText: ["골키퍼 옆으로 치고 나갔다! 골문이 비었다!"], loseText: ["골키퍼가 몸을 던져 공을 안았다."] },
+    ] },
+  { id: "mf_tempo", pos: ["MF"], zone: "mid", weight: 2, leading: true, late: true,
+    text: ["앞서고 있는 후반. 상대가 우르르 올라와 압박한다. 공은 내 발에 있다."],
+    choices: [
+      { label: "골키퍼까지 돌려 시간을 쓴다", stats: { "mental.focus": 0.6, "tech.pass": 0.4 }, diff: -6, win: "keep", lose: "danger",
+        winText: ["뒤로, 옆으로. 상대가 지쳐 간다. 시계가 흘러간다."], loseText: ["백패스가 짧았다! 상대가 달려든다!"] },
+      { label: "압박을 벗기고 역습한다", stats: { "tech.dribble": 0.5, "tech.pass": 0.5 }, diff: 5, win: "keyPass", lose: "turnover",
+        winText: ["한 명 벗기자 앞이 텅 비었다! 쐐기골 기회다!"], loseText: ["욕심이 화를 불렀다. 공을 뺏겼다."] },
+    ] },
+  { id: "df_aerial_long", intro: false, poss: "them", pos: ["DF"], zone: "def", weight: 2, spot: [[18, 28], [20, 48]],
+    text: ["상대 골키퍼의 롱킥. 키 큰 {opp|이/가} 나와 같이 떨어지는 공을 노린다."],
+    choices: [
+      { label: "먼저 자리를 잡고 머리로 걷어 낸다", stats: { "phys.jump": 0.5, "phys.strength": 0.5 }, diff: 2, win: "win", lose: "danger", physical: true,
+        winText: ["어깨로 먼저 자리를 잡았다. 공이 내 머리에 맞고 멀리 날아간다."], loseText: ["{opp}의 머리가 한 뼘 높았다. 공이 뒤로 흐른다!"] },
+      { label: "뒤에서 떨어지는 공을 노린다", stats: { "mental.focus": 0.6, "phys.speed": 0.4 }, diff: 0, win: "win", lose: "turnover",
+        winText: ["헤더 경합은 양보하고 떨어진 공을 먼저 주웠다."], loseText: ["세컨드볼마저 상대가 먼저 잡았다."] },
+    ] },
+  { id: "df_offside_trap", intro: false, poss: "them", pos: ["DF"], zone: "def", weight: 1, spot: [[30, 38], [20, 48]],
+    text: ["상대 미드필더가 고개를 든다. 수비 라인을 한 번에 올리면 오프사이드를 만들 수 있다."],
+    choices: [
+      { label: "\"올려!\" 외치고 라인을 끌어올린다", stats: { "mental.teamwork": 0.5, "mental.focus": 0.5 }, diff: 3, win: "offside", lose: "danger",
+        winText: ["넷이 동시에 올라섰다. 부심의 깃발이 번쩍 올라간다!"], loseText: ["한 명이 늦었다! {opp|이/가} 라인을 뚫고 들어온다!"] },
+      { label: "물러서서 공간을 지운다", stats: { "tech.defense": 0.6, "phys.speed": 0.4 }, diff: -2, win: "win", lose: "turnover",
+        winText: ["뒷공간을 먼저 지웠다. 날아온 공을 편하게 걷어 낸다."], loseText: ["너무 물러섰다. 상대가 편하게 중거리를 때린다."] },
+    ] },
+  { id: "df_ace_mark", intro: false, poss: "them", pos: ["DF", "MF"], zone: "def", weight: 1, once: true,
+    text: ["상대 에이스 {opp|이/가} 공을 잡고 나를 정면으로 노려본다. 여기서 뚫리면 끝이다."],
+    choices: [
+      { label: "발을 뻗지 않고 끝까지 버틴다", stats: { "mental.focus": 0.5, "tech.defense": 0.5 }, diff: 3, win: "win", lose: "danger",
+        winText: ["속임 동작 세 번에도 안 넘어갔다. {opp|이/가} 결국 뒤로 돌린다."], loseText: ["네 번째 속임수에 무게중심이 무너졌다!"] },
+      { label: "먼저 몸을 붙여 공을 툭 친다", stats: { "phys.strength": 0.5, "phys.agility": 0.5 }, diff: 5, win: "win", lose: "card", physical: true,
+        winText: ["어깨를 먼저 넣고 공을 툭. {opp}의 표정이 일그러진다."], loseText: ["타이밍이 늦었다. 주심이 휘슬을 분다."] },
+    ] },
+  { id: "mf_injury_time", pos: ["MF", "FW"], zone: "att", weight: 1, late: true, trailing: true, once: true,
+    text: ["추가 시간. 한 골이 필요하다. 하프라인 근처에서 공이 내게 왔다."],
+    choices: [
+      { label: "박스 안으로 길게 띄운다", stats: { "tech.pass": 0.5, "tech.cross": 0.5 }, diff: 4, win: "assist", lose: "turnover",
+        winText: ["높게 날아간 공이 박스 안 혼전 속 {mate}에게 떨어진다!"], loseText: ["골키퍼가 손쉽게 잡았다."] },
+      { label: "직접 몰고 끝까지 간다", stats: { "phys.stamina": 0.5, "tech.dribble": 0.5 }, diff: 7, win: "shot", lose: "turnover",
+        winText: ["다리가 남아 있었다! 수비 둘을 끌고 박스 앞까지!"], loseText: ["마지막 한 발이 무거웠다."] },
+    ] },
+  { id: "fw_near_post", intro: false, pos: ["FW"], zone: "att", weight: 2,
+    text: ["{mate|이/가} 측면 끝까지 파고들었다. 니어포스트 앞이 비어 있다."],
+    choices: [
+      { label: "니어로 뛰어 들어가 발을 갖다 댄다", stats: { "phys.speed": 0.5, "tech.shoot": 0.5 }, diff: 3, win: "tapIn", lose: "miss",
+        winText: ["수비보다 반 박자 먼저 니어에 닿았다!"], loseText: ["발끝에 살짝 닿았지만 골대 옆으로."] },
+      { label: "뒤로 빠져 컷백을 기다린다", stats: { "mental.focus": 0.6, "tech.shoot": 0.4 }, diff: 1, win: "shot", lose: "miss",
+        winText: ["모두 니어로 몰릴 때 혼자 뒤에 섰다. 공이 정확히 온다!"], loseText: ["컷백이 수비 발에 걸렸다."] },
+    ] },
+  { id: "mf_switch_wind", pos: ["MF"], zone: "mid", weight: 1, wx: ["wind"],
+    text: ["뒤에서 바람이 분다. 상대 골키퍼가 앞으로 나와 있는 게 보인다."],
+    choices: [
+      { label: "바람을 타고 하프라인 슈팅", requires: { "tech.shoot": 66 }, stats: { "tech.shoot": 0.7, "mental.confidence": 0.3 }, diff: 14, win: "longShot", lose: "miss",
+        winText: ["바람을 탄 공이 골키퍼 머리 위로 뚝 떨어진다!"], loseText: ["조금 길었다. 크로스바 위로."] },
+      { label: "바람을 등지고 침투 패스", stats: { "tech.pass": 0.7, "mental.focus": 0.3 }, diff: 2, win: "keyPass", lose: "turnover",
+        winText: ["바람에 실린 패스가 {mate}의 발 앞에 딱 멈춘다!"], loseText: ["바람에 너무 멀리 날아갔다."] },
     ] },
 ];
 
@@ -2488,13 +2753,22 @@ const FLOW = {
 const HALFTIME_TALK = {
   winning: ["좋다. 그런데 방심하는 순간 뒤집힌다. 하던 대로 해.", "잘하고 있다. 수비 라인 내리지 마라.", "한 골 더 넣으면 끝난다. 물러서지 마.",
     "점수는 잊어라. 0 대 0이라고 생각하고 다시 들어가.", "상대가 후반에 라인 올린다. 뒷공간 노려.",
-    "앞서고 있을 때 제일 많이 지는 이유가 뭔지 알아? 내려앉아서다. 계속 올라가.", "공 잡으면 서두르지 마. 시간은 우리 편이다.", "잘했다. 그런데 칭찬은 경기 끝나고 한다."],
+    "앞서고 있을 때 제일 많이 지는 이유가 뭔지 알아? 내려앉아서다. 계속 올라가.", "공 잡으면 서두르지 마. 시간은 우리 편이다.", "잘했다. 그런데 칭찬은 경기 끝나고 한다.",
+    "이기고 있는 팀이 더 많이 뛰어야 한다. 그래야 상대가 포기한다.", "지금 스코어는 잊어. 후반 첫 5분, 거기서 한 번 더 때린다.",
+    "벤치에서 보니까 다들 웃고 있더라. 좋다. 대신 집중은 놓지 마라.", "상대가 후반에 키 큰 애를 넣을 거다. 세트피스 자리 다시 확인해.",
+    "공 잡으면 앞을 먼저 봐라. 뒤로 돌리는 건 그다음이다."],
   drawing: ["아직 아무것도 안 정해졌다. 한 골이면 된다.", "상대도 지쳤다. 더 뛰는 쪽이 이긴다.", "측면이 열린다. 후반엔 더 넓게 벌려라.",
     "전반은 탐색전이었다. 이제 우리가 먼저 때린다.", "물 마시고 숨 골라. 후반 10분 안에 승부 본다.",
-    "상대 오른쪽 수비가 지쳤다. 그쪽으로 계속 두드려.", "세트피스 하나에 갈린다. 코너킥 얻으면 다 들어가.", "비기는 거 하러 여기 온 거 아니다."],
+    "상대 오른쪽 수비가 지쳤다. 그쪽으로 계속 두드려.", "세트피스 하나에 갈린다. 코너킥 얻으면 다 들어가.", "비기는 거 하러 여기 온 거 아니다.",
+    "전반에 슈팅이 너무 적었다. 후반엔 박스 근처에서 망설이지 마.", "상대 골키퍼가 높은 공에 약하다. 크로스 많이 올려.",
+    "한 명이 공 잡으면 두 명이 뛰어 들어가. 전반엔 다들 서서 구경만 했다.", "체력은 우리가 위다. 겨울 내내 뛴 거 오늘 쓰는 거다.",
+    "중원 싸움에서 밀렸다. 미드필더들, 간격 좁혀. 그거 하나면 된다."],
   losing: ["고개 들어. 35분이면 충분히 뒤집는다.", "겁먹지 마라. 우리 축구 하자.", "실점은 잊어. 지금부터 0 대 0이라고 생각해.",
     "한 골씩만 생각해라. 한 번에 두 골 넣으려 하지 말고.", "졌다고 생각하는 사람 손 들어 봐. 없지? 그럼 나가.",
-    "전반은 내가 잘못 짰다. 후반엔 너희 하고 싶은 대로 해 봐.", "첫 골만 넣으면 저쪽이 흔들린다. 그 첫 골을 빨리 가져와.", "누구 탓도 하지 마. 탓할 시간에 한 번 더 뛰어."],
+    "전반은 내가 잘못 짰다. 후반엔 너희 하고 싶은 대로 해 봐.", "첫 골만 넣으면 저쪽이 흔들린다. 그 첫 골을 빨리 가져와.", "누구 탓도 하지 마. 탓할 시간에 한 번 더 뛰어.",
+    "다들 표정이 왜 그래. 아직 35분 남았다. 표정부터 바꾸고 나가.", "골 먹은 장면 다시 생각하지 마. 지나간 공은 안 돌아온다.",
+    "수비 넷 중에 하나만 남기고 다 올라간다. 지는 건 한 골이나 세 골이나 똑같다.", "관중석 봐라. 부모님들 아직 아무도 안 가셨다. 그게 무슨 뜻인지 알지?",
+    "전반에 진 건 점수지 경기가 아니다. 후반에 경기를 가져와."],
 };
 
 // 하프타임 라커룸: 감독님이 나를 따로 보고 하는 말과 내 대답
@@ -2503,7 +2777,8 @@ const HALFTIME_TALK = {
 const HT_TALK = {
   praise: {
     text: ["{me|아/야}, 전반 좋았다. 공 잡을 때마다 상대가 뒤로 물러서더라.", "전반에 네가 제일 많이 뛰었다. 다들 봤다.", "오늘 몸 가볍네. 그 느낌 그대로 들고 나가라.",
-      "{me|아/야}, 잘했다. 그런데 상대도 이제 너를 알았다. 후반엔 더 붙을 거다."],
+      "{me|아/야}, 잘했다. 그런데 상대도 이제 너를 알았다. 후반엔 더 붙을 거다.", "오늘 같은 날 골 하나 더 가져와야 한다. 기회 오면 욕심내도 된다.",
+      "벤치에서 코치님이 네 이름만 몇 번을 불렀는지 모른다. 좋은 뜻으로.", "{me|아/야}, 첫 터치가 살아 있다. 그거 하나로 상대가 무너지고 있다."],
     choices: [
       { label: "\"후반에도 똑같이 하겠습니다\"", reply: "그래. 잘될 때 바꾸는 거 아니다.", buff: { tag: null, bonus: 0.02 } },
       { label: "\"더 과감하게 해 보겠습니다\"", reply: "좋다. 대신 뺏기면 바로 돌아와라.", buff: { tag: "dribble", bonus: 0.03 }, morale: 2 },
@@ -2511,7 +2786,8 @@ const HT_TALK = {
     ] },
   scold: {
     text: ["{me|아/야}, 전반은 네 경기가 아니었다. 공 잡고 너무 오래 끌어.", "몸이 무겁냐, 마음이 무겁냐. 전반에 네가 안 보였다.", "{me|아/야}. 실수는 괜찮다. 그런데 실수하고 나서 고개 숙이는 건 안 된다.",
-      "전반처럼 하면 후반에 바꾼다. 무슨 말인지 알지?"],
+      "전반처럼 하면 후반에 바꾼다. 무슨 말인지 알지?", "{me|아/야}, 뛰는 거리는 많은데 쓸모 있는 움직임이 없다. 생각하고 뛰어라.",
+      "공 뺏기고 걸어서 돌아오더라. 그거 하나는 용서 못 한다.", "긴장했냐? 손 줘 봐. …차갑네. 숨 크게 세 번 쉬고 나가라."],
     choices: [
       { label: "\"죄송합니다. 후반엔 단순하게 하겠습니다\"", reply: "그래. 쉽게 주고, 쉽게 움직여라. 그게 제일 어렵다.", buff: { tag: "safe", bonus: 0.04 } },
       { label: "\"한 번만 더 제 방식대로 해 보겠습니다\"", reply: "…좋다. 대신 이번이 마지막이다. 보여 줘라.", buff: { tag: null, bonus: 0.015 }, s: { "mental.confidence": 0.3 }, coach: -0.5 },
@@ -2519,14 +2795,16 @@ const HT_TALK = {
     ] },
   calm: {
     text: ["{me|아/야}, 전반은 무난했다. 무난한 걸로는 이 경기 못 이긴다.", "나쁘지 않았다. 그런데 기억에 남는 장면이 없다. 후반엔 하나 만들어라.", "전반엔 조심스러웠다. 이제 상대 파악은 끝났지?",
-      "{me|아/야}. 후반에 경기가 열린다. 네가 먼저 움직여라."],
+      "{me|아/야}. 후반에 경기가 열린다. 네가 먼저 움직여라.", "실수는 없었다. 대신 상대를 무섭게 한 장면도 없었다.",
+      "네가 공을 잡으면 팀이 편해진다. 후반엔 더 자주 받으러 와라.", "{me|아/야}, 지금 경기에서 제일 비어 있는 곳이 어딘지 보이냐? 거기로 가라."],
     choices: [
       { label: "\"앞으로 더 치고 나가겠습니다\"", reply: "좋다. 골문 쪽을 먼저 봐라.", buff: { tag: "shoot", bonus: 0.025 } },
       { label: "\"뒤부터 단단히 하겠습니다\"", reply: "그래. 실점 안 하면 기회는 온다.", buff: { tag: "defend", bonus: 0.025 } },
       { label: "\"패스로 흔들어 보겠습니다\"", reply: "옆으로만 돌리지 말고, 한 번은 앞으로 찔러라.", buff: { tag: "pass", bonus: 0.025 } },
     ] },
   off: {
-    text: ["{me|아/야}, 전반은 여기까지다. 후반은 벤치에서 봐라.", "오늘은 안 풀리는 날이다. 후반엔 쉬면서 경기를 봐라.", "{me|아/야}, 교체한다. 화내도 된다. 대신 그 화는 다음 훈련에 써라."],
+    text: ["{me|아/야}, 전반은 여기까지다. 후반은 벤치에서 봐라.", "오늘은 안 풀리는 날이다. 후반엔 쉬면서 경기를 봐라.", "{me|아/야}, 교체한다. 화내도 된다. 대신 그 화는 다음 훈련에 써라.", "몸이 오늘따라 안 올라온다. 무리시키지 않겠다. 다음 경기 보자.",
+      "{me|아/야}, 오늘은 내가 너를 잘못 썼다. 후반은 쉬어라. 네 탓만은 아니다."],
     choices: [
       { label: "고개를 끄덕이고 벤치에 앉는다", reply: "앉아서도 경기는 계속된다. 뭐가 안 됐는지 봐 둬라.", coach: 1, s: { "mental.focus": 0.3 } },
       { label: "\"한 번만 더 기회를 주세요\"", reply: "기회는 다음 경기에 준다. 오늘은 여기까지다.", coach: -1, s: { "mental.competitive": 0.4 } },
@@ -2675,7 +2953,7 @@ const AMBIENT = [
   { side: "us",   t: "{a|이/가} 늦게 들어간 태클로 경고를 받는다.", card: "us" },
   { side: "none", t: "관중석에서 학부모님들의 응원 소리가 들려온다." },
   { side: "none", t: "양 팀 모두 탐색전이다. 서로의 움직임을 살핀다.", early: true },
-  { side: "none", t: "바닷바람이 거세진다. 높이 뜬 공이 자꾸 바람에 밀린다." },
+  { side: "none", t: "바닷바람이 거세진다. 높이 뜬 공이 자꾸 바람에 밀린다.", wx: ["wind", "clear"] },
   { side: "none", t: "부심의 깃발이 올라간다. 오프사이드." },
   { side: "none", t: "공이 관중석으로 넘어갔다. 학부모 한 분이 공을 던져 준다." },
   { side: "us",   t: "{gk|이/가} 높게 날아온 크로스를 가볍게 잡아 낸다." },
@@ -2689,6 +2967,34 @@ const AMBIENT = [
   { side: "none", t: "양 팀 선수들 다리가 무거워 보인다. 종아리를 주무르는 선수도 있다.", late: true },
   { side: "us",   t: "{coach|이/가} 시계를 가리키며 소리친다. \"집중! 끝까지!\"", late: true },
   { side: "none", t: "대기심이 추가 시간 2분을 알린다.", min: 66 },
+  // 날씨·시간대에 따라 나오는 문장 (wx: 날씨, sky: 시간대)
+  { side: "none", t: "빗줄기가 굵어진다. 젖은 잔디 위로 공이 미끄러지듯 빨라진다.", wx: ["rain"] },
+  { side: "us",   t: "{a|이/가} 젖은 잔디에 미끄러졌다. 그래도 공은 끝까지 놓치지 않는다.", wx: ["rain"] },
+  { side: "us",   t: "상대 패스가 물웅덩이에 걸려 멈춘다. 우리 공이다.", wx: ["rain"] },
+  { side: "none", t: "관중석 학부모님들이 우산을 펼친다. 응원 소리는 그대로다.", wx: ["rain"] },
+  { side: "us",   t: "{gk|이/가} 젖은 공을 한 번 놓쳤다가 다시 끌어안는다. 벤치가 가슴을 쓸어내린다.", wx: ["rain"] },
+  { side: "none", t: "햇볕이 뜨겁다. 주심이 잠깐 경기를 멈추고 물 마실 시간을 준다.", wx: ["hot"], min: 20 },
+  { side: "us",   t: "{a|이/가} 무릎에 손을 짚고 숨을 고른다. 땀이 턱 끝에서 뚝뚝 떨어진다.", wx: ["hot"] },
+  { side: "none", t: "인조 잔디에서 열기가 올라온다. 양 팀 모두 걸음이 느려졌다.", wx: ["hot"], late: true },
+  { side: "none", t: "입김이 하얗게 나온다. 벤치 선수들은 담요를 둘러쓰고 발을 구른다.", wx: ["cold"] },
+  { side: "us",   t: "{a|이/가} 언 손을 비비며 스로인을 준비한다.", wx: ["cold"] },
+  { side: "none", t: "차가운 공이 발등에 맞을 때마다 둔한 소리가 난다.", wx: ["cold"] },
+  { side: "none", t: "바다 쪽에서 맞바람이 분다. 길게 찬 공이 제자리에 뚝 떨어진다.", wx: ["wind"] },
+  { side: "them", t: "상대 골킥이 바람을 타고 생각보다 멀리 날아온다.", wx: ["wind"] },
+  { side: "none", t: "조명탑 불빛 아래, 선수들 그림자가 네 갈래로 갈라진다.", sky: "night" },
+  { side: "none", t: "해가 기운다. 노을빛이 운동장을 붉게 물들인다.", sky: "dusk" },
+  // 관중·벤치·경기장 풍경
+  { side: "none", t: "원정 응원석에서 북소리가 울린다. 상대 선수들 어깨에 힘이 들어간다." },
+  { side: "us",   t: "우리 선수가 공을 잡을 때마다 상대 응원석에서 야유가 쏟아진다. 신경 쓰지 않는다." },
+  { side: "none", t: "상대 감독이 판정에 거세게 항의하다 주심에게 경고를 받는다.", min: 30 },
+  { side: "none", t: "상대 감독이 또 항의하다 결국 퇴장 명령을 받는다. 관중석이 술렁인다.", min: 50 },
+  { side: "none", t: "동네 어르신들이 울타리 너머에서 구경하신다. \"저 주황색이 고흥 애들이여?\"" },
+  { side: "us",   t: "{coach|이/가} 팔짱을 낀 채 아무 말이 없다. 그게 더 무섭다." },
+  { side: "them", t: "{o|이/가} 공을 밖으로 차 내고, 쓰러진 우리 선수를 일으켜 준다. 관중석에서 박수가 나온다." },
+  { side: "none", t: "공이 담장을 넘어 논두렁으로 굴러갔다. 볼보이가 뛰어간다." },
+  { side: "us",   t: "{a|이/가} 손짓으로 동료들을 끌어올린다. 수비 라인이 한 칸 올라간다." },
+  { side: "none", t: "주심이 신발 끈이 풀린 선수를 보고 잠깐 경기를 멈춘다." },
+  { side: "us",   t: "벤치의 후배들이 목이 터져라 이름을 부른다. \"형들, 할 수 있어요!\"" },
 ];
 
 // 내 장면 직전, 공이 나에게 오는 문장
@@ -2744,6 +3050,18 @@ const ME_IN_PLAY = {
 //   shoot 슈팅 / pass 패스 / dribble 돌파 / defend 수비 / physical 몸싸움 / safe 안정 / null 지시 없음
 // when: start 선발 / sub 교체로 들어가는 순간 (경기 중에 나옴) / bench 벤치 / big 대회·진학 경기 / ko 토너먼트 / hs 고교 감독 관전 / tired 피로 높음 / star 에이스
 const PREMATCH = [
+  { who: "coach", when: "start", tag: "pass", t: "오늘은 측면으로 벌려라. 가운데는 상대가 다섯 명이나 서 있다." },
+  { who: "coach", when: "start", tag: "defend", t: "상대 10번이 공 잡으면 무조건 둘이 붙는다. 그 선수만 묶으면 이 팀은 아무것도 못 한다." },
+  { who: "coach", when: "start", tag: "shoot", t: "골키퍼가 앞으로 많이 나와 있는 스타일이다. 멀리서도 노려 봐라." },
+  { who: "assistant", when: "start", tag: "physical", t: "잔디가 짧게 깎여 있다. 공이 빨리 구른다. 몸 먼저 넣고 받아라." },
+  { who: "assistant", when: "start", tag: "safe", t: "첫 10분은 쉽게 가자. 공 한 번 뺏기면 흐름 내준다." },
+  { who: "coach", when: "bench", t: "벤치라고 경기 안 보면 안 된다. 상대 왼쪽 풀백 움직임 계속 봐 둬라. 들어가면 써먹게." },
+  { who: "assistant", when: "bench", t: "몸은 계속 데워 놔라. 언제 부를지 모른다. 부르면 바로 뛰어 들어갈 수 있게." },
+  { who: "coach", when: "big", tag: "safe", t: "큰 경기는 실수 적은 팀이 이긴다. 화려한 거 하나보다 정확한 거 열 개." },
+  { who: "coach", when: "ko", tag: "defend", t: "오늘 지면 짐 싸서 고흥 간다. 아직 짐 싸기 싫지? 그럼 먼저 실점하지 마라." },
+  { who: "coach", when: "star", tag: "pass", t: "상대가 너한테 둘씩 붙을 거다. 그럼 한 명이 빈다. 그 한 명을 찾아 줘라." },
+  { who: "assistant", when: "tired", tag: "safe", t: "요즘 다리 무겁지? 오늘은 아껴 뛰어. 꼭 가야 할 때만 전력으로." },
+  { who: "coach", when: "sub", tag: "pass", t: "들어가서 공 한 번 만지고 시작해라. 첫 터치가 편해야 나머지가 풀린다." },
   { who: "coach", when: "start", tag: "shoot", t: "박스 근처에서 망설이지 마라. 보이면 때려. 빗나가도 내가 뭐라 안 한다." },
   { who: "coach", when: "start", tag: "pass", t: "오늘은 공 오래 끌지 마라. 원터치, 투터치. 공이 사람보다 빨라야 한다." },
   { who: "coach", when: "start", tag: "dribble", t: "측면에서 1 대 1 붙으면 자신 있게 들어가. 상대 풀백 발이 느리다." },
@@ -2910,6 +3228,51 @@ const LIFE = [
   { id: "nw_rocket", from: "news", title: "나로우주센터 소식", body: "나로우주센터에서 발사 준비 소식이 들려왔다. 반 아이들이 그날 운동장에서 하늘을 보자고 난리다." },
   { id: "nw_palyeong", from: "news", when: { months: [4, 5, 10] }, title: "팔영산 산행", body: "주말에 팔영산 등산하는 사람들이 많다. 감독님이 '다음 체력 훈련은 저기다'라고 하셨다는 소문이 돈다." },
   { id: "nw_fest", from: "news", when: { months: [10] }, title: "지역 축제", body: "읍내에서 축제가 열린다. 단톡방이 '훈련 몇 시에 끝나요'로 도배됐다." },
+  { id: "nw_sunset", from: "news", when: { months: [9, 10, 11] }, title: "고흥만 노을", body: "고흥만 방조제에 노을 보러 오는 사람이 많아졌다. 훈련 끝나고 돌아오는 버스 창밖이 온통 주황색이다.\n\n우리 유니폼 색이랑 똑같다고 누가 그랬다." },
+  { id: "nw_ssukseom", from: "news", when: { months: [4, 5] }, title: "쑥섬에 꽃이 폈다", body: "쑥섬 꽃길이 한창이라고 동네가 들썩인다. 엄마가 주말에 배 타고 들어가 보자고 하신다. 훈련 없는 날이면." },
+  { id: "nw_bridge", from: "news", when: { months: [5, 6, 9] }, title: "거금대교 자전거길", body: "거금대교 자전거길이 새로 단장했다는 소식. 체력 훈련 삼아 다리 건너 보자는 말이 단톡방에 올라왔다." },
+  // ── 친구 (더) ──
+  { id: "fr_lunch", from: "friend", school: true, title: "급식 ㄹㅇ", body: "오늘 급식 돈가스 나옴 ㄷㄷ 너 훈련 때문에 늦게 오면 내가 하나 챙겨 둘게. 소스는 못 지킴" },
+  { id: "fr_test", from: "friend", school: true, cond: examWeek, title: "범위 어디까지?", body: "국어 시험 범위 소설 두 편 맞지? 나 하나밖에 안 읽었는데 ㅋㅋ 줄거리 요약해 줄 사람 구함" },
+  { id: "fr_rain", from: "friend", when: { months: [6, 7] }, title: "비 오는데 훈련함?", body: "이 비에 훈련한다고? 진짜 대단하다… 끝나면 분식집 와라. 어묵 국물 시켜 놓을게" },
+  { id: "fr_game", from: "friend", title: "어제 경기 봤냐", body: "어제 국가대표 경기 마지막 골 봤냐 ㄷㄷ 너도 언젠가 저런 거 넣어라. 그럼 내가 너 초등학교 때 사진 팔 거임 ㅋㅋ" },
+  { id: "fr_tired", from: "friend", cond: s => s.player.condition.fatigue >= 60, title: "너 좀비 같음", body: "오늘 수업 시간에 너 눈 반쯤 감겨 있던데 ㅋㅋ 선생님이 깨우려다 말았다. 좀 자라 진짜" },
+  { id: "fr_win", from: "friend", cond: s => last(s)?.result === "승", title: "이겼다며!", body: "이겼다며! 반 단톡에 벌써 소문 다 남 ㅋㅋ 내일 매점 너가 쏘는 거지?" },
+  { id: "fr_lose", from: "friend", cond: s => last(s)?.result === "패", title: "…", body: "졌다며. 뭐 말 안 해도 됨. 내일 학교 오면 그냥 평소처럼 할게." },
+  { id: "fr_bday_plan", from: "friend", school: true, title: "체육 시간", body: "체육 시간에 축구 하는데 우리 팀 하자. 너 있으면 무조건 이김. 대신 살살 해라 애들 운다 ㅋㅋ" },
+  { id: "fr_future", from: "friend", when: { grades: [3] }, title: "진로 상담 했냐", body: "나 오늘 진로 상담했는데 아직도 뭐 할지 모르겠음. 너는 하고 싶은 거 있어서 좋겠다. 진심임" },
+  // ── 멘토 선배 ──
+  { id: "mt_boots", from: "mentor", title: "축구화 끈", body: "{name}, 경기 전에 축구화 끈 두 번 묶어라. 지난번에 너 풀려서 뛰는 거 봤다. 그거 하나로 경기 망친다." },
+  { id: "mt_bench", from: "mentor", cond: s => last(s)?.status === "bench", title: "나도 그랬다", body: "나도 1년 동안 벤치였다. 그때 형들 플레이 다 노트에 적었다. 그 노트가 지금 나를 만들었다.\n\n너도 적어 봐라." },
+  { id: "mt_exam", from: "mentor", cond: examWeek, title: "시험 기간 팁", body: "시험 기간엔 저녁 훈련 끝나고 바로 씻고 한 시간만 책 봐라. 두 시간 하려다 0시간 한다. 경험담이다." },
+  { id: "mt_hs", from: "mentor", when: { grades: [2, 3] }, title: "고등학교 오니까", body: "고등학교 와 보니까 중학교 때 기본기 안 다진 애들이 제일 먼저 밀리더라.\n\n화려한 거 말고 패스, 퍼스트 터치. 그게 다다." },
+  { id: "mt_goal", from: "mentor", cond: s => last(s)?.goals > 0, title: "골 봤다", body: "골 영상 봤다. 마무리 좋더라. 그런데 그 전에 공 뺏긴 장면도 봤다. 둘 다 기억해라." },
+  { id: "mt_food", from: "mentor", title: "편의점 말고", body: "훈련 끝나고 편의점 컵라면 그만 먹어라. 나도 그러다 2학년 때 체력 바닥났다. 집밥이 최고다." },
+  // ── 후배 ──
+  { id: "jr_ask", from: "junior", when: { grades: [2, 3] }, title: "선배님!", body: "선배님 저 오늘 패스 연습 같이 해 주실 수 있어요? 코치님이 선배님한테 배우라고 하셨어요!!" },
+  { id: "jr_fan", from: "junior", when: { grades: [2, 3] }, cond: s => last(s)?.goals > 0, title: "선배님 골 ㄷㄷ", body: "선배님 오늘 골 진짜 멋있었어요ㅠㅠ 저 그 장면 폰 배경화면 했어요" },
+  { id: "jr_water", from: "junior", when: { grades: [2, 3] }, title: "물통 당번", body: "선배님, 내일 물통 당번 저인데 몇 개 챙겨야 돼요? 지난번에 모자라서 혼났어요 ㅠ" },
+  { id: "jr_scared", from: "junior", when: { grades: [2, 3] }, title: "감독님 무서워요", body: "선배님도 1학년 때 감독님 무서웠어요? 저 오늘 혼나서 아직도 심장 뛰어요…" },
+  { id: "jr_thanks", from: "junior", when: { grades: [3] }, title: "감사합니다", body: "선배님이 알려 주신 대로 디딤발 고쳤더니 슈팅이 진짜 달라졌어요! 오늘 코치님한테 칭찬받았어요!!" },
+  // ── 라이벌 ──
+  { id: "rv_hello", from: "rival", title: "{rival}", body: "다음 경기 너네랑이더라. 이번엔 안 봐준다. 원래도 안 봐줬지만." },
+  { id: "rv_goal", from: "rival", cond: s => last(s)?.goals > 0, title: "봤다", body: "골 넣었다며. 운 좋았네. …솔직히 잘 찼더라. 이건 비밀이다." },
+  { id: "rv_injury", from: "rival", cond: s => !!s.player.condition.injury, title: "다쳤다며", body: "다쳤다는 얘기 들었다. 빨리 낫고 와라. 너 없는 팀 이기면 재미없다." },
+  // ── 단톡방 ──
+  { id: "gr_photo", from: "group", title: "단체 사진", body: "{mate}: 오늘 훈련 끝나고 찍은 단체 사진 올림\n\n{mate2}: 나 눈 감음 ㅡㅡ 다시 찍자\n\n{assistant}: 다시 안 찍는다" },
+  { id: "gr_late", from: "group", title: "누가 지각함", body: "{assistant}: 오늘 지각한 사람 운동장 다섯 바퀴. 본인은 알 거다\n\n{mate}: …\n\n{mate2}: ㅋㅋㅋㅋ" },
+  { id: "gr_rain", from: "group", when: { months: [6, 7, 8] }, title: "훈련 취소?", body: "{mate}: 비 오는데 훈련 함?\n\n{assistant}: 한다. 비 온다고 경기 취소 안 된다\n\n{mate2}: ㅠㅠ" },
+  { id: "gr_snack", from: "group", title: "간식", body: "{assistant}: 오늘 감독님이 통닭 쏘신다. 훈련 끝나고 다 남아라\n\n{mate}: 감독님 사랑합니다\n\n{mentor}: 1학년들 먼저 먹어라" },
+  { id: "gr_cold", from: "group", when: { months: [12, 1, 2] }, title: "핫팩", body: "{mate2}: 핫팩 남는 사람?\n\n{mate}: 나 세 개 있음\n\n{assistant}: 핫팩 붙이고 뛰다 화상 입는다. 주머니에만 넣어라" },
+  { id: "gr_bus", from: "group", title: "원정 버스", body: "{assistant}: 내일 원정 버스 7시 출발. 7시 1분에 오면 걸어서 와라\n\n{mate}: 넵!!\n\n{mate2}: 알람 세 개 맞춤" },
+  // ── 담임 선생님 ──
+  { id: "tc_note", from: "teacher", school: true, title: "알림장", body: "이번 주 금요일까지 진로 희망 조사서 제출입니다. 축구부 친구들은 훈련 일정 때문에 늦어도 되니 꼭 내 주세요." },
+  { id: "tc_book", from: "teacher", school: true, title: "책 한 권", body: "운동하느라 바쁘겠지만, 한 달에 책 한 권은 읽자. 선생님이 교실 뒤에 몇 권 꽂아 놨다. 빌려 가도 된다." },
+  { id: "tc_cheer", from: "teacher", cond: matchWeek, title: "주말 경기", body: "이번 주말 경기 있다면서? 반 친구들이랑 응원 메시지 모아 봤다. 다치지만 말고 오너라." },
+  // ── 부모님 (더) ──
+  { id: "mom_lunchbox", from: "mom", cond: matchWeek, title: "도시락", body: "내일 경기라며. 엄마가 새벽에 김밥 쌀게. 시금치 빼 달라는 말은 안 들은 걸로 한다." },
+  { id: "dad_car", from: "dad", title: "데리러 간다", body: "오늘 훈련 끝나면 아빠가 데리러 간다. 차에서 하고 싶은 말 있으면 하고, 없으면 그냥 자도 된다." },
+  { id: "dad_hurt", from: "dad", cond: s => !!s.player.condition.injury, title: "아픈 데는", body: "다친 데는 좀 어떠냐. 아빠는 축구 잘 모르지만, 아픈 걸 참는 게 용기는 아니라는 건 안다. 병원 가자고 하면 바로 말해." },
 ];
 
 // 경기 뒤 단톡방 대화 (결과와 내 활약에 따라)
@@ -3079,6 +3442,41 @@ const COACH_TALK = {
   ],
   scholar: [
     { from: "coach", title: "성적표 봤다", body: "담임 선생님께 네 성적 얘기 들었다. 운동하면서 그 성적이면 대단한 거다.\n\n공부하는 선수는 경기도 읽는다. 지금처럼만 해라." },
+    { from: "assist", title: "감독님이 웃으시더라", body: "교무실 다녀오신 감독님이 네 성적표 얘기를 하시면서 웃으셨다. 그 양반 웃는 거 일 년에 몇 번 못 본다.\n\n그렇다고 훈련 빼먹으면 안 된다." },
+  ],
+  // 벤치가 길어질 때 (최근 세 경기 연속 선발이 아님)
+  benchLong: [
+    { from: "coach", title: "벤치에 오래 있었지", body: "요즘 네 이름을 명단 위쪽에 못 적고 있다. 네가 못해서만은 아니다. 지금 그 자리 형들이 잘하고 있어서다.\n\n훈련장에서 나를 곤란하게 만들어라. 안 쓸 수 없게." },
+    { from: "assist", title: "기다리는 것도 실력", body: "벤치에 앉아 있으면 시간이 안 간다. 나도 그랬다.\n\n그런데 들어갔을 때 바로 뛰는 놈이 결국 자리를 뺏더라. 몸은 늘 70도로 데워 둬라." },
+    { from: "coach", title: "한 가지만 보여 줘라", body: "다 잘하려고 하지 마라. 한 가지만 확실하면 된다. 그게 뭔지는 너도 알 거다.\n\n다음 훈련 때 그거 하나만 보여 줘라." },
+  ],
+  // 크게 이긴 다음 주 (세 골 차 이상)
+  afterBigWin: [
+    { from: "coach", title: "어제 일은 어제 일이다", body: "크게 이겼다고 다음 경기도 그렇게 될 거라 생각하면 오산이다. 상대는 우리 영상을 보고 있다.\n\n오늘 훈련, 평소보다 10분 더 한다." },
+    { from: "assist", title: "기분 좋은 월요일", body: "다들 표정이 밝더라. 좋다. 그 기분은 오늘까지만.\n\n영상 보니 실점할 뻔한 장면이 세 번은 있었다. 이긴 경기에서 배우는 게 진짜다." },
+    { from: "coach", title: "잘했다. 딱 한 번 말한다", body: "어제는 잘했다. 이 말은 딱 한 번만 한다.\n\n칭찬 오래 들으면 다리가 무거워진다." },
+  ],
+  // 크게 진 다음 주 (세 골 차 이상)
+  afterBigLoss: [
+    { from: "coach", title: "어제 경기", body: "할 말은 많은데 하나만 하겠다. 세 번째 골 먹고 고개 숙인 사람, 다음 경기 명단에서 지울 생각이었다.\n\n지는 건 괜찮다. 포기하는 건 안 된다." },
+    { from: "assist", title: "영상은 내가 본다", body: "어제 경기 영상은 너희가 보지 마라. 내가 보고 필요한 장면만 잘라 줄게.\n\n지금 필요한 건 반성보다 잠이다. 일찍 자라." },
+    { from: "coach", title: "다시 시작이다", body: "어제 점수는 잊어라. 기억할 건 점수가 아니라 우리가 어디서 무너졌는지다.\n\n오늘은 공 없이 뛰는 것부터 다시 한다." },
+  ],
+  // 공격수인데 골이 오래 없을 때
+  goalDrought: [
+    { from: "coach", title: "골은 케첩 같은 거다", body: "안 나올 땐 아무리 흔들어도 안 나온다. 그러다 한꺼번에 쏟아진다.\n\n골문 앞에 서 있는 횟수만 늘려라. 나머지는 때가 되면 온다." },
+    { from: "assist", title: "슈팅 영상", body: "네 슈팅 장면만 모아서 봤다. 다리가 너무 빨리 나간다. 공을 끝까지 보고 차라.\n\n이번 주 개인훈련 때 나랑 슈팅 50개만 하자." },
+    { from: "coach", title: "골 못 넣는 공격수", body: "골 못 넣는 공격수도 쓸모는 있다. 수비를 끌고 다니면 동료가 넣는다.\n\n그런데 너는 거기서 멈출 선수가 아니잖아." },
+  ],
+  // 새 학년 첫 주 (2·3학년)
+  newYear: [
+    { from: "coach", title: "새 학기다", body: "한 학년 올라갔다. 이제 네 뒤에 후배가 있다.\n\n후배들은 네 말보다 네 행동을 본다. 훈련장에 제일 먼저 나와라." },
+    { from: "assist", title: "올해 목표 적어 와라", body: "종이 한 장에 올해 목표 세 개만 적어 와라. 하나는 축구, 하나는 공부, 하나는 아무거나.\n\n연말에 다시 꺼내 볼 거다." },
+  ],
+  // 3학년 마지막 몇 주
+  lastDays: [
+    { from: "coach", title: "남은 시간", body: "이제 너희랑 운동장에 서는 날이 손에 꼽는다. 3년 동안 나는 너희한테 칭찬보다 잔소리를 더 많이 했다.\n\n그게 내 방식이었다. 미안하다는 말은 안 한다. 대신 고맙다." },
+    { from: "assist", title: "마지막 훈련 일지", body: "3년 치 훈련 일지를 넘겨 봤다. 처음 왔을 때 네 50m 기록 기억나냐? 지금이랑 비교하면 웃음 나온다.\n\n어디 가서도 첫날 마음 잊지 마라." },
   ],
 };
 
@@ -3639,7 +4037,7 @@ function matchMails(state, m, res, notes) {
   const p = state.player, fx = m.fx;
   const scorers = side => m.goalsLog.filter(g => g.team === side).map(g => `${g.name} ${g.minute}'${g.assist ? ` (도움 ${g.assist})` : ""}`).join(", ");
   const body = [];
-  body.push(afterMatchChat(state, res, fx, res.grade === 3 && noFixtureLeft(state)));
+  body.push(fx.jn ? jnChat(state, res) : afterMatchChat(state, res, fx, res.grade === 3 && noFixtureLeft(state)));
   const aceGoals = m.oppAce ? m.goalsLog.filter(g => g.team === "them" && g.name === m.oppAce.name).length : 0;
   if (m.oppAce && aceGoals >= 1 && res.result !== "승" && chance(0.7)) body.push(aceText(state, pick(ACE_TALK.chatAfterScored), m.oppAce));
   else if (m.oppAce && aceGoals === 0 && res.ga <= 1 && chance(0.45)) body.push(aceText(state, pick(ACE_TALK.chatAfterHeld), m.oppAce));
@@ -3654,12 +4052,14 @@ function matchMails(state, m, res, notes) {
     body.push(`📊 리그 ${us + 1}위 (승점 ${rows[us].pts}, ${state.league.played}/${state.league.rounds.length}라운드)`);
   }
   for (const n of notes) if (typeof n === "string") body.push(n);
-  const nxt = nextFixtureText(state);
+  const cup = fx.jn ? state.jnCup : null;
+  const nxt = cup ? (cup.alive ? `이틀 뒤 소년체전 ${["1회전", "준결승", "결승"][cup.stage]}` : null) : nextFixtureText(state);
   if (nxt) body.push(`다음 경기: ${nxt}`);
-  body.push(`${STAFF.assistant}: ${res.result === "패" ? pick(["월요일엔 영상 보면서 실점 장면 짚고 간다.", "오늘 진 거 오늘까지만 생각해라. 월요일에 다시 시작한다.", "고개 숙이고 집에 가지 마라. 월요일에 영상 보자."])
+  if (cup) body.push(`${STAFF.assistant}: ${res.result === "승" ? pick(["숙소 들어가서 바로 얼음찜질. 다음 경기까지 하루밖에 없다.", "잘했다. 오늘 밤엔 휴대폰 보지 말고 일찍 자라."]) : pick(["고개 들어라. 전남에서 뽑힌 것부터가 실력이다.", "버스 타기 전에 같이 뛴 애들한테 인사하고 와라. 고등학교 가면 또 만난다."])}`);
+  else body.push(`${STAFF.assistant}: ${res.result === "패" ? pick(["월요일엔 영상 보면서 실점 장면 짚고 간다.", "오늘 진 거 오늘까지만 생각해라. 월요일에 다시 시작한다.", "고개 숙이고 집에 가지 마라. 월요일에 영상 보자."])
     : res.result === "승" ? pick(["월요일은 회복 훈련. 무리하지 마라.", "오늘 잘했다. 월요일엔 가볍게 몸만 푼다.", "이긴 날일수록 일찍 자라. 월요일 회복 훈련 빠지지 말고."])
     : pick(["월요일은 회복 훈련. 무리하지 마라.", "비긴 경기는 아쉬움이 오래 간다. 월요일에 털고 가자.", "승점 1점도 소중하다. 월요일은 가볍게 간다."])}`);
-  mail(state, "group", `${fx.compLabel}${fx.round ? ` ${fx.round}` : ""}: ${TEAM_NAME} ${res.gf} : ${res.ga} ${fx.opponent.name}${res.shootout ? ` (승부차기 ${res.shootout.us}:${res.shootout.them})` : ""}`, body.join("\n\n"));
+  mail(state, "group", `${fx.compLabel}${fx.round ? ` ${fx.round}` : ""}: ${fx.usName || TEAM_NAME} ${res.gf} : ${res.ga} ${fx.opponent.name}${res.shootout ? ` (승부차기 ${res.shootout.us}:${res.shootout.them})` : ""}`, body.join("\n\n"));
 
   for (const n of notes) if (typeof n === "object") mailFrom(state, n.from, "scout", n.title, n.body);
 
@@ -3787,6 +4187,19 @@ function noFixtureLeft(state) {
   return true;
 }
 
+// 전남 대표 경기를 고흥에서 지켜본 친구들 단톡방
+function jnChat(state, res) {
+  const win = res.result === "승";
+  return chatText(state, pick(win ? [
+    "{mate}: 소년체전 중계 봤냐?? {name} 전남 유니폼 입은 거 실화냐 ㅋㅋ\n\n{mentor}: 고흥 이름 걸고 뛰는 거다. 잘했다",
+    "{friend}: 반 애들 다 같이 봄 ㅋㅋㅋ 선생님도 보심\n\n{mate}: 다음 경기도 이겨라!!",
+    "{mate2}: 전남 대표 이겼다 ㅋㅋ 우리 학교에서 나간 애가 뛰고 있음\n\n{mate}: 돌아오면 사인 받자",
+  ] : [
+    "{mate}: 고생했다… 전남 대표까지 간 것만 해도 대단한 거임\n\n{mentor}: 돌아오면 다시 우리 팀에서 보자",
+    "{friend}: 졌다고 기죽지 마라. 고흥에서 너만큼 간 애 없음\n\n{mate2}: ㄹㅇ",
+  ]));
+}
+
 function nextFixtureText(state) {
   for (let i = 1; i < 8; i++) {
     const info = turnInfo(state, i);
@@ -3888,15 +4301,24 @@ function weeklyAdvice(state, rep) {
   // 상황에 맞는 감독님·코치님 메시지 (연패, 연승, 부상 복귀, 시험 주간, 대회 직전, 방학, 학업 우수)
   const now = turnInfo(state);
   const sk = streakOf(state);
+  const recent = state.record.matches.filter(x => x.official).slice(-3);
+  const lastM = state.record.matches.at(-1), fresh = lastM && lastM.turn >= state.calendar.turn - 1;
+  const myApps = state.record.matches.filter(x => x.minutes > 0).slice(-5);
   const ctxKey = !now ? null
+    : now.grade === 3 && ((now.month === 2) || (now.month === 1 && now.week >= 3)) && !state.flags.lastDaysMail ? "lastDays"
+    : now.grade >= 2 && now.month === 3 && now.week === 1 ? "newYear"
+    : fresh && lastM.gf - lastM.ga >= 3 ? "afterBigWin"
+    : fresh && lastM.ga - lastM.gf >= 3 ? "afterBigLoss"
     : sk <= -3 ? "lossStreak"
     : sk >= 4 ? "winStreak"
     : state.flags.returnTurn != null && state.calendar.turn - state.flags.returnTurn <= 1 ? "comeback"
     : now.exam && !now.exam.free ? "examWeek"
     : (now.month === 7 && now.week === 4) || (now.month === 1 && now.week === 3) ? "preTournament"
     : (now.month === 7 && now.week === 3) || (now.month === 1 && now.week === 2) ? "vacation"
-    : s.academic >= 80 && !state.flags.academicPraise?.[`${now.grade}-${now.semester}`] ? "scholar" : null;
-  if (ctxKey) push(`ctx_${ctxKey}`, ctxKey === "examWeek" ? 3 : 6, () => {
+    : s.academic >= 80 && !state.flags.academicPraise?.[`${now.grade}-${now.semester}`] ? "scholar"
+    : recent.length === 3 && recent.every(x => x.status !== "start") && !p.condition.injury ? "benchLong"
+    : p.position === "FW" && myApps.length === 5 && myApps.every(x => !x.goals) ? "goalDrought" : null;
+  if (ctxKey) push(`ctx_${ctxKey}`, ctxKey === "examWeek" ? 3 : ["benchLong", "goalDrought"].includes(ctxKey) ? 8 : 6, () => {
     const pool = COACH_TALK[ctxKey];
     const used = (state.advice.ctxUsed ||= {});
     const cand = pool.filter((_, i) => !(used[ctxKey] || []).includes(i));
@@ -3904,6 +4326,7 @@ function weeklyAdvice(state, rep) {
     if (!cand.length) used[ctxKey] = [];
     const t = pick(list);
     (used[ctxKey] ||= []).push(pool.indexOf(t));
+    if (ctxKey === "lastDays") state.flags.lastDaysMail = true;
     if (ctxKey === "scholar") (state.flags.academicPraise ||= {})[`${now.grade}-${now.semester}`] = true;
     mail(state, t.from, t.title, t.body);
     return true;
@@ -4031,6 +4454,12 @@ function pickTalk(state, fx, status, star) {
     if (star >= 1) keys.push("star");
   }
   if (!keys.length) return null;
+  if (fx.jn && status === "start") return pick([
+    { who: "coach", text: "여기 있는 애들, 다 자기 학교에서 제일 잘하는 애들이다. 그러니까 공을 혼자 들고 있지 마라. 믿고 줘라.", tag: "pass" },
+    { who: "coach", text: "전남 마크 달고 뛰는 거다. 고흥에서 온 걸 부끄러워하지 마라. 오늘은 네가 고흥이다.", tag: null },
+    { who: "assistant", text: "상대 지역 대표는 몸싸움이 세다. 첫 번째 부딪힘에서 밀리지 마라.", tag: "physical" },
+    { who: "coach", text: "하루 걸러 한 경기다. 다리 아끼지 말고, 대신 머리는 차갑게 써라.", tag: "safe" },
+  ].filter(t => !t.tag || tagFit(p.position, t.tag) >= 0.18));
   if (status === "start" && !(state.record.starts > 0))
     return { who: "coach", text: "첫 선발이다. 떨리는 거 안다. 첫 패스 하나만 정확하게 해라. 나머지는 몸이 알아서 한다.", tag: tagFit(p.position, "pass") >= 0.18 ? "pass" : "safe" };
   // 내 포지션에서 실제로 따를 수 있는 지시만 (공격수에게 '수비 먼저' 같은 지시가 가지 않게)
@@ -4134,17 +4563,19 @@ function prepareMatch(state, info, fx) {
     else if (depth.rank <= depth.slots + 3) status = "bench";
   }
   let restNote = null;
+  const cup = fx.jn ? state.jnCup : null;           // 전남 대표 경기: 뽑힌 선수라 늘 선발
+  if (cup) { status = elig.ok ? "start" : "out"; minIn = 0; }
   if (status === "start" && fx.official && !fx.ko && p.condition.fatigue >= 85) {
     status = "sub"; minIn = int(40, 50);
     restNote = `피로가 ${Math.round(p.condition.fatigue)}까지 쌓여 감독님이 후반에 넣기로 하셨다.`;
   }
   const onPitch = status === "start" || status === "sub";
   const cond = conditionOf(p);
-  const teamAvg = teamStrength(state, false);
+  const teamAvg = cup ? cup.str : teamStrength(state, false);
   const myOvr = ovr(p);
   const star = onPitch ? clamp((myOvr - teamAvg) / 15 + (hasTrait(p, "ace") ? 0.2 : 0), 0, 1.7) : 0;
 
-  const roster = activeRoster(state);
+  const roster = cup ? cup.squad.map(x => ({ name: x.name, number: x.number, position: x.pos, ovrNow: cup.str })) : activeRoster(state);
   const lineup = [];
   for (const [pos, def] of Object.entries(POSITIONS)) {
     const n = def.slots - (status === "start" && pos === p.position ? 1 : 0);
@@ -4189,7 +4620,8 @@ function prepareMatch(state, info, fx) {
   const bench = benchAll.map(m => ({ name: m.name, number: m.number }));
 
   // 내가 뛰면 내 능력치와 컨디션이 팀 전력에 직접 더해짐
-  const ours = teamStrength(state, onPitch) * 0.6 + 50 * 0.4 + (onPitch ? (myOvr - teamAvg) * 0.12 + cond.match * 15 : 0)
+  const ours = cup ? cup.str * 0.6 + 50 * 0.4 + (onPitch ? (myOvr - teamAvg) * 0.12 + cond.match * 15 : 0)
+    : teamStrength(state, onPitch) * 0.6 + 50 * 0.4 + (onPitch ? (myOvr - teamAvg) * 0.12 + cond.match * 15 : 0)
     + (keeperOf(state).strong ? 1.5 : 0);
   const theirs = fx.opponent.strength + (oppAce ? 0.6 : known?.absent ? -1.5 : 0);   // 에이스가 뛰면 조금 더 강하고, 빠지면 약해짐
 
@@ -4213,6 +4645,13 @@ function prepareMatch(state, info, fx) {
   events.push({ type: "ht", minute: HALF + 0.5 }, { type: "2h", minute: HALF + 0.6 }, { type: "ft", minute: LENGTH + 0.5 });
   events.sort((a, b) => a.minute - b.minute);
 
+  // 날씨와 시간대 (화면 연출과 중계 문장에만 쓰임. 승패 계산에는 영향 없음)
+  const mo = info.month;
+  const weather = [6, 7].includes(mo) ? (chance(0.38) ? "rain" : mo === 7 && chance(0.4) ? "hot" : "clear")
+    : mo === 8 ? (chance(0.18) ? "rain" : chance(0.5) ? "hot" : "clear")
+    : [12, 1, 2].includes(mo) ? (chance(0.45) ? "cold" : chance(0.2) ? "wind" : "clear")
+    : chance(0.1) ? "rain" : chance(0.22) ? "wind" : "clear";
+  const sky = ["summer", "winter"].includes(fx.comp) ? (chance(0.5) ? "night" : "day") : fx.comp === "league" && chance(0.3) ? "dusk" : "day";
   let physGap = 0;
   if (fx.comp === "hs") physGap = clamp((172 - p.body.height) / 120 + (58 - p.stats.phys.strength) / 160, 0, 0.12);
 
@@ -4223,7 +4662,7 @@ function prepareMatch(state, info, fx) {
     prep: state.meetingBuff?.turn === info.turn ? state.meetingBuff : null,    // 경기 전 미팅에서 한 대답
     lineupStart: lineup.map(x => ({ ...x })),
     ours, theirs, lineup, oppPlayers, oppAce, oppAceAbsent: known?.absent?.name || null, bench, talk: pickTalk(state, fx, status, star),
-    gk: { us: ourKeeper(state), them: (() => { let n; do { n = randomName(); } while (usedNames.has(n)); usedNames.add(n); return n; })() }, myNumber: p.number,
+    gk: { us: cup ? cup.gk : ourKeeper(state), them: (() => { let n; do { n = randomName(); } while (usedNames.has(n)); usedNames.add(n); return n; })() }, myNumber: p.number,
     events, i: 0, minute: 0, score: [0, 0],
     stats: { us: { shots: 0, on: 0, corners: 0, cards: 0 }, them: { shots: 0, on: 0, corners: 0, cards: 0 },
              poss: Math.round(clamp(50 + (ours - theirs) * 1.1 + normal(0, 4), 28, 72)) },
@@ -4231,6 +4670,7 @@ function prepareMatch(state, info, fx) {
     my: { goals: 0, assists: 0, delta: 0, decisions: 0, successes: 0, log: [], followed: 0, timing: [] },
     formSwing: hasTrait(p, "inconsistent") ? normal(0, 0.06) : 0, physGap,
     feed: [], pending: null, half: 1, done: false, used: {}, trailed: { us: false, them: false },
+    weather, sky,
     flow: 0,                                       // 경기 흐름 −1(상대) ~ +1(우리). 내 선택의 성공·실패로 바뀜
   };
 }
@@ -4466,8 +4906,8 @@ function next(state, m) {
   if (ev.type === "ours") lines = runPlay(m, "us");
   if (ev.type === "theirs") lines = runPlay(m, "them");
   if (ev.type === "ambient") {
-    const fit = AMBIENT.filter(x => (!x.early || min < 15) && (!x.late || min >= 58) && (!x.min || min >= x.min) && !m.used[`amb${AMBIENT.indexOf(x)}`]);
-    const a = pick(fit.length ? fit : AMBIENT);
+    const fit = AMBIENT.filter(x => (!x.wx || x.wx.includes(m.weather || "clear")) && (!x.sky || x.sky === m.sky) && (!x.early || min < 15) && (!x.late || min >= 58) && (!x.min || min >= x.min) && !m.used[`amb${AMBIENT.indexOf(x)}`]);
+    const a = pick(fit.length ? fit : AMBIENT.filter(x => !x.wx && !x.sky));
     m.used[`amb${AMBIENT.indexOf(a)}`] = true;                  // 같은 경기에서 같은 문장은 한 번만
     if (a.card) m.stats[a.card].cards++;
     const poss = a.side === "them" ? "them" : a.side === "us" ? "us" : chance(m.stats.poss / 100) ? "us" : "them";
@@ -4488,7 +4928,7 @@ function next(state, m) {
     if (sit.once) m.used[sit.id] = true;
     const myPos = state.player.position;
     const oppPref = poss === "them" ? ({ DF: ["FW"], MF: ["MF", "FW"], FW: ["DF"] }[myPos]) : (myPos === "DF" ? ["FW", "MF"] : ["DF", "MF"]);
-    const sv = { mate: mateName(m), opp: oppName(m, oppPref), gk: m.gk.us, ogk: m.gk.them };
+    const sv = { mate: mateName(m), opp: oppName(m, oppPref), gk: m.gk.us, ogk: m.gk.them, coach: STAFF.coach };
     const zone = sit.zone;
     const ball = sit.spot ? [range(...sit.spot[0]), range(...sit.spot[1])]      // 장면마다 정해 둔 자리 (골문 앞 혼전 등)
       : zone === "att" ? [range(80, 88), range(24, 44)] : zone === "mid" ? [range(48, 60), range(18, 50)] : [range(20, 30), range(18, 50)];
@@ -4558,6 +4998,7 @@ function pickSituation(state, m) {
   const [a, b] = m.score;
   const late = m.minute >= 55;
   const pool = SITUATIONS.filter(s => s.pos.includes(pos) && (!s.once || !m.used[s.id]) && meets(state, s.requires)
+    && (!s.wx || s.wx.includes(m.weather || "clear"))
     && (!s.late || late) && (!s.leading || a > b) && (!s.trailing || a < b));
   const losingLate = a < b && m.minute > 50;
   return weighted(pool.map(s => [s, s.weight * (losingLate && s.zone === "att" ? 1.6 : 1)]));
@@ -4846,7 +5287,7 @@ function finishMatch(state, m) {
     rec.goals += m.my.goals; rec.assists += m.my.assists; rec.ratings.push(rating);
     if (mom) rec.mom = (rec.mom || 0) + 1;
     state.relations.coach = clamp(state.relations.coach + (rating - 6.6) * 0.8, 0, 100);
-    p.condition.fatigue = clamp(p.condition.fatigue + 16 * minutes / LENGTH, 0, 100);
+    p.condition.fatigue = clamp(p.condition.fatigue + (fx.jn ? 9 : 16) * minutes / LENGTH, 0, 100);   // 소년체전은 하루 걸러 한 경기씩
     if (m.my.goals) applyGain(state, "mental.confidence", m.my.goals * 1.2, { raw: true });
     applyGain(state, "mental.competitive", 0.4, { raw: true });
     if (rating >= 7.5) applyGain(state, "mental.confidence", 0.5, { raw: true });
@@ -4882,7 +5323,7 @@ __m["data/goals.js"] = (function () {
 // 중2부터 세우는 중간 목표. 홈 화면 '나의 목표'에 진행 상황이 보입니다.
 // 3월 3주 목표 면담에서 하나를 '가장 이루고 싶은 목표'로 고르면, 이뤘을 때 보상이 조금 더 큽니다.
 const GOALS = {
-  jn:      { label: "전남 대표 선발",   icon: "🎽", hint: "5월 선발전", desc: "5월 선발전에 불려 가서, 6월 발표에 이름 올리기 (중2·중3 두 번 기회)" },
+  jn:      { label: "전남 대표 선발",   icon: "🎽", hint: "4월 선발전", desc: "4월 선발전에 불려 가서 대표 명단에 이름을 올리고, 5월 전국소년체전에서 뛰기 (중2·중3 두 번 기회)" },
   award:   { label: "우수선수상",       icon: "🏅", hint: "경기 최우수 선수 여러 번", desc: "한 해 동안 경기 최우수 선수에 여러 번 뽑히기 (중2는 4번, 중3은 12번) → 11월 시상식" },
   captain: { label: "주장 후보",        icon: "Ⓒ", hint: "감독 신뢰와 팀워크", desc: "중2 2학기부터 감독 신뢰 72, 팀워크 64를 넘겨 감독님 눈에 들기 → 중3 주장 선거에 유리" },
   scout:   { label: "스카우트의 관심",   icon: "🔭", hint: "고교 연습경기·토너먼트 활약", desc: "고교 연습경기 평점 7.8 이상, 또는 대회 토너먼트 경기 평점 8.3 이상" },
@@ -4915,7 +5356,7 @@ function jnScore(state) {
   const avg = ms.length ? ms.reduce((a, m) => a + m.rating, 0) / ms.length : 6.4;
   return ovr(state.player) + (avg - 6.6) * 6 + (state.relations.coach - 50) * 0.08 + (state.flags.jnBoost || 0);
 }
-const JN_NEED = { 2: 62, 3: 76 };          // 이 점수를 넘기면 선발 (중3은 경쟁이 훨씬 세다)
+const JN_NEED = { 2: 61, 3: 75 };          // 이 점수를 넘기면 선발 (중3은 경쟁이 훨씬 세다)
 const AWARD_NEED = { 2: 4, 3: 12 };        // 한 해 경기 최우수 선수 횟수
 const NEWS_NEED = { 2: { FW: 20, MF: 12, DF: 6 }, 3: { FW: 40, MF: 24, DF: 12 } };   // 한 해 공격 포인트
 const CAP_NEED = { coach: 72, teamwork: 64 };
@@ -4929,7 +5370,7 @@ function goalProgress(state) {
   return GOAL_ORDER.map(id => {
     const d = GOALS[id];
     let text = "";
-    if (id === "jn") text = `선발 점수 ${Math.round(jnScore(state))} / 기준 ${JN_NEED[gr(g)]} (5월 선발전)`;
+    if (id === "jn") text = `선발 점수 ${Math.round(jnScore(state))} / 기준 ${JN_NEED[gr(g)]} (4월 선발전)`;
     if (id === "award") text = `올해 최우수 선수 ${ys.filter(m => m.mom).length} / ${AWARD_NEED[gr(g)]}번`;
     if (id === "captain") text = `감독 신뢰 ${Math.round(state.relations.coach)} / ${CAP_NEED.coach} · 팀워크 ${Math.round(p.stats.mental.teamwork)} / ${CAP_NEED.teamwork}`;
     if (id === "scout") { const best = Math.max(0, ...ys.filter(m => m.rating != null).map(m => m.rating)); text = best ? `올해 최고 평점 ${best.toFixed(1)} (고교 연습경기 7.8 · 토너먼트 8.3)` : "아직 기록 없음"; }
@@ -4983,7 +5424,7 @@ function goalsWeekly(state, info) {
   // 가장 이루고 싶은 목표가 마감까지 안 됐을 때 (실패 면담)
   const m = G.main;
   if (m && !G.done[m] && !G.failed[m]) {
-    const dead = { jn: info.grade === 3 && info.month === 6 && info.week === 3,
+    const dead = { jn: info.grade === 3 && info.month === 5 && info.week === 1,
       award: info.grade === 3 && info.month === 11 && info.week === 3,
       captain: info.grade === 3 && info.month === 3 && info.week === 3,
       scout: info.grade === 3 && info.month === 11 && info.week === 2,
@@ -5002,14 +5443,15 @@ function fixedGoalEvent(state, info) {
   const tooLate = info.grade === 3 && (info.month >= 9 || info.month <= 2);
   if (!G.metAt && !G.main && after33 && !tooLate && !info.exam) return "goal_meeting";
   if (info.grade === 2 && at(9, 2) && !G.checkAt) return "goal_check";
-  if (at(5, 3) && !G.done.jn && !(G.jnCalled?.[info.grade])) {
+  // 전남 대표: 4월 1주 선발전 명단 → 4월 3주 발표 → 5월 2주 전국소년체전 (예전 저장 파일은 4월 2주·4주까지 기다려 줌)
+  if ((at(4, 1) || at(4, 2)) && !G.done.jn && !(G.jnCalled?.[info.grade])) {
     if (jnScore(state) >= JN_NEED[info.grade] - JN_CALL) return "goal_jn_call";
     if (G.main === "jn" && !(G.jnMissed?.[info.grade])) {
       (G.jnMissed ||= {})[info.grade] = true;
       mail(state, "coach", "전남 대표 선발전 명단", `이번 선발전 명단에 네 이름은 없었다.\n\n${info.grade === 2 ? "내년에 한 번 더 기회가 있다. 그때는 내가 먼저 네 이름을 적게 만들어라." : "속상하겠지만 여기서 멈추면 안 된다. 고등학교에도 대표팀은 있다."}`);
     }
   }
-  if (at(6, 1) && G.jnCalled?.[info.grade] && !G.jnResult?.[info.grade]) {
+  if ((at(4, 3) || at(4, 4) || at(6, 1)) && G.jnCalled?.[info.grade] && !G.jnResult?.[info.grade]) {
     const sc = jnScore(state);
     G.jnOutcome = sc >= JN_NEED[info.grade];
     G.jnLast = Math.round(sc);
@@ -5037,12 +5479,14 @@ const {turnInfo} = __m["js/engine/calendar.js"];
 const {STAFF} = __m["data/roster.js"];
 const {GOALS} = __m["data/goals.js"];
 const {goalsOf, achieve, jnScore, JN_NEED} = __m["js/engine/goals.js"];
+const {startJnCup} = __m["js/engine/jn.js"];
 // 추가 이벤트 86개 (학교생활 36, 시험 주 8, 축구부 22, 가족·고흥 10, 목표 10)
 // 형식은 data/events.js와 같습니다. 여기서 새로 쓰는 표시:
 //   exam  : true면 정기시험 주간에만 나오고, 시험 주간마다 이 가운데 하나가 반드시 나옴
 //   assess: true면 중1 1학기 수행평가 주간에 우선 나옴 (평소에도 가끔)
 //   family: true면 방학 때 더 자주 나옴
 //   act   : (선택지 안) 고르는 순간 실행할 일 (목표 기록 등)
+
 
 
 
@@ -5090,6 +5534,8 @@ const EVENTS_MORE = [
         result: "한 명은 기록, 한 명은 계량, 한 명은 관찰. 경기 전 포지션 정하듯 나눴더니 제일 먼저 끝났다." },
       { label: "손이 빠른 친구에게 맡긴다", fx: { s: { "student.academic": 0.5 } },
         result: "실험은 무사히 끝났다. 보고서에 쓸 말이 별로 없다는 게 문제였다." },
+      { label: "실험 원리를 먼저 설명해 준다", req: { "student.academic": 60 }, fx: { s: { "student.academic": 1, "mental.teamwork": 0.3 }, teacher: 1 },
+        result: "어제 교과서에서 본 그림을 칠판에 그렸다. 조원들이 고개를 끄덕였다. 우리 조가 제일 먼저 실험을 끝냈다." },
     ] },
   { id: "a_selfportrait", school: true, assess: true, who: "narr",
     text: "미술 시간, 자화상 그리기. 거울 속 얼굴이 생각보다 많이 탔다.",
@@ -5114,6 +5560,8 @@ const EVENTS_MORE = [
         result: "\"I want to run on a big stage.\" 발표가 끝나자 영어 선생님이 'Great!' 하고 크게 말씀하셨다." },
       { label: "축구 말고 다른 꿈도 써 본다", fx: { s: { "student.academic": 1, "mental.focus": 1 } },
         result: "쓰다 보니 축구 말고도 해 보고 싶은 일이 꽤 많았다. 생각이 조금 넓어진 기분이다." },
+      { label: "즉석 질문에도 답할 수 있게 준비한다", req: { "student.academic": 62 }, fx: { s: { "student.academic": 1.2, "mental.confidence": 0.4 }, teacher: 1 },
+        result: "원어민 선생님이 \"Why soccer?\" 하고 물으셨다. 준비한 대로 또박또박 답했다. 반 아이들이 박수를 쳤다." },
     ] },
   { id: "a_debate", school: true, who: "narr", when: { grades: [2, 3] },
     text: "도덕 시간 토론 주제는 '운동부 학생의 수업 결손을 인정해야 하는가'. 반 아이들이 일제히 나를 본다.",
@@ -5124,6 +5572,8 @@ const EVENTS_MORE = [
         result: "축구부가 반대편에 서자 다들 놀랐다. 토론이 끝나고 선생님이 '오늘 제일 용감했다'고 하셨다." },
       { label: "양쪽 이야기를 다 정리해 본다", fx: { s: { "mental.focus": 1, "student.academic": 1 } },
         result: "찬성과 반대를 한 장에 정리해 발표했다. 선생님이 칠판에 그대로 옮겨 적으셨다." },
+      { label: "양쪽 근거를 들어 대안을 제안한다", req: { "student.academic": 58, "mental.confidence": 58 }, fx: { s: { "student.academic": 0.8, "mental.confidence": 0.5 }, teacher: 2 },
+        result: "\"수업 결손은 인정하되, 보충 과제로 채우자\"고 말했다. 교실이 잠깐 조용해졌다가 박수가 나왔다." },
     ] },
   { id: "a_paper", school: true, who: "narr",
     text: "사회 시간에 '우리 지역 신문 만들기'를 한다. 모둠마다 고흥 기사를 하나씩 맡는다.",
@@ -5193,7 +5643,7 @@ const EVENTS_MORE = [
       { label: "학생증을 보고 직접 찾아 준다", fx: { s: { "student.attitude": 1.5, "mental.teamwork": 0.5 } },
         result: "그 반을 찾아가 건넸다. 울먹이던 얼굴이 금세 환해졌다." },
     ] },
-  { id: "a_booth", school: true, who: "narr", when: { months: [11, 12] },
+  { id: "a_booth", date: [[12, 1]], cool: 70, school: true, who: "narr", when: { months: [11, 12] },
     text: "봉두예술제 학급 부스 회의. 다들 \"축구부 있으니까 승부차기 부스 하자!\"라고 외친다.",
     choices: [
       { label: "골키퍼를 맡겠다고 한다", fx: { morale: 3, s: { "mental.teamwork": 1 }, fatigue: 3 },
@@ -5218,8 +5668,10 @@ const EVENTS_MORE = [
         result: "뒤에서 공을 띄워 줬다. 공격을 맡은 친구가 득점할 때마다 내가 더 신났다." },
       { label: "공격은 다른 친구에게 양보한다", fx: { s: { "student.attitude": 1 } },
         result: "양보받은 친구가 첫 득점을 하고 날뛰었다. 그 표정을 보니 양보하길 잘했다." },
+      { label: "발등 트래핑 후 상대 코트 구석에 찔러 넣는다", req: { "tech.firstTouch": 62 }, fx: { s: { "tech.firstTouch": 0.4 }, morale: 3 },
+        result: "높게 뜬 공을 발등에 죽여 놓고 구석으로 툭. 상대 반 아이들이 멍하니 공을 바라봤다." },
     ] },
-  { id: "a_club", school: true, who: "narr", when: { months: [3, 4] }, once: true,
+  { id: "a_club", date: [[3, 3]], school: true, who: "narr", when: { months: [3, 4] }, once: true,
     text: "동아리 신청서를 받았다. 도서부, 요리조리, 방송댄스, 요가와 명상반 가운데 하나를 골라야 한다.",
     choices: [
       { label: "도서부", fx: { s: { "student.academic": 1.5, "mental.focus": 0.5 }, teacher: 1 },
@@ -5281,7 +5733,7 @@ const EVENTS_MORE = [
       { label: "딱 한 판만 한다", fx: { morale: 2, fatigue: 6 },
         result: "한 판이 세 판이 됐다. 아침 훈련 내내 하품이 났다." },
     ] },
-  { id: "a_karaoke", who: "friend", needs: "friend", cond: afterExam,
+  { id: "a_karaoke", cool: 40, trigger: s => !!s.lastExam && s.calendar.turn - s.lastExam.turn === 1, who: "friend", needs: "friend", cond: afterExam,
     text: "시험 끝!!! 반 애들 다 노래방 간대. 너도 와. 오늘 저녁에 자율 훈련 있는 건 아는데…",
     choices: [
       { label: "노래방에 간다", fx: { morale: 6, fatigue: -3, coach: -0.5, rel: { friend: 4 } },
@@ -5325,7 +5777,7 @@ const EVENTS_MORE = [
       { label: "'되', '안'", fx: { s: { "student.academic": 0.6 }, teacher: 1 },
         result: "\"반만 맞았다. '안'은 정답. 앞 문장은 '되어'로 바꿔 넣어 봐. '이기면 되어', 말이 되지? 그러니까 '돼'.\"" },
     ] },
-  { id: "t_counsel_week", school: true, who: "teacher", when: { months: [4, 10] },
+  { id: "t_counsel_week", date: [[10, 4]], cool: 70, school: true, who: "teacher", when: { months: [4, 10] },
     text: "학기 상담 주간. {teacher}께서 마주 앉으셨다. \"요즘 제일 힘든 게 뭐야?\"",
     choices: [
       { label: "성적이 걱정된다고 말한다", fx: { s: { "student.academic": 1 }, teacher: 2 },
@@ -5335,7 +5787,7 @@ const EVENTS_MORE = [
       { label: "\"괜찮아요\" 하고 웃는다", fx: { teacher: -1 },
         result: "\"괜찮지 않을 때 와도 돼.\" 선생님이 문을 열어 두신 채로 보내 주셨다." },
     ] },
-  { id: "a_principal", school: true, who: "narr", cond: s => s.flags.lastCelebration != null && s.calendar.turn - s.flags.lastCelebration <= 4,
+  { id: "a_principal", trigger: s => s.flags.lastCelebration === s.calendar.turn - 1, school: true, who: "narr", cond: s => s.flags.lastCelebration != null && s.calendar.turn - s.flags.lastCelebration <= 4,
     text: "월요일 아침 방송 조회. 교장 선생님께서 \"우리 학교 축구부가 이번 대회에서 정말 큰일을 해냈습니다\" 하시자 교실마다 박수가 터진다.",
     choices: [
       { label: "반 친구들에게 손을 흔든다", fx: { morale: 4 },
@@ -5452,6 +5904,8 @@ const EVENTS_MORE = [
         result: "다음 날 5시 반, 운동장에 불을 켠 건 나였다. 10분 뒤 {rival|이/가} 나타나 어이없다는 듯 웃었다." },
       { label: "못 본 척 돌아간다", fx: { fatigue: -2, morale: -1 },
         result: "집에 와서 다시 누웠다. 잠은 오지 않았다." },
+      { label: "\"같이 하자\" 하고 패스를 내준다", req: { "rel.rival": 60 }, fx: { s: { "tech.pass": 0.4, "mental.teamwork": 0.4 }, fatigue: 3, rel: { rival: 4 } },
+        result: "{rival|이/가} 잠깐 멈칫하더니 공을 받아 찼다. 해가 뜰 때까지 둘이서 패스와 슈팅을 주고받았다." },
     ] },
   { id: "c_bus_sick", who: "narr", cond: matchWeek,
     text: "원정 가는 버스 안. 굽이굽이 국도를 지나니 속이 울렁거린다.",
@@ -5478,9 +5932,11 @@ const EVENTS_MORE = [
         result: s => s.player.stats.tech.shoot >= 60 ? "3 대 2로 이겼다. {rival|이/가} 음료수를 던져 주며 '다음 주에 또 해' 한다." : "2 대 4로 졌다. 편의점까지 가는 길에 다음 내기 날짜부터 잡았다." },
       { label: "골키퍼를 해 주겠다고 한다", fx: { morale: 2, s: { "mental.teamwork": 0.5 }, rel: { rival: 2 } },
         result: "다섯 개 중 한 개를 막았다. 막은 공 하나로 일주일을 놀렸다." },
+      { label: "벽 너머로 감아 차서 다섯 개 다 노린다", req: { "tech.shoot": 66 }, fx: { s: { "tech.shoot": 0.6, "mental.confidence": 0.5 }, morale: 2 },
+        result: "다섯 개 중 네 개가 골망 위쪽 구석에 꽂혔다. 음료수는 오늘 다른 사람이 산다." },
     ] },
   { id: "c_turf", who: "coach",
-    text: "비 온 뒤라 운동장 곳곳이 패였다. {coach}께서 삽을 들고 나오셨다. \"시간 있는 사람, 흙 좀 같이 옮기자.\"",
+    text: "비 온 뒤라 운동장 곳곳이 패였다. {coach}님께서 삽을 들고 나오셨다. \"시간 있는 사람, 흙 좀 같이 옮기자.\"",
     choices: [
       { label: "같이 흙을 메운다", fx: { coach: 2, s: { "phys.strength": 0.3 }, fatigue: 3 },
         result: "외바퀴 손수레를 열 번 날랐다. 감독님이 '내 운동장 아니고 너희 운동장이다' 하셨다." },
@@ -5512,6 +5968,8 @@ const EVENTS_MORE = [
         result: "형은 한참 이야기하더니 '후배한테 이런 말 하는 건 처음이다' 하며 웃었다." },
       { label: "\"저부터 따르겠습니다\" 하고 말한다", fx: { coach: 1, s: { "mental.teamwork": 1 } },
         result: "다음 날 훈련에서 제일 먼저 대답했다. 형이 고개를 살짝 끄덕였다." },
+      { label: "학년별로 이야기를 따로 들어 보겠다고 한다", req: { "mental.teamwork": 65 }, fx: { s: { "mental.teamwork": 0.8 }, coach: 2 },
+        result: "1학년, 2학년을 따로 불러 이야기를 들었다. 다음 날 주장 형이 내 어깨를 툭 쳤다. \"고맙다. 덕분에 숨 좀 쉰다.\"" },
     ] },
   { id: "c_coach_bday", who: "narr", once: true,
     text: "내일이 감독님 생신이라는 정보가 단톡방에 돌았다. 다들 뭘 할지 의견이 분분하다.",
@@ -5537,7 +5995,7 @@ const EVENTS_MORE = [
       { label: "징크스는 이제 버린다", fx: { s: { "mental.focus": 1 } },
         result: "\"양말이 차는 거 아니다.\" 스스로에게 말하고 일찍 잤다." },
     ] },
-  { id: "c_sns", who: "narr", cond: s => (lastMatch(s)?.goals || 0) > 0,
+  { id: "c_sns", trigger: s => { const m = lastMatch(s); return !!m && m.goals > 0 && s.record.goals === m.goals; }, who: "narr", cond: s => (lastMatch(s)?.goals || 0) > 0,
     text: "내 골 영상이 지역 유소년 축구 계정에 올라갔다. 댓글이 벌써 백 개를 넘었다.",
     choices: [
       { label: "댓글을 하나하나 읽는다", fx: { morale: 4, s: { "mental.focus": -0.3 } },
@@ -5553,7 +6011,7 @@ const EVENTS_MORE = [
       { label: "부모님과 상의한다", fx: { s: { "mental.focus": 0.5 } },
         result: "엄마는 '네가 정해' 하셨다. 밤새 생각했다. 결국 고흥 운동장이 떠올랐다. 남기로 했다." },
     ] },
-  { id: "c_frozen", who: "assistant", when: { months: [12, 1, 2] },
+  { id: "c_frozen", date: [[1, 3]], cool: 70, who: "assistant", when: { months: [12, 1, 2] },
     text: "운동장이 꽁꽁 얼었다. 오늘은 실내에서 할지, 언 땅에서 그대로 할지 너희가 정해라.",
     choices: [
       { label: "실내에서 줄넘기와 코어 운동", fx: { s: { "phys.stamina": 0.5 }, fatigue: 2 },
@@ -5562,7 +6020,7 @@ const EVENTS_MORE = [
         hurt: { p: 0.06, type: "ankle", cause: "언 땅에서 미끄러졌다.", result: "언 땅에 발이 미끄러졌다. 발목이 꺾였다." },
         result: "입김을 내뿜으며 뛰었다. 발끝이 얼얼했지만 다들 끝까지 버텼다." },
     ] },
-  { id: "c_heat", who: "assistant", when: { months: [7, 8] },
+  { id: "c_heat", date: [[8, 1]], cool: 70, who: "assistant", when: { months: [7, 8] },
     text: "오늘 낮 기온 35도. 물은 10분마다 마셔라. 어지러우면 바로 말해라.",
     choices: [
       { label: "그늘에서 물을 챙기며 한다", fx: { fatigue: -2, s: { "student.attitude": 0.5 } },
@@ -5570,7 +6028,7 @@ const EVENTS_MORE = [
       { label: "끝까지 버티며 뛴다", fx: { s: { "phys.stamina": 0.6 }, fatigue: 7 },
         result: "끝까지 뛰었다. 그날 밤 저녁을 먹다가 숟가락을 든 채 잠들었다." },
     ] },
-  { id: "c_ref", who: "narr", cond: s => lastMatch(s)?.result === "패",
+  { id: "c_ref", cool: 40, trigger: s => lastMatch(s)?.result === "패" && lastMatch(s)?.official, who: "narr", cond: s => lastMatch(s)?.result === "패",
     text: "어제 경기 판정이 너무 억울했다. 단톡방이 온통 주심 이야기로 시끄럽다.",
     choices: [
       { label: "단톡방을 진정시킨다", fx: { s: { "mental.teamwork": 1 } },
@@ -5581,6 +6039,7 @@ const EVENTS_MORE = [
         result: "주심이 휘슬을 불 틈도 없게. 혼자 남아 마무리 슈팅을 더 했다." },
     ] },
   { id: "c_card_senior", who: "coach", needs: "mentor", when: { grades: [1, 2], months: [4, 5, 6, 9, 10] },
+    cond: s => s.relations.people?.mentor?.position === s.player.position && !!turnInfo(s)?.match,   // 같은 포지션 선배, 경기 있는 주
     text: "{mentor|이/가} 경고 누적으로 이번 주에 못 뛴다. 그 자리에 너를 생각하고 있다. 준비됐냐.",
     choices: [
       { label: "\"준비됐습니다\"", fx: { s: { "mental.confidence": 1 }, coach: 1 },
@@ -5596,13 +6055,15 @@ const EVENTS_MORE = [
       { label: "대충 써서 낸다", fx: { s: { "student.attitude": -0.5 } },
         result: "{assistant}님이 종이를 보시더니 '다시' 한마디만 하셨다." },
     ] },
-  { id: "c_selection_rumor", bg: "ev_selection", who: "narr", when: { grades: [2, 3], months: [4] },
+  { id: "c_selection_rumor", date: [[4, 3]], bg: "ev_selection", who: "narr", when: { grades: [2, 3], months: [4] },
     text: "다음 달 전남 대표 선발전이 열린다는 소문이 돈다. 누가 불려 갈지 다들 수군거린다.",
     choices: [
       { label: "남몰래 특별 훈련을 시작한다", fx: { s: { "position": 0.4 }, fatigue: 3 }, act: s => { s.flags.jnBoost = (s.flags.jnBoost || 0) + 1; },
         result: "훈련이 끝나면 30분씩 더 남았다. 소문이 사실이라면, 준비된 사람이 가는 거다." },
       { label: "평소대로 한다", fx: { morale: 1 },
         result: "불려 가면 좋고, 아니어도 할 일은 같다. 마음이 오히려 편했다." },
+      { label: "감독님께 보완할 점을 직접 여쭌다", req: { "rel.coach": 70 }, fx: { s: { "mental.focus": 0.5 }, coach: 2 },
+        result: "감독님이 종이에 세 줄을 적어 주셨다. 첫 줄은 '왼발'. 그날부터 왼발로만 벽치기를 했다." },
     ] },
   { id: "c_photo", who: "narr", once: true,
     text: "시즌 단체 사진 촬영 날. 사진사 아저씨가 \"자, 웃어요! 하나, 둘!\" 하신다.",
@@ -5628,6 +6089,8 @@ const EVENTS_MORE = [
       { label: "숨기고 뛴다", fx: { morale: 1 },
         hurt: { p: 0.25, type: "ankle", cause: "아픈 발목을 숨기고 뛰다 탈이 났다.", result: "훈련 중에 발목이 꺾였다. 숨긴 대가였다." },
         result: "테이핑을 두껍게 감았다. 다행히 버텼다. 하지만 다음엔 꼭 말씀드려야겠다." },
+      { label: "테이핑하고 코치님과 출전 시간을 상의한다", req: { "mental.focus": 64 }, fx: { s: { "mental.focus": 0.3 }, coach: 1, morale: 1 },
+        result: "코치님이 발목을 만져 보시더니 고개를 끄덕이셨다. \"후반 20분만 뛰자. 그게 제일 현명하다.\"" },
     ] },
 
   // ── 가족·고흥 ────────────────────────────────
@@ -5687,7 +6150,7 @@ const EVENTS_MORE = [
       { label: "마음껏 차게 둔다", fx: { morale: 3 },
         result: "동생이 담벼락에 공을 백 번 찼다. 처음 공을 찰 때 나도 저렇게 웃었을 거다." },
     ] },
-  { id: "f_holiday", family: true, who: "narr", when: { months: [9, 10, 1, 2] },
+  { id: "f_holiday", date: [[9, 4], [2, 2]], cool: 40, family: true, who: "narr", when: { months: [9, 10, 1, 2] },
     text: "명절에 친척들이 모였다. 큰아버지가 \"축구 해서 뭐 먹고 살래?\" 하신다.",
     choices: [
       { label: "웃으며 \"두고 보세요\" 한다", fx: { s: { "mental.confidence": 1 }, morale: 1 },
@@ -5697,7 +6160,7 @@ const EVENTS_MORE = [
       { label: "조용히 방으로 들어간다", fx: { morale: -2 },
         result: "방문 너머로 웃음소리가 들렸다. 괜히 축구공만 만지작거렸다." },
     ] },
-  { id: "f_typhoon", family: true, who: "narr", when: { months: [8, 9] },
+  { id: "f_typhoon", date: [[8, 4]], cool: 70, family: true, who: "narr", when: { months: [8, 9] },
     text: "태풍이 올라와 주말 훈련이 취소됐다. 창밖 나무가 휘청인다.",
     choices: [
       { label: "집에서 스트레칭과 영상 공부를 한다", fx: { s: { "mental.focus": 1 }, fatigue: -4 },
@@ -5705,13 +6168,15 @@ const EVENTS_MORE = [
       { label: "하루 종일 푹 잔다", fx: { fatigue: -8 },
         result: "눈을 뜨니 태풍이 지나가 있었다. 몸이 깃털처럼 가벼웠다." },
     ] },
-  { id: "f_yuja", family: true, who: "narr", when: { months: [11] },
+  { id: "f_yuja", date: [[11, 2]], cool: 70, family: true, who: "narr", when: { months: [11] },
     text: "고흥 유자축제. 무대 옆 '유자 슈팅 챌린지' 부스 앞에 사람들이 길게 줄을 섰다.",
     choices: [
       { label: "도전한다", fx: { s: { "tech.shoot": 0.3 }, morale: 4 },
         result: s => s.player.stats.tech.shoot >= 60 ? "다섯 개 중 네 개를 과녁에 넣었다. 상품으로 유자청 한 상자를 들고 왔다." : "다섯 개 중 두 개. 옆에 있던 초등학생이 세 개를 넣었다. 집에 오는 길에 슈팅 연습을 다짐했다." },
       { label: "가족과 유자차를 마시며 구경한다", fx: { fatigue: -4, morale: 3 },
         result: "따뜻한 유자차를 손에 쥐고 공연을 봤다. 엄마가 '이런 날도 있어야지' 하셨다." },
+      { label: "유자 바구니에 다섯 개 연속으로 넣는다", req: { "tech.shoot": 62 }, fx: { s: { "tech.shoot": 0.3 }, morale: 4 },
+        result: "다섯 번 모두 바구니 한가운데. 사회자가 마이크를 들이댔다. 상품으로 받은 유자청 한 병은 엄마 차지가 됐다." },
     ] },
 
   // ── 목표 (중2부터, 날짜와 조건이 맞을 때만. js/engine/goals.js) ──
@@ -5721,11 +6186,11 @@ const EVENTS_MORE = [
       label: `${g.icon} ${g.label} (${g.hint})`,
       act: s => { const G = goalsOf(s); G.main = id; G.metAt = s.calendar.turn; },
       fx: { morale: 2 },
-      result: `"${g.label}. 좋다. 말로 한 목표는 지켜야 한다. ${{ jn: "5월 선발전까지 경기 평점과 능력치를 끌어올려라.", award: "경기 최우수 선수를 한 해에 세 번. 쉽지 않다.", captain: "주장은 실력보다 신뢰다. 매일 보여 줘라.", scout: "고등학교 감독님들은 한 경기를 보고도 기억한다. 그 한 경기를 만들어라.", news: "골이든 도움이든, 우승이든. 기자가 찾아올 이유를 만들어라." }[id]}" 홈 화면 '나의 목표'에서 진행 상황을 볼 수 있다.`,
+      result: `"${g.label}. 좋다. 말로 한 목표는 지켜야 한다. ${{ jn: "4월 선발전까지 경기 평점과 능력치를 끌어올려라.", award: "한 해에 경기 최우수 선수로 여러 번 뽑혀야 한다. 쉽지 않다.", captain: "주장은 실력보다 신뢰다. 매일 보여 줘라.", scout: "고등학교 감독님들은 한 경기를 보고도 기억한다. 그 한 경기를 만들어라.", news: "골이든 도움이든, 우승이든. 기자가 찾아올 이유를 만들어라." }[id]}" 홈 화면 '나의 목표'에서 진행 상황을 볼 수 있다.`,
     })),
   },
   { id: "goal_jn_call", bg: "ev_selection", fixed: true, who: "coach",
-    text: s => `전남 대표 선발전 명단이 나왔다. 네 이름이 있다. ${s.calendar.grade === 3 ? "작년보다 더 많은 눈이 너를 볼 거다." : "2학년은 몇 명 없다."} 다음 주에 목포에서 테스트다. 어떻게 준비할 거냐.`,
+    text: s => `전남 대표 선발전 명단이 나왔다. 네 이름이 있다. ${s.calendar.grade === 3 ? (goalsOf(s).jnCalled?.[2] ? "작년에 한 번 와 본 자리다. 이번엔 붙어야지." : "3학년이 돼서 처음 불렸다. 늦었다고 생각하지 마라.") : "2학년은 몇 명 없다."} 다음 주에 목포에서 테스트다. 어떻게 준비할 거냐.`,
     choices: [
       { label: "남은 일주일, 개인 훈련을 더 한다", fx: { fatigue: 6, s: { "position": 0.3 } }, act: s => { const G = goalsOf(s); (G.jnCalled ||= {})[s.calendar.grade] = true; s.flags.jnBoost = (s.flags.jnBoost || 0) + 2; },
         result: "\"좋다. 대신 테스트 전날엔 쉬어라. 다리가 무거우면 보여 줄 것도 못 보여 준다.\"" },
@@ -5736,14 +6201,14 @@ const EVENTS_MORE = [
     ] },
   { id: "goal_jn_result", bg: "ev_office", fixed: true, who: "coach",
     text: s => goalsOf(s).jnOutcome
-      ? "전남 대표 명단이 발표됐다. …축하한다. 네 이름이 있다. 유니폼에 전라남도 마크를 다는 거다."
+      ? "전남 대표 명단이 발표됐다. …축하한다. 네 이름이 있다. 5월 전국소년체전에 전라남도 마크를 달고 나간다."
       : `전남 대표 명단이 발표됐다. 네 이름은… 없다. ${s.calendar.grade === 2 ? "내년에 한 번 더 기회가 있다." : "아쉽다. 여기서 끝이 아니다."}`,
     choices: [
       { label: "고개 숙여 인사한다", fx: { morale: 2 },
-        act: s => { const G = goalsOf(s); (G.jnResult ||= {})[s.calendar.grade] = true; if (G.jnOutcome) { achieve(s, "jn"); s.flags.jnSelected = true; s.player.condition.morale = Math.min(100, s.player.condition.morale + 6); } },
+        act: s => { const G = goalsOf(s); (G.jnResult ||= {})[s.calendar.grade] = true; if (G.jnOutcome) { achieve(s, "jn"); s.flags.jnSelected = true; s.player.condition.morale = Math.min(100, s.player.condition.morale + 6); if (turnInfo(s)?.month === 4) startJnCup(s); } },
         result: s => s.flags.jnSelected ? "\"고흥에서 전남 대표라. 오늘은 실컷 자랑해도 된다.\" 감독님 목소리가 평소보다 조금 높았다." : "\"떨어진 날 어떻게 하는지가 다음 기회를 정한다.\" 감독님이 등을 두드려 주셨다." },
       { label: "\"부족한 게 뭐였는지 알고 싶습니다\"", fx: { s: { "mental.focus": 0.5 } },
-        act: s => { const G = goalsOf(s); (G.jnResult ||= {})[s.calendar.grade] = true; if (G.jnOutcome) { achieve(s, "jn"); s.flags.jnSelected = true; } },
+        act: s => { const G = goalsOf(s); (G.jnResult ||= {})[s.calendar.grade] = true; if (G.jnOutcome) { achieve(s, "jn"); s.flags.jnSelected = true; if (turnInfo(s)?.month === 4) startJnCup(s); } },
         result: s => s.flags.jnSelected ? "\"붙은 날에도 그걸 묻는구나. 그래서 붙은 거다.\"" : `"선발 점수 기준이 ${JN_NEED[s.calendar.grade]}였다. 너는 ${goalsOf(s).jnLast ?? Math.round(jnScore(s))}. 경기 평점과 능력치, 둘 다 조금씩 모자랐다."` },
     ] },
   { id: "goal_award", bg: "ev_award", fixed: true, who: "narr",
@@ -5818,12 +6283,212 @@ return { EVENTS_MORE };
 })();
 (__fix["data/events2.js"] || []).forEach(f => f());
 
+// ── data/events3.js
+__m["data/events3.js"] = (function () {
+const {turnInfo} = __m["js/engine/calendar.js"];
+const {rivalGap, person} = __m["js/engine/relations.js"];
+// 이야기 줄기 이벤트: 라이벌 3년, 부모님 장면, 고흥 이야기
+// date: [[월, 주]] 그 주에 반드시 / trigger: 상황이 맞으면 반드시 / when.grades: 학년
+// 문장 안의 {rival} {friend} {mentor} {junior} {teacher} {coach} {name} {given}은 자동으로 바뀝니다.
+
+
+
+const lastMatch = s => { const m = s.record.matches.at(-1); return m && m.turn === s.calendar.turn - 1 ? m : null; };
+const samePos = s => person(s, "rival")?.position === s.player.position;
+const gapText = (s, ahead, close, behind) => { const g = rivalGap(s); return g == null ? close : g >= 4 ? ahead : g <= -4 ? behind : close; };
+
+const EVENTS_STORY = [
+  // ── 라이벌 3년 ────────────────────────────────
+  { id: "r_meet", needs: "rival", once: true, date: [[4, 1]], when: { grades: [1] }, bg: "bg_field_day", who: "rival",
+    text: s => (samePos(s) ? "훈련이 끝난 운동장. 같은 학년, 같은 자리에서 뛰는 {rival|이/가} 공을 발로 굴리며 다가온다." : "훈련이 끝난 운동장. 같은 학년 {rival|이/가} 공을 발로 굴리며 다가온다. 자리는 달라도 훈련 때마다 눈이 마주치는 녀석이다.") + " \"너 초등학교 어디 나왔냐? 나는 네 경기 본 적 있다. 그때도 잘하더라. …지금은 내가 더 잘하지만.\"",
+    choices: [
+      { label: "\"두고 보면 알겠지\" 하고 웃는다", fx: { s: { "mental.competitive": 0.8 }, rel: { rival: 3 } },
+        result: "{rival|이/가} 피식 웃었다. 그날 이후로 운동장에서 서로를 의식하지 않는 날이 없었다." },
+      { label: "같이 남아서 슈팅 내기를 하자고 한다", fx: { s: { "tech.shoot": 0.5 }, fatigue: 3, rel: { rival: 5 } },
+        result: "열 개 차서 6 대 6. 해가 질 때까지 끝이 안 났다. \"내일 다시 해.\" 그 말을 누가 먼저 했는지 기억이 안 난다." },
+      { label: "대꾸하지 않고 공을 챙겨 나간다", fx: { s: { "mental.focus": 0.5 }, rel: { rival: -2 } },
+        result: "등 뒤에서 {rival|이/가} 혀를 차는 소리가 들렸다. 말보다 훈련으로 답하기로 했다." },
+    ] },
+  { id: "r_g1_end", needs: "rival", once: true, date: [[2, 3]], when: { grades: [1] }, bg: "bg_locker", who: "rival",
+    text: s => `1학년 마지막 동계훈련. 코치님이 체력 측정 결과를 벽에 붙이셨다. ${gapText(s,
+      "내 이름이 {rival}보다 위에 있다. {rival|이/가} 한참 그 종이를 보다가 말없이 나간다.",
+      "내 이름 바로 옆에 {rival}의 이름이 있다. 기록 차이는 소수점 하나다.",
+      "{rival}의 이름이 나보다 한참 위에 있다. {rival|이/가} 내 어깨를 툭 치고 지나간다.")}`,
+    choices: [
+      { label: "{rival}에게 2학년 때 다시 붙자고 말한다", fx: { s: { "mental.competitive": 1 }, morale: 2, rel: { rival: 4 } },
+        result: "\"1년 동안 네 등만 보고 뛰었다.\" {rival|이/가} 그렇게 말하고는 먼저 웃었다. 나도 그랬다." },
+      { label: "종이를 사진으로 찍어 둔다", fx: { s: { "mental.focus": 0.8 } },
+        result: "휴대폰 배경화면을 그 사진으로 바꿨다. 2학년이 끝날 때 다시 찍을 생각이다." },
+    ] },
+  { id: "r_g2", needs: "rival", once: true, date: [[9, 3]], when: { grades: [2] }, bg: "bg_stadium", who: "coach",
+    text: s => samePos(s) ? `{coach}님께서 선발 명단을 발표하신다. 내 자리에 들어갈 이름은 하나. ${gapText(s,
+      "\"{name}.\" 내 이름이 불렸다. 옆에 선 {rival|이/가} 주먹을 꽉 쥐는 게 보였다.",
+      "\"이번 주는 {rival}, 다음 주는 {given}. 둘 다 준비해라.\" 둘이 동시에 고개를 들었다.",
+      "\"{rival}.\" 내 이름이 아니었다. {rival|이/가} 나를 한 번 돌아보더니 고개를 끄덕였다.")}`
+      : `{coach}님께서 선발 명단을 발표하신다. 자리는 달라도 {rival}하고는 늘 명단 앞뒤를 다퉜다. ${gapText(s,
+      "내 이름은 불렸고, {rival}의 이름은 교체 명단에 있었다. {rival|이/가} 입술을 깨무는 게 보였다.",
+      "둘 다 선발이다. {rival|이/가} 옆에서 슬쩍 주먹을 내민다.",
+      "{rival}의 이름은 선발에, 내 이름은 교체 명단에 있었다. {rival|이/가} 나를 한 번 돌아봤다.")}`,
+    choices: [
+      { label: "훈련이 끝나고 {rival}에게 먼저 다가간다", fx: { s: { "mental.teamwork": 0.8 }, rel: { rival: 5 } },
+        result: "\"누가 뛰든 이기면 된다.\" 말은 그렇게 했지만, 둘 다 그 말을 반만 믿었다. 그래도 악수는 진심이었다." },
+      { label: "명단과 상관없이 내 훈련을 한다", fx: { s: { "mental.focus": 0.6, "tech.firstTouch": 0.4 }, coach: 1 },
+        result: "운동장 불이 꺼질 때까지 벽치기를 했다. 감독실 창문 너머로 누군가 보고 있는 것 같았다." },
+      { label: "감독님께 이유를 여쭤본다", fx: { coach: -1, s: { "mental.confidence": 0.5 } },
+        result: "\"이유는 네가 제일 잘 알 거다.\" 짧은 대답이었다. 돌아 나오면서 그 말을 몇 번이고 곱씹었다." },
+    ] },
+  { id: "r_g3", needs: "rival", once: true, date: [[7, 4]], when: { grades: [3] }, bg: "ev_retreat", who: "rival",
+    text: "마지막 여름 대회 전날 밤, 숙소. 불을 끈 지 한참인데 옆자리 {rival|이/가} 아직 안 잔다. \"야, 자냐. …우리 이거 마지막 여름이다.\"",
+    choices: [
+      { label: "\"내일 같이 골 넣자\" 하고 주먹을 내민다", fx: { s: { "mental.teamwork": 0.6 }, morale: 4, rel: { rival: 5 } },
+        result: "어둠 속에서 주먹이 맞부딪혔다. 3년 동안 서로를 이기려고 뛰었는데, 내일은 같은 쪽을 보고 뛴다." },
+      { label: "1학년 때 슈팅 내기 얘기를 꺼낸다", fx: { morale: 5, rel: { rival: 4 } },
+        result: "\"그거 내가 이긴 거다.\" \"아니거든.\" 새벽 2시까지 웃다가 코치님께 혼났다." },
+      { label: "\"자라. 내일 뛰어야지\" 하고 돌아눕는다", fx: { fatigue: -4, s: { "mental.focus": 0.4 } },
+        result: "한참 뒤 {rival}의 숨소리가 고르게 바뀌었다. 나는 조금 더 늦게 잠들었다." },
+    ] },
+  { id: "r_farewell", needs: "rival", once: true, date: [[12, 3]], when: { grades: [3] }, bg: "bg_sea", who: "rival",
+    text: "진학 상담이 끝난 오후, 바닷가 방파제. {rival|이/가} 캔 음료 두 개를 들고 앉아 있다. \"3년 내내 너만 보고 뛰었는데, 이제 진짜 끝이네.\"",
+    choices: [
+      { label: "\"어디서든 다시 붙자\" 하고 웃는다", fx: { morale: 5, s: { "mental.competitive": 0.6 }, rel: { rival: 5 } },
+        result: "\"그땐 진짜 안 봐준다.\" \"원래 안 봐줬잖아.\" 바다 위로 해가 천천히 내려앉았다." },
+      { label: "3년 동안 고마웠다고 말한다", fx: { morale: 6, rel: { rival: 6 } },
+        result: "{rival|이/가} 한참 바다만 봤다. \"…너 없었으면 나 이만큼 못 했다.\" 둘 다 그 말을 다시는 꺼내지 않기로 했다." },
+    ] },
+
+  // ── 부모님 ─────────────────────────────────
+  { id: "p_lunchbox", family: true, once: true, date: [[7, 4]], when: { grades: [1] }, bg: "bg_home", who: "mom",
+    text: "첫 여름 대회 날 새벽 4시 반. 부엌 불이 켜져 있다. 엄마가 김밥을 말고 계신다. \"깼어? 더 자. 다 싸 놓고 깨울게.\"",
+    choices: [
+      { label: "옆에 서서 김밥 끄트머리를 집어 먹는다", fx: { morale: 6, fatigue: 2 },
+        result: "\"끄트머리는 원래 싸는 사람 거야.\" 엄마가 웃으며 하나를 더 입에 넣어 주셨다. 그날 김밥은 유난히 짭짤했다." },
+      { label: "\"고마워요\" 하고 다시 들어가 잔다", fx: { fatigue: -5, morale: 3 },
+        result: "이불 속에서 칼질 소리를 들으며 다시 잠들었다. 가방 안 도시락에는 쪽지가 붙어 있었다. '다치지만 마.'" },
+    ] },
+  { id: "p_dad_car", family: true, once: true, when: { grades: [1] }, bg: "bg_sea", who: "dad",
+    trigger: s => { const m = lastMatch(s), i = turnInfo(s); return !!m && m.minutes > 0 && i?.month >= 5 && i.month <= 6; },
+    text: "주말 경기가 끝나고 아빠 차 조수석. 라디오에서 옛날 노래가 나온다. 아빠는 한참 아무 말이 없다가 묻는다. \"오늘 어땠냐.\"",
+    choices: [
+      { label: "오늘 경기 이야기를 처음부터 끝까지 한다", fx: { morale: 5, s: { "mental.focus": 0.3 } },
+        result: "아빠는 운전하면서 계속 고개를 끄덕였다. 축구는 잘 모르시면서 \"그래, 그때 패스가 좋았지\" 하신다. 다 보고 계셨던 거다." },
+      { label: "\"그냥요\" 하고 창밖을 본다", fx: { fatigue: -3 },
+        result: "아빠는 더 묻지 않았다. 대신 휴게소에 들러 호두과자를 사 오셨다. 봉지가 아직 따뜻했다." },
+      { label: "아빠 학교 다닐 때 얘기를 여쭤본다", fx: { morale: 4, s: { "mental.teamwork": 0.3 } },
+        result: "아빠가 고등학교 때 반 대표 축구 선수였다는 얘기를 처음 들었다. 집에 도착할 때까지 아빠 목소리가 들떠 있었다." },
+    ] },
+  { id: "p_mom_stands", family: true, once: true, bg: "bg_stadium", who: "mom",
+    trigger: s => { const m = lastMatch(s); return !!m && m.status === "start" && s.record.starts === 1; },
+    text: "첫 선발 경기가 끝나고 관중석을 올려다봤다. 맨 위 줄에서 엄마가 손을 흔들고 계신다. 일하는 날이라 못 온다고 하셨는데.",
+    choices: [
+      { label: "관중석까지 뛰어 올라간다", fx: { morale: 7, coach: -1 },
+        result: "\"반차 냈어. 비밀이다.\" 엄마 손이 땀에 젖은 내 머리를 헝클었다. 감독님이 멀리서 헛기침을 하셨다." },
+      { label: "손을 크게 흔들어 답한다", fx: { morale: 5 },
+        result: "엄마가 두 손을 머리 위로 올려 동그라미를 그리셨다. 집에 가니 식탁에 갈비찜이 있었다." },
+    ] },
+  { id: "p_dad_injury", family: true, once: true, bg: "bg_home", who: "dad",
+    trigger: s => { const inj = s.player.condition.injury; return !!inj && inj.weeksLeft >= 3; },
+    text: "다친 다리에 얼음을 대고 누워 있는데 아빠가 방문을 연다. \"병원 다녀왔다며. 의사 선생님이 뭐라시더냐.\"",
+    choices: [
+      { label: "괜찮다고, 금방 낫는다고 한다", fx: { morale: 2 },
+        result: "\"그래.\" 아빠가 문을 닫으려다 말고 한마디 하셨다. \"괜찮지 않아도 괜찮다. 아빠한테는.\"" },
+      { label: "무섭다고 솔직하게 말한다", fx: { morale: 5, s: { "mental.confidence": 0.4 } },
+        result: "아빠가 침대 끝에 앉으셨다. 한참을 그렇게 계셨다. 다음 날부터 재활 병원은 아빠가 데려다주셨다." },
+    ] },
+  { id: "p_mom_note", family: true, once: true, date: [[2, 3]], when: { grades: [2] }, bg: "bg_home", who: "narr",
+    text: "동계훈련 짐을 풀다가 가방 안쪽 주머니에서 접힌 쪽지를 발견했다. 엄마 글씨다.",
+    choices: [
+      { label: "그 자리에서 펼쳐 읽는다", fx: { morale: 6, s: { "mental.confidence": 0.5 } },
+        result: "'잘하든 못하든 엄마는 네가 운동장에 서 있는 게 좋아. 2학년도 지금처럼.' 쪽지를 지갑에 넣었다." },
+      { label: "엄마한테 답장을 써서 냉장고에 붙인다", fx: { morale: 5, s: { "mental.teamwork": 0.3 } },
+        result: "'2학년엔 선발로 뛰는 거 보여 줄게요.' 다음 날 아침, 그 쪽지 옆에 하트 자석이 하나 더 붙어 있었다." },
+    ] },
+  { id: "p_admission", family: true, once: true, date: [[10, 3]], when: { grades: [3] }, bg: "ev_dinner", who: "dad",
+    text: "저녁 식탁. 진학 이야기가 나왔다. 엄마는 공부도 놓지 않을 학교를, 아빠는 네가 가고 싶은 곳을 말하라고 한다. 두 분이 동시에 나를 본다.",
+    choices: [
+      { label: "축구를 제일 잘할 수 있는 곳에 가고 싶다고 말한다", fx: { morale: 4, s: { "mental.competitive": 0.6 } },
+        result: "엄마가 한숨을 쉬다가 웃으셨다. \"대신 성적표는 계속 보여 줘.\" 아빠가 내 어깨를 두 번 두드렸다." },
+      { label: "두 분 이야기를 다 듣고 같이 정하자고 한다", fx: { morale: 3, s: { "mental.teamwork": 0.4, "student.attitude": 0.5 } },
+        result: "식탁 위에 학교 이름 세 개가 적힌 종이가 놓였다. 그날 밤 우리 가족은 처음으로 같은 종이를 오래 들여다봤다." },
+    ] },
+
+  // ── 전남 대표 소년체전 ─────────────────────────
+  { id: "jn_camp", once: true, bg: "ev_selection", who: "coach",
+    trigger: s => { const c = s.jnCup, i = turnInfo(s); return !!c && c.alive && c.stage === 0 && i?.grade === c.grade && i.month === 5 && i.week === 2 && !s.player.condition.injury; },
+    text: "전국소년체전 소집 첫날, 숙소 강당. 광양, 목포, 순천에서 온 낯선 얼굴들이 서로 눈치만 본다. 올해 전남 대표 감독은 {coach}님이 맡으셨다. \"학교는 잊어라. 이번 주는 전부 전남이다.\"",
+    choices: [
+      { label: "먼저 다가가 이름부터 묻는다", fx: { s: { "mental.teamwork": 0.6 }, morale: 3 },
+        result: "목포에서 온 미드필더가 웃으며 손을 내밀었다. \"너 고흥이지? 리그에서 붙어 봤잖아.\" 그날 밤 숙소 방이 제일 시끄러웠다." },
+      { label: "말없이 축구화 끈부터 다시 묶는다", fx: { s: { "mental.focus": 0.6 } },
+        result: "다들 잘하는 애들이다. 여기서는 고흥에서처럼 공이 저절로 오지 않는다. 첫 훈련부터 목소리를 냈다." },
+      { label: "부모님께 \"잘 도착했어요\" 하고 문자한다", fx: { morale: 4 },
+        result: "엄마 답장이 1초 만에 왔다. '밥 많이 먹고, 텔레비전에 나오면 손 흔들어.'" },
+    ] },
+  { id: "jn_return", once: true, bg: "bg_sea", who: "narr",
+    trigger: s => { const c = s.jnCup, i = turnInfo(s); return !!c && i?.grade === c.grade && i.month === 5 && i.week === 3; },
+    text: s => {
+      const c = s.jnCup, m = c.medal;
+      return m === "gold" ? "고흥으로 돌아오는 버스. 목에 건 금메달이 덜컹거릴 때마다 가슴을 친다. 정류장에 내리자 축구부 동료들이 현수막을 들고 서 있다. '전남 대표 {name}, 금메달!'"
+        : m === "silver" ? "결승에서 졌다. 은메달은 생각보다 무거웠다. 고흥 정류장에 내리자 {friend|이/가} 달려와 메달부터 만져 본다. \"이게 진짜 은이냐?\""
+        : m === "bronze" ? "준결승에서 멈췄지만, 동메달을 들고 돌아왔다. 운동장에 들어서자 훈련하던 후배들이 일제히 박수를 친다. 괜히 목이 멘다."
+        : m === "first" ? "1회전에서 짐을 쌌다. 돌아오는 버스 안, 같은 방을 쓴 목포 친구한테서 문자가 왔다. '고등학교 가서 또 보자. 그땐 이긴다.'"
+        : "부상 때문에 소년체전 경기를 다 뛰지 못했다. 텔레비전으로 전남 대표 경기를 보는데, 그 유니폼이 유난히 눈에 밟혔다.";
+    },
+    choices: [
+      { label: "운동장에 바로 가서 공을 찬다", fx: { s: { "mental.competitive": 0.6 }, fatigue: 3 },
+        result: "익숙한 잔디 냄새. 낯선 경기장에서 뛰다 돌아오니 고흥 운동장이 이렇게 넓었나 싶다." },
+      { label: "후배들에게 대표팀 이야기를 들려준다", fx: { s: { "mental.teamwork": 0.6 }, morale: 3, rel: { junior: 3 } },
+        result: "후배들이 눈을 반짝이며 물었다. \"형, 다른 지역 애들은 진짜 잘해요?\" \"응. 근데 우리도 할 수 있어.\"" },
+      { label: "집에 가서 하루 푹 쉰다", fx: { fatigue: -10, morale: 2 },
+        result: "엄마가 끓여 준 미역국을 먹고 열두 시간을 잤다. 꿈속에서도 경기를 뛰었다." },
+    ] },
+
+  // ── 고흥 이야기 ────────────────────────────────
+  { id: "l_launch", needs: "friend", once: true, date: [[6, 2]], when: { grades: [2] }, bg: "bg_sea", who: "narr",
+    text: "나로우주센터 발사가 있는 날. 훈련이 끝나자 {friend|이/가} 자전거를 끌고 왔다. \"우주발사전망대 가자. 지금 가면 딱 맞아.\"",
+    choices: [
+      { label: "자전거 뒤에 타고 전망대로 간다", fx: { morale: 6, fatigue: 3, rel: { friend: 4 } },
+        result: "카운트다운이 끝나자 바다 너머에서 하얀 줄기가 하늘로 솟았다. 둘 다 입을 벌린 채 아무 말도 못 했다. \"우리도 저렇게 올라가자.\" {friend|이/가} 말했다." },
+      { label: "운동장에 남아 하늘을 올려다본다", fx: { morale: 3, s: { "mental.focus": 0.3 } },
+        result: "멀리 하늘에 가느다란 연기 한 줄이 그어졌다. 그걸 보면서 공을 한 번 더 찼다." },
+    ] },
+  { id: "l_geogeum", once: true, date: [[5, 3]], when: { grades: [1] }, bg: "bg_sea", who: "assistant",
+    text: "{assistant}님께서 오늘 체력 훈련은 자전거라고 하신다. 코스는 거금대교. 바다 위 다리를 왕복한다.",
+    choices: [
+      { label: "선두에서 페달을 밟는다", fx: { s: { "phys.stamina": 0.8, "phys.strength": 0.3 }, fatigue: 7 },
+        result: "다리 한가운데서 맞바람이 몰아쳤다. 허벅지가 터질 것 같았지만 내려다본 바다는 눈부셨다." },
+      { label: "뒤처진 동료와 나란히 달린다", fx: { s: { "phys.stamina": 0.5, "mental.teamwork": 0.6 }, fatigue: 5 },
+        result: "꼴찌 둘이서 노래를 부르며 다리를 건넜다. 코치님이 \"너희가 제일 시끄럽다\"며 웃으셨다." },
+    ] },
+  { id: "l_ssukseom", family: true, once: true, date: [[4, 4]], when: { grades: [2] }, bg: "bg_sea", who: "mom",
+    text: "엄마가 쑥섬에 꽃이 한창이라며 배 시간표를 내미신다. \"딱 오전만. 오후엔 훈련 가도 돼.\"",
+    choices: [
+      { label: "배를 타고 쑥섬에 간다", fx: { morale: 6, fatigue: -4 },
+        result: "섬 꼭대기 꽃밭에서 엄마랑 사진을 찍었다. 엄마가 그 사진을 가족 단톡방 프로필로 바꾸셨다." },
+      { label: "훈련 때문에 다음에 가자고 한다", fx: { s: { "phys.stamina": 0.3 }, morale: -1 },
+        result: "\"다음에 꼭이다.\" 엄마가 사진만 잔뜩 찍어 보내셨다. 화면 속 꽃이 생각보다 예뻤다." },
+    ] },
+  { id: "l_sunset", once: true, date: [[11, 1]], when: { grades: [3] }, bg: "bg_sea", who: "narr",
+    text: "훈련을 마치고 돌아오는 버스가 고흥만 방조제를 지난다. 창밖이 온통 주황색이다. 누군가 \"우리 유니폼 색이네\" 하고 중얼거린다.",
+    choices: [
+      { label: "창문을 열고 바닷바람을 맞는다", fx: { morale: 5 },
+        result: "3년 동안 이 길을 몇 번이나 지났을까. 오늘따라 노을이 오래 남았다." },
+      { label: "동기들과 단체 사진을 찍자고 한다", fx: { morale: 4, s: { "mental.teamwork": 0.5 } },
+        result: "버스 뒷자리에 끼어 앉아 찍은 흔들린 사진 한 장. 졸업 앨범보다 그 사진을 더 자주 꺼내 보게 될 것 같다." },
+    ] },
+];
+
+return { EVENTS_STORY };
+})();
+(__fix["data/events3.js"] || []).forEach(f => f());
+
 // ── data/events.js
 __m["data/events.js"] = (function () {
 const {CAPTAINS} = __m["data/roster.js"];
 const {EVENTS_MORE} = __m["data/events2.js"];
+const {EVENTS_STORY} = __m["data/events3.js"];
 const {turnInfo} = __m["js/engine/calendar.js"];
 const {pick} = __m["js/rng.js"];
+
 
 
 
@@ -5858,11 +6523,13 @@ const EVENTS = [
       { label: "밤에 같이 끝내자", fx: { s: { "student.academic": 2, "student.attitude": 1 }, fatigue: 8, rel: { friend: 6 } }, result: "밤 11시까지 편의점 테이블에서 PPT를 만들었다. 발표 점수가 꽤 잘 나왔다." },
       { label: "미안, 네가 좀 해 줘", fx: { s: { "student.attitude": -1.5 }, rel: { friend: -8 } }, result: "{friend|이/가} 혼자 다 했다. 발표 날 눈을 안 마주친다." },
     ] },
-  { id: "sports_day", bg: "ev_sportsday", who: "teacher", school: true, when: { months: [10] }, once: true,
+  { id: "sports_day", date: [[10, 2]], bg: "ev_sportsday", who: "teacher", school: true, when: { months: [10] }, once: true,
     text: "2학기 학급 대항 줄다리기 날. {teacher}께서 부르신다. \"{given|아/야}, 반 아이들이 맨 앞자리를 너한테 맡기자는데?\"",
     choices: [
       { label: "맡겠습니다", fx: { s: { "student.attitude": 1.5, "phys.strength": 0.5 }, fatigue: 6, morale: 6 }, result: "구령에 맞춰 버텼다. 마지막 한 뼘에서 우리 반이 끌려가지 않았다. 반 아이들이 한꺼번에 달려들었다." },
       { label: "다치면 안 돼서요…", fx: { s: { "student.attitude": -0.5 }, fatigue: -3 }, result: "선생님은 웃으며 괜찮다고 하셨지만, 반 단톡방은 조용했다." },
+      { label: "허리를 낮추고 줄을 어깨에 감는다", req: { "phys.strength": 60 }, fx: { s: { "phys.strength": 0.5, "mental.teamwork": 0.5 }, morale: 3, teacher: 1 },
+        result: "웨이트로 다진 허리가 버텼다. 첫 당김에 상대 반이 한 걸음 끌려왔다. 반 아이들이 내 이름을 연호한다." },
     ] },
   { id: "phone_confiscated", school: true, who: "teacher", cond: s => s.player.stats.student.attitude < 60,
     text: "수업 중에 하이라이트 영상을 보다가 {teacher}께 걸렸다. \"휴대폰은 종례 때 찾아가.\"",
@@ -5870,13 +6537,13 @@ const EVENTS = [
       { label: "죄송합니다. 반성문 쓰겠습니다", fx: { s: { "student.attitude": 1.5 } }, result: "반성문 한 장. 선생님이 \"다음엔 쉬는 시간에 봐\" 하며 휴대폰을 돌려주셨다." },
       { label: "축구 공부였다고 말한다", fx: { s: { "student.attitude": -2 }, morale: -3 }, result: "변명이 통하지 않았다. 감독님 귀에도 들어갔다.", fxAfter: { coach: -2 } },
     ] },
-  { id: "class_president", school: true, who: "teacher", when: { months: [3] }, once: true, cond: s => s.player.stats.student.attitude >= 60,
+  { id: "class_president", date: [[3, 3]], school: true, who: "teacher", when: { months: [3] }, once: true, cond: s => s.player.stats.student.attitude >= 50,
     text: "반장 선거에 너를 추천하는 애들이 있더라. 운동하면서 할 수 있겠니?",
     choices: [
       { label: "해 보겠습니다", fx: { s: { "student.attitude": 3, "mental.teamwork": 1 }, fatigue: 5 }, result: "반장이 됐다. 아침 조회를 맡게 됐다. 바쁘지만 뿌듯하다." },
       { label: "운동에 집중할게요", fx: { morale: 2 }, result: "선생님은 고개를 끄덕이셨다. \"그래, 그것도 용기야.\"" },
     ] },
-  { id: "field_trip", school: true, who: "narr", when: { months: [5, 10] }, once: true,
+  { id: "field_trip", date: [[10, 3]], school: true, who: "narr", when: { months: [5, 10] }, once: true,
     text: "학년 체험학습 날. 나로우주센터 견학이다. 그런데 그날 오후에 팀 자율 훈련이 잡혀 있다.",
     choices: [
       { label: "체험학습에 끝까지 간다", fx: { morale: 8, fatigue: -8, s: { "student.academic": 1 } }, result: "로켓 발사대 앞에서 친구들과 사진을 찍었다. 오랜만에 축구 생각이 안 났다." },
@@ -5914,12 +6581,16 @@ const EVENTS = [
       { label: "비 맞으며 훈련", fx: { s: { "mental.competitive": 1, "tech.firstTouch": 0.6 }, fatigue: 10, coach: 2 }, result: "젖은 잔디에서 공이 미끄러진다. 그래서 터치가 더 늘었다." },
       { label: "실내에서 영상 분석", fx: { s: { "mental.focus": 1 }, fatigue: -4 }, result: "지난 경기 영상을 돌려 봤다. 내가 공 없을 때 너무 서 있었다." },
       { label: "집에 가서 쉰다", fx: { fatigue: -12, coach: -1 }, result: "따뜻한 라면 한 그릇. 몸이 풀린다." },
+      { label: "빗속 체력 훈련을 자청한다", req: { "phys.stamina": 62 }, fx: { s: { "phys.stamina": 0.8, "mental.competitive": 0.4 }, fatigue: 6, coach: 2 },
+        result: "물 먹은 잔디 위를 왕복 스무 번. {coach}님께서 우산도 없이 끝까지 지켜보셨다. \"그래, 그런 놈이 경기 뛴다.\"" },
     ] },
   { id: "night_shooting", who: "coach", cond: s => s.relations.coach >= 55,
     text: "너, 남아서 슈팅 100개 찰 수 있냐? 다른 애들한테는 말 안 했다.",
     choices: [
       { label: "100개 차겠습니다", fx: { s: { "tech.shoot": 2, "mental.confidence": 0.5 }, fatigue: 14, coach: 3 }, result: "다리가 후들거렸지만 마지막 10개가 제일 잘 들어갔다." },
       { label: "오늘은 너무 지쳤습니다", fx: { fatigue: -4, coach: -1 }, result: "\"그래, 몸이 먼저다.\" 말은 그렇게 하셨지만 아쉬운 표정이었다." },
+      { label: "100개 전부 구석만 노린다", req: { "tech.shoot": 65 }, fx: { s: { "tech.shoot": 1, "mental.focus": 0.3 }, fatigue: 5, coach: 2 },
+        result: "왼쪽 위, 오른쪽 아래. 구석만 고집했다. 마지막 스무 개는 거의 다 들어갔다. 감독님이 말없이 공을 주워 주셨다." },
     ] },
   { id: "torn_boots", who: "narr",
     text: "축구화 밑창이 떨어졌다. 새 축구화는 20만 원이 넘는다.",
@@ -5933,11 +6604,13 @@ const EVENTS = [
       { label: "같이 간다", fx: { s: { "mental.focus": 1, "mental.confidence": 0.5 }, morale: 8, fatigue: -5 }, result: "같은 포지션 선수만 90분 내내 봤다. 공 없을 때 움직임이 전혀 달랐다." },
       { label: "훈련하겠다고 한다", fx: { s: { "position": 0.5 }, morale: -2 }, result: "아빠는 \"그래, 다음에 가자\" 하고 혼자 웃었다." },
     ] },
-  { id: "rival_bench", who: "rival", needs: "rival", cond: s => s.relations.people?.rival,
+  { id: "rival_bench", who: "rival", needs: "rival", cond: s => s.relations.people?.rival?.position === s.player.position,   // 같은 포지션일 때만
     text: "이번 주 연습경기에 감독님이 나를 네 자리에 세운대. 미안하다, 근데 양보 안 한다.",
     choices: [
       { label: "\"나도 안 진다\"", fx: { s: { "mental.competitive": 1.5 }, rel: { rival: 6 }, morale: 2 }, result: "둘 다 웃었다. 그날 미니게임은 거의 싸움이었다." },
       { label: "속으로 삭인다", fx: { morale: -5, s: { "mental.focus": 0.5 } }, result: "말없이 축구화 끈만 다시 맸다." },
+      { label: "\"그 자리, 훈련에서 다시 가져간다\"", req: { "mental.confidence": 62 }, fx: { s: { "mental.competitive": 0.6 }, morale: 2, rel: { rival: 3 } },
+        result: "{rival|이/가} 피식 웃었다. \"그 말 기다렸다.\" 그날 훈련은 둘 다 평소보다 한 시간 늦게 끝났다." },
     ] },
   { id: "rival_injury", who: "narr", needs: "rival", once: true,
     text: "{rival|이/가} 훈련 중 발목을 접질렸다. 일주일은 못 뛴다고 한다.",
@@ -5950,6 +6623,8 @@ const EVENTS = [
     choices: [
       { label: "그 자리에서 따라 해 본다", fx: { s: { "tech.firstTouch": 1, "mental.focus": 1 }, rel: { mentor: 5 } }, result: "고개를 한 번 돌렸을 뿐인데 다음 패스가 보였다." },
       { label: "고맙다고만 한다", fx: { rel: { mentor: 2 } }, result: "선배가 \"꼭 해 봐라\" 하고 돌아섰다." },
+      { label: "바로 미니게임에서 써 본다", req: { "mental.focus": 60 }, fx: { s: { "tech.firstTouch": 0.8, "mental.focus": 0.3 }, rel: { mentor: 2 } },
+        result: "공이 오기 전에 어깨 너머를 봤다. 받자마자 몸을 돌렸다. {mentor} 선배가 멀리서 엄지를 들었다." },
     ] },
   { id: "senior_mistake", who: "narr", needs: "mentor", when: { grades: [1, 2] },
     text: "라커룸 정리를 안 한 게 걸렸다. 사실 {mentor} 선배가 마지막에 나갔다. 감독님이 우리 학년을 보며 물으신다. \"누구야?\"",
@@ -5962,6 +6637,8 @@ const EVENTS = [
     choices: [
       { label: "내 중1 얘기를 해 준다", fx: { rel: { junior: 12 }, s: { "mental.teamwork": 1, "student.attitude": 0.5 }, fatigue: 2 }, result: "{junior|이/가} 한참 듣더니 \"내일도 나올게요\" 했다." },
       { label: "감독님께 말해 보라고 한다", fx: { rel: { junior: 3 } }, result: "{junior|은/는} 고개만 끄덕였다." },
+      { label: "\"오늘부터 나랑 같이 남아서 하자\"", req: { "rel.junior": 60 }, fx: { s: { "mental.teamwork": 0.6 }, fatigue: 3, rel: { junior: 5 } },
+        result: "그날부터 훈련 끝나고 30분씩 같이 공을 찼다. 일주일 뒤 {junior|이/가} 먼저 말했다. \"형, 내일도 남을 거죠?\"" },
     ] },
   { id: "junior_ask", who: "junior", needs: "junior",
     text: "형, 저 왼발 슈팅 좀 봐 주시면 안 돼요? 10분만요.",
@@ -5974,18 +6651,24 @@ const EVENTS = [
     choices: [
       { label: "솔직하게 부족했다고 말한다", fx: { coach: 4, s: { "student.attitude": 1 } }, result: "\"알면 됐다. 내일부터 보여 줘라.\"" },
       { label: "출전 기회를 달라고 한다", fx: { coach: -2, s: { "mental.confidence": 1 } }, result: "\"기회는 훈련에서 만드는 거다.\" 감독님은 그 말만 하셨다." },
+      { label: "\"팀을 위해 제가 뭘 하면 될까요\"", req: { "rel.coach": 65 }, fx: { s: { "mental.teamwork": 0.5 }, coach: 3 },
+        result: "감독님이 한참 나를 보셨다. \"그 질문을 하는 놈이 몇 없다.\" 수첩에 뭔가를 적으셨다." },
     ] },
   { id: "video_analysis", who: "assistant", cond: s => s.record.apps >= 3 && lastMatch(s)?.minutes > 0,
     text: "지난 경기에서 네가 나온 장면만 모아 봤다. 같이 볼래?",
     choices: [
       { label: "끝까지 같이 본다", fx: { s: { "mental.focus": 1.5 }, coach: 1, fatigue: -2 }, result: "실수한 장면을 다섯 번 돌려 봤다. 다음엔 안 그럴 것 같다." },
       { label: "잘한 장면만 보고 싶다", fx: { s: { "mental.confidence": 1 } }, result: "골 장면만 세 번 봤다. 기분은 좋다." },
+      { label: "내 실수 장면을 직접 골라 온다", req: { "mental.focus": 62 }, fx: { s: { "mental.focus": 0.6, "tech.firstTouch": 0.3 }, coach: 2 },
+        result: "실수 장면 다섯 개를 골라 갔다. 코치님이 놀라셨다. \"이걸 네가 먼저 찾아왔어?\" 그날 분석은 평소의 두 배로 길었다." },
     ] },
-  { id: "palyeong_hike", who: "coach", when: { months: [3, 9, 12, 1] },
+  { id: "palyeong_hike", date: [[9, 4]], cool: 70, who: "coach", when: { months: [3, 9, 12, 1] },
     text: "이번 주 체력 훈련은 팔영산이다. 정상까지 뛰어서 간다.",
     choices: [
       { label: "선두로 뛴다", fx: { s: { "phys.stamina": 1.5, "mental.competitive": 0.5 }, fatigue: 12, coach: 2 }, result: "정상에서 내려다본 다도해. 숨이 턱까지 찼지만 1등이었다." },
       { label: "페이스 조절한다", fx: { s: { "phys.stamina": 0.8 }, fatigue: 5 }, result: "중간쯤 들어왔다. 다리는 멀쩡하다." },
+      { label: "정상까지 쉬지 않고 뛰어 1등을 한다", req: { "phys.stamina": 66 }, fx: { s: { "phys.stamina": 1, "mental.competitive": 0.4 }, fatigue: 8, coach: 2, morale: 2 },
+        result: "팔영산 정상 바위에 제일 먼저 손을 댔다. 숨이 턱까지 찼지만, 아래로 다도해가 한눈에 들어왔다." },
     ] },
   // 경기에서 지면 다음 주에 자주 나옵니다 (엔진이 패배 직후 확률을 크게 올림)
   { id: "beach_training", bg: "ev_beach", who: "assistant", afterLoss: true, when: { months: [3, 4, 5, 6, 7, 8, 9, 10] },
@@ -6044,7 +6727,7 @@ const EVENTS = [
       { label: "친구들과 PC방에 간다", fx: { morale: 6, fatigue: -4, rel: { friend: 4 } }, result: "오랜만에 크게 웃었다." },
       { label: "축구 영상 강의를 결제한다", fx: { s: { "mental.focus": 1, "tech.pass": 0.4 } }, result: "패스 각도 강의를 세 번 돌려 봤다." },
     ] },
-  { id: "sibling_exam", who: "narr", once: true, when: { months: [11] },
+  { id: "sibling_exam", date: [[11, 3]], who: "narr", once: true, when: { months: [11] },
     text: "이번 주는 고3 누나의 수능이다. 집안 분위기가 무겁다. 엄마가 이번 주엔 조용히 지내 달라고 했다.",
     choices: [
       { label: "누나 도시락 심부름을 한다", fx: { morale: 4, s: { "student.attitude": 1 } }, result: "수능 끝나고 누나가 축구화 끈을 사 줬다." },
@@ -6104,6 +6787,8 @@ const EVENTS = [
     choices: [
       { label: "에이스처럼 공을 던진다", fx: { morale: 5, rel: { friend: 3 } }, result: "세 명을 연달아 맞혔다. 축구부는 피구도 잘한다는 소문이 났다." },
       { label: "친구들이 던지게 양보한다", fx: { s: { "mental.teamwork": 1 }, teacher: 1 }, result: "공을 넘겨줬더니 평소 조용하던 친구가 마지막 한 명을 맞혔다. 반이 이겼다." },
+      { label: "날아오는 공을 다 피해 끝까지 살아남는다", req: { "phys.agility": 60 }, fx: { s: { "phys.agility": 0.4 }, morale: 3 },
+        result: "왼쪽, 오른쪽, 점프. 마지막 한 명이 될 때까지 아무도 나를 못 맞혔다. 반 아이들이 \"민첩성 실화냐\"며 웃었다." },
     ] },
   { id: "s_bag", who: "narr", cond: s => !!lastMatch(s),
     text: "원정 다녀오는 버스에서 내렸는데, 축구화 가방이 없다. 버스는 이미 떠났다.",
@@ -6129,7 +6814,7 @@ const EVENTS = [
       { label: "바로 솔직하게 말한다", fx: { morale: -2, s: { "student.attitude": 1 } }, result: "엄마는 한숨을 쉬셨지만 혼내지는 않으셨다. \"대신 이번 달 용돈에서 반 낸다.\"" },
       { label: "케이스로 가리고 버틴다", fx: { morale: -3 }, result: "사흘 만에 들켰다. 엄마는 액정보다 거짓말에 더 화를 내셨다." },
     ] },
-  { id: "s_vote", school: true, who: "narr", when: { months: [3, 9] },
+  { id: "s_vote", date: [[3, 4]], cool: 70, school: true, who: "narr", when: { months: [3, 9] },
     text: "학급 체육부장을 뽑는다. 누군가 \"축구부가 해야지!\" 하며 내 이름을 칠판에 적었다.",
     choices: [
       { label: "맡겠다고 한다", fx: { s: { "mental.teamwork": 1, "student.attitude": 1 }, fatigue: 3, teacher: 2 }, result: "체육 시간마다 준비물을 챙기느라 바빠졌다. 그래도 반 아이들과 훨씬 가까워졌다." },
@@ -6141,7 +6826,7 @@ const EVENTS = [
       { label: "경기 이야기를 신나게 한다", fx: { teacher: 4, morale: 3 }, result: "선생님은 쉬는 시간이 끝날 때까지 들어 주셨다. \"다음 경기는 선생님도 보러 갈게.\"" },
       { label: "쑥스러워서 웃기만 한다", fx: { teacher: 2 }, result: "선생님이 웃으며 어깨를 두드리셨다. \"말 안 해도 다 안다.\"" },
     ] },
-  { id: "t_essay", bg: "ev_classroom", who: "teacher", school: true, once: true, when: { months: [4, 5, 10] },
+  { id: "t_essay", date: [[5, 2]], bg: "ev_classroom", who: "teacher", school: true, once: true, when: { months: [4, 5, 10] },
     text: "국어 시간, {teacher}께서 '나의 꿈'에 대해 한 쪽씩 써 오라고 하셨다. 집에 와서 원고지를 앞에 두고 한참을 앉아 있었다.",
     choices: [
       { label: "축구 선수의 꿈을 솔직하게 쓴다", fx: { teacher: 4, s: { "student.academic": 1, "mental.focus": 1 } }, result: "선생님이 빨간 펜으로 한 줄 남기셨다. \"꿈을 이렇게 구체적으로 쓴 글은 처음이다.\"" },
@@ -6346,8 +7031,10 @@ const EVENTS = [
         result: s => (s.relations.teacher ?? 50) >= 60
           ? "선생님이 웃으셨다. \"이번 한 번만이다.\" 새벽 2시까지 녹화를 했다. 둘 다 지켰다."
           : "\"규칙은 규칙이야.\" 결국 발표는 놓쳤다. 밤새 준비한 영상만 남았다." },
+      { label: "점심시간에 먼저 발표하게 해 달라고 부탁드린다", req: { "rel.teacher": 65 }, fx: { s: { "student.academic": 0.8 }, teacher: 2, coach: 1 },
+        result: "{teacher}께서 웃으며 허락하셨다. \"평소에 성실했으니까 가능한 거야.\" 발표도 하고, 연습경기도 뛰었다." },
     ] },
-  { id: "t_book", who: "teacher", school: true, once: true, when: { grades: [2], months: [9, 10, 11] },
+  { id: "t_book", date: [[10, 2]], who: "teacher", school: true, once: true, when: { grades: [2], months: [9, 10, 11] },
     text: "{teacher}께서 책 한 권을 건네신다. 축구 선수가 쓴 에세이다. \"읽고 한 줄만 써 와. 숙제 아니야.\"",
     choices: [
       { label: "그 주 안에 다 읽는다", fx: { s: { "mental.focus": 1, "student.academic": 1.5, "mental.confidence": 0.5 }, teacher: 6 }, result: "\"재능은 출발선일 뿐이다\"에 밑줄을 그었다. 그 문장을 써서 드렸다." },
@@ -6378,6 +7065,7 @@ const EVENTS = [
     ] },
   // ── 추가 이벤트 86개 (data/events2.js) ──
   ...EVENTS_MORE,
+  ...EVENTS_STORY,
 ];
 
 // 주장 선거 (중3 3월 2주차에 반드시 일어남). 결과는 엔진이 계산합니다.
@@ -6454,7 +7142,8 @@ const _bat = w => { const c = String(w).charCodeAt(String(w).length - 1); return
 
 
 
-const EVENT_CHANCE = 0.32;
+const EVENT_CHANCE = 0.42;                            // 한 주에 무작위 이벤트가 나올 확률
+const SECOND_CHANCE = 0.18;                          // 이벤트가 있는 주에 하나가 더 나올 확률
 const PORTRAIT = { coach: "npc_coach", assistant: "npc_assistant", teacher: "npc_teacher", mom: "npc_mom", dad: "npc_dad" };
 const SPEAKER = { coach: () => STAFF.coach, assistant: () => STAFF.assistant, teacher: () => STAFF.teacher, mom: () => "엄마", dad: () => "아빠" };
 
@@ -6468,7 +7157,7 @@ function eligible(state, ev, info) {
   if (ev.once && state.seenEvents?.includes(ev.id)) return false;
   // 한 번 본 이벤트는 한동안 다시 안 나옴 (보통 30주 ≈ 8개월, 시험 주 이벤트 20주, 경기 뒤 면담 12주)
   const last = state.eventLog?.[ev.id];
-  const cool = ev.afterLoss ? 8 : ev.urgent ? 12 : ev.exam ? 20 : 30;
+  const cool = ev.cool ?? (ev.afterLoss ? 8 : ev.urgent ? 12 : (ev.exam || ev.date) ? 20 : 30);   // cool: 이벤트마다 따로 정한 간격
   if (last != null && state.calendar.turn - last < cool) return false;
   try { if (ev.cond && !ev.cond(state)) return false; } catch { return false; }
   return true;
@@ -6490,29 +7179,26 @@ function blessingDue(state, info) {
   return info.month === w.last[0] && info.week === w.last[1] ? "force" : "maybe";
 }
 
-// 주 끝에 호출: 다음 주 시작 때 보여 줄 이벤트를 정해 둠
-function rollEvent(state) {
-  const info = turnInfo(state);
-  if (!info || state.pendingEvent) return;
+// 그 주의 첫 번째 이벤트 (우선순위 순서). 없으면 null
+function primaryEvent(state, info) {
   if (info.grade === 3 && info.month === 3 && info.week === 2 && !state.flags.captainVoted) {
-    state.pendingEvent = { id: CAPTAIN_EVENT.id };
-    return;
+    return CAPTAIN_EVENT.id;
   }
   // 학교 행사 (그 주에 반드시)
   const day = info.school.find(d => d.event && EVENTS.some(e => e.id === d.event));
-  if (day) { state.pendingEvent = { id: day.event }; return; }
+  if (day) return day.event;
   // 류봉두의 축복: 학기 마지막 기회 주간이면 생일·축하보다 먼저
   const due = blessingDue(state, info);
-  if (due === "force") { state.pendingEvent = { id: "t_blessing" }; return; }
+  if (due === "force") return "t_blessing";
   // 중간 목표: 정해진 날의 이벤트 (목표 면담, 선발전, 시상식, 중간 점검)
   const gfix = fixedGoalEvent(state, info);
-  if (gfix) { state.pendingEvent = { id: gfix }; return; }
+  if (gfix) return gfix;
   // 정기시험 주간: 시험 이벤트 하나는 반드시 (중1 1학기 수행평가 주간은 수행평가 이야기)
   if (info.exam) {
     const pool = EVENTS.filter(e => (info.exam.free ? e.assess : e.exam) && eligible(state, e, info));
     const all = EVENTS.filter(e => (info.exam.free ? e.assess : e.exam) && (!e.needs || person(state, e.needs)));
     const pickFrom = pool.length ? pool : all.sort((a, b) => (state.eventLog?.[a.id] ?? -99) - (state.eventLog?.[b.id] ?? -99)).slice(0, 2);
-    if (pickFrom.length) { state.pendingEvent = { id: weighted(pickFrom.map(e => [e, (e.weight || 1) * (state.seenEvents?.includes(e.id) ? 0.35 : 1)])).id }; return; }
+    if (pickFrom.length) return weighted(pickFrom.map(e => [e, (e.weight || 1) * (state.seenEvents?.includes(e.id) ? 0.35 : 1)])).id;
   }
   // 생일 주간: 1년에 한 번, 방학이면 집에서 / 학기 중이면 라커룸에서
   // (그 주에 학교 행사가 있으면 행사 없는 주까지 최대 3주 미룸. 어느 해 생일인지는 그 주의 턴 번호로 구분)
@@ -6520,8 +7206,7 @@ function rollEvent(state) {
   const given = state.flags.bdayGiven ||= [];
   if (bday && !given.includes(bday.turn)) {
     given.push(bday.turn);
-    state.pendingEvent = { id: info.vacation ? "bday_home" : "bday_team" };
-    return;
+    return info.vacation ? "bday_home" : "bday_team";
   }
   // 우승·준우승 축하: 대회가 끝난 뒤 3주 안에 (학교 행사 주간이면 다음 주로 미룸)
   const cel = state.flags.celebrate;
@@ -6530,27 +7215,57 @@ function rollEvent(state) {
     if (state.calendar.turn - cel.turn <= 3) {
       state.flags.lastCelebration = state.calendar.turn;
       state.celebration = cel;
-      state.pendingEvent = { id: { league: "cel_league", national: "cel_national", runnerUp: "cel_runnerup" }[cel.kind] };
-      return;
+      return { league: "cel_league", national: "cel_national", runnerUp: "cel_runnerup" }[cel.kind];
     }
   }
   // 조건을 채운 목표 이야기 (스카우트, 신문 인터뷰, 주장 언질, 목표 실패 면담)
   const gq = state.goals?.queue;
-  if (gq?.length) { state.pendingEvent = { id: gq.shift() }; return; }
+  if (gq?.length) return gq.shift();
   // 경기에서 졌다면 해변 모래 훈련이 먼저 찾아옴
   const beach = EVENTS.find(e => e.afterLoss);
-  if (beach && eligible(state, beach, info) && chance(0.35)) { state.pendingEvent = { id: beach.id }; return; }
+  if (beach && eligible(state, beach, info) && chance(0.35)) return beach.id;
   // 류봉두의 축복 (무작위)
-  if (blessingDue(state, info) && chance(0.16)) { state.pendingEvent = { id: "t_blessing" }; return; }
+  if (blessingDue(state, info) && chance(0.16)) return "t_blessing";
   // 경기 뒤 면담처럼 급한 이야기는 먼저
   const urgent = EVENTS.filter(e => e.urgent && eligible(state, e, info));
-  if (urgent.length && chance(0.75)) { state.pendingEvent = { id: pick(urgent).id }; return; }
-  if (!chance(EVENT_CHANCE)) return;
-  const list = EVENTS.filter(e => !e.afterLoss && !e.fixed && !e.urgent && !e.exam && eligible(state, e, info));
-  if (!list.length) return;
+  if (urgent.length && chance(0.75)) return pick(urgent).id;
+  if (!chance(EVENT_CHANCE)) return null;
+  return randomEvent(state, info, null);
+}
+
+// 무작위 이벤트 하나 (날짜·상황이 정해진 이벤트, 시험 주 이벤트는 빼고)
+function randomEvent(state, info, except) {
+  const list = EVENTS.filter(e => e.id !== except && !e.afterLoss && !e.fixed && !e.urgent && !e.exam && !e.date && !e.trigger && eligible(state, e, info));
+  if (!list.length) return null;
   // 처음 보는 이벤트를 더 자주, 방학에는 가족·고흥 이야기를 더 자주
-  const ev = weighted(list.map(e => [e, (e.weight || 1) * (state.seenEvents?.includes(e.id) ? 0.3 : 1) * (e.family && info.vacation ? 1.8 : 1)]));
-  state.pendingEvent = { id: ev.id };
+  return weighted(list.map(e => [e, (e.weight || 1) * (state.seenEvents?.includes(e.id) ? 0.3 : 1) * (e.family && info.vacation ? 1.8 : 1)])).id;
+}
+
+// 날짜(date: [[월, 주], …])나 상황(trigger)이 정해진 이벤트: 그 주에 조건이 맞으면 반드시
+function datedEvents(state, info) {
+  return EVENTS.filter(e => {
+    if (!e.date && !e.trigger) return false;
+    const on = e.date ? e.date.some(([m, w]) => m === info.month && w === info.week) : false;
+    let tr = false;
+    if (!on && e.trigger) { try { tr = !!e.trigger(state); } catch { tr = false; } }
+    return (on || tr) && eligible(state, e, info);
+  }).map(e => e.id);
+}
+
+// 주 끝에 호출: 다음 주 시작 때 보여 줄 이벤트를 정해 둠 (한 주에 두 개까지)
+function rollEvent(state) {
+  const info = turnInfo(state);
+  if (!info || state.pendingEvent) return;
+  const dated = datedEvents(state, info);
+  let first = primaryEvent(state, info);
+  if (!first && dated.length) first = dated.shift();
+  let second = null;
+  if (first) {
+    second = dated.find(id => id !== first) || null;
+    if (!second && chance(SECOND_CHANCE)) second = randomEvent(state, info, first);
+  }
+  if (first) state.pendingEvent = { id: first };
+  if (second && second !== first) state.pendingEvent2 = { id: second };
 }
 
 function eventVars(state) {
@@ -6607,10 +7322,29 @@ function applyFx(state, fx, changes) {
   }
 }
 
+// 능력치·관계가 일정 수준 이상일 때만 열리는 선택지 (req: { "tech.pass": 60, "rel.coach": 65 })
+const REQ_REL = { coach: "감독 신뢰", teacher: "담임 신뢰", friend: "친구 관계", rival: "라이벌 관계", mentor: "선배 관계", junior: "후배 관계" };
+function reqVal(state, k) {
+  if (k.startsWith("rel.")) {
+    const r = k.slice(4);
+    if (r === "coach" || r === "teacher") return state.relations[r] ?? 50;
+    return person(state, r)?.value ?? 0;
+  }
+  const [g, s] = k.split(".");
+  return state.player.stats[g]?.[s] ?? 0;
+}
+function reqOk(state, c) {
+  return !c?.req || Object.entries(c.req).every(([k, v]) => reqVal(state, k) >= v);
+}
+function reqText(c) {
+  return c?.req ? Object.entries(c.req).map(([k, v]) => `${k.startsWith("rel.") ? REQ_REL[k.slice(4)] || k : STAT_LABEL[k] || k} ${v}`).join(" · ") : "";
+}
+
 // 선택 반영. 돌려주는 값: 결과 문장과 바뀐 수치
 function chooseEvent(state, idx) {
   const pe = state.pendingEvent;
   const ev = findEvent(pe.id);
+  if (!reqOk(state, ev.choices[idx])) idx = Math.max(0, ev.choices.findIndex(x => reqOk(state, x)));   // 잠긴 선택지는 고를 수 없음
   const c = ev.choices[idx];
   const changes = [];
   let result;
@@ -6633,6 +7367,7 @@ function chooseEvent(state, idx) {
   state.eventLog ||= {};
   state.eventLog[ev.id] = state.calendar.turn;
   state.pendingEvent = null;
+  if (state.pendingEvent2) { state.pendingEvent = state.pendingEvent2; state.pendingEvent2 = null; }   // 같은 주 두 번째 이야기
   return { result, changes: changes.filter(x => Math.abs(x.d) >= 0.05) };
 }
 
@@ -6660,7 +7395,7 @@ function captainVote(state, run, changes) {
     : `${cap ? `추천한 ${cap}${_bat(cap) ? "이" : "가"}` : "추천한 친구가"} 주장이 됐다. 박수를 쳐 줬다.`;
 }
 
-return { findEvent, blessKey, blessedThisTerm, rollEvent, eventVars, eventView, chooseEvent };
+return { findEvent, blessKey, blessedThisTerm, rollEvent, eventVars, eventView, reqOk, reqText, chooseEvent };
 })();
 (__fix["js/engine/events.js"] || []).forEach(f => f());
 
@@ -6673,62 +7408,79 @@ __m["data/endings.js"] = (function () {
 // cond(c): c는 엔진이 계산한 3년 요약 (아래 career.js의 summarize 참고)
 // story(c): 엔딩 문장. 줄바꿈은 \n
 
+// 받침이 있는지 (조사 고르기)
+const batchim = w => { const c = String(w).charCodeAt(String(w).length - 1); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 !== 0; };
+
 const ENDINGS = [
   { id: "legend", grade: "L", title: "레전드", img: "ending_legend",
     cond: c => c.captain && c.wore10 && c.nationalChampion && c.nationalTeam,
-    story: c => `주장 완장, 등번호 10번, 전국대회 우승 트로피, 그리고 태극마크.\n\n고흥대서중 운동장 한쪽 벽에 ${c.name}의 이름이 새겨졌다. 후배들은 지금도 그 앞을 지나며 한 번씩 고개를 든다.\n\n${c.schoolName}에서 시작될 다음 이야기는, 이미 많은 사람이 기다리고 있다.` },
+    story: c => `주장 완장, 등번호 10번, 전국대회 우승 트로피, 그리고 태극마크.\n\n고흥대서중 운동장 한쪽 벽에 ${c.name}의 이름이 새겨졌다. 후배들은 지금도 그 앞을 지나며 한 번씩 고개를 든다.\n\n${c.schoolName}에서 시작될 다음 이야기는, 이미 많은 사람이 기다리고 있다.`,
+    later: c => `스무 살 겨울, 프로 데뷔전. 등번호는 여전히 10번이다.\n\n경기가 끝나고 휴대폰을 켜니 고흥대서중 축구부 단톡방이 난리가 나 있었다. 이제는 얼굴도 모르는 후배들이 경기 캡처를 올리고 있다.\n\n다음 주말엔 운동장에 들러 공 몇 개 차 주기로 했다.` },
 
   { id: "national", grade: "S", title: "청소년 국가대표", img: "ending_national",
     cond: c => c.nationalTeam,
-    story: c => `U-15 대표팀 소집 명단, 맨 아래에 ${c.name}의 이름이 있었다.\n\n고흥에서 파주까지는 버스로 다섯 시간. 창밖을 보다가 입단 첫날 측정표가 떠올랐다. 그때 그 숫자들이 여기까지 왔다.\n\n봄에는 ${c.schoolName} 유니폼을 입는다.` },
+    story: c => `U-15 대표팀 소집 명단, 맨 아래에 ${c.name}의 이름이 있었다.\n\n고흥에서 파주까지는 버스로 다섯 시간. 창밖을 보다가 입단 첫날 측정표가 떠올랐다. 그때 그 숫자들이 여기까지 왔다.\n\n봄에는 ${c.schoolName} 유니폼을 입는다.`,
+    later: c => `대표팀 훈련장 라커룸. 옆자리 선수가 묻는다. "고흥? 거기서도 축구를 해?"\n\n웃으며 대답했다. "바다 보이는 운동장이 있어. 바람이 세서 공이 자꾸 밀려."\n\n그 바람 덕분에 크로스 하나는 누구보다 낮게 찬다.` },
 
   { id: "pro", grade: "S", title: "프로 유스 입단", img: "ending_pro",
     cond: c => c.tier === "proYouth",
-    story: c => `${c.schoolName}의 하얀 훈련복을 받았다. 가슴에 프로 구단 엠블럼이 박혀 있다.\n\n중학교 3년 동안 ${c.apps}경기, ${c.goals}골. 숫자보다 오래 남는 건 비 오는 날 혼자 남아 찼던 슈팅들이다.\n\n이제부터는 매일이 시험이다.` },
+    story: c => `${c.schoolName}의 하얀 훈련복을 받았다. 가슴에 프로 구단 엠블럼이 박혀 있다.\n\n중학교 3년 동안 ${c.apps}경기, ${c.goals}골. 숫자보다 오래 남는 건 비 오는 날 혼자 남아 찼던 슈팅들이다.\n\n이제부터는 매일이 시험이다.`,
+    later: c => `프로 2군 경기장. 관중석은 듬성듬성하지만 맨 앞줄 아저씨 목소리는 크다. 아빠다.\n\n아직 1군 명단에 오른 적은 없다. 대신 한 번도 훈련에 늦은 적이 없다.\n\n코치가 그 이야기를 감독에게 했다는 소문이 돈다.` },
 
   { id: "comeback", grade: "H", title: "역전의 아이콘", img: "ending_highschool",
     cond: c => c.wasBenchInG1 && c.g3StartRatio >= 0.85 && c.g3Rating >= 7.6 && c.ovr >= 70,
-    story: c => `중1 때는 벤치에서 물통을 날랐다. 경기 명단에 이름이 없는 날이 더 많았다.\n\n중3, ${c.nameEun} 팀에서 가장 먼저 이름이 불리는 선수가 됐다. 3학년 평균 평점 ${c.g3Rating.toFixed(2)}.\n\n늦게 핀 꽃이 가장 오래간다는 말, 이제는 조금 믿게 됐다. ${c.schoolName}에서도 그럴 것이다.` },
+    story: c => `중1 때는 벤치에서 물통을 날랐다. 경기 명단에 이름이 없는 날이 더 많았다.\n\n중3, ${c.nameEun} 팀에서 가장 먼저 이름이 불리는 선수가 됐다. 3학년 평균 평점 ${c.g3Rating.toFixed(2)}.\n\n늦게 핀 꽃이 가장 오래간다는 말, 이제는 조금 믿게 됐다. ${c.schoolName}에서도 그럴 것이다.`,
+    later: c => `대학 축구부 주전 명단 맨 위에 ${c.name}의 이름이 있다.\n\n후배 하나가 벤치에서 고개를 숙이고 있길래 옆에 앉았다. "나도 중1 땐 물통만 날랐어."\n\n그 말을 믿지 않는 눈치였다. 그래서 그날 훈련은 그 후배랑 같이 남았다.` },
 
   { id: "captain", grade: "H", title: "주장", img: "ending_captain",
     cond: c => c.captain,
-    story: c => `1년 동안 주황색 완장을 찼다.\n\n잘한 날보다, 진 날 라커룸에서 먼저 일어나 박수를 친 날들이 더 기억에 남는다. 후배들은 ${c.nameEul} "형"보다 "주장"이라고 더 많이 불렀다.\n\n졸업식 날, 완장은 ${c.juniorName || "후배"}에게 넘어갔다. ${c.schoolName}에서 또 다른 시작이다.` },
+    story: c => `1년 동안 주황색 완장을 찼다.\n\n잘한 날보다, 진 날 라커룸에서 먼저 일어나 박수를 친 날들이 더 기억에 남는다. 후배들은 ${c.nameEul} "형"보다 "주장"이라고 더 많이 불렀다.\n\n졸업식 날, 완장은 ${c.juniorName || "후배"}에게 넘어갔다. ${c.schoolName}에서 또 다른 시작이다.`,
+    later: c => `고흥대서중 운동장. 휴가 나온 김에 들렀다가 후배들 훈련을 지켜본다.\n\n주황색 완장을 찬 아이가 동료들한테 소리를 지르고 있다. 목소리가 갈라진다. 그 모습이 낯설지 않다.\n\n훈련이 끝나고 그 아이에게 음료수 하나를 건넸다. "목은 아껴. 진 날 써야 하니까."` },
 
   { id: "model", grade: "H", title: "모범 학생선수", img: "ending_graduate",
     cond: c => c.academic >= 75 && c.attitude >= 75,
-    story: c => `졸업식에서 ${c.teacherName}께서 ${c.name}의 이름을 한 번 더 부르셨다. 학교장상.\n\n훈련 끝나고 도서관, 시험 전날엔 단톡방 대신 문제집. 축구도 공부도 놓지 않은 3년이었다.\n\n${c.schoolName}에서도 그 균형은 계속된다.` },
+    story: c => `졸업식에서 ${c.teacherName}께서 ${c.name}의 이름을 한 번 더 부르셨다. 학교장상.\n\n훈련 끝나고 도서관, 시험 전날엔 단톡방 대신 문제집. 축구도 공부도 놓지 않은 3년이었다.\n\n${c.schoolName}에서도 그 균형은 계속된다.`,
+    later: c => `체육교육과 강의실 맨 앞줄. 운동장과 책상 사이에서 3년을 버텼던 게 여기까지 이어졌다.\n\n교생 실습은 고흥대서중으로 신청했다. ${c.teacherName}께서 전화로 웃으셨다. "이제 선생님이라고 불러야 하냐?"\n\n아직은 아니다. 대신 축구부 아이들 공부는 봐 줄 수 있다.` },
 
   { id: "injury", grade: "D", title: "부상으로 좌절", img: "ending_setback",
     cond: c => c.injuryWeeks >= 14 && c.g3Rating < 7.1 && ["footballHS", "general", "regional", "none"].includes(c.tier),
-    story: c => `3년 중 ${c.injuryWeeks}주를 재활실에서 보냈다.\n\n몸이 회복되면 다른 곳이 아팠다. 쉬어야 할 때 쉬지 못했던 날들이 하나씩 떠오른다.\n\n그래도 축구화를 버리지는 않았다. 몸을 아끼는 법을 배운 것도 3년의 결과다.` },
+    story: c => `3년 중 ${c.injuryWeeks}주를 재활실에서 보냈다.\n\n몸이 회복되면 다른 곳이 아팠다. 쉬어야 할 때 쉬지 못했던 날들이 하나씩 떠오른다.\n\n그래도 축구화를 버리지는 않았다. 몸을 아끼는 법을 배운 것도 3년의 결과다.`,
+    later: c => `재활 트레이너 자격증 시험장. 수험표를 쥔 손이 조금 떨린다.\n\n3년 동안 재활실에서 본 것, 들은 것, 아팠던 것. 그게 전부 공부가 됐다.\n\n언젠가 다친 아이가 찾아오면 제일 먼저 이렇게 말해 줄 거다. "아픈 건 숨기는 게 아니야."` },
 
   { id: "nationalSchool", grade: "A", title: "전국 강호 진학", img: "ending_highschool",
     cond: c => c.tier === "national",
-    story: c => `${c.schoolName}. 전국대회 단골 우승 후보.\n\n입학 테스트 날, 운동장에 선 1학년만 서른 명이 넘었다. 고흥에서는 에이스였지만 여기서는 다시 맨 아래부터다.\n\n괜찮다. 중1 때도 그랬으니까.` },
+    story: c => `${c.schoolName}. 전국대회 단골 우승 후보.\n\n입학 테스트 날, 운동장에 선 1학년만 서른 명이 넘었다. 고흥에서는 에이스였지만 여기서는 다시 맨 아래부터다.\n\n괜찮다. 중1 때도 그랬으니까.`,
+    later: c => `대학 리그 결승전. 상대 팀 명단에 낯익은 이름이 보인다. ${c.rivalName ? `${c.rivalName}.` : "중학교 때 함께 뛰던 동기."}\n\n경기 전 악수를 하면서 둘 다 웃음을 참지 못했다. "아직도 오른쪽으로만 치고 가냐?"\n\n경기 결과는 중요하지 않았다. 아니, 사실 중요했다. 그래서 끝까지 뛰었다.` },
 
   { id: "regionalBest", grade: "A", title: "지역 최고의 선수", img: "ending_highschool",
     cond: c => c.tier === "regional" && (c.g3Rating >= 7.1 || c.g3LeagueTitle),
-    story: c => `전남 권역 주말리그에서 ${c.nameIrane} 이름을 모르는 지도자는 없었다.\n\n3년 통산 ${c.apps}경기 ${c.goals}골 ${c.assists}도움. ${c.schoolEun} 망설이지 않고 손을 내밀었다.\n\n더 큰 무대는 이제부터다.` },
+    story: c => `전남 권역 주말리그에서 ${c.nameIrane} 이름을 모르는 지도자는 없었다.\n\n3년 통산 ${c.apps}경기 ${c.goals}골 ${c.assists}도움. ${c.schoolEun} 망설이지 않고 손을 내밀었다.\n\n더 큰 무대는 이제부터다.`,
+    later: c => `전남 지역 실업팀 입단 테스트. 운동장에 들어서자 바닷바람이 분다. 고흥에서 맡던 냄새다.\n\n테스트가 끝나고 감독이 다가와 물었다. "고흥대서중 출신이라고? 그 팀 경기 몇 번 봤다."\n\n합격 통보는 사흘 뒤에 왔다.` },
 
   { id: "academicBan", grade: "D", title: "학업 부진으로 출전 정지", img: "ending_setback",
     cond: c => c.suspended >= 4,
-    story: c => `공식 경기에 ${c.suspended}번 나서지 못했다. 이유는 부상이 아니라 성적표였다.\n\n관중석에서 동료들 경기를 보던 날들이 가장 길었다. "공부도 훈련이다." 감독님 말이 그제야 들렸다.\n\n고등학교에서는 다르게 할 수 있다. 아직 늦지 않았다.` },
+    story: c => `공식 경기에 ${c.suspended}번 나서지 못했다. 이유는 부상이 아니라 성적표였다.\n\n관중석에서 동료들 경기를 보던 날들이 가장 길었다. "공부도 훈련이다." 감독님 말이 그제야 들렸다.\n\n고등학교에서는 다르게 할 수 있다. 아직 늦지 않았다.`,
+    later: c => `대학 스포츠학과 2학년. 성적표 맨 위 평점이 생각보다 높다.\n\n중학교 때 관중석에서 보낸 그 경기들을 가끔 떠올린다. 그날의 억울함이 책상 앞에 앉게 만들었다.\n\n주말엔 지역 클럽에서 공을 찬다. 이번엔 출전 정지 같은 건 없다.` },
 
   { id: "dream", grade: "C", title: "벤치의 꿈", img: "ending_bench",
     cond: c => c.g3StartRatio < 0.3 && c.apps > 0 && c.apps < 50,
-    story: c => `3년 동안 경기에 나선 건 ${c.apps}번. 선발 명단에 이름이 오른 날은 손에 꼽았다.\n\n유니폼은 늘 깨끗했다. 그래도 경기 전날마다 축구화 끈을 새로 묶었다. 언젠가 부를지 모르니까.\n\n꿈은 아직 벤치 위에 그대로 있다.` },
+    story: c => `3년 동안 경기에 나선 건 ${c.apps}번. 선발 명단에 이름이 오른 날은 손에 꼽았다.\n\n유니폼은 늘 깨끗했다. 그래도 경기 전날마다 축구화 끈을 새로 묶었다. 언젠가 부를지 모르니까.\n\n꿈은 아직 벤치 위에 그대로 있다.`,
+    later: c => `지역 유소년 클럽 코치. 초등학생들이 공보다 먼저 달려와 다리에 매달린다.\n\n벤치에 앉아 있던 3년 동안 경기장을 누구보다 오래 봤다. 그 눈이 지금 아이들 움직임을 읽는다.\n\n"코치님은 선수 때 골 많이 넣었어요?" 웃으며 대답했다. "벤치에서 제일 크게 응원했어."` },
 
   { id: "bench", grade: "C", title: "만년 후보", img: "ending_bench",
     cond: c => c.g3StartRatio < 0.3,
-    story: c => `3학년이 돼서도 선발 명단에 이름이 올라간 날은 손에 꼽았다.\n\n그래도 훈련엔 한 번도 빠지지 않았다. 대부분 교체로 나선 ${c.apps}경기, 그 몇 분을 위해 3년을 뛰었다.\n\n${c.schoolName}에서 다시 시작한다. 벤치에서 본 것들도 다 실력이 된다.` },
+    story: c => `3학년이 돼서도 선발 명단에 이름이 올라간 날은 손에 꼽았다.\n\n그래도 훈련엔 한 번도 빠지지 않았다. 대부분 교체로 나선 ${c.apps}경기, 그 몇 분을 위해 3년을 뛰었다.\n\n${c.schoolName}에서 다시 시작한다. 벤치에서 본 것들도 다 실력이 된다.`,
+    later: c => `동네 조기축구회 최연소 회원. 아저씨들 사이에서 ${c.nameEun} 늘 선발이다.\n\n경기가 끝나면 아저씨들이 막걸리 대신 사이다를 따라 준다. "젊은 게 최고야."\n\n공을 차는 이유가 조금 바뀌었다. 그래도 축구화 끈은 여전히 두 번 묶는다.` },
 
   { id: "study", grade: "B", title: "공부형 학생선수", img: "ending_graduate",
     cond: c => c.tier === "general" && c.academic >= 70,
-    story: c => `${c.schoolName}에 진학했다. 축구부가 아니라 일반 진학이다.\n\n후회는 없다. 3년 동안 배운 건 공 차는 법만이 아니었다. 지는 법, 버티는 법, 다시 일어나는 법.\n\n주말이면 여전히 고흥대서중 운동장에 나가 후배들 공을 받아 준다.` },
+    story: c => `${c.schoolName}에 진학했다. 축구부가 아니라 일반 진학이다.\n\n후회는 없다. 3년 동안 배운 건 공 차는 법만이 아니었다. 지는 법, 버티는 법, 다시 일어나는 법.\n\n주말이면 여전히 고흥대서중 운동장에 나가 후배들 공을 받아 준다.`,
+    later: c => `대학 도서관에서 밤을 새우고 나오는 길. 학교 운동장에서 누군가 공을 차고 있다.\n\n가방을 내려놓고 한 번만 차 달라고 했다. 발등에 맞는 감각이 그대로다.\n\n${c.friendName ? `${c.friendName}한테 사진을 보냈다. "아직 안 죽었네 ㅋㅋ" 답장이 바로 왔다.` : "몸은 기억하고 있었다."}` },
 
   { id: "ordinary", grade: "B", title: "평범한 학생선수", img: "ending_graduate",
     cond: () => true,
-    story: c => `특별한 기록은 없었다. ${c.apps}경기, ${c.goals}골, 그리고 3년.\n\n그래도 운동장에서 웃던 날이 훨씬 많았다. ${c.friendName ? `친구 ${c.friendName}하고` : "친구하고"} 바닷가를 걷던 저녁도, 비 맞으며 찼던 공도 다 남았다.\n\n${c.schoolName}에서도 공은 계속 찬다.` },
+    story: c => `특별한 기록은 없었다. ${c.apps}경기, ${c.goals}골, 그리고 3년.\n\n그래도 운동장에서 웃던 날이 훨씬 많았다. ${c.friendName ? `친구 ${c.friendName}하고` : "친구하고"} 바닷가를 걷던 저녁도, 비 맞으며 찼던 공도 다 남았다.\n\n${c.schoolName}에서도 공은 계속 찬다.`,
+    later: c => `명절에 고흥에 내려왔다. ${c.friendName ? `${c.friendName}${batchim(c.friendName) ? "이랑" : "랑"}` : "친구랑"} 방파제에 앉아 캔 음료를 딴다.\n\n"우리 그때 진짜 열심히 했다." "그치. 근데 골은 네가 더 못 넣었어." "아니거든."\n\n바다 위로 해가 진다. 운동장 조명이 하나둘 켜지는 게 보인다. 누군가 아직 공을 차고 있다.` },
 ];
 
 const GRADE_INFO = {
@@ -6877,7 +7629,7 @@ function summarize(state) {
     nationalTeam: !!state.flags.nationalTeam, wasBenchInG1: !!state.flags.wasBenchInG1,
     academic: p.stats.student.academic, attitude: p.stats.student.attitude,
     injuryWeeks: r.injuryWeeks || 0, suspended: r.matches.filter(m => m.reason?.includes("학업")).length,
-    teacherName: STAFF.teacher, friendName: person(state, "friend")?.name, juniorName: person(state, "junior")?.name,
+    teacherName: STAFF.teacher, friendName: person(state, "friend")?.name, juniorName: person(state, "junior")?.name, rivalName: person(state, "rival")?.name,
     height: p.body.height, titles: r.titles, teacher: state.relations.teacher ?? 50,
     earned: (r.earned || []).length,
   };
@@ -7070,10 +7822,12 @@ function academicLevel(v) {
 function runWeek(state) {
   const ctx = beginWeek(state);
   let result = null;
-  if (ctx.fx) {
-    const m = prepareMatch(state, ctx.info, ctx.fx);
+  for (let fx = ctx.fx; fx;) {
+    const m = prepareMatch(state, ctx.info, fx);
     autoPlay(state, m);
     result = finishMatch(state, m);
+    const nx = fx.jn && result.result === "승" ? currentFixture(state) : null;   // 소년체전은 이기면 같은 주에 다음 경기
+    fx = nx?.jn ? nx : null;
   }
   return endWeek(state, ctx, result);
 }
@@ -7702,7 +8456,7 @@ const {STATUS_LABEL} = __m["js/engine/match.js"];
 const {ovr} = __m["js/engine/team.js"];
 const {readSlot, saveTo, deleteSlot, exportCode, importCode} = __m["js/state.js"];
 const {esc, fl, signed, img, faceOf, fillText} = __m["js/ui/util.js"];
-const {eventView, eventVars, chooseEvent} = __m["js/engine/events.js"];
+const {eventView, eventVars, chooseEvent, reqOk, reqText} = __m["js/engine/events.js"];
 const {meetingScript, applyMeeting} = __m["js/engine/advice.js"];
 const {STAFF} = __m["data/roster.js"];
 const {reduced, countUp} = __m["js/ui/fx.js"];
@@ -7995,7 +8749,12 @@ function eventModal(app, done) {
         <p class="ev-text">${esc(fillText(v.text, vars))}</p>
       </div>
     </div>
-    <div class="vn-choices" id="evc">${v.ev.choices.map((c, i) => `<button class="vn-choice" style="--i:${i}" data-i="${i}">${esc(fillText(c.label, vars))}</button>`).join("")}</div>`;
+    <div class="vn-choices" id="evc">${v.ev.choices.map((c, i) => {
+      if (!c.req) return `<button class="vn-choice" style="--i:${i}" data-i="${i}">${esc(fillText(c.label, vars))}</button>`;
+      const ok = reqOk(state, c);
+      return `<button class="vn-choice special ${ok ? "open" : "locked"}" style="--i:${i}" ${ok ? `data-i="${i}"` : `disabled aria-disabled="true"`}>
+        <span class="sp-tag">${ok ? "★ 열린 선택" : "🔒 잠김"}</span>${esc(fillText(c.label, vars))}<small class="sp-req">${esc(reqText(c))} 이상${ok ? "" : " 필요"}</small></button>`;
+    }).join("")}</div>`;
   openModal(html, (el, close) => {
     el.querySelectorAll("[data-i]").forEach(b => b.addEventListener("click", () => {
       const r = chooseEvent(state, +b.dataset.i);
@@ -8076,12 +8835,14 @@ const {openModal} = __m["js/ui/modals.js"];
 // 능력치가 오르면 난이도 단계(LV.1~4)가 올라 더 빠르고 방해물이 많아집니다. 등급과 배율 기준은 그대로입니다.
 
 const GRADES = { S: 1.5, A: 1.25, B: 1.0, C: 0.8 };
-const STAT_FOR = { shooting: "tech.shoot", passing: "tech.pass", dribble: "tech.dribble", weight: "phys.strength" };
+const STAT_FOR = { shooting: "tech.shoot", passing: "tech.pass", dribble: "tech.dribble", weight: "phys.strength", defend: "tech.defense", sprint: "phys.speed" };
 const INFO = {
   shooting: { title: "슈팅 훈련", tag: "SHOOTING DRILL", how: "조준점이 골문 위를 움직입니다. 골키퍼를 피해 구석을 노려 누르세요. 다섯 번 찹니다.", btn: "슈팅" },
   passing:  { title: "패스 훈련", tag: "PASSING DRILL", how: "동료 등번호를 1부터 6까지 순서대로 빠르게 누르세요. 흰 유니폼 상대를 누르면 끊깁니다.", btn: null },
   dribble:  { title: "드리블 훈련", tag: "DRIBBLE DRILL", how: "달려드는 수비를 왼쪽·오른쪽으로 피하세요. 12초 버티면 끝입니다. 방향키나 화면을 밀어서도 움직일 수 있습니다.", btn: null },
   weight:   { title: "웨이트 트레이닝", tag: "STRENGTH", how: "줄어드는 원이 주황 테두리에 닿는 순간 누르세요. 여섯 번 들어 올립니다.", btn: "들어 올리기" },
+  defend:   { title: "수비 훈련", tag: "DEFENDING", how: "공격수의 어깨가 기우는 쪽(주황 화살표)으로 ◀ ▶ 옮겨 서고, 초록 띠 안에 들어왔을 때 태클하세요. 여섯 번 막습니다.", btn: null },
+  sprint:   { title: "스프린트 훈련", tag: "SPEED DRILL", how: "GO! 신호가 나오면 왼발·오른발을 번갈아 빠르게 누르세요. 같은 발을 두 번 누르면 스텝이 꼬입니다. 40m 달리기.", btn: null },
 };
 const ease = v => Math.max(0, Math.min(1, (v - 20) / 60));
 function statFor(kind) { return STAT_FOR[kind]; }
@@ -8094,6 +8855,8 @@ const LV_NOTE = {
   passing:  ["", "", "상대가 한 명 늘고 시간이 줄었습니다.", "상대 선수들이 패스 길로 움직입니다.", "상대가 더 많고, 시간이 더 짧습니다."],
   dribble:  ["", "", "수비가 더 빨리 달려옵니다.", "두 명이 한꺼번에 막아섭니다.", "더 빠르고, 더 자주 두 명이 막습니다."],
   weight:   ["", "", "원이 더 빨리 줄어듭니다.", "원이 줄어드는 속도가 매번 바뀝니다.", "판정 범위가 좁아졌습니다."],
+  defend:   ["", "", "공격수가 더 빨리 들어옵니다.", "한 번 속이고 들어오는 공격수가 있습니다.", "더 빠르고, 태클 범위가 좁습니다."],
+  sprint:   ["", "", "옆 레인 선수들이 더 빠릅니다.", "옆 레인 선수들이 더 빠릅니다.", "전국 대회급 기록을 내야 합니다."],
 };
 
 // 공통 그래픽 조각
@@ -8237,6 +9000,8 @@ const PREVIEW = {
   },
   dribble: (area, tall) => { area.innerHTML = `<div class="mgd-wrap">${dribbleScene(tall)}</div>`; },
   weight: (area, tall) => { area.innerHTML = weightScene(tall); wtDraw(area.querySelector("svg"), 1); },
+  defend: (area, tall) => { area.innerHTML = `<div class="mgd-wrap">${defendScene(tall)}</div>`; },
+  sprint: (area, tall) => { area.innerHTML = sprintScene(tall); area.querySelectorAll("#spMeb, #spR1b, #spR2b").forEach((g, i) => spDraw(g, 0.6 + i)); },
 };
 
 // ── 슈팅 ────────────────────────────
@@ -8361,7 +9126,7 @@ function shooting(area, status, ctl, e, done, lv = 1, tall = false) {
   const period = (1500 - e * 650) * [1, 1, 0.86, 0.76, 0.68][lv];   // 단계가 오를수록 조준점이 빨라짐
   const gkW = (26 - e * 8) * 1.32;                                    // 골키퍼가 막는 폭 (가로 160 기준)
   const MID = (GX0 + GX1) / 2, HALF = (GX1 - GX0) / 2 - 4;
-  let shot = 0, score = 0, x = MID, y = 40, t0 = performance.now(), raf, lock = false, gkC = MID, gkBase = MID, gkPh = Math.random() * 6;
+  let shot = 0, score = 0, x = MID, y = 40, t0 = performance.now(), raf, anim, lock = false, gkC = MID, gkBase = MID, gkPh = Math.random() * 6;
   const setGk = (c, smooth) => { gkC = c; gk.style.transition = smooth ? "" : "none"; gk.style.transform = `translateX(${c}px)`; };
   const placeGk = () => { gkBase = MID - 28 + Math.random() * 56; setGk(gkBase, true); };
   gk.style.transform = `translateX(${MID}px)`;
@@ -8386,11 +9151,35 @@ function shooting(area, status, ctl, e, done, lv = 1, tall = false) {
     const corner = x < GX0 + 24 || x > GX1 - 24;
     const p = saved ? 0 : corner ? 2 : 1;
     score += p;
-    // 공이 날아가며 작아지고, 골키퍼가 몸을 날림
-    ball.style.transition = "transform .36s cubic-bezier(.15,.7,.3,1)";
-    ball.style.transform = `translate(${x - 80}px, ${y - 85.6}px) scale(.55) rotate(540deg)`;
-    shadow.style.transition = "transform .36s cubic-bezier(.15,.7,.3,1), opacity .36s";
-    shadow.style.transform = `translate(${(x - 80) * 0.9}px, ${GLINE - 88}px) scale(.5)`; shadow.style.opacity = ".4";
+    // 공은 휘어지는 궤적(2차 베지어)을 따라 날아가며 작아지고, 그림자는 땅 위를 따라감.
+    // 막히면 골키퍼 손에 맞고 바깥으로 튕겨 떨어지고, 들어가면 그물에 걸려 골라인 안쪽에 떨어짐
+    const cx0 = 80 + (x - 80) * 0.35, cy0 = 84 - (84 - y) * 0.15 - 18;
+    const put = (bx, by, sc, rot, gy, so) => {
+      ball.style.transition = "none"; shadow.style.transition = "none";
+      ball.style.transform = `translate(${(bx - 80).toFixed(2)}px, ${(by - 85.6).toFixed(2)}px) scale(${sc.toFixed(3)}) rotate(${rot.toFixed(0)}deg)`;
+      shadow.style.transform = `translate(${((bx - 80) * 0.95).toFixed(2)}px, ${(gy - 88).toFixed(2)}px) scale(${(sc * 0.95).toFixed(3)})`; shadow.style.opacity = so.toFixed(2);
+    };
+    const tween = (ms, f, then) => {
+      const st = performance.now();
+      const step = now => { const u = Math.min(1, (now - st) / ms); f(u); if (u < 1) anim = requestAnimationFrame(step); else then?.(); };
+      anim = requestAnimationFrame(step);
+    };
+    const sideOut = x < gkC ? -1 : 1;
+    tween(330, u => {
+      const k = 1 - (1 - u) * (1 - u), a = 1 - k;
+      const bx = a * a * 80 + 2 * a * k * cx0 + k * k * x, by = a * a * 85.6 + 2 * a * k * cy0 + k * k * y;
+      put(bx, by, 1 - 0.45 * k, 540 * k, 88 + (GLINE - 88) * k, 1 - 0.6 * k);
+    }, () => {
+      if (saved) tween(470, u => {                       // 손에 맞고 바깥·아래로 튕김 (포물선)
+        const bx = x + sideOut * 20 * u, by = y - 10 * Math.sin(u * Math.PI) + (GLINE + 5 - y) * u * u;
+        put(bx, by, 0.55 + 0.08 * u, 540 + 400 * u * sideOut, GLINE + 5 * u, 0.4);
+      });
+      else tween(480, u => {                             // 그물에 걸려 멈췄다가 떨어지며 한 번 튐
+        const fall = u < 0.7 ? (u / 0.7) ** 2 : 1 - 0.12 * Math.sin((u - 0.7) / 0.3 * Math.PI);
+        const bx = x + (MID - x) * 0.06 * u, by = y + 2 + (GLINE - 3 - y - 2) * fall;
+        put(bx, by, 0.55 - 0.05 * u, 540 + 120 * u, GLINE - 3, 0.4);
+      });
+    });
     // 막을 때는 공 쪽으로 정확히, 먹힐 때는 한 박자 늦게 짧게 몸을 날림
     const dx = Math.max(-26, Math.min(26, (x - gkC) * (saved ? 1 : 0.45)));
     const high = Math.max(0, Math.min(1, (GLINE - y - 10) / 26));          // 높은 공일수록 위로 뜀
@@ -8420,6 +9209,7 @@ function shooting(area, status, ctl, e, done, lv = 1, tall = false) {
     }, 300);
     setTimeout(() => {
       area.querySelector("#balls").insertAdjacentHTML("beforeend", `<g transform="translate(${x},${y}) scale(.42)" opacity="${saved ? .35 : .7}">${BALL(2.9)}</g>`);
+      cancelAnimationFrame(anim);
       ball.style.transition = "none"; ball.style.transform = "";
       shadow.style.transition = "none"; shadow.style.transform = ""; shadow.style.opacity = "";
       keeper.style.transform = "";
@@ -8431,7 +9221,7 @@ function shooting(area, status, ctl, e, done, lv = 1, tall = false) {
   ctl.querySelector("[data-act]").addEventListener("click", fire);
   const key = ev => { if (ev.code === "Space" || ev.key === "Enter") { ev.preventDefault(); fire(); } };
   document.addEventListener("keydown", key);
-  return () => { cancelAnimationFrame(raf); document.removeEventListener("keydown", key); };
+  return () => { cancelAnimationFrame(raf); cancelAnimationFrame(anim); document.removeEventListener("keydown", key); };
 }
 
 // ── 패스 ────────────────────────────
@@ -9011,7 +9801,335 @@ function weight(area, status, ctl, e, done, lv = 1, tall = false) {
   return () => { cancelAnimationFrame(raf); document.removeEventListener("keydown", key); };
 }
 
-const GAMES = { shooting, passing, dribble, weight };
+
+// ── 수비 ────────────────────────────
+// 드리블 훈련과 같은 원근 화면을 반대로 씀: 공을 가진 공격수가 멀리서 나를 향해 달려옴.
+// 어깨가 한쪽으로 기울면(주황 화살표) 그쪽 길로 옮겨 서고, 초록 띠 안에 들어왔을 때 태클.
+// 같은 길 + 가운데(진한 띠) 2점 / 같은 길 + 띠 안 1점 / 다른 길·너무 이르거나 늦음 0점. 여섯 번.
+const DF_C = 76;                                                  // 태클 판정 기준 깊이 (fy)
+function dfBand(y0, y1, cls) {
+  const a = drY(y0), b = drY(y1);
+  return `<polygon class="${cls}" points="${drX(-0.5, a).toFixed(1)},${a.toFixed(1)} ${drX(2.5, a).toFixed(1)},${a.toFixed(1)} ${drX(2.5, b).toFixed(1)},${b.toFixed(1)} ${drX(-0.5, b).toFixed(1)},${b.toFixed(1)}"/>`;
+}
+function defendScene(tall = false, good = 11, perfect = 4) {
+  const svg = dribbleScene(tall);
+  const zone = `<g id="dfZone">${dfBand(DF_C - good, DF_C + good, "df-good")}${dfBand(DF_C - perfect, DF_C + perfect, "df-perfect")}</g>`;
+  return svg.replace('<g id="drBack"></g>', `${zone}<g id="drBack"></g>`)
+    .replace(/<g id="drBall"[\s\S]*?<\/g><\/g>/, "");             // 내 공은 없음 (공은 공격수가 가짐)
+}
+function defend(area, status, ctl, e, done, lv = 1, tall = false) {
+  const N = 6;
+  const speed = (31 - e * 9) * [1, 1, 1.12, 1.22, 1.32][lv];     // 공격수가 다가오는 속도 (fy/초)
+  const good = (9 + e * 4) * (lv >= 4 ? 0.85 : 1), perfect = (3 + e * 1.8) * (lv >= 4 ? 0.85 : 1);
+  const fakeP = [0, 0, 0, 0.35, 0.5][lv];                         // LV.3부터 한 번 속이고 들어옴
+  area.innerHTML = `<div class="mgd-wrap" id="lanes">${defendScene(tall, good, perfect)}</div>
+    <div class="mg-hud"><span class="mg-dots" id="dots">${"<i></i>".repeat(N)}</span><span id="pts" class="num">0점</span></div>`;
+  ctl.innerHTML = `<button class="btn mg-dir" data-l aria-label="왼쪽으로">◀</button><button class="btn btn-kit mg-act mg-tackle" data-t>태클!</button><button class="btn mg-dir" data-r aria-label="오른쪽으로">▶</button>`;
+  const lanes = area.querySelector("#lanes"), dots = area.querySelectorAll("#dots i"), ptsEl = area.querySelector("#pts");
+  const stripesG = area.querySelector("#drStripes"), backG = area.querySelector("#drBack"), frontG = area.querySelector("#drFront"), fxG = area.querySelector("#drFx");
+  const meG = area.querySelector("#drMe"), leanG = area.querySelector("#drLean"), legs = area.querySelector("#drLegs"), armsMe = area.querySelector("#drMe .mgd-arms");
+  const legL = legs.querySelector(".mgd-legL"), legR = legs.querySelector(".mgd-legR");
+  // 서 있는 수비라 잔디는 멈춰 있음
+  const NS = 9;
+  stripesG.innerHTML = Array.from({ length: NS }, (_, i) => {
+    const a = (i / NS) * 120 - 10, b = ((i + 1) / NS) * 120 - 10, ya = drY(a), yb = Math.min(DRB.BOT, drY(b));
+    return ya >= DRB.BOT ? "" : `<polygon fill="${i % 2 ? "rgba(255,255,255,.055)" : "rgba(0,0,0,.05)"}" points="${drX(-1, ya).toFixed(1)},${ya.toFixed(1)} ${drX(3, ya).toFixed(1)},${ya.toFixed(1)} ${drX(3, yb).toFixed(1)},${yb.toFixed(1)} ${drX(-1, yb).toFixed(1)},${yb.toFixed(1)}"/>`;
+  }).join("");
+  const msg = document.createElementNS("http://www.w3.org/2000/svg", "text");
+  msg.setAttribute("class", "mg-shmsg"); msg.setAttribute("x", "80"); msg.setAttribute("y", (DRB.HOR + 22).toFixed(1)); msg.setAttribute("text-anchor", "middle");
+  fxG.parentNode.appendChild(msg);
+  let myLane = 1, px = 80, n = 0, score = 0, atk = null, raf, last = performance.now(), run = 0, tackle = null, wait = 0, shuffle = 0;
+  const setLane = k => { const v = Math.max(0, Math.min(2, k)); if (v !== myLane) shuffle = 1; myLane = v; };
+  const spawn = () => {
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    g.setAttribute("class", "mgd-foe df-atk");
+    g.innerHTML = `<g class="mgd-foeB">${drRunner(true)}<g class="df-ball" transform="translate(4.2,-1.4)"><ellipse cy="1.4" rx="2" ry=".7" fill="rgba(0,0,0,.45)"/><g class="df-ballB">${BALL(1.8)}</g></g></g>`;
+    backG.appendChild(g);
+    const feintAt = 30 + Math.random() * 16;
+    atk = { el: g, body: g.firstChild, ball: g.querySelector(".df-ball"), ballB: g.querySelector(".df-ballB"), y: -8, lane: 1, vis: 1,
+      dir: Math.random() < 0.5 ? -1 : 1, feintAt, fakeAt: Math.random() < fakeP ? feintAt - 15 : null, feinted: false, faked: false, lean: 0, leanT: 0,
+      ph: Math.random() * 6, front: false, done: false, out: false };
+  };
+  const cue = (dir, y, s) => {
+    const x = drX(atk.vis, y);
+    fxG.insertAdjacentHTML("beforeend", `<g class="df-cue" transform="translate(${(x + dir * 9 * s).toFixed(1)},${(y - 30 * s).toFixed(1)}) scale(${(s * 1.2).toFixed(2)})"><path d="M${-dir * 2} -3 L${dir * 2} 0 L${-dir * 2} 3" /><path d="M${-dir * 5} -3 L${-dir * 1} 0 L${-dir * 5} 3" opacity=".55"/></g>`);
+    const c = fxG.lastElementChild; setTimeout(() => c.remove(), 520);
+  };
+  const say = (t, cls) => { msg.textContent = t; msg.setAttribute("class", `mg-shmsg show ${cls}`); setTimeout(() => msg.setAttribute("class", "mg-shmsg"), 650); };
+  const resolve = (pts, text, how) => {
+    if (!atk || atk.done) return;
+    atk.done = true; score += pts;
+    dots[n].className = pts === 2 ? "top" : pts === 1 ? "hit" : "miss";
+    n++; ptsEl.textContent = `${score}점`;
+    status.innerHTML = `<b class="${pts ? "up" : "down"}">${text}</b>`;
+    const y = drY(atk.y);
+    if (pts) {
+      atk.out = true;                                               // 공을 빼앗음: 공이 내 쪽으로 튀어 옴
+      atk.body.setAttribute("transform", `translate(${myLane > atk.lane ? -3 : 3},2) rotate(${atk.dir * 38})`);
+      atk.ball.style.transition = "transform .35s cubic-bezier(.2,.8,.3,1)";
+      atk.ball.setAttribute("transform", `translate(${(px - drX(atk.vis, y)) / drS(y) * 0.6},${((DR_ME_Y - y) / drS(y)) * 0.55})`);
+      burst(fxG, drX(atk.vis, y), y - 4, { n: pts === 2 ? 16 : 10, spread: pts === 2 ? 16 : 11 });
+      if (pts === 2) { lanes.classList.remove("shake"); void lanes.offsetWidth; lanes.classList.add("shake"); }
+      say(pts === 2 ? "PERFECT" : "WIN", "goal");
+    } else {
+      say(how === "early" ? "TOO EARLY" : "BEATEN", "save");
+      burst(fxG, px, DR_ME_Y - 6, { n: 8, colors: ["#FFFFFF", "#FF3B4E"], spread: 9, size: .9 });
+    }
+    wait = performance.now() + 950;
+  };
+  const press = () => {
+    if (!atk || atk.done || tackle) return;
+    tackle = { t: performance.now(), dir: Math.sign(drX(atk.vis, drY(atk.y)) - px) || 0 };
+    if (atk.y < DF_C - good - 8) return resolve(0, "너무 일찍 들어갔다!", "early");
+    const diff = Math.abs(atk.y - DF_C), same = myLane === atk.lane;
+    if (!same) return resolve(0, "방향을 읽히지 못했다…", "side");
+    resolve(diff <= perfect ? 2 : diff <= good ? 1 : 0, diff <= perfect ? "완벽한 태클!" : diff <= good ? "공을 빼냈다" : atk.y < DF_C ? "조금 일렀다…" : "한 발 늦었다…", "time");
+  };
+  ctl.querySelector("[data-l]").addEventListener("pointerdown", () => setLane(myLane - 1));
+  ctl.querySelector("[data-r]").addEventListener("pointerdown", () => setLane(myLane + 1));
+  ctl.querySelector("[data-t]").addEventListener("pointerdown", e2 => { e2.preventDefault(); press(); });
+  const key = ev => {
+    if (ev.key === "ArrowLeft") setLane(myLane - 1);
+    else if (ev.key === "ArrowRight") setLane(myLane + 1);
+    else if (ev.code === "Space" || ev.key === "Enter") { ev.preventDefault(); press(); }
+  };
+  document.addEventListener("keydown", key);
+  spawn();
+  const loop = now => {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (atk) {
+      if (!atk.out) atk.y += speed * dt * (atk.done ? 1.15 : 1);
+      // 속임 동작 → 진짜 방향 전환
+      if (atk.fakeAt != null && !atk.faked && atk.y >= atk.fakeAt) { atk.faked = true; atk.lean = -atk.dir; atk.leanT = now; cue(-atk.dir, drY(atk.y), drS(drY(atk.y))); }
+      if (!atk.feinted && atk.y >= atk.feintAt) { atk.feinted = true; atk.lane = 1 + atk.dir; atk.lean = atk.dir; atk.leanT = now; cue(atk.dir, drY(atk.y), drS(drY(atk.y))); }
+      atk.vis += (atk.lane - atk.vis) * (1 - Math.exp(-dt * 8));
+      const y = drY(atk.y), s = drS(y);
+      if (!atk.front && atk.y > DRB.ME) { atk.front = true; frontG.appendChild(atk.el); }
+      atk.el.setAttribute("transform", `translate(${drX(atk.vis, y).toFixed(2)},${y.toFixed(2)}) scale(${(s * 1.05).toFixed(3)})`);
+      if (!atk.done) {
+        const lean = now - atk.leanT < 380 ? atk.lean * 16 * Math.sin((now - atk.leanT) / 380 * Math.PI) : 0;
+        atk.body.setAttribute("transform", `rotate(${lean.toFixed(1)})`);
+        const sw = Math.sin(now / 75 + atk.ph) * 26, lg = atk.body.querySelector(".mgd-legs"), am = atk.body.querySelector(".mgd-arms");
+        if (lg) { lg.children[0].setAttribute("transform", `rotate(${sw.toFixed(1)} -2 -8)`); lg.children[1].setAttribute("transform", `rotate(${(-sw).toFixed(1)} 2 -8)`); }
+        if (am) { am.children[0].setAttribute("transform", `rotate(${(-sw * 0.9).toFixed(1)} -5.6 -20)`); am.children[1].setAttribute("transform", `rotate(${(sw * 0.9).toFixed(1)} 5.6 -20)`); }
+        const tch = Math.abs(Math.sin(now / 150 + atk.ph));
+        atk.ball.setAttribute("transform", `translate(${(4.2 + Math.sin(now / 150) * 1).toFixed(2)},${(-1.4 - tch * 1.6).toFixed(2)})`);
+        atk.ballB.setAttribute("transform", `rotate(${(now / 3 % 360).toFixed(0)})`);
+      }
+      if (!atk.done && atk.y > DF_C + good + 5) resolve(0, "뚫렸다! 태클 타이밍을 놓쳤다", "late");
+      if (atk.done && now > wait) {
+        atk.el.remove(); atk = null; tackle = null;
+        if (n >= N) { cancelAnimationFrame(raf); document.removeEventListener("keydown", key); return done(score >= 10 ? "S" : score >= 7 ? "A" : score >= 4 ? "B" : "C"); }
+        spawn(); status.textContent = "";
+      }
+    }
+    // 나: 옆걸음(사이드 스텝), 태클하면 몸을 던짐
+    const tx = drX(myLane, DR_ME_Y), vx = tx - px;
+    px += vx * (1 - Math.exp(-dt * 16));
+    shuffle = Math.max(0, shuffle - dt * 3);
+    run += dt * (6 + shuffle * 14);
+    const sw = Math.sin(run) * (8 + shuffle * 18);
+    legL.setAttribute("transform", `rotate(${sw.toFixed(1)} -2 -8)`); legR.setAttribute("transform", `rotate(${(-sw).toFixed(1)} 2 -8)`);
+    if (armsMe) { armsMe.children[0].setAttribute("transform", `rotate(${(-40 - sw * 0.4).toFixed(1)} -5.6 -20)`); armsMe.children[1].setAttribute("transform", `rotate(${(40 + sw * 0.4).toFixed(1)} 5.6 -20)`); }
+    let lean = Math.max(-12, Math.min(12, vx * 0.4)), dy = Math.abs(Math.sin(run)) * 0.5, dx = 0;
+    if (tackle) {
+      const u = Math.min(1, (now - tackle.t) / 260);
+      lean = (tackle.dir || 1) * 55 * Math.sin(u * Math.PI / 2); dy = -4 * u; dx = (tackle.dir || 0) * 4 * u;
+    }
+    meG.setAttribute("transform", `translate(${(px + dx).toFixed(2)},${(DR_ME_Y + dy - 0.5).toFixed(2)})`);
+    leanG.setAttribute("transform", `rotate(${lean.toFixed(1)})`);
+    raf = requestAnimationFrame(loop);
+  };
+  raf = requestAnimationFrame(loop);
+  return () => { cancelAnimationFrame(raf); document.removeEventListener("keydown", key); };
+}
+
+// ── 스프린트 ─────────────────────────
+// 야간 육상 트랙을 옆에서 본 40m 달리기. 왼발·오른발 버튼을 번갈아 눌러 달림 (같은 발을 두 번 누르면 스텝이 꼬여 느려짐).
+// 옆 레인 두 명(흰 유니폼)은 정해진 기록으로 달림. 내 기록이 기준 시간 T 대비 0.93배 이하 S / 1.0배 A / 1.15배 B / 그보다 느리면 C.
+const SP_M = 40, SP_PX = 6;                                       // 거리(m), 1m = 6
+const SP_LANES = [{ y: 67, k: 0.56 }, { y: 80.5, k: 0.62 }, { y: 94, k: 0.68 }];   // 위(먼 레인)부터. 나는 가운데
+function spPose(ph) {
+  const dir = a => [Math.sin(a * Math.PI / 180), Math.cos(a * Math.PI / 180)];
+  const add = (p, v, l) => [p[0] + v[0] * l, p[1] + v[1] * l];
+  const bob = -Math.abs(Math.sin(ph)) * 1.1;
+  const H = [0, -13.2 + bob], S = [2.6, -23 + bob], head = [4.9, -26.4 + bob];
+  const leg = p => {
+    const th = 40 * Math.sin(p), kb = 18 + 62 * (0.5 + 0.5 * Math.sin(p + 1.9));
+    const K = add(H, dir(th), 7.2), F = add(K, dir(th - kb), 7);
+    return { K, F, toe: add(F, dir(th - kb + 90), 2.6) };
+  };
+  const arm = p => {
+    const ua = -34 * Math.sin(p), E = add(S, dir(ua), 5.4), Hd = add(E, dir(ua + 82), 4.6);
+    return { E, Hd };
+  };
+  return { H, S, head, legA: leg(ph), legB: leg(ph + Math.PI), armA: arm(ph + Math.PI), armB: arm(ph) };
+}
+function spRunnerSVG(id, us) {
+  const shirt = us ? "url(#mgShirtO)" : "url(#mgShirtW)", shorts = us ? "url(#mgNavy)" : "url(#mgBlue)", sock = us ? "#FF6B1A" : "#F4F6FF";
+  return `<g id="${id}">
+    <ellipse class="sp-sh" cx="1" cy=".6" rx="7" ry="1.4" fill="rgba(0,0,0,.42)"/>
+    <path class="sp-armB" fill="${us ? "#C9520F" : "#AEB5CC"}"/><path class="sp-foreB" fill="#C98C66"/>
+    <path class="sp-thighB" fill="${us ? "#1A2470" : "#2638B8"}"/><path class="sp-shinB" fill="#C98C66"/><path class="sp-sockB" fill="${sock}" opacity=".85"/><path class="sp-shoeB" fill="#0E0F14"/>
+    <path class="sp-torso" fill="${shirt}" stroke="${us ? "#B4430B" : "#8E97B5"}" stroke-width=".3"/>
+    <path class="sp-shorts" fill="${shorts}"/>
+    <path class="sp-thighA" fill="${shorts}"/><path class="sp-shinA" fill="url(#mgSkin)"/><path class="sp-sockA" fill="${sock}"/><path class="sp-shoeA" fill="#111"/>
+    <path class="sp-armA" fill="${us ? "#F06318" : "#E9ECF6"}"/><path class="sp-foreA" fill="url(#mgSkin)"/>
+    <circle class="sp-head" r="3.3" fill="url(#mgSkin)"/><path class="sp-hair" fill="#17171C"/>
+    ${us ? `<text class="sp-tag" text-anchor="middle">나</text>` : ""}
+  </g>`;
+}
+function spDraw(g, ph) {
+  const p = spPose(ph), q = s => g.querySelector(s);
+  const legD = (L, pre) => {
+    q(`.sp-thigh${pre}`).setAttribute("d", limb(p.H, L.K, 4.4, 3.4, 0.9));
+    q(`.sp-shin${pre}`).setAttribute("d", limb(L.K, L.F, 3.2, 2.1, 0.8));
+    const sk = [L.K[0] + (L.F[0] - L.K[0]) * 0.62, L.K[1] + (L.F[1] - L.K[1]) * 0.62];
+    q(`.sp-sock${pre}`).setAttribute("d", limb(sk, L.F, 2.6, 2.2, 0));
+    q(`.sp-shoe${pre}`).setAttribute("d", limb([L.F[0] - 0.6, L.F[1]], L.toe, 2.4, 1.6, 0.2));
+  };
+  legD(p.legB, "B"); legD(p.legA, "A");
+  q(".sp-armB").setAttribute("d", limb(p.S, p.armB.E, 2.6, 2.1, 0.5)); q(".sp-foreB").setAttribute("d", limb(p.armB.E, p.armB.Hd, 2, 1.6, 0.3));
+  q(".sp-armA").setAttribute("d", limb(p.S, p.armA.E, 2.8, 2.2, 0.6)); q(".sp-foreA").setAttribute("d", limb(p.armA.E, p.armA.Hd, 2.1, 1.7, 0.3));
+  q(".sp-torso").setAttribute("d", limb(p.S, p.H, 6.2, 5.2, 0.8));
+  q(".sp-shorts").setAttribute("d", limb([p.H[0] + 0.3, p.H[1] - 1.4], [p.H[0] + 0.3, p.H[1] + 1.8], 5.6, 5.2, 0.2));
+  const h = q(".sp-head"); h.setAttribute("cx", p.head[0].toFixed(2)); h.setAttribute("cy", p.head[1].toFixed(2));
+  const [hx, hy] = p.head;
+  q(".sp-hair").setAttribute("d", `M${hx - 3.4} ${hy - 0.6} Q${hx - 3.2} ${hy - 4} ${hx + 0.2} ${hy - 3.8} Q${hx + 3.2} ${hy - 3.6} ${hx + 3.1} ${hy - 1.2} Q${hx + 0.6} ${hy - 2.4} ${hx - 1.4} ${hy - 1.6} Q${hx - 2.6} ${hy - 0.4} ${hx - 3.4} ${hy - 0.6} Z`);
+  const tag = q(".sp-tag"); if (tag) { tag.setAttribute("x", hx.toFixed(1)); tag.setAttribute("y", (hy - 5.6).toFixed(1)); }
+}
+function sprintScene(tall = false) {
+  const top = tall ? -24 : 0;
+  const crowd = crowdRows(tall ? Array.from({ length: 7 }, (_, i) => -1 + i * 5.4) : [15, 20.4, 25.8, 31.2], 46, 3.6, 7);
+  let marks = "";
+  for (let m = 0; m <= SP_M + 10; m += 5) {
+    const x = m * SP_PX;
+    marks += `<g transform="translate(${x},0)"><path d="M0 56 L-4 96" stroke="rgba(255,255,255,${m % 10 ? .25 : .5})" stroke-width="${m % 10 ? .4 : .7}"/>
+      ${m % 10 === 0 && m <= SP_M ? `<text x="-1.5" y="54.6" text-anchor="middle" class="sp-mark">${m}m</text>` : ""}</g>`;
+  }
+  const fx = SP_M * SP_PX;
+  const checker = Array.from({ length: 10 }, (_, i) => `<path d="M${fx - i * 0.4 + (i % 2) * 0} ${56 + i * 4} l1.6 0 l-.4 4 l-1.6 0 z" fill="${i % 2 ? "#fff" : "#111"}"/><path d="M${fx + 1.6 - i * 0.4} ${56 + i * 4} l1.6 0 l-.4 4 l-1.6 0 z" fill="${i % 2 ? "#111" : "#fff"}"/>`).join("");
+  return `<svg viewBox="${tall ? "16 -24 128 120" : "0 0 160 96"}" class="mg-svg mgs">
+    <defs>${COMMON_DEFS}${STADIUM_DEFS}
+      <linearGradient id="spSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#02030A"/><stop offset="1" stop-color="#18235E"/></linearGradient>
+      <linearGradient id="spTrack" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8E3420"/><stop offset=".4" stop-color="#B4452A"/><stop offset="1" stop-color="#C9532F"/></linearGradient>
+      <radialGradient id="spPool" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="rgba(255,248,215,.22)"/><stop offset="1" stop-color="rgba(255,248,215,0)"/></radialGradient>
+      <radialGradient id="spVig" cx=".5" cy=".55" r=".75"><stop offset=".55" stop-color="rgba(0,0,0,0)"/><stop offset="1" stop-color="rgba(0,0,0,.55)"/></radialGradient>
+      <pattern id="spGrain" width="3" height="3" patternUnits="userSpaceOnUse"><circle cx=".7" cy=".9" r=".18" fill="rgba(0,0,0,.18)"/><circle cx="2.2" cy="2.1" r=".15" fill="rgba(255,255,255,.07)"/></pattern>
+    </defs>
+    <rect y="${top}" width="160" height="${96 - top}" fill="url(#spSky)"/>
+    <path d="M-10 ${top} H170 V${top + 4} Q80 ${top + 7} -10 ${top + 4} Z" fill="#05081A"/>
+    ${floodBank(tall ? 34 : 24, top + 6, 11)}${floodBank(tall ? 126 : 136, top + 6, 11)}
+    <path d="M0 ${tall ? -6 : 11} H160 V36 H0 Z" fill="#0A1134"/>${crowd}
+    <rect x="0" y="26" width="160" height="10" fill="url(#mgHaze)"/>
+    ${boards(36, 6)}
+    <rect x="0" y="42" width="160" height="14" fill="#187A41"/><rect x="0" y="42" width="160" height="14" fill="url(#spPool)"/>
+    <rect x="0" y="55" width="160" height="41" fill="url(#spTrack)"/><rect x="0" y="55" width="160" height="41" fill="url(#spGrain)"/>
+    <g stroke="rgba(255,255,255,.75)" stroke-width=".5"><path d="M0 56 H160"/><path d="M0 69.5 H160"/><path d="M0 83 H160"/><path d="M0 95.6 H160"/></g>
+    <ellipse cx="60" cy="78" rx="80" ry="22" fill="url(#spPool)"/>
+    <g id="spWorld">${marks}${checker}
+      <g id="spTape"><path d="M${fx + 1.5} 57 Q${fx + 2.5} 76 ${fx + 1.5} 95" stroke="#FFC93C" stroke-width=".7" fill="none"/></g>
+    </g>
+    <g id="spSpeed"></g>
+    <g transform="translate(0,${SP_LANES[0].y}) scale(${SP_LANES[0].k})"><g id="spR1">${spRunnerSVG("spR1b", false)}</g></g>
+    <g transform="translate(0,${SP_LANES[1].y}) scale(${SP_LANES[1].k})"><g id="spMe">${spRunnerSVG("spMeb", true)}</g></g>
+    <g transform="translate(0,${SP_LANES[2].y}) scale(${SP_LANES[2].k})"><g id="spR2">${spRunnerSVG("spR2b", false)}</g></g>
+    <g id="spFx"></g>
+    <text id="spCount" x="80" y="${tall ? 24 : 40}" text-anchor="middle" class="sp-count"></text>
+    <rect y="${top}" width="160" height="${96 - top}" fill="url(#spVig)" pointer-events="none"/>
+  </svg>
+  <div class="mg-hud"><span class="mg-timer sp-speed"><i id="spBar"></i></span><span id="spTime" class="num">0.00초</span></div>`;
+}
+function sprint(area, status, ctl, e, done, lv = 1, tall = false) {
+  const T = (6.5 - e * 0.9) * [1, 1, 0.97, 0.94, 0.91][lv];    // 기준 기록(초)
+  const vmax = 9.6 + e * 1.6, IMP = 2.05, DRAG = 1.9;
+  area.innerHTML = sprintScene(tall);
+  ctl.innerHTML = `<button class="btn mg-dir sp-foot" data-f="L">왼발</button><button class="btn mg-dir sp-foot" data-f="R">오른발</button>`;
+  const world = area.querySelector("#spWorld"), tape = area.querySelector("#spTape"), fxG = area.querySelector("#spFx"), speedG = area.querySelector("#spSpeed");
+  const me = area.querySelector("#spMe"), meB = area.querySelector("#spMeb"), r1 = area.querySelector("#spR1"), r1B = area.querySelector("#spR1b"), r2 = area.querySelector("#spR2"), r2B = area.querySelector("#spR2b");
+  const count = area.querySelector("#spCount"), bar = area.querySelector("#spBar"), timeEl = area.querySelector("#spTime");
+  speedG.innerHTML = Array.from({ length: 7 }, () => `<line class="mg-speed"/>`).join("");
+  const slines = [...speedG.children];
+  // 옆 레인 선수: 정해진 기록으로 가속하며 달림 (위치 = v·(t − τ(1 − e^(−t/τ))))
+  const TAU = 0.62;
+  const vFor = tf => SP_M / (tf - TAU * (1 - Math.exp(-tf / TAU)));
+  const rivals = [{ g: r1, b: r1B, tf: T * 0.93, k: SP_LANES[0].k }, { g: r2, b: r2B, tf: T * 1.0, k: SP_LANES[2].k }].map(r => ({ ...r, v: vFor(r.tf) }));
+  const rPos = (r, t) => Math.min(SP_M + 6, r.v * (t - TAU * (1 - Math.exp(-t / TAU))));
+  let phase = "count", t0 = performance.now(), goT = 0, pos = 0, v = 0, lastFoot = null, raf, last = t0, finishT = null, stumble = 0, ended = false;
+  const ph = () => pos * 2.05;
+  const tap = f => {
+    if (phase !== "run" || finishT != null) return;
+    if (f === lastFoot) {
+      v *= 0.55; stumble = 1;
+      status.innerHTML = `<b class="down">스텝이 꼬였다!</b>`;
+      fxG.insertAdjacentHTML("beforeend", `<g transform="translate(${(pos * SP_PX - Math.max(0, pos * SP_PX - (tall ? 56 : 52)) + (tall ? 22 : 8)).toFixed(1)},${SP_LANES[1].y})">${Array.from({ length: 6 }, (_, i) => `<circle class="mgd-dust" r="${(0.8 + (i % 3) * 0.4).toFixed(1)}" style="--dx:${(-4 - i * 1.6).toFixed(1)}px;--dy:${(-1 - (i % 3)).toFixed(1)}px"/>`).join("")}</g>`);
+      const d = fxG.lastElementChild; setTimeout(() => d.remove(), 650);
+    } else { v = Math.min(vmax, v + IMP); if (status.textContent) status.textContent = ""; }
+    lastFoot = f;
+    const b = ctl.querySelector(`[data-f="${f}"]`); b?.classList.remove("hit"); void b?.offsetWidth; b?.classList.add("hit");
+  };
+  ctl.querySelectorAll("[data-f]").forEach(b => b.addEventListener("pointerdown", ev => { ev.preventDefault(); tap(b.dataset.f); }));
+  const key = ev => {
+    if (ev.repeat) return;
+    if (["ArrowLeft", "a", "A", "z", "Z"].includes(ev.key)) { ev.preventDefault(); tap("L"); }
+    if (["ArrowRight", "d", "D", "x", "X", "/"].includes(ev.key)) { ev.preventDefault(); tap("R"); }
+  };
+  document.addEventListener("keydown", key);
+  const finish = () => {
+    if (ended) return; ended = true;
+    const t = finishT ?? (performance.now() - goT) / 1000;
+    const rank = 1 + rivals.filter(r => r.tf < t).length;
+    status.innerHTML = `<b class="${rank === 1 ? "up" : ""}">${finishT != null ? `${t.toFixed(2)}초 · ${rank}위` : "시간 초과"}</b>`;
+    setTimeout(() => done(finishT == null ? "C" : t <= T * 0.93 ? "S" : t <= T ? "A" : t <= T * 1.15 ? "B" : "C"), 900);
+  };
+  const loop = now => {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (phase === "count") {
+      const k = (now - t0) / 1000;
+      const txt = k < 0.6 ? "READY" : k < 1.2 ? "SET" : "GO!";
+      if (count.textContent !== txt) { count.textContent = txt; count.setAttribute("class", `sp-count show ${txt === "GO!" ? "go" : ""}`); }
+      if (k >= 1.2) { phase = "run"; goT = now; setTimeout(() => count.setAttribute("class", "sp-count"), 500); }
+    }
+    const t = goT ? (now - goT) / 1000 : 0;
+    if (phase === "run") {
+      v = Math.max(0, v - v * DRAG * dt);
+      if (finishT == null) {
+        pos += v * dt;
+        if (pos >= SP_M) {
+          finishT = t - (pos - SP_M) / Math.max(0.1, v);
+          tape.setAttribute("class", "broken");
+          burst(fxG, tall ? 78 : 60, SP_LANES[1].y - 10, { n: 16, spread: 16 });
+          setTimeout(finish, 700);
+        }
+      } else pos += v * dt * 0.6;
+      if (t > T * 1.7 && finishT == null) { phase = "over"; finish(); }
+      timeEl.textContent = `${(finishT ?? t).toFixed(2)}초`;
+    }
+    stumble = Math.max(0, stumble - dt * 2.5);
+    const cam = Math.max(0, pos * SP_PX - (tall ? 56 : 52)) - (tall ? 22 : 8);
+    world.setAttribute("transform", `translate(${(-cam).toFixed(2)},0)`);
+    me.setAttribute("transform", `translate(${((pos * SP_PX - cam) / SP_LANES[1].k).toFixed(2)},0) rotate(${(stumble * -12).toFixed(1)})`);
+    spDraw(meB, ph());
+    rivals.forEach(r => {
+      const p = goT ? rPos(r, t) : 0;
+      r.g.setAttribute("transform", `translate(${((p * SP_PX - cam) / r.k).toFixed(2)},0)`);
+      spDraw(r.b, p * 2.05);
+    });
+    const sp = v / vmax;
+    bar.style.width = `${Math.round(sp * 100)}%`;
+    bar.className = sp > 0.8 ? "hot" : "";
+    slines.forEach((ln, i) => {
+      const y = 50 + i * 6.5, len = 6 + sp * 22, x = 160 - ((now / (3 + i) + i * 37) % 200);
+      ln.setAttribute("x1", x.toFixed(1)); ln.setAttribute("x2", (x + len).toFixed(1)); ln.setAttribute("y1", y); ln.setAttribute("y2", y);
+      ln.setAttribute("stroke-width", (sp * 0.6).toFixed(2)); ln.style.opacity = (sp * 0.8).toFixed(2);
+    });
+    if (!ended) raf = requestAnimationFrame(loop);
+  };
+  raf = requestAnimationFrame(loop);
+  return () => { ended = true; cancelAnimationFrame(raf); document.removeEventListener("keydown", key); };
+}
+
+const GAMES = { shooting, passing, dribble, weight, defend, sprint };
 
 return { GRADES, statFor, levelOf, playMinigame };
 })();
@@ -9312,10 +10430,10 @@ function layout(players, ball, poss, opt = {}) {
     x = pl.team === "us" ? Math.min(hi, Math.max(lo, x)) : Math.min(105 - lo, Math.max(105 - hi, x));
     pl.x = x; pl.y = Math.min(65, Math.max(3, y));
   }
-  if (bx < 1 || bx > 104) return;                                   // 골망·라인 밖
+  if (bx < 1 || bx > 104) return [];                                // 골망·라인 밖
   const named = opt.actor ? players.find(p => p.name === opt.actor) : null;
   const team = named ? named.team : poss;
-  if (!team) return;
+  if (!team) return [];
   const holder = named || (opt.holderIsMe ? players.find(p => p.me) : null)
     || players.filter(p => p.team === team && p.pos !== "GK").sort((a, b) => dist(a, ball) - dist(b, ball))[0];
   const side = team === "us" ? 1 : -1;
@@ -9331,6 +10449,34 @@ function layout(players, ball, poss, opt = {}) {
     const m = p === holder ? 0 : 1.5;
     p.x = Math.min(105 - m, Math.max(m, p.x)); p.y = Math.min(68 - m, Math.max(m, p.y));
   }
+  return [holder, foes[0], foes[1]].filter(Boolean);
+}
+
+// 겹친 점 떼어 놓기 + 공과 상관없는 선수들의 작은 움직임 (화면 연출만. 엔진 판정과 무관)
+function spread(players, fixed) {
+  const lock = new Set(fixed);
+  for (const pl of players) {
+    if (lock.has(pl) || pl.pos === "GK") continue;
+    pl.x += (Math.random() - 0.5) * 1.6; pl.y += (Math.random() - 0.5) * 1.6;
+  }
+  const MIN = 3.6;
+  for (let it = 0; it < 3; it++) {
+    for (let i = 0; i < players.length; i++) for (let j = i + 1; j < players.length; j++) {
+      const a = players[i], b = players[j];
+      let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
+      if (d >= MIN) continue;
+      if (d < 0.01) { dx = 0; dy = 1; d = 1; }
+      const push = (MIN - d) / 2, ux = dx / d, uy = dy / d;
+      const fa = lock.has(a) || a.pos === "GK", fb = lock.has(b) || b.pos === "GK";
+      if (fa && fb) continue;
+      const ka = fa ? 0 : fb ? 2 : 1, kb = fb ? 0 : fa ? 2 : 1;
+      a.x -= ux * push * ka; a.y -= uy * push * ka; b.x += ux * push * kb; b.y += uy * push * kb;
+    }
+  }
+  for (const pl of players) {
+    if (lock.has(pl)) continue;
+    pl.x = Math.min(103.5, Math.max(1.5, pl.x)); pl.y = Math.min(66.5, Math.max(1.5, pl.y));
+  }
 }
 const dist = (p, [x, y]) => Math.hypot(p.x - x, p.y - y);
 
@@ -9342,6 +10488,8 @@ function pitchSvg(players, kit) {
       <circle cx="52.5" cy="34" r="9.15"/><rect x="1" y="13.85" width="16.5" height="40.3"/><rect x="87.5" y="13.85" width="16.5" height="40.3"/>
       <rect x="1" y="24.85" width="5.5" height="18.3"/><rect x="98.5" y="24.85" width="5.5" height="18.3"/>
       <rect x="-1" y="30.3" width="2" height="7.4" class="goal"/><rect x="104" y="30.3" width="2" height="7.4" class="goal"/></g>
+    <g class="netfx"></g>
+    <ellipse class="bshadow" rx="1.25" ry=".55" style="transform:translate(52.5px,34.7px)"/>
     ${players.map(p => `<g class="dot ${p.team} ${p.pos === "GK" ? "gk" : ""} ${p.me ? "me" : ""}" data-id="${p.id}" style="transform:translate(${p.x}px,${p.y}px)">
       <circle r="4" class="ring"/><circle r="2.3" class="body"/><text y="0.75" class="no">${p.number}</text><text y="-4.3" class="tag">나</text></g>`).join("")}
     <g class="ball" style="transform:translate(52.5px,34px)"><circle r="1.2"/></g>
@@ -9357,6 +10505,7 @@ function showMatch(app, m, onDone) {
   const p = state.player;
   const fx = m.fx;
   let speed = "normal", timer = null, paused = false, queue = [], after = null;
+  const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const players = buildPlayers(state, m);
   layout(players, [52.5, 34], null);
 
@@ -9364,14 +10513,14 @@ function showMatch(app, m, onDone) {
     <header class="board">
       <div class="comp">${esc(fx.compLabel)}${fx.round ? ` ${esc(fx.round)}` : ""}</div>
       <div class="teams">
-        <span class="tm home"><img src="assets/img/logo.png" alt="">${TEAM_NAME}</span>
+        <span class="tm home">${fx.jn ? `<i class="kit-dot jn-dot"></i>${esc(fx.usName)}` : `<img src="assets/img/logo.png" alt="">${TEAM_NAME}`}</span>
         <span class="sc num" id="sc">0 : 0</span>
         <span class="tm away"><i class="kit-dot" style="background:${kitOf(fx.opponent).fill};border-color:${kitOf(fx.opponent).stroke}"></i>${esc(fx.opponent.name)}</span>
       </div>
       <div class="clock num" id="clock">경기 전</div>
     </header>
     <div class="match-body">
-      <div class="pitch-wrap" id="pitch">${pitchSvg(players, kitOf(fx.opponent))}<div class="goal-flash" id="flash" hidden>GOAL</div><div class="atk-dir" id="atk">공격 방향 ▶</div></div>
+      <div class="pitch-wrap sky-${m.sky || "day"} wx-${m.weather || "clear"}" id="pitch">${pitchSvg(players, kitOf(fx.opponent))}${m.weather && m.weather !== "clear" ? `<div class="wx-layer" aria-hidden="true"></div>` : ""}<div class="goal-flash" id="flash" hidden>GOAL</div><div class="atk-dir" id="atk">공격 방향 ▶</div></div>
       <ol class="feed" id="feed" aria-live="polite"></ol>
     </div>
     <footer class="ctl" id="ctl"></footer>
@@ -9386,7 +10535,7 @@ function showMatch(app, m, onDone) {
   const svg = root.querySelector(".pitch");
   const flash = root.querySelector("#flash");
   const dotEls = Object.fromEntries([...svg.querySelectorAll(".dot")].map(el => [el.dataset.id, el]));
-  const ballEl = svg.querySelector(".ball");
+  const ballEl = svg.querySelector(".ball"), shadowEl = svg.querySelector(".bshadow"), netFx = svg.querySelector(".netfx");
   // 세로 화면: 전광판·선택지 높이를 빼고 남은 만큼만 경기장을 키움 (중계 줄은 최소 64px 남김)
   const pitchWrap = root.querySelector("#pitch"), boardEl = root.querySelector(".board");
   const narrow = () => innerWidth < 900 && !(matchMedia("(orientation: landscape) and (max-height: 620px)").matches);
@@ -9406,8 +10555,30 @@ function showMatch(app, m, onDone) {
   // 화면에 그릴 때만 좌표를 돌림: 후반에는 우리 팀이 왼쪽으로 공격 (엔진 좌표는 그대로)
   let flipped = false, lastBall = [52.5, 34];
   const SX = x => (flipped ? 105 - x : x), SY = y => (flipped ? 68 - y : y);
+  // 공: 짧은 패스는 땅으로 굴러가고, 먼 거리는 포물선으로 떠서 날아감 (그림자는 땅에 남음)
+  let bCur = [52.5, 34], bRaf = 0;
+  function moveBall(tx, ty, ms) {
+    cancelAnimationFrame(bRaf);
+    const [fx0, fy0] = bCur, d = Math.hypot(tx - fx0, ty - fy0);
+    const put = (x, y, z) => {
+      ballEl.style.transform = `translate(${x.toFixed(2)}px,${(y - z).toFixed(2)}px) scale(${(1 + z * 0.06).toFixed(3)})`;
+      shadowEl.style.transform = `translate(${x.toFixed(2)}px,${(y + 0.7).toFixed(2)}px) scale(${Math.max(0.5, 1 - z * 0.07).toFixed(3)})`;
+      shadowEl.style.opacity = Math.max(0.25, 1 - z * 0.1).toFixed(2);
+    };
+    if (calm || d < 0.3) { bCur = [tx, ty]; return put(tx, ty, 0); }
+    const air = d > 17, h = air ? Math.min(7, d * 0.15) : 0, T = Math.max(140, Math.min(ms * 0.85, air ? 300 + d * 9 : 200 + d * 12)), t0 = performance.now();
+    const stepB = now => {
+      const u = Math.min(1, (now - t0) / T);
+      const e = air ? (u < 0.5 ? 2 * u * u : 1 - (-2 * u + 2) ** 2 / 2) : 1 - (1 - u) ** 3;
+      const x = fx0 + (tx - fx0) * e, y = fy0 + (ty - fy0) * e;
+      bCur = [x, y];
+      put(x, y, h * 4 * u * (1 - u));
+      if (u < 1) bRaf = requestAnimationFrame(stepB);
+    };
+    bRaf = requestAnimationFrame(stepB);
+  }
   function draw(ball, poss, ms, opt = {}) {
-    if (ball) { layout(players, ball, poss, opt); lastBall = ball; }
+    if (ball) { const fixed = layout(players, ball, poss, opt); if (!calm) spread(players, fixed); lastBall = ball; }
     const dur = `${Math.max(120, ms * 0.85)}ms`;
     for (const pl of players) {
       const el = dotEls[pl.id];
@@ -9415,7 +10586,18 @@ function showMatch(app, m, onDone) {
       el.style.transform = `translate(${SX(pl.x).toFixed(2)}px,${SY(pl.y).toFixed(2)}px)`;
     }
     const b = ball || lastBall;
-    ballEl.style.transitionDuration = dur; ballEl.style.transform = `translate(${SX(b[0]).toFixed(2)}px,${SY(b[1]).toFixed(2)}px)`;
+    moveBall(SX(b[0]), SY(b[1]), ms);
+  }
+  // 골 장면: 골문 쪽으로 화면이 살짝 다가가고, 골망이 출렁임
+  function goalCam(k) {
+    if (calm) return;
+    const right = SX(lastBall[0]) > 52.5, gx = right ? 104.2 : 0.8;
+    netFx.innerHTML = [0, 1, 2].map(i => `<path class="net-wave" style="animation-delay:${i * 0.12}s" d="M${gx} 30.3 Q${(gx + (right ? 2.4 : -2.4)).toFixed(1)} 34 ${gx} 37.7"/>`).join("")
+      + `<circle class="net-burst" cx="${gx}" cy="34" r="2"/>`;
+    svg.classList.remove("cam-l", "cam-r"); void svg.getBoundingClientRect();
+    svg.classList.add(right ? "cam-r" : "cam-l");
+    clearTimeout(svg._cam);
+    svg._cam = setTimeout(() => { svg.classList.remove("cam-l", "cam-r"); netFx.innerHTML = ""; }, 1500);
   }
   function setHalf(second) {
     if (second === flipped) return;
@@ -9463,6 +10645,7 @@ function showMatch(app, m, onDone) {
     flash.hidden = false;
     clearTimeout(flash._t);
     flash._t = setTimeout(() => { flash.hidden = true; }, 1300);
+    goalCam(k);
     const scr = root.querySelector(".match-screen");
     scr.classList.remove("shake"); void scr.offsetWidth; scr.classList.add(k === "goal-them" ? "shake-soft" : "shake");
     setTimeout(() => scr.classList.remove("shake", "shake-soft"), 700);
@@ -9526,7 +10709,10 @@ function showMatch(app, m, onDone) {
     </div>
     ${(() => { const c = conditionOf(p); const mp = Math.round(c.match * 100);
       const role = m.status !== "start" ? "" : m.star >= 1 ? "에이스. 상대가 집중 견제합니다" : m.star >= 0.4 ? "핵심 선수" : "팀의 일원";
+      const wx = { rain: "☔ 비, 미끄러운 잔디", hot: "☀️ 무더위", cold: "❄️ 매서운 추위", wind: "🌬️ 강한 바닷바람" }[m.weather];
+      const sk = { night: "🌙 조명 경기", dusk: "🌇 해 질 녘" }[m.sky];
       return `<div class="pm-tags"><span class="cond ${c.cls}">컨디션 ${c.label}</span><span class="mute">선택 성공률 ${mp > 0 ? "+" : ""}${mp}%p</span>
+        ${wx ? `<span class="chip wx">${wx}</span>` : ""}${sk ? `<span class="chip wx">${sk}</span>` : ""}
         ${role ? `<span class="chip ${m.star >= 1 ? "kit" : ""}">영향력: ${role}</span>` : ""}</div>`; })()}
     ${m.talk ? `<div class="talk">
       <div class="talk-face">${img(m.talk.who === "coach" ? "npc_coach" : "npc_assistant", "")}</div>
@@ -9536,6 +10722,7 @@ function showMatch(app, m, onDone) {
     ${fx.school ? `<div class="alert gold">🎓 오늘 ${esc(fx.school.name)}(${tierLabel(fx.school.tier)}) ${esc(fx.school.coach)}님이 직접 보러 오셨습니다. 상대는 고등학생이라 몸싸움이 버겁습니다.</div>` : ""}
     ${m.oppAce ? `<div class="alert">👀 주목할 상대: ${m.oppAce.pos} ${m.oppAce.number}번 ${esc(m.oppAce.name)} (${m.oppAce.grade}학년${m.oppAce.trait ? `, ${esc(m.oppAce.trait)}` : ""})</div>`
       : m.oppAceAbsent ? `<div class="alert">${esc(fillText("상대 에이스 {a|이/가} 오늘은 나오지 않습니다.", { a: m.oppAceAbsent }))}</div>` : ""}
+    ${fx.jn ? `<div class="alert gold">🎽 전남 대표로 나선 전국소년체전 ${esc(fx.round)}. 도내 여러 학교에서 뽑힌 선수들과 함께 뜁니다. 감독은 김 감독님이 맡으셨습니다.</div>` : ""}
     ${fx.ko ? `<div class="alert gold">지면 탈락입니다. 비기면 승부차기.</div>` : ""}
     ${fx.elementary ? `<div class="alert gold">🧒 오늘은 초등학교 팀과의 연습경기. 이겨야 본전, 지면 한동안 놀림감이다.</div>` : ""}
     <div class="power"><span>우리 전력</span><div class="pw"><i style="width:${barPct(m.ours)}%"></i></div>
@@ -9690,7 +10877,7 @@ function showMatch(app, m, onDone) {
     const goals = m.goalsLog.map(g => `<li class="${g.team}">${g.minute}' ${esc(g.name)}${g.assist ? ` <span class="mute">(도움 ${esc(g.assist)})</span>` : ""}</li>`).join("");
     ctl.innerHTML = `<div class="postmatch">
       <div class="pm-head"><span class="badge-res ${resCls}">${res.result}</span>
-        <span class="num">${TEAM_NAME} ${res.gf} : ${res.ga} ${esc(res.opponent)}</span>
+        <span class="num">${fx.usName ? esc(fx.usName) : TEAM_NAME} ${res.gf} : ${res.ga} ${esc(res.opponent)}</span>
         ${res.shootout ? `<span class="mute">(승부차기 ${res.shootout.us}:${res.shootout.them})</span>` : ""}</div>
       ${goals ? `<ul class="pm-goals">${goals}</ul>` : ""}
       ${res.minutes > 0 ? `<div class="pm-rating">
@@ -9704,9 +10891,9 @@ function showMatch(app, m, onDone) {
         <b class="rt num ${t.r >= 7.5 ? "hi" : t.r >= 6.5 ? "mid" : "lo"}">${t.r.toFixed(1)}</b></li>`).join("")}</ul></details>` : ""}
       ${res.notes.length ? `<ul class="pm-notes">${res.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
       <p class="mute" style="font-size:13px;margin:0">감독님 면담과 경기 기록은 메시지함에 왔습니다.</p>
-      <button class="btn btn-kit btn-wide" data-done>이번 주 마무리</button>
+      <button class="btn btn-kit btn-wide" data-done>${fx.jn && state.jnCup?.alive && !p.condition.injury ? `다음 경기로 (${["1회전", "준결승", "결승"][state.jnCup.stage]})` : "이번 주 마무리"}</button>
     </div>`;
-    ctl.querySelector("[data-done]").addEventListener("click", () => { ro?.disconnect(); removeEventListener("resize", fitPitch); onDone(res); });
+    ctl.querySelector("[data-done]").addEventListener("click", () => { ro?.disconnect(); removeEventListener("resize", fitPitch); cancelAnimationFrame(bRaf); onDone(res); });
     ctl.querySelector("[data-done]").focus({ preventScroll: true });
   }
 }
@@ -10191,7 +11378,9 @@ const {REL_ROLES, rivalGap, captainScore} = __m["js/engine/relations.js"];
 const {isBirthdayWeek} = __m["js/engine/birthday.js"];
 const {blessedThisTerm} = __m["js/engine/events.js"];
 const {goalProgress} = __m["js/engine/goals.js"];
+const {jnFixture, JN_WEEK} = __m["js/engine/jn.js"];
 // 게임 안 화면들: 홈, 선수, 팀, 일정, 메시지
+
 
 
 
@@ -10251,7 +11440,7 @@ const jerseyCard = state => `<section class="cardwrap">${fcCard(state)}
 
 // 다음 경기 타일
 function shield(name) {
-  const ch = name.replace(/^(서울|경기|부산|대구|인천|울산|강원|충북|제주|여수|순천|광양|목포|보성|해남|완도|광주|남해안)\s?/, "").slice(0, 1);
+  const ch = / 대표$/.test(name) ? name.slice(0, 1) : name.replace(/^(서울|경기|부산|대구|인천|울산|강원|충북|제주|여수|순천|광양|목포|보성|해남|완도|광주|남해안)\s?/, "").slice(0, 1);
   let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   const hue = h % 360;
   return `<svg class="shield" viewBox="0 0 40 46" aria-hidden="true"><path d="M20 2 L37 8 V24 C37 35 29 41 20 44 C11 41 3 35 3 24 V8 Z" fill="hsl(${hue} 55% 38%)" stroke="hsl(${hue} 60% 70%)" stroke-width="1.5"/>
@@ -10259,7 +11448,20 @@ function shield(name) {
 }
 function nextMatchTile(state) {
   let info = null, k = 0;
-  for (let i = 0; i < 10; i++) { const x = turnInfo(state, i); if (!x) break; if (x.match && stillScheduled(state, x)) { info = x; k = i; break; } }
+  for (let i = 0; i < 10; i++) {
+    const x = turnInfo(state, i); if (!x) break;
+    const jf = jnFixture(state, x);                    // 전남 대표 소년체전이 먼저 오면 그걸 보여 줌
+    if (jf) return `<section class="tile next cup">
+      <div class="nm-head"><span class="eyebrow">NEXT MATCH · 전남 대표</span><span class="nm-when">${i === 0 ? "이번 주" : `${i}주 뒤`}</span></div>
+      <div class="nm-teams">
+        <div class="nm-team">${shield("전남 대표")}<b>전남 대표</b></div>
+        <span class="nm-vs">VS</span>
+        <div class="nm-team">${shield(jf.opponent.name)}<b>${esc(jf.opponent.name)}</b></div>
+      </div>
+      <div class="nm-comp">전국소년체전, ${esc(jf.round)}<span>${x.month}월 ${x.week}주차</span></div>
+    </section>`;
+    if (x.match && stillScheduled(state, x)) { info = x; k = i; break; }
+  }
   if (!info) return `<section class="tile next empty"><span class="eyebrow">NEXT MATCH</span><p class="mute">당분간 경기가 없습니다. 몸을 만들 시간입니다.</p></section>`;
   const locked = k === 0 ? slotLocked(state, "we") : null;
   let opp = locked?.fx?.opponent?.name;
@@ -10332,9 +11534,11 @@ function weekPanel(state, opts = {}) {
 // 이미 탈락한 대회의 토너먼트 주간은 일정에서 뺍니다
 
 function upcomingPanel(state) {
-  const list = upcoming(state, 8).filter(i => stillScheduled(state, i) || i.exam || i.school.some(d => !d.hidden));
+  const list = [];
+  for (let k = 0; k < 8; k++) { const i = turnInfo(state, k); if (!i) break; if ((i.match && stillScheduled(state, i)) || i.exam || i.school.some(d => !d.hidden) || jnFixture(state, i)) list.push(i); }
   return `<section class="panel"><h2>다가오는 일정</h2>
     ${list.length ? list.map(i => `<div class="fixture"><span class="d">${i.month}월 ${i.week}주</span><span>
+      ${jnFixture(state, i) ? `<span class="chip kit">전국소년체전</span>전남 대표` : ""}
       ${i.match && stillScheduled(state, i) ? `<span class="chip ${i.comp.tournament ? "kit" : i.match.comp === "hs" ? "gold" : "turf"}">${i.comp.label}</span>${i.match.round || (i.leagueRound != null ? `${i.leagueRound + 1}라운드` : "")}` : ""}
       ${i.exam ? `<span class="chip gold">시험</span>${i.exam.name}` : ""}
       ${i.school.filter(d => !d.hidden).map(d => `<span class="chip">학교</span>${d.label}`).join(" ")}
@@ -10606,6 +11810,7 @@ function scheduleView(state, grade = state.calendar.grade) {
         const cls = t.turn === now ? "now" : t.turn < now ? "past" : "";
         const items = [];
         if (info.match) items.push(`<span class="chip ${info.comp.tournament ? "kit" : info.match.comp === "hs" ? "gold" : "turf"}">${info.comp.label}</span>${info.match.round || (info.leagueRound != null ? `${info.leagueRound + 1}라운드` : info.match.hsChance?.[grade] ? (info.match.elemChance?.[grade] ? "고교·초등 팀일 수도" : "고교 팀일 수도") : "")}`);
+        if (state.jnCup?.grade === grade && t.month === JN_WEEK.month && t.week === JN_WEEK.week && (state.jnCup.alive || state.jnCup.medal)) items.push(`<span class="chip kit">전국소년체전</span>전남 대표${state.jnCup.medal ? ` (${{ gold: "금메달", silver: "은메달", bronze: "동메달", first: "1회전" }[state.jnCup.medal]})` : ""}`);
         if (info.exam) items.push(`<span class="chip gold">시험</span>${info.exam.name}`);
         if (t.week === 1 && (t.month === 3 || t.month === 9)) items.push(`<span class="chip">측정</span>신체 측정`);
         for (const d of info.school.filter(d => !d.hidden)) items.push(`<span class="chip">학교</span>${d.label}`);
@@ -10743,6 +11948,7 @@ function showEnding(app) {
       <h1 class="end-title">${esc(ending.title)}</h1>
       <div class="end-face">${img(faceOf(p, 3), p.name)}</div>
       <p class="end-story" id="story"></p>
+      ${ending.later ? `<div class="end-later" id="later" hidden><span class="eyebrow">5년 후</span><p>${esc(ending.later(c))}</p></div>` : ""}
       <div class="end-letter" id="letter" hidden><span class="eyebrow">LETTER</span><p>${esc(teacherLetter(state))}</p></div>
       <dl class="end-recap" id="recap" hidden>${recap.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
       <div class="end-btns" id="eb" hidden>
@@ -10755,7 +11961,7 @@ function showEnding(app) {
   const text = ending.story(c);
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let n = 0;
-  const finish = () => { story.textContent = text; app.root.querySelector("#letter").hidden = false; app.root.querySelector("#recap").hidden = false; app.root.querySelector("#eb").hidden = false; };
+  const finish = () => { story.textContent = text; const lt = app.root.querySelector("#later"); if (lt) lt.hidden = false; app.root.querySelector("#letter").hidden = false; app.root.querySelector("#recap").hidden = false; app.root.querySelector("#eb").hidden = false; };
   const t = setInterval(() => { n += 2; story.textContent = text.slice(0, n); if (n >= text.length) { clearInterval(t); finish(); } }, reduce ? 1 : 32);
   app.root.querySelector(".ending").addEventListener("click", e => { if (!e.target.closest("button")) { clearInterval(t); finish(); } });
   app.root.querySelector("[data-gallery]").addEventListener("click", () => galleryModal());
@@ -10785,7 +11991,7 @@ const {newGame, saveTo, readSlot, summaryOf, loadSettings, saveSettings} = __m["
 const {playMinigame, statFor} = __m["js/ui/minigames.js"];
 const {getPath} = __m["js/rng.js"];
 const {turnInfo, label} = __m["js/engine/calendar.js"];
-const {beginWeek, endWeek, planReady, SLOTS, slotLocked, actionAllowed} = __m["js/engine/week.js"];
+const {beginWeek, endWeek, planReady, SLOTS, slotLocked, actionAllowed, currentFixture} = __m["js/engine/week.js"];
 const {prepareMatch} = __m["js/engine/match.js"];
 const {welcomeMails} = __m["js/engine/advice.js"];
 const {birthdayWeek} = __m["js/engine/birthday.js"];
@@ -10862,7 +12068,13 @@ const app = {
     this.toast("불러왔습니다");
     if (state.finished) { showEnding(this); return; }
     if (state.pending) this.pendingFlow(() => this.render());
-    else if (state.pendingEvent) eventModal(this, () => this.render());
+    else if (state.pendingEvent) this.eventChain(() => this.render());
+  },
+  // 남은 이벤트를 차례로 보여 줌 (같은 주 두 번째 이야기까지)
+  eventChain(done) {
+    const s = this.state;
+    if (!s?.pendingEvent) { done(); return; }
+    eventModal(this, () => { this.saveTo("auto"); this.render(); this.eventChain(done); });
   },
   summary() { return summaryOf(this.state, turnInfo(this.state)); },
   saveTo(where) { return saveTo(where, this.state, this.summary()); },
@@ -10934,15 +12146,19 @@ const app = {
   startWeek() {
     const s = this.state;
     const ctx = beginWeek(s);
-    if (ctx.fx) {
-      // 경기 전 미팅 장면 → 경기
-      meetingModal(this, ctx.fx, () => {
-        const m = prepareMatch(s, ctx.info, ctx.fx);
-        this.view = "match";
-        window.scrollTo(0, 0);
-        showMatch(this, m, result => { this.view = "home"; this.finishWeek(ctx, result); });
+    // 전남 대표 소년체전은 이기면 같은 주에 다음 경기로 바로 이어짐
+    const play = fx => {
+      const m = prepareMatch(s, ctx.info, fx);
+      this.view = "match";
+      window.scrollTo(0, 0);
+      showMatch(this, m, result => {
+        const nx = fx.jn && result?.result === "승" ? currentFixture(s) : null;
+        if (nx?.jn) return play(nx);
+        this.view = "home"; this.finishWeek(ctx, result);
       });
-    } else this.finishWeek(ctx, null);
+    };
+    if (ctx.fx) meetingModal(this, ctx.fx, () => play(ctx.fx));   // 경기 전 미팅 장면 → 경기
+    else this.finishWeek(ctx, null);
   },
 
   finishWeek(ctx, result) {
@@ -10955,7 +12171,7 @@ const app = {
       const chain = [];
       if (rep.yearEnd) chain.push(next => yearModal(this, rep.yearEnd, next));
       if (s.pending) chain.push(next => this.pendingFlow(next));
-      if (s.pendingEvent) chain.push(next => eventModal(this, next));
+      if (s.pendingEvent) chain.push(next => this.eventChain(next));   // 한 주에 이야기가 두 개일 수도 있음
       if (rep.graduation) chain.push(() => showEnding(this));
       const run = () => { const f = chain.shift(); if (f) f(() => { this.saveTo("auto"); this.render(); run(); }); };
       this.render();

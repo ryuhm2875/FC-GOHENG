@@ -13,7 +13,8 @@ import { injure } from "./injury.js";
 import { isBirthdayWeek } from "./birthday.js";
 import { fixedGoalEvent, achieve } from "./goals.js";
 
-const EVENT_CHANCE = 0.32;
+const EVENT_CHANCE = 0.42;                            // 한 주에 무작위 이벤트가 나올 확률
+const SECOND_CHANCE = 0.18;                          // 이벤트가 있는 주에 하나가 더 나올 확률
 const PORTRAIT = { coach: "npc_coach", assistant: "npc_assistant", teacher: "npc_teacher", mom: "npc_mom", dad: "npc_dad" };
 const SPEAKER = { coach: () => STAFF.coach, assistant: () => STAFF.assistant, teacher: () => STAFF.teacher, mom: () => "엄마", dad: () => "아빠" };
 
@@ -27,7 +28,7 @@ function eligible(state, ev, info) {
   if (ev.once && state.seenEvents?.includes(ev.id)) return false;
   // 한 번 본 이벤트는 한동안 다시 안 나옴 (보통 30주 ≈ 8개월, 시험 주 이벤트 20주, 경기 뒤 면담 12주)
   const last = state.eventLog?.[ev.id];
-  const cool = ev.afterLoss ? 8 : ev.urgent ? 12 : ev.exam ? 20 : 30;
+  const cool = ev.cool ?? (ev.afterLoss ? 8 : ev.urgent ? 12 : (ev.exam || ev.date) ? 20 : 30);   // cool: 이벤트마다 따로 정한 간격
   if (last != null && state.calendar.turn - last < cool) return false;
   try { if (ev.cond && !ev.cond(state)) return false; } catch { return false; }
   return true;
@@ -49,29 +50,26 @@ function blessingDue(state, info) {
   return info.month === w.last[0] && info.week === w.last[1] ? "force" : "maybe";
 }
 
-// 주 끝에 호출: 다음 주 시작 때 보여 줄 이벤트를 정해 둠
-export function rollEvent(state) {
-  const info = turnInfo(state);
-  if (!info || state.pendingEvent) return;
+// 그 주의 첫 번째 이벤트 (우선순위 순서). 없으면 null
+function primaryEvent(state, info) {
   if (info.grade === 3 && info.month === 3 && info.week === 2 && !state.flags.captainVoted) {
-    state.pendingEvent = { id: CAPTAIN_EVENT.id };
-    return;
+    return CAPTAIN_EVENT.id;
   }
   // 학교 행사 (그 주에 반드시)
   const day = info.school.find(d => d.event && EVENTS.some(e => e.id === d.event));
-  if (day) { state.pendingEvent = { id: day.event }; return; }
+  if (day) return day.event;
   // 류봉두의 축복: 학기 마지막 기회 주간이면 생일·축하보다 먼저
   const due = blessingDue(state, info);
-  if (due === "force") { state.pendingEvent = { id: "t_blessing" }; return; }
+  if (due === "force") return "t_blessing";
   // 중간 목표: 정해진 날의 이벤트 (목표 면담, 선발전, 시상식, 중간 점검)
   const gfix = fixedGoalEvent(state, info);
-  if (gfix) { state.pendingEvent = { id: gfix }; return; }
+  if (gfix) return gfix;
   // 정기시험 주간: 시험 이벤트 하나는 반드시 (중1 1학기 수행평가 주간은 수행평가 이야기)
   if (info.exam) {
     const pool = EVENTS.filter(e => (info.exam.free ? e.assess : e.exam) && eligible(state, e, info));
     const all = EVENTS.filter(e => (info.exam.free ? e.assess : e.exam) && (!e.needs || person(state, e.needs)));
     const pickFrom = pool.length ? pool : all.sort((a, b) => (state.eventLog?.[a.id] ?? -99) - (state.eventLog?.[b.id] ?? -99)).slice(0, 2);
-    if (pickFrom.length) { state.pendingEvent = { id: weighted(pickFrom.map(e => [e, (e.weight || 1) * (state.seenEvents?.includes(e.id) ? 0.35 : 1)])).id }; return; }
+    if (pickFrom.length) return weighted(pickFrom.map(e => [e, (e.weight || 1) * (state.seenEvents?.includes(e.id) ? 0.35 : 1)])).id;
   }
   // 생일 주간: 1년에 한 번, 방학이면 집에서 / 학기 중이면 라커룸에서
   // (그 주에 학교 행사가 있으면 행사 없는 주까지 최대 3주 미룸. 어느 해 생일인지는 그 주의 턴 번호로 구분)
@@ -79,8 +77,7 @@ export function rollEvent(state) {
   const given = state.flags.bdayGiven ||= [];
   if (bday && !given.includes(bday.turn)) {
     given.push(bday.turn);
-    state.pendingEvent = { id: info.vacation ? "bday_home" : "bday_team" };
-    return;
+    return info.vacation ? "bday_home" : "bday_team";
   }
   // 우승·준우승 축하: 대회가 끝난 뒤 3주 안에 (학교 행사 주간이면 다음 주로 미룸)
   const cel = state.flags.celebrate;
@@ -89,27 +86,57 @@ export function rollEvent(state) {
     if (state.calendar.turn - cel.turn <= 3) {
       state.flags.lastCelebration = state.calendar.turn;
       state.celebration = cel;
-      state.pendingEvent = { id: { league: "cel_league", national: "cel_national", runnerUp: "cel_runnerup" }[cel.kind] };
-      return;
+      return { league: "cel_league", national: "cel_national", runnerUp: "cel_runnerup" }[cel.kind];
     }
   }
   // 조건을 채운 목표 이야기 (스카우트, 신문 인터뷰, 주장 언질, 목표 실패 면담)
   const gq = state.goals?.queue;
-  if (gq?.length) { state.pendingEvent = { id: gq.shift() }; return; }
+  if (gq?.length) return gq.shift();
   // 경기에서 졌다면 해변 모래 훈련이 먼저 찾아옴
   const beach = EVENTS.find(e => e.afterLoss);
-  if (beach && eligible(state, beach, info) && chance(0.35)) { state.pendingEvent = { id: beach.id }; return; }
+  if (beach && eligible(state, beach, info) && chance(0.35)) return beach.id;
   // 류봉두의 축복 (무작위)
-  if (blessingDue(state, info) && chance(0.16)) { state.pendingEvent = { id: "t_blessing" }; return; }
+  if (blessingDue(state, info) && chance(0.16)) return "t_blessing";
   // 경기 뒤 면담처럼 급한 이야기는 먼저
   const urgent = EVENTS.filter(e => e.urgent && eligible(state, e, info));
-  if (urgent.length && chance(0.75)) { state.pendingEvent = { id: pick(urgent).id }; return; }
-  if (!chance(EVENT_CHANCE)) return;
-  const list = EVENTS.filter(e => !e.afterLoss && !e.fixed && !e.urgent && !e.exam && eligible(state, e, info));
-  if (!list.length) return;
+  if (urgent.length && chance(0.75)) return pick(urgent).id;
+  if (!chance(EVENT_CHANCE)) return null;
+  return randomEvent(state, info, null);
+}
+
+// 무작위 이벤트 하나 (날짜·상황이 정해진 이벤트, 시험 주 이벤트는 빼고)
+function randomEvent(state, info, except) {
+  const list = EVENTS.filter(e => e.id !== except && !e.afterLoss && !e.fixed && !e.urgent && !e.exam && !e.date && !e.trigger && eligible(state, e, info));
+  if (!list.length) return null;
   // 처음 보는 이벤트를 더 자주, 방학에는 가족·고흥 이야기를 더 자주
-  const ev = weighted(list.map(e => [e, (e.weight || 1) * (state.seenEvents?.includes(e.id) ? 0.3 : 1) * (e.family && info.vacation ? 1.8 : 1)]));
-  state.pendingEvent = { id: ev.id };
+  return weighted(list.map(e => [e, (e.weight || 1) * (state.seenEvents?.includes(e.id) ? 0.3 : 1) * (e.family && info.vacation ? 1.8 : 1)])).id;
+}
+
+// 날짜(date: [[월, 주], …])나 상황(trigger)이 정해진 이벤트: 그 주에 조건이 맞으면 반드시
+function datedEvents(state, info) {
+  return EVENTS.filter(e => {
+    if (!e.date && !e.trigger) return false;
+    const on = e.date ? e.date.some(([m, w]) => m === info.month && w === info.week) : false;
+    let tr = false;
+    if (!on && e.trigger) { try { tr = !!e.trigger(state); } catch { tr = false; } }
+    return (on || tr) && eligible(state, e, info);
+  }).map(e => e.id);
+}
+
+// 주 끝에 호출: 다음 주 시작 때 보여 줄 이벤트를 정해 둠 (한 주에 두 개까지)
+export function rollEvent(state) {
+  const info = turnInfo(state);
+  if (!info || state.pendingEvent) return;
+  const dated = datedEvents(state, info);
+  let first = primaryEvent(state, info);
+  if (!first && dated.length) first = dated.shift();
+  let second = null;
+  if (first) {
+    second = dated.find(id => id !== first) || null;
+    if (!second && chance(SECOND_CHANCE)) second = randomEvent(state, info, first);
+  }
+  if (first) state.pendingEvent = { id: first };
+  if (second && second !== first) state.pendingEvent2 = { id: second };
 }
 
 export function eventVars(state) {
@@ -166,10 +193,29 @@ function applyFx(state, fx, changes) {
   }
 }
 
+// 능력치·관계가 일정 수준 이상일 때만 열리는 선택지 (req: { "tech.pass": 60, "rel.coach": 65 })
+const REQ_REL = { coach: "감독 신뢰", teacher: "담임 신뢰", friend: "친구 관계", rival: "라이벌 관계", mentor: "선배 관계", junior: "후배 관계" };
+function reqVal(state, k) {
+  if (k.startsWith("rel.")) {
+    const r = k.slice(4);
+    if (r === "coach" || r === "teacher") return state.relations[r] ?? 50;
+    return person(state, r)?.value ?? 0;
+  }
+  const [g, s] = k.split(".");
+  return state.player.stats[g]?.[s] ?? 0;
+}
+export function reqOk(state, c) {
+  return !c?.req || Object.entries(c.req).every(([k, v]) => reqVal(state, k) >= v);
+}
+export function reqText(c) {
+  return c?.req ? Object.entries(c.req).map(([k, v]) => `${k.startsWith("rel.") ? REQ_REL[k.slice(4)] || k : STAT_LABEL[k] || k} ${v}`).join(" · ") : "";
+}
+
 // 선택 반영. 돌려주는 값: 결과 문장과 바뀐 수치
 export function chooseEvent(state, idx) {
   const pe = state.pendingEvent;
   const ev = findEvent(pe.id);
+  if (!reqOk(state, ev.choices[idx])) idx = Math.max(0, ev.choices.findIndex(x => reqOk(state, x)));   // 잠긴 선택지는 고를 수 없음
   const c = ev.choices[idx];
   const changes = [];
   let result;
@@ -192,6 +238,7 @@ export function chooseEvent(state, idx) {
   state.eventLog ||= {};
   state.eventLog[ev.id] = state.calendar.turn;
   state.pendingEvent = null;
+  if (state.pendingEvent2) { state.pendingEvent = state.pendingEvent2; state.pendingEvent2 = null; }   // 같은 주 두 번째 이야기
   return { result, changes: changes.filter(x => Math.abs(x.d) >= 0.05) };
 }
 
