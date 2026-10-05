@@ -10,6 +10,7 @@ const BG_STANDIN = {
   ev_meeting: "bg_locker", ev_halftime: "bg_locker", ev_fight: "ev_classroom", ev_hallway: "ev_classroom",
   ev_cram: "ev_classroom", ev_groupwork: "ev_classroom", ev_newspaper: "ev_office", ev_award: "ev_festival",
   ev_selection: "bg_field_day", ev_scout: "bg_stadium",
+  ev_rival: "bg_field_day", ev_breakwater: "bg_sea", ev_dorm_night: "ev_retreat", ev_lineup: "bg_field_day", ev_lunchbox: "bg_home", ev_dadcar: "bg_sea", ev_stands_mom: "bg_stadium", ev_injury_home: "bg_home", ev_note: "bg_home", ev_jn_camp: "ev_selection", ev_medal: "ev_welcome", ev_launch: "bg_sea", ev_bridge: "bg_sea", ev_ssukseom: "bg_sea", ev_bus_sunset: "bg_sea",
 };
 window.__bgFallback = el => {
   const name = el.dataset.name, alt = BG_STANDIN[name];

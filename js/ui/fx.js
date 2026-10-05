@@ -77,7 +77,8 @@ export function preload(names) {
 }
 export const SCENES = ["bg_home", "bg_prematch", "bg_stadium", "ev_retreat", "ev_singapore", "ev_sportsday", "ev_ski", "ev_festival", "ev_graduation", "bg_field_day",
   "ev_office", "ev_classroom", "ev_dinner", "ev_birthday", "ev_birthday_home", "ev_jjajang", "ev_welcome", "ev_schooltrip", "ev_beach", "bg_sea", "bg_locker",
-  "ev_meeting", "ev_halftime", "ev_fight", "ev_hallway", "ev_cram", "ev_groupwork", "ev_newspaper", "ev_award", "ev_selection", "ev_scout"];
+  "ev_meeting", "ev_halftime", "ev_fight", "ev_hallway", "ev_cram", "ev_groupwork", "ev_newspaper", "ev_award", "ev_selection", "ev_scout",
+  "ev_rival", "ev_breakwater", "ev_dorm_night", "ev_lineup", "ev_lunchbox", "ev_dadcar", "ev_stands_mom", "ev_injury_home", "ev_note", "ev_jn_camp", "ev_medal", "ev_launch", "ev_bridge", "ev_ssukseom", "ev_bus_sunset"];
 
 // ── 짧은 진동 (휴대폰) ──
 export function buzz(pattern) {

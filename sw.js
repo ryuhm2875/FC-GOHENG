@@ -8,7 +8,7 @@
 // - 그림·글꼴은 "저장본 먼저": 저장본을 바로 보여 주고, 인터넷이 되면 뒤에서 새 파일로 바꿔 둠.
 // - 미리 받아 둘 파일 목록은 offline-files.js (node tools/bundle.mjs 가 자동으로 만듦)
 
-const BUILD = "f978872f92ea";                // node tools/bundle.mjs 가 자동으로 바꿈 (바뀌면 새 버전으로 인식)
+const BUILD = "bc828d09741e";                // node tools/bundle.mjs 가 자동으로 바꿈 (바뀌면 새 버전으로 인식)
 importScripts("offline-files.js?b=" + BUILD);   // 빌드마다 주소가 달라 예전 목록이 캐시에서 나오지 않음
 const CACHE = "gfc-files";          // 게임 파일
 const FONT_CACHE = "gfc-fonts-v1";  // 인터넷 글꼴

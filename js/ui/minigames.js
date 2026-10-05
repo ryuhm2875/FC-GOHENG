@@ -11,7 +11,7 @@ const INFO = {
   dribble:  { title: "드리블 훈련", tag: "DRIBBLE DRILL", how: "달려드는 수비를 왼쪽·오른쪽으로 피하세요. 12초 버티면 끝입니다. 방향키나 화면을 밀어서도 움직일 수 있습니다.", btn: null },
   weight:   { title: "웨이트 트레이닝", tag: "STRENGTH", how: "줄어드는 원이 주황 테두리에 닿는 순간 누르세요. 여섯 번 들어 올립니다.", btn: "들어 올리기" },
   defend:   { title: "수비 훈련", tag: "DEFENDING", how: "공격수의 어깨가 기우는 쪽(주황 화살표)으로 ◀ ▶ 옮겨 서고, 초록 띠 안에 들어왔을 때 태클하세요. 여섯 번 막습니다.", btn: null },
-  sprint:   { title: "스프린트 훈련", tag: "SPEED DRILL", how: "GO! 신호가 나오면 왼발·오른발을 번갈아 빠르게 누르세요. 같은 발을 두 번 누르면 스텝이 꼬입니다. 40m 달리기.", btn: null },
+  sprint:   { title: "스프린트 훈련", tag: "SPEED DRILL", how: "GO! 신호에 맞춰 버튼을 누르면 출발합니다. 누르고 있으면 힘 게이지가 오르고, 떼면 내려갑니다. 게이지를 초록 칸에 맞춰 두면 최고 속도, 빨간 칸까지 올리면 다리가 풀립니다. 40m 달리기.", btn: null },
 };
 const ease = v => Math.max(0, Math.min(1, (v - 20) / 60));
 export function statFor(kind) { return STAT_FOR[kind]; }
@@ -25,7 +25,7 @@ const LV_NOTE = {
   dribble:  ["", "", "수비가 더 빨리 달려옵니다.", "두 명이 한꺼번에 막아섭니다.", "더 빠르고, 더 자주 두 명이 막습니다."],
   weight:   ["", "", "원이 더 빨리 줄어듭니다.", "원이 줄어드는 속도가 매번 바뀝니다.", "판정 범위가 좁아졌습니다."],
   defend:   ["", "", "공격수가 더 빨리 들어옵니다.", "한 번 속이고 들어오는 공격수가 있습니다.", "더 빠르고, 태클 범위가 좁습니다."],
-  sprint:   ["", "", "옆 레인 선수들이 더 빠릅니다.", "옆 레인 선수들이 더 빠릅니다.", "전국 대회급 기록을 내야 합니다."],
+  sprint:   ["", "", "게이지가 조금 더 빨리 움직입니다.", "초록 칸이 좁아졌습니다.", "초록 칸이 더 좁고, 게이지가 빠릅니다."],
 };
 
 // 공통 그래픽 조각
@@ -1209,93 +1209,126 @@ function sprintScene(tall = false) {
   </svg>
   <div class="mg-hud"><span class="mg-timer sp-speed"><i id="spBar"></i></span><span id="spTime" class="num">0.00초</span></div>`;
 }
+// 조작: 버튼 하나. ① GO 신호에 맞춰 누르면 출발(반응 속도) ② 누르고 있으면 힘이 오르고, 떼면 내려감
+// 힘 게이지를 초록 칸에 두면 최고 속도. 모자라면 느리고, 빨간 칸까지 올리면 다리가 풀려 잠깐 크게 느려짐
+// 능력치(스피드)가 높을수록 초록 칸이 넓고 최고 속도도 빠름. 등급은 '이 선수가 낼 수 있는 가장 좋은 기록' 대비로 매김
+const SP_RED = 0.96, SP_TAU_UP = 0.55, SP_TAU_DN = 0.4;
+function spParams(e, lv) {
+  const half = (0.09 + e * 0.07) * [1, 1, 0.95, 0.88, 0.8][lv];
+  return { c: 0.66, lo: 0.66 - half, hi: 0.66 + half, vmax: 8.2 + e * 1.6, rise: 0.6 * [1, 1, 1.06, 1.12, 1.18][lv], fall: 0.55 * [1, 1, 1.06, 1.12, 1.18][lv] };
+}
+const spFactor = (g, P) => g < P.lo ? 0.5 + 0.5 * g / P.lo : g <= P.hi ? 1 : 0.9;
+// 가장 잘 달렸을 때의 기록 (반응 0.2초, 게이지를 곧장 초록 칸 가운데에 맞춰 유지)
+function spIdeal(P) {
+  let t = 0.2, g = 0, v = 0, x = 0; const dt = 1 / 240;
+  while (x < SP_M && t < 30) {
+    g = Math.min(P.c, g + P.rise * dt);
+    const vt = P.vmax * spFactor(g, P);
+    v += (vt - v) * dt / (vt > v ? SP_TAU_UP : SP_TAU_DN);
+    x += v * dt; t += dt;
+  }
+  return t;
+}
 function sprint(area, status, ctl, e, done, lv = 1, tall = false) {
-  const T = (6.5 - e * 0.9) * [1, 1, 0.97, 0.94, 0.91][lv];    // 기준 기록(초)
-  const vmax = 9.6 + e * 1.6, IMP = 2.05, DRAG = 1.9;
+  const P = spParams(e, lv), T0 = spIdeal(P);
+  const CUT = { S: [0, 1.035, 1.035, 1.03, 1.025][lv], A: 1.1, B: 1.26 };   // 기준 기록 대비 (모의 실험으로 맞춤)
   area.innerHTML = sprintScene(tall);
-  ctl.innerHTML = `<button class="btn mg-dir sp-foot" data-f="L">왼발</button><button class="btn mg-dir sp-foot" data-f="R">오른발</button>`;
+  // 힘 게이지: 초록 칸(최고 속도)과 빨간 칸(다리 풀림)
+  area.querySelector(".sp-speed")?.remove();                       // 장면 안의 속도 막대 대신, 버튼 바로 위에 힘 게이지
+  ctl.innerHTML = `<div class="sp-ctl"><div class="sp-gauge-row"><span class="sp-glabel">힘</span><span class="sp-gauge"><i class="z" style="left:${(P.lo * 100).toFixed(1)}%;width:${((P.hi - P.lo) * 100).toFixed(1)}%"></i><i class="r" style="left:${SP_RED * 100}%"></i><b id="spNeedle"></b></span></div>
+    <button class="btn btn-kit btn-wide mg-act sp-hold" data-run>출발 준비…</button></div>`;
+  const hud = ctl.querySelector(".sp-gauge");
+  const btn = ctl.querySelector("[data-run]"), needle = ctl.querySelector("#spNeedle");
   const world = area.querySelector("#spWorld"), tape = area.querySelector("#spTape"), fxG = area.querySelector("#spFx"), speedG = area.querySelector("#spSpeed");
   const me = area.querySelector("#spMe"), meB = area.querySelector("#spMeb"), r1 = area.querySelector("#spR1"), r1B = area.querySelector("#spR1b"), r2 = area.querySelector("#spR2"), r2B = area.querySelector("#spR2b");
-  const count = area.querySelector("#spCount"), bar = area.querySelector("#spBar"), timeEl = area.querySelector("#spTime");
+  const count = area.querySelector("#spCount"), timeEl = area.querySelector("#spTime");
   speedG.innerHTML = Array.from({ length: 7 }, () => `<line class="mg-speed"/>`).join("");
   const slines = [...speedG.children];
-  // 옆 레인 선수: 정해진 기록으로 가속하며 달림 (위치 = v·(t − τ(1 − e^(−t/τ))))
   const TAU = 0.62;
   const vFor = tf => SP_M / (tf - TAU * (1 - Math.exp(-tf / TAU)));
-  const rivals = [{ g: r1, b: r1B, tf: T * 0.93, k: SP_LANES[0].k }, { g: r2, b: r2B, tf: T * 1.0, k: SP_LANES[2].k }].map(r => ({ ...r, v: vFor(r.tf) }));
+  const rivals = [{ g: r1, b: r1B, tf: T0 * 1.05, k: SP_LANES[0].k }, { g: r2, b: r2B, tf: T0 * 1.15, k: SP_LANES[2].k }].map(r => ({ ...r, v: vFor(r.tf) }));
   const rPos = (r, t) => Math.min(SP_M + 6, r.v * (t - TAU * (1 - Math.exp(-t / TAU))));
-  let phase = "count", t0 = performance.now(), goT = 0, pos = 0, v = 0, lastFoot = null, raf, last = t0, finishT = null, stumble = 0, ended = false;
-  const ph = () => pos * 2.05;
-  const tap = f => {
-    if (phase !== "run" || finishT != null) return;
-    if (f === lastFoot) {
-      v *= 0.55; stumble = 1;
-      status.innerHTML = `<b class="down">스텝이 꼬였다!</b>`;
-      fxG.insertAdjacentHTML("beforeend", `<g transform="translate(${(pos * SP_PX - Math.max(0, pos * SP_PX - (tall ? 56 : 52)) + (tall ? 22 : 8)).toFixed(1)},${SP_LANES[1].y})">${Array.from({ length: 6 }, (_, i) => `<circle class="mgd-dust" r="${(0.8 + (i % 3) * 0.4).toFixed(1)}" style="--dx:${(-4 - i * 1.6).toFixed(1)}px;--dy:${(-1 - (i % 3)).toFixed(1)}px"/>`).join("")}</g>`);
-      const d = fxG.lastElementChild; setTimeout(() => d.remove(), 650);
-    } else { v = Math.min(vmax, v + IMP); if (status.textContent) status.textContent = ""; }
-    lastFoot = f;
-    const b = ctl.querySelector(`[data-f="${f}"]`); b?.classList.remove("hit"); void b?.offsetWidth; b?.classList.add("hit");
+  const t0 = performance.now(), goAt = 1.3 + Math.random() * 0.9;   // SET 뒤 GO까지 걸리는 시간은 매번 다름
+  let goT = 0, started = false, falseStart = 0, holding = false, g = 0, pos = 0, v = 0, cramp = 0, raf, last = t0, finishT = null, ended = false, ph = Math.random() * 6;
+  const say = (html) => { status.innerHTML = html; };
+  const press = () => {
+    if (ended) return;
+    holding = true; btn.classList.add("on");
+    const k = (performance.now() - t0) / 1000;
+    if (!goT) {                                          // GO 전에 누름: 부정 출발
+      if (k > 0.7 && !falseStart) { falseStart = 0.3; say(`<b class="down">부정 출발! +0.3초</b>`); }
+      return;
+    }
+    if (!started) { started = true; const rt = (performance.now() - goT) / 1000; say(`<b class="${rt < 0.25 ? "up" : ""}">반응 ${rt.toFixed(2)}초${rt < 0.2 ? " · 번개 출발!" : ""}</b>`); }
   };
-  ctl.querySelectorAll("[data-f]").forEach(b => b.addEventListener("pointerdown", ev => { ev.preventDefault(); tap(b.dataset.f); }));
-  const key = ev => {
-    if (ev.repeat) return;
-    if (["ArrowLeft", "a", "A", "z", "Z"].includes(ev.key)) { ev.preventDefault(); tap("L"); }
-    if (["ArrowRight", "d", "D", "x", "X", "/"].includes(ev.key)) { ev.preventDefault(); tap("R"); }
-  };
-  document.addEventListener("keydown", key);
+  const release = () => { holding = false; btn.classList.remove("on"); };
+  btn.addEventListener("pointerdown", ev => { ev.preventDefault(); press(); });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(n => btn.addEventListener(n, release));
+  btn.addEventListener("contextmenu", ev => ev.preventDefault());
+  const kd = ev => { if ((ev.code === "Space" || ev.key === "Enter") && !ev.repeat) { ev.preventDefault(); press(); } };
+  const ku = ev => { if (ev.code === "Space" || ev.key === "Enter") { ev.preventDefault(); release(); } };
+  document.addEventListener("keydown", kd); document.addEventListener("keyup", ku);
+  const cleanup = () => { document.removeEventListener("keydown", kd); document.removeEventListener("keyup", ku); };
   const finish = () => {
-    if (ended) return; ended = true;
-    const t = finishT ?? (performance.now() - goT) / 1000;
-    const rank = 1 + rivals.filter(r => r.tf < t).length;
-    status.innerHTML = `<b class="${rank === 1 ? "up" : ""}">${finishT != null ? `${t.toFixed(2)}초 · ${rank}위` : "시간 초과"}</b>`;
-    setTimeout(() => done(finishT == null ? "C" : t <= T * 0.93 ? "S" : t <= T ? "A" : t <= T * 1.15 ? "B" : "C"), 900);
+    if (ended) return; ended = true; cleanup(); release();
+    const t = finishT;
+    const rank = t == null ? 3 : 1 + rivals.filter(r => r.tf < t).length;
+    say(`<b class="${rank === 1 ? "up" : ""}">${t != null ? `${t.toFixed(2)}초 · ${rank}위` : "시간 초과"}</b>`);
+    setTimeout(() => done(t == null ? "C" : t <= T0 * CUT.S ? "S" : t <= T0 * CUT.A ? "A" : t <= T0 * CUT.B ? "B" : "C"), 900);
   };
   const loop = now => {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    if (phase === "count") {
-      const k = (now - t0) / 1000;
-      const txt = k < 0.6 ? "READY" : k < 1.2 ? "SET" : "GO!";
+    const k = (now - t0) / 1000;
+    if (!goT) {
+      const txt = k < 0.7 ? "READY" : k < goAt ? "SET" : "GO!";
       if (count.textContent !== txt) { count.textContent = txt; count.setAttribute("class", `sp-count show ${txt === "GO!" ? "go" : ""}`); }
-      if (k >= 1.2) { phase = "run"; goT = now; setTimeout(() => count.setAttribute("class", "sp-count"), 500); }
+      if (k >= goAt) { goT = now; btn.textContent = "누르고 있으면 힘을 낸다"; setTimeout(() => count.setAttribute("class", "sp-count"), 500); if (holding) press(); }
     }
-    const t = goT ? (now - goT) / 1000 : 0;
-    if (phase === "run") {
-      v = Math.max(0, v - v * DRAG * dt);
-      if (finishT == null) {
-        pos += v * dt;
-        if (pos >= SP_M) {
-          finishT = t - (pos - SP_M) / Math.max(0.1, v);
-          tape.setAttribute("class", "broken");
-          burst(fxG, tall ? 78 : 60, SP_LANES[1].y - 10, { n: 16, spread: 16 });
-          setTimeout(finish, 700);
-        }
-      } else pos += v * dt * 0.6;
-      if (t > T * 1.7 && finishT == null) { phase = "over"; finish(); }
-      timeEl.textContent = `${(finishT ?? t).toFixed(2)}초`;
-    }
-    stumble = Math.max(0, stumble - dt * 2.5);
+    const t = goT ? (now - goT) / 1000 + falseStart : 0;
+    if (goT && !started && t - falseStart > 1) { started = true; say(`<b class="down">출발이 늦었다…</b>`); }
+    if (started && finishT == null) {
+      const wob = 1 + 0.2 * Math.sin(k * 5.3 + ph) + 0.08 * Math.sin(k * 11.7);       // 힘이 일정하게 오르지 않음
+      const late = pos > SP_M * 0.55 ? 1.22 : 1;                                       // 막판엔 다리가 무거워 조절이 어려움
+      if (cramp > 0) { cramp -= dt; g = Math.max(0.35, g - P.fall * dt); }
+      else if (holding) g = Math.min(1, g + P.rise * wob * late * dt);
+      else g = Math.max(0, g - P.fall * dt);
+      if (g >= SP_RED && cramp <= 0) { cramp = 0.6; say(`<b class="down">다리가 풀렸다!</b>`); }
+      const vt = P.vmax * (cramp > 0 ? 0.55 : spFactor(g, P));
+      v += (vt - v) * dt / (vt > v ? SP_TAU_UP : SP_TAU_DN);
+      pos += v * dt;
+      if (pos >= SP_M) {
+        finishT = t - (pos - SP_M) / Math.max(0.1, v);
+        tape.setAttribute("class", "broken");
+        burst(fxG, tall ? 78 : 60, SP_LANES[1].y - 10, { n: 16, spread: 16 });
+        setTimeout(finish, 700);
+      }
+      if (t > T0 * 2) { finishT = null; finish(); }
+    } else if (finishT != null) { v *= 1 - dt * 1.5; pos += v * dt; }
+    if (goT && finishT == null) timeEl.textContent = `${t.toFixed(2)}초`;
+    else if (finishT != null) timeEl.textContent = `${finishT.toFixed(2)}초`;
+    // 게이지 표시
+    needle.style.left = `${(g * 100).toFixed(1)}%`;
+    hud.classList.toggle("hot", g >= P.lo && g <= P.hi);
+    hud.classList.toggle("over", g > P.hi || cramp > 0);
     const cam = Math.max(0, pos * SP_PX - (tall ? 56 : 52)) - (tall ? 22 : 8);
     world.setAttribute("transform", `translate(${(-cam).toFixed(2)},0)`);
-    me.setAttribute("transform", `translate(${((pos * SP_PX - cam) / SP_LANES[1].k).toFixed(2)},0) rotate(${(stumble * -12).toFixed(1)})`);
-    spDraw(meB, ph());
+    me.setAttribute("transform", `translate(${((pos * SP_PX - cam) / SP_LANES[1].k).toFixed(2)},0) rotate(${(cramp > 0 ? -8 : 0)})`);
+    spDraw(meB, pos * 2.05);
     rivals.forEach(r => {
-      const p = goT ? rPos(r, t) : 0;
+      const p = goT ? rPos(r, (now - goT) / 1000) : 0;
       r.g.setAttribute("transform", `translate(${((p * SP_PX - cam) / r.k).toFixed(2)},0)`);
       spDraw(r.b, p * 2.05);
     });
-    const sp = v / vmax;
-    bar.style.width = `${Math.round(sp * 100)}%`;
-    bar.className = sp > 0.8 ? "hot" : "";
+    const sp = v / P.vmax;
     slines.forEach((ln, i) => {
       const y = 50 + i * 6.5, len = 6 + sp * 22, x = 160 - ((now / (3 + i) + i * 37) % 200);
       ln.setAttribute("x1", x.toFixed(1)); ln.setAttribute("x2", (x + len).toFixed(1)); ln.setAttribute("y1", y); ln.setAttribute("y2", y);
       ln.setAttribute("stroke-width", (sp * 0.6).toFixed(2)); ln.style.opacity = (sp * 0.8).toFixed(2);
     });
-    if (!ended) raf = requestAnimationFrame(loop);
+    if (!ended || finishT != null) raf = requestAnimationFrame(loop);
   };
   raf = requestAnimationFrame(loop);
-  return () => { ended = true; cancelAnimationFrame(raf); document.removeEventListener("keydown", key); };
+  return () => { ended = true; cancelAnimationFrame(raf); cleanup(); };
 }
 
 const GAMES = { shooting, passing, dribble, weight, defend, sprint };

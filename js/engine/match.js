@@ -618,6 +618,7 @@ function pickSituation(state, m) {
   const late = m.minute >= 55;
   const pool = SITUATIONS.filter(s => s.pos.includes(pos) && (!s.once || !m.used[s.id]) && meets(state, s.requires)
     && (!s.wx || s.wx.includes(m.weather || "clear"))
+    && (!s.flowUp || (m.flow || 0) >= 0.3) && (!s.flowDown || (m.flow || 0) <= -0.3)   // 경기 흐름에 맞는 장면
     && (!s.late || late) && (!s.leading || a > b) && (!s.trailing || a < b));
   const losingLate = a < b && m.minute > 50;
   return weighted(pool.map(s => [s, s.weight * (losingLate && s.zone === "att" ? 1.6 : 1)]));

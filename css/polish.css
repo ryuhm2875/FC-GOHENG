@@ -504,3 +504,18 @@ body:has(#modal-root .backdrop) .fs-btn { opacity: 0; pointer-events: none; }
 @keyframes laterIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .end-later { animation: none; } }
 .kit-dot.jn-dot { background: #FFC93C; border-color: #1A237E; }
+
+/* 스프린트: 힘 게이지 */
+.sp-gauge { position: relative; flex: 1; height: 10px; border-radius: 6px; background: linear-gradient(90deg, rgba(255,255,255,.08), rgba(255,255,255,.18)); overflow: visible; }
+.sp-gauge .z { position: absolute; top: 0; bottom: 0; background: rgba(57, 217, 138, .55); border-radius: 3px; box-shadow: 0 0 0 1px rgba(120,255,180,.6) inset; }
+.sp-gauge .r { position: absolute; top: 0; bottom: 0; right: 0; background: rgba(255, 59, 78, .6); border-radius: 0 6px 6px 0; }
+.sp-gauge b { position: absolute; top: -4px; width: 4px; height: 18px; margin-left: -2px; border-radius: 2px; background: #fff; box-shadow: 0 0 6px rgba(0,0,0,.6); }
+.sp-gauge.hot b { background: #39D98A; box-shadow: 0 0 10px #39D98A; }
+.sp-gauge.over b { background: #FF3B4E; box-shadow: 0 0 10px #FF3B4E; }
+.mg .sp-hold { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; padding: 18px; font-size: 17px; }
+.mg .sp-hold.on { filter: brightness(1.25); transform: scale(.98); }
+.mg .sp-ctl { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.mg .sp-gauge-row { display: flex; align-items: center; gap: 10px; padding: 0 4px; }
+.mg .sp-glabel { font-size: 13px; font-weight: 800; color: rgba(255,255,255,.75); }
+.mg .sp-gauge { height: 14px; }
+.mg .sp-gauge b { top: -4px; height: 22px; }

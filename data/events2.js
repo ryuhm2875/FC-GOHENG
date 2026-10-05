@@ -414,7 +414,7 @@ export const EVENTS_MORE = [
     ] },
 
   // ── 축구부 ──────────────────────────────────
-  { id: "c_rival_dawn", who: "narr", needs: "rival",
+  { id: "c_rival_dawn", bg: "ev_rival", who: "narr", needs: "rival",
     text: "새벽 6시, 운동장 조명이 켜져 있다. {rival|이/가} 혼자 슈팅을 하고 있다.",
     choices: [
       { label: "말없이 옆에서 같이 찬다", fx: { s: { "tech.shoot": 0.5 }, fatigue: 4, rel: { rival: 4 } },
@@ -557,7 +557,7 @@ export const EVENTS_MORE = [
       { label: "다음엔 판정까지 이기겠다며 훈련한다", fx: { s: { "mental.competitive": 1 }, fatigue: 2 },
         result: "주심이 휘슬을 불 틈도 없게. 혼자 남아 마무리 슈팅을 더 했다." },
     ] },
-  { id: "c_card_senior", who: "coach", needs: "mentor", when: { grades: [1, 2], months: [4, 5, 6, 9, 10] },
+  { id: "c_card_senior", bg: "ev_lineup", who: "coach", needs: "mentor", when: { grades: [1, 2], months: [4, 5, 6, 9, 10] },
     cond: s => s.relations.people?.mentor?.position === s.player.position && !!turnInfo(s)?.match,   // 같은 포지션 선배, 경기 있는 주
     text: "{mentor|이/가} 경고 누적으로 이번 주에 못 뛴다. 그 자리에 너를 생각하고 있다. 준비됐냐.",
     choices: [
@@ -574,8 +574,8 @@ export const EVENTS_MORE = [
       { label: "대충 써서 낸다", fx: { s: { "student.attitude": -0.5 } },
         result: "{assistant}님이 종이를 보시더니 '다시' 한마디만 하셨다." },
     ] },
-  { id: "c_selection_rumor", date: [[4, 3]], bg: "ev_selection", who: "narr", when: { grades: [2, 3], months: [4] },
-    text: "다음 달 전남 대표 선발전이 열린다는 소문이 돈다. 누가 불려 갈지 다들 수군거린다.",
+  { id: "c_selection_rumor", date: [[3, 4]], bg: "ev_selection", who: "narr", when: { grades: [2, 3], months: [3] },
+    text: "곧 전남 대표 선발전 명단이 나온다는 소문이 돈다. 누가 불려 갈지 다들 수군거린다.",
     choices: [
       { label: "남몰래 특별 훈련을 시작한다", fx: { s: { "position": 0.4 }, fatigue: 3 }, act: s => { s.flags.jnBoost = (s.flags.jnBoost || 0) + 1; },
         result: "훈련이 끝나면 30분씩 더 남았다. 소문이 사실이라면, 준비된 사람이 가는 거다." },

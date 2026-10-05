@@ -311,7 +311,7 @@ export function eventModal(app, done) {
       el.querySelector("[data-close]").focus({ preventScroll: true });
       sfx.play(score >= 0 ? "good" : "bad");
     }));
-  }, { dismissable: false, onClose: done, scene: v.ev.bg || null, cls: "event" });
+  }, { dismissable: false, onClose: done, scene: (typeof v.ev.bg === "function" ? v.ev.bg(state) : v.ev.bg) || null, cls: "event" });   // 상황에 따라 그림이 바뀌는 이벤트도 있음
 }
 
 // ── 경기 전 미팅: 정 코치 분석 → 감독님 한마디 → 내 대답 ──
