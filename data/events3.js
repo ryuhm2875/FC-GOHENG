@@ -56,7 +56,7 @@ export const EVENTS_STORY = [
     text: "마지막 여름 대회 전날 밤, 숙소. 불을 끈 지 한참인데 옆자리 {rival|이/가} 아직 안 잔다. \"야, 자냐. …우리 이거 마지막 여름이다.\"",
     choices: [
       { label: "\"내일 같이 골 넣자\" 하고 주먹을 내민다", fx: { s: { "mental.teamwork": 0.6 }, morale: 4, rel: { rival: 5 } },
-        result: "어둠 속에서 주먹이 맞부딪혔다. 3년 동안 서로를 이기려고 뛰었는데, 내일은 같은 쪽을 보고 뛴다." },
+        result: "어둠 속에서 주먹이 맞부딪혔다. 3년 동안 서로를 이기려고 뛰었지만, 내일만큼은 서로를 위해 뛴다." },
       { label: "1학년 때 슈팅 내기 얘기를 꺼낸다", fx: { morale: 5, rel: { rival: 4 } },
         result: "\"그거 내가 이긴 거다.\" \"아니거든.\" 새벽 2시까지 웃다가 코치님께 혼났다." },
       { label: "\"자라. 내일 뛰어야지\" 하고 돌아눕는다", fx: { fatigue: -4, s: { "mental.focus": 0.4 } },
@@ -113,9 +113,9 @@ export const EVENTS_STORY = [
     text: "동계훈련 짐을 풀다가 가방 안쪽 주머니에서 접힌 쪽지를 발견했다. 엄마 글씨다.",
     choices: [
       { label: "그 자리에서 펼쳐 읽는다", fx: { morale: 6, s: { "mental.confidence": 0.5 } },
-        result: "'잘하든 못하든 엄마는 네가 운동장에 서 있는 게 좋아. 2학년도 지금처럼.' 쪽지를 지갑에 넣었다." },
+        result: "'잘하든 못하든 엄마는 네가 운동장에 서 있는 게 좋아. 3학년도 지금처럼.' 쪽지를 지갑에 넣었다." },
       { mark: "mom_reply", label: "엄마한테 답장을 써서 냉장고에 붙인다", fx: { morale: 5, s: { "mental.teamwork": 0.3 } },
-        result: "'2학년엔 선발로 뛰는 거 보여 줄게요.' 다음 날 아침, 그 쪽지 옆에 하트 자석이 하나 더 붙어 있었다." },
+        result: "'3학년엔 선발로 뛰는 거 보여 줄게요.' 다음 날 아침, 그 쪽지 옆에 하트 자석이 하나 더 붙어 있었다." },
     ] },
   { id: "p_admission", family: true, once: true, date: [[10, 3]], when: { grades: [3] }, bg: "ev_dinner", who: "dad",
     text: "저녁 식탁. 진학 이야기가 나왔다. 엄마는 공부도 놓지 않을 학교를, 아빠는 네가 가고 싶은 곳을 말하라고 한다. 두 분이 동시에 나를 본다.",
@@ -162,8 +162,8 @@ export const EVENTS_STORY = [
     trigger: s => { const i = turnInfo(s); return marked(s, "rival_dawn", 8) && i?.grade === 3 && i.month === 7 && i.week <= 3; },
     text: "훈련이 끝나고 {rival|이/가} 공 하나를 툭 차 보낸다. \"기억나냐. 그 새벽에 네가 내 옆에서 같이 찼던 거. 그날부터 너 의식하면서 뛰었다.\" 곧 마지막 여름 대회다.",
     choices: [
-      { label: "\"이번엔 같은 골문을 보고 뛰자\"", fx: { morale: 4, rel: { rival: 4 } },
-        act: s => { const r = person(s, "rival")?.name || "라이벌"; bond(s, 0.05, `${r}${bat(r) ? "과" : "와"} 눈이 마주쳤다. 그 새벽처럼, 오늘은 같은 골문을 본다.`, 4); },
+      { label: "\"이번엔 경쟁 말고 서로 살려 주자\"", fx: { morale: 4, rel: { rival: 4 } },
+        act: s => { const r = person(s, "rival")?.name || "라이벌"; bond(s, 0.05, `${r}${bat(r) ? "과" : "와"} 눈이 마주쳤다. 그 새벽처럼, 오늘은 서로를 믿고 뛴다.`, 4); },
         result: "둘이 동시에 웃었다. 대회 첫 경기에서 서로를 한 번 더 찾게 될 것 같다." },
       { label: "\"그때 너 진짜 얄미웠다\" 하고 웃는다", fx: { morale: 5, rel: { rival: 3 } },
         act: s => { const r = person(s, "rival")?.name || "라이벌"; bond(s, 0.05, `킥오프 직전, ${r}${bat(r) ? "이" : "가"} 내 등을 두 번 두드린다. 그 새벽의 신호다.`, 4); },

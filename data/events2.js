@@ -253,7 +253,7 @@ export const EVENTS_MORE = [
         result: "한 판이 세 판이 됐다. 아침 훈련 내내 하품이 났다." },
     ] },
   { id: "a_karaoke", cool: 40, trigger: s => !!s.lastExam && s.calendar.turn - s.lastExam.turn === 1, who: "friend", needs: "friend", cond: afterExam,
-    text: "시험 끝!!! 반 애들 다 노래방 간대. 너도 와. 오늘 저녁에 자율 훈련 있는 건 아는데…",
+    text: "시험 끝!!! 반 애들 다 노래방 간대. 너도 와. 우리 오늘 저녁 자율 훈련 있는 건 아는데…",
     choices: [
       { label: "노래방에 간다", fx: { morale: 6, fatigue: -3, coach: -0.5, rel: { friend: 4 } },
         result: "목이 쉴 때까지 불렀다. 시험 기간 내내 쌓인 게 한 번에 날아갔다." },
@@ -323,7 +323,7 @@ export const EVENTS_MORE = [
         result: "교실로 돌아오는 길에 반 친구들이 투덜댔다. 그래도 다툼은 없었다." },
     ] },
   { id: "a_bday_party", who: "friend", needs: "friend",
-    text: "토요일 저녁에 내 생일 파티 하는데 꼭 와야 돼. …근데 너 그 시간에 자율 훈련 있지?",
+    text: "토요일 저녁에 내 생일 파티 하는데 꼭 와야 돼. …근데 그 시간에 자율 훈련 있잖아. 난 빠질 건데, 너는?",
     choices: [
       { label: "파티에 간다", fx: { morale: 4, coach: -1, rel: { friend: 8 } },
         result: "케이크 초를 같이 껐다. {friend|이/가} '네가 와서 진짜 좋다'며 웃었다." },
@@ -548,7 +548,7 @@ export const EVENTS_MORE = [
         result: "끝까지 뛰었다. 그날 밤 저녁을 먹다가 숟가락을 든 채 잠들었다." },
     ] },
   { id: "c_ref", cool: 40, trigger: s => lastMatch(s)?.result === "패" && lastMatch(s)?.official, who: "narr", cond: s => lastMatch(s)?.result === "패",
-    text: "어제 경기 판정이 너무 억울했다. 단톡방이 온통 주심 이야기로 시끄럽다.",
+    text: "지난 주말 경기 판정이 너무 억울했다. 단톡방이 온통 주심 이야기로 시끄럽다.",
     choices: [
       { label: "단톡방을 진정시킨다", fx: { s: { "mental.teamwork": 1 } },
         result: "\"판정 탓만 하면 다음에도 진다.\" 한 줄 쓰자 단톡방이 조용해졌다. 감독님께서 그 메시지에 하트를 누르셨다." },
@@ -589,14 +589,14 @@ export const EVENTS_MORE = [
     choices: [
       { label: "맨 앞줄에서 활짝 웃는다", fx: { morale: 2 },
         result: "사진 속 내 웃음이 제일 컸다. 엄마가 그 사진을 거실에 걸어 두셨다." },
-      { label: "뒷줄에서 후배와 어깨동무한다", fx: { s: { "mental.teamwork": 1 } },
+      { label: "뒷줄에서 동기와 어깨동무한다", fx: { s: { "mental.teamwork": 1 } },
         result: "사진에는 반쯤 가려졌지만, 어깨동무한 팔은 또렷하게 나왔다." },
     ] },
   { id: "c_old_story", who: "coach", when: { months: [6, 7, 8, 9] },
     text: "비가 와서 라커룸에 다 모였다. \"내가 너희만 할 때 얘기 하나 해 줄까.\"",
     choices: [
       { label: "끝까지 귀 기울여 듣는다", fx: { s: { "mental.focus": 0.5 }, coach: 1.5 },
-        result: "감독님도 1학년 땐 물통만 날랐다고 하셨다. 그 이야기를 들은 후배들 눈빛이 달라졌다." },
+        result: "감독님도 1학년 땐 물통만 날랐다고 하셨다. 그 이야기를 들은 1학년들 눈빛이 달라졌다." },
       { label: "궁금한 걸 여쭤본다", fx: { coach: 2, s: { "mental.confidence": 0.5 } },
         result: "\"제일 힘들었던 경기는요?\" 감독님이 한참 생각하시더니, 진 경기가 아니라 이긴 경기 이야기를 꺼내셨다." },
     ] },

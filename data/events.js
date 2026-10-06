@@ -125,7 +125,7 @@ export const EVENTS = [
   { id: "rival_injury", who: "narr", needs: "rival", once: true,
     text: "{rival|이/가} 훈련 중 발목을 접질렸다. 일주일은 못 뛴다고 한다.",
     choices: [
-      { label: "병원에 찾아간다", fx: { rel: { rival: 15, friend: 3 }, s: { "mental.teamwork": 1 } }, result: "\"빨리 와라. 너 없으니까 재미없다.\" {rival|이/가} 피식 웃었다." },
+      { label: "병원에 찾아간다", fx: { rel: { rival: 15, friend: 3 }, s: { "mental.teamwork": 1 } }, result: "\"빨리 나아서 와라. 너 없으니까 훈련이 재미없다.\" 내 말에 {rival|이/가} 피식 웃었다." },
       { label: "이번이 기회라고 생각한다", fx: { s: { "mental.competitive": 1 }, coach: 1, rel: { rival: -5 } }, result: "그 주 훈련에서 유난히 많이 뛰었다. 마음 한쪽이 조금 불편했다." },
     ] },
   { id: "mentor_tip", who: "mentor", needs: "mentor", cond: s => s.relations.people?.mentor?.value >= 55,
@@ -480,8 +480,8 @@ export const EVENTS = [
   { id: "cel_league", bg: "ev_dinner", fixed: true, who: "coach",
     text: s => `${s.celebration?.label || "주말리그"} 우승 기념 회식 날. 감독님께서 읍내 고깃집을 통째로 빌리셨다. "오늘은 아무도 칼로리 계산 안 한다." 불판마다 삼겹살이 지글거리고, 우승 트로피는 상추 바구니 옆에 놓였다.`,
     choices: [
-      { label: "후배들 먼저 챙긴다", fx: { s: { "mental.teamwork": 1.5 }, morale: 6, rel: { junior: 4, friend: 3 } },
-        result: s => s.calendar.grade === 1 ? "막내라고 뒷정리부터 하려는데 선배가 손을 붙잡았다. \"우승한 날은 막내도 먹는 거다.\" 처음으로 팀 사진 한가운데 앉았다."
+      { label: "불판 앞에서 고기 굽는 걸 맡는다", fx: { s: { "mental.teamwork": 1.5 }, morale: 6, rel: { junior: 4, friend: 3 } },
+        result: s => s.calendar.grade === 1 ? "막내라고 집게부터 잡았는데 선배가 손을 붙잡았다. \"우승한 날은 막내도 먹는 거다.\" 처음으로 팀 사진 한가운데 앉았다."
           : "후배들 접시부터 채웠다. 정작 내 접시는 마지막까지 비어 있었는데, 이상하게 배가 불렀다." },
       { label: "감독님 옆자리에 앉는다", fx: { coach: 5, s: { "mental.focus": 1 }, morale: 4 },
         result: "감독님은 거의 드시지 않고 사이다만 드셨다. \"우승은 오늘까지만 기뻐해라. 내일부터 너희는 쫓기는 팀이다.\" 그 말이 이상하게 좋았다." },

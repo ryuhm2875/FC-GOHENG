@@ -534,7 +534,7 @@ export function weeklyAdvice(state, rep) {
   const lastM = state.record.matches.at(-1), fresh = lastM && lastM.turn >= state.calendar.turn - 1;
   const myApps = state.record.matches.filter(x => x.minutes > 0).slice(-5);
   const ctxKey = !now ? null
-    : now.grade === 3 && ((now.month === 2) || (now.month === 1 && now.week >= 3)) && !state.flags.lastDaysMail ? "lastDays"
+    : now.grade === 3 && now.month === 12 && now.week >= 2 && !state.flags.lastDaysMail ? "lastDays"
     : now.grade >= 2 && now.month === 3 && now.week === 1 ? "newYear"
     : fresh && lastM.gf - lastM.ga >= 3 ? "afterBigWin"
     : fresh && lastM.ga - lastM.gf >= 3 ? "afterBigLoss"
