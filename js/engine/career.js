@@ -64,6 +64,7 @@ export function schoolOptions(state) {
     if (recommend) { need -= 3; notes.push("감독님 추천서 −3"); }
     if (p.stats.student.academic >= 80) { need -= 2; notes.push("학업 우수 추천 가산 −2"); }
     if (state.flags.jnSelected) { need -= 2; notes.push("전남 대표 경력 −2"); }
+    if (state.marks?.book_read && (state.relations.teacher ?? 50) >= 60) { need -= 1; notes.push("담임 선생님 추천서 −1"); }
     if (state.goals?.done?.award) { need -= 1; notes.push("우수선수상 −1"); }
     if (p.stats.student.attitude < 40) { need += 3; notes.push("생활태도 부족 +3"); }
     if (p.stats.student.academic < 30) { need += 2; notes.push("학업 부족 +2"); }

@@ -222,6 +222,7 @@ export function chooseEvent(state, idx) {
   if (ev.id === CAPTAIN_EVENT.id) result = captainVote(state, c.run, changes);
   else {
     try { c.act?.(state); } catch (e) { console.warn(e); }   // 목표 기록 같은 일
+    if (c.mark) (state.marks ||= {})[c.mark] ??= state.calendar.turn;   // 나중에 되돌아올 선택 (복선)
     applyFx(state, c.fx, changes);
     applyFx(state, c.fxAfter, changes);
     result = typeof c.result === "function" ? c.result(state) : c.result;
@@ -245,7 +246,8 @@ export function chooseEvent(state, idx) {
 function captainVote(state, run, changes) {
   const p = state.player;
   state.flags.captainVoted = true;
-  const score = captainScore(state) + (rand() * 8 - 4);
+  const juniorVote = !!state.marks?.junior_cared && person(state, "junior");   // 예전에 챙겨 준 후배가 먼저 손을 듦
+  const score = captainScore(state) + (rand() * 8 - 4) + (juniorVote ? 5 : 0);
   const need = run ? 66 : 76;
   const win = score >= need;
   if (win) {
@@ -256,7 +258,8 @@ function captainVote(state, run, changes) {
     changes.push({ label: "사기", d: 12 }, { label: "감독 신뢰", d: 5 });
     mail(state, "coach", "주장 완장",
       `올해 주장은 ${p.name}${/[가-힣]/.test(p.name.at(-1)) && (p.name.at(-1).charCodeAt(0) - 0xAC00) % 28 ? "이다" : "다"}.\n\n주장은 제일 잘하는 선수가 아니라, 제일 먼저 나오고 제일 늦게 들어가는 선수다. 힘들 때 고개 숙이지 마라. 다들 너를 본다.`);
-    return run ? "동기들이 하나둘 손을 들었다. 만장일치. 감독님이 주황색 완장을 건네셨다." : "다른 친구를 추천했는데, 동기들이 오히려 네 이름을 불렀다. 감독님이 완장을 건네셨다.";
+    const jv = juniorVote ? `맨 먼저 손을 든 건 후배 ${person(state, "junior").name}${_bat(person(state, "junior").name) ? "이었다" : "였다"}. 그만두겠다던 그날 이후로, 한 번도 훈련에 빠지지 않은 녀석이다. ` : "";
+    return jv + (run ? "동기들이 하나둘 손을 들었다. 만장일치. 감독님이 주황색 완장을 건네셨다." : "다른 친구를 추천했는데, 동기들이 오히려 네 이름을 불렀다. 감독님이 완장을 건네셨다.");
   }
   p.condition.morale = clamp(p.condition.morale - (run ? 6 : 0), 0, 100);
   if (run) changes.push({ label: "사기", d: -6 });

@@ -145,15 +145,15 @@ export const EVENTS = [
   { id: "junior_slump", who: "junior", needs: "junior",
     text: "형… 저 축구 그만둘까 봐요. 경기도 못 나가고 엄마도 공부하래요.",
     choices: [
-      { label: "내 중1 얘기를 해 준다", fx: { rel: { junior: 12 }, s: { "mental.teamwork": 1, "student.attitude": 0.5 }, fatigue: 2 }, result: "{junior|이/가} 한참 듣더니 \"내일도 나올게요\" 했다." },
+      { mark: "junior_cared", label: "내 중1 얘기를 해 준다", fx: { rel: { junior: 12 }, s: { "mental.teamwork": 1, "student.attitude": 0.5 }, fatigue: 2 }, result: "{junior|이/가} 한참 듣더니 \"내일도 나올게요\" 했다." },
       { label: "감독님께 말해 보라고 한다", fx: { rel: { junior: 3 } }, result: "{junior|은/는} 고개만 끄덕였다." },
-      { label: "\"오늘부터 나랑 같이 남아서 하자\"", req: { "rel.junior": 60 }, fx: { s: { "mental.teamwork": 0.6 }, fatigue: 3, rel: { junior: 5 } },
+      { mark: "junior_cared", label: "\"오늘부터 나랑 같이 남아서 하자\"", req: { "rel.junior": 60 }, fx: { s: { "mental.teamwork": 0.6 }, fatigue: 3, rel: { junior: 5 } },
         result: "그날부터 훈련 끝나고 30분씩 같이 공을 찼다. 일주일 뒤 {junior|이/가} 먼저 말했다. \"형, 내일도 남을 거죠?\"" },
     ] },
   { id: "junior_ask", who: "junior", needs: "junior",
     text: "형, 저 왼발 슈팅 좀 봐 주시면 안 돼요? 10분만요.",
     choices: [
-      { label: "30분 봐 준다", fx: { rel: { junior: 8 }, s: { "tech.shoot": 0.5, "mental.teamwork": 0.5 }, fatigue: 5 }, result: "가르치다 보니 내 자세도 고쳐졌다." },
+      { mark: "junior_coach", label: "30분 봐 준다", fx: { rel: { junior: 8 }, s: { "tech.shoot": 0.5, "mental.teamwork": 0.5 }, fatigue: 5 }, result: "가르치다 보니 내 자세도 고쳐졌다." },
       { label: "오늘은 피곤하다", fx: { rel: { junior: -5 }, fatigue: -3 }, result: "{junior|은/는} 혼자 골대 앞으로 갔다." },
     ] },
   { id: "coach_talk", who: "coach", cond: s => s.relations.coach < 45,
@@ -288,7 +288,7 @@ export const EVENTS = [
     choices: [
       { label: "솔직하게 서운하다고 한다", fx: { coach: 2, morale: 3 }, result: "\"그 마음 그대로 훈련에서 보여 줘라. 나는 거기서 정한다.\"" },
       { label: "아니라고, 괜찮다고 한다", fx: { morale: -2, s: { "mental.focus": 1 } }, result: "\"괜찮으면 안 되는 거다.\" 감독님은 그 말만 남기고 가셨다." },
-      { label: "무엇을 더 하면 되는지 묻는다", fx: { coach: 4, s: { "mental.competitive": 1 } }, result: "감독님이 내 포지션에서 제일 필요한 것 하나를 짚어 주셨다. 이번 주 훈련 목표가 생겼다." },
+      { mark: "asked_coach", label: "무엇을 더 하면 되는지 묻는다", fx: { coach: 4, s: { "mental.competitive": 1 } }, result: "감독님이 내 포지션에서 제일 필요한 것 하나를 짚어 주셨다. 이번 주 훈련 목표가 생겼다." },
     ] },
 
   // ── 소소한 학교생활 ──────────────────────────
@@ -315,7 +315,7 @@ export const EVENTS = [
   { id: "s_little", who: "narr",
     text: "훈련 끝나고 운동장을 나서는데, 초등학생 몇 명이 공을 들고 다가온다. \"형, 축구부죠? 슈팅 한 번만 보여 주세요!\"",
     choices: [
-      { label: "몇 개 차 주고 같이 놀아 준다", fx: { morale: 6, fatigue: 3, s: { "mental.teamwork": 1 } }, result: "해가 질 때까지 공을 찼다. 꼬마들이 내 등번호를 외우고 갔다." },
+      { mark: "kids", label: "몇 개 차 주고 같이 놀아 준다", fx: { morale: 6, fatigue: 3, s: { "mental.teamwork": 1 } }, result: "해가 질 때까지 공을 찼다. 꼬마들이 내 등번호를 외우고 갔다." },
       { label: "다음에 하자고 하고 집에 간다", fx: { fatigue: -3 }, result: "아쉬워하는 얼굴들이 자꾸 떠올랐다. 다음 주에 다시 와 보기로 했다." },
     ] },
   { id: "s_phone", who: "narr",
@@ -547,7 +547,7 @@ export const EVENTS = [
   { id: "t_book", date: [[10, 2]], who: "teacher", school: true, once: true, when: { grades: [2], months: [9, 10, 11] },
     text: "{teacher}께서 책 한 권을 건네신다. 축구 선수가 쓴 에세이다. \"읽고 한 줄만 써 와. 숙제 아니야.\"",
     choices: [
-      { label: "그 주 안에 다 읽는다", fx: { s: { "mental.focus": 1, "student.academic": 1.5, "mental.confidence": 0.5 }, teacher: 6 }, result: "\"재능은 출발선일 뿐이다\"에 밑줄을 그었다. 그 문장을 써서 드렸다." },
+      { mark: "book_read", label: "그 주 안에 다 읽는다", fx: { s: { "mental.focus": 1, "student.academic": 1.5, "mental.confidence": 0.5 }, teacher: 6 }, result: "\"재능은 출발선일 뿐이다\"에 밑줄을 그었다. 그 문장을 써서 드렸다." },
       { label: "나중에 읽는다", fx: { teacher: -1 }, result: "책은 가방 속에서 한 달을 보냈다. 선생님은 아무 말도 안 하셨다." },
     ] },
   { id: "t_injured", who: "teacher", school: true, weight: 2.5, cond: s => !!s.player.condition.injury && s.player.condition.injury.total >= 3,

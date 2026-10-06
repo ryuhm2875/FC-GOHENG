@@ -5,6 +5,9 @@
 import { turnInfo } from "../js/engine/calendar.js";
 import { rivalGap, person } from "../js/engine/relations.js";
 
+const marked = (s, k, gap = 0) => s.marks?.[k] != null && s.calendar.turn - s.marks[k] >= gap;   // 예전 선택 기억
+const bat = w => { const c = String(w).charCodeAt(String(w).length - 1); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 !== 0; };
+const bond = (s, bonus, line, weeks = 0) => { s.flags.bond = { bonus, line, until: s.calendar.turn + weeks }; };
 const lastMatch = s => { const m = s.record.matches.at(-1); return m && m.turn === s.calendar.turn - 1 ? m : null; };
 const samePos = s => person(s, "rival")?.position === s.player.position;
 const gapText = (s, ahead, close, behind) => { const g = rivalGap(s); return g == null ? close : g >= 4 ? ahead : g <= -4 ? behind : close; };
@@ -111,7 +114,7 @@ export const EVENTS_STORY = [
     choices: [
       { label: "그 자리에서 펼쳐 읽는다", fx: { morale: 6, s: { "mental.confidence": 0.5 } },
         result: "'잘하든 못하든 엄마는 네가 운동장에 서 있는 게 좋아. 2학년도 지금처럼.' 쪽지를 지갑에 넣었다." },
-      { label: "엄마한테 답장을 써서 냉장고에 붙인다", fx: { morale: 5, s: { "mental.teamwork": 0.3 } },
+      { mark: "mom_reply", label: "엄마한테 답장을 써서 냉장고에 붙인다", fx: { morale: 5, s: { "mental.teamwork": 0.3 } },
         result: "'2학년엔 선발로 뛰는 거 보여 줄게요.' 다음 날 아침, 그 쪽지 옆에 하트 자석이 하나 더 붙어 있었다." },
     ] },
   { id: "p_admission", family: true, once: true, date: [[10, 3]], when: { grades: [3] }, bg: "ev_dinner", who: "dad",
@@ -152,6 +155,104 @@ export const EVENTS_STORY = [
         result: "후배들이 눈을 반짝이며 물었다. \"형, 다른 지역 애들은 진짜 잘해요?\" \"응. 근데 우리도 할 수 있어.\"" },
       { label: "집에 가서 하루 푹 쉰다", fx: { fatigue: -10, morale: 2 },
         result: "엄마가 끓여 준 미역국을 먹고 열두 시간을 잤다. 꿈속에서도 경기를 뛰었다." },
+    ] },
+
+  // ── 복선 회수: 예전에 한 선택이 시간이 지나 돌아오는 장면 (choices의 mark로 기억) ─────────
+  { id: "pay_rival_dawn", once: true, needs: "rival", bg: "ev_rival", who: "rival",
+    trigger: s => { const i = turnInfo(s); return marked(s, "rival_dawn", 8) && i?.grade === 3 && i.month === 7 && i.week <= 3; },
+    text: "훈련이 끝나고 {rival|이/가} 공 하나를 툭 차 보낸다. \"기억나냐. 그 새벽에 네가 내 옆에서 같이 찼던 거. 그날부터 너 의식하면서 뛰었다.\" 곧 마지막 여름 대회다.",
+    choices: [
+      { label: "\"이번엔 같은 골문을 보고 뛰자\"", fx: { morale: 4, rel: { rival: 4 } },
+        act: s => { const r = person(s, "rival")?.name || "라이벌"; bond(s, 0.05, `${r}${bat(r) ? "과" : "와"} 눈이 마주쳤다. 그 새벽처럼, 오늘은 같은 골문을 본다.`, 4); },
+        result: "둘이 동시에 웃었다. 대회 첫 경기에서 서로를 한 번 더 찾게 될 것 같다." },
+      { label: "\"그때 너 진짜 얄미웠다\" 하고 웃는다", fx: { morale: 5, rel: { rival: 3 } },
+        act: s => { const r = person(s, "rival")?.name || "라이벌"; bond(s, 0.05, `킥오프 직전, ${r}${bat(r) ? "이" : "가"} 내 등을 두 번 두드린다. 그 새벽의 신호다.`, 4); },
+        result: "\"너도 만만치 않았거든.\" 공을 주고받는 소리가 해 질 때까지 이어졌다." },
+    ] },
+  { id: "pay_mom_reply", once: true, family: true, bg: "ev_lunchbox", who: "narr",
+    trigger: s => { const i = turnInfo(s); return marked(s, "mom_reply", 10) && i?.grade === 3 && [11, 12].includes(i.month); },
+    text: "엄마 지갑에서 코팅된 종이 한 장이 떨어졌다. 2학년 겨울, 냉장고에 붙여 두었던 내 답장이다. 글씨가 삐뚤빼뚤하다.",
+    choices: [
+      { label: "엄마한테 이게 뭐냐고 묻는다", fx: { morale: 6 },
+        result: "\"버리기 아까워서.\" 엄마는 그렇게만 말하고 부엌으로 가셨다. 귀가 빨갰다." },
+      { label: "모른 척 다시 넣어 둔다", fx: { morale: 4, s: { "student.attitude": 0.5 } },
+        result: "지갑을 원래대로 닫아 두었다. 그날 저녁 설거지는 내가 했다." },
+    ] },
+  { id: "pay_book", once: true, school: true, bg: "ev_classroom", who: "teacher",
+    trigger: s => { const i = turnInfo(s); return marked(s, "book_read", 10) && i?.grade === 3 && [9, 10].includes(i.month) && (s.relations.teacher ?? 50) >= 60; },
+    text: "{teacher}께서 진로 상담 자료를 넘기다 멈추신다. \"그때 준 책 기억나니? 그 주에 다 읽고 한 줄 써 왔던 거. 선생님이 추천서에 그 얘기를 썼다.\"",
+    choices: [
+      { label: "그 한 줄을 아직 기억한다고 말씀드린다", fx: { teacher: 3, s: { "student.academic": 0.5 } },
+        result: "\"그럼 됐다.\" 선생님이 웃으며 서류를 덮으셨다. 진학 상담 때 추천서가 힘이 될 거다." },
+      { label: "감사하다고 고개를 숙인다", fx: { teacher: 2, morale: 3 },
+        result: "\"고마운 건 선생님이지. 그 책 끝까지 읽은 애가 몇 없었거든.\"" },
+    ] },
+  { id: "pay_turf", once: true, bg: "bg_field_day", who: "coach",
+    trigger: s => { const i = turnInfo(s); return marked(s, "turf", 10) && i?.grade === 3 && [11, 12].includes(i.month); },
+    text: "시즌 마지막 훈련. {coach}님께서 운동장을 한 바퀴 둘러보시더니 말씀하신다. \"저기 페널티 박스 앞, 비 오고 패였던 데. 그날 삽 들고 나온 놈 기억한다. 너다.\"",
+    choices: [
+      { label: "\"그날 흙 많이 날랐습니다\" 하고 웃는다", fx: { coach: 4, morale: 4 },
+        result: "\"그래. 그런 놈이 결국 운동장을 지킨다.\" 감독님이 처음으로 어깨를 두드려 주셨다." },
+      { label: "말없이 고개를 숙인다", fx: { coach: 3, s: { "mental.teamwork": 0.5 } },
+        result: "감독님은 더 말씀하지 않으셨다. 대신 마지막 정리 운동 구령을 나에게 맡기셨다." },
+    ] },
+  { id: "pay_kids", once: true, bg: "bg_stadium", who: "narr",
+    trigger: s => marked(s, "kids", 30) && !!turnInfo(s)?.match,
+    text: "경기 날 아침. 관중석 앞줄에 초등학생 몇 명이 삐뚤빼뚤한 현수막을 들고 서 있다. 예전에 운동장 앞에서 슈팅을 보여 줬던 그 아이들이다.",
+    choices: [
+      { label: "손을 크게 흔들어 준다", fx: { morale: 5 },
+        act: s => bond(s, 0.03, "관중석 앞줄에서 초등학생들이 현수막을 흔든다. '형 파이팅!' 다리에 힘이 들어간다."),
+        result: "아이들이 펄쩍펄쩍 뛰며 소리를 질렀다. 오늘은 골을 넣고 싶다." },
+      { label: "경기 끝나고 사진 찍어 주겠다고 약속한다", fx: { morale: 4, s: { "student.attitude": 0.5 } },
+        act: s => bond(s, 0.03, "관중석 앞줄에서 초등학생들이 현수막을 흔든다. 경기 끝나고 사진 찍어 주기로 한 약속이 떠오른다."),
+        result: "새끼손가락을 걸었다. 그 아이들 앞에서 지는 모습은 보여 주기 싫다." },
+    ] },
+  { id: "pay_lunch_friend", once: true, school: true, bg: "ev_classroom", who: "narr",
+    trigger: s => marked(s, "lunch_friend", 20),
+    text: "아침에 책상 서랍을 여니 접힌 종이가 들어 있다. 급식실에서 같이 밥을 먹던 그 아이가 그린 그림이다. 주황색 유니폼을 입은 내가 골을 넣고 있다.",
+    choices: [
+      { label: "쉬는 시간에 찾아가 고맙다고 한다", fx: { morale: 5, s: { "mental.teamwork": 0.4 } },
+        result: "그 아이가 처음으로 먼저 웃었다. \"다음 경기 보러 가도 돼?\"" },
+      { label: "그림을 사물함 안쪽에 붙여 둔다", fx: { morale: 4, s: { "mental.focus": 0.3 } },
+        result: "사물함을 열 때마다 그림 속 내가 골을 넣고 있다. 괜히 힘이 난다." },
+    ] },
+  { id: "pay_umbrella", once: true, bg: "bg_stadium", who: "narr",
+    trigger: s => { const i = turnInfo(s); return marked(s, "umbrella", 15) && !!i?.match && [5, 6, 7, 8, 9].includes(i.month); },
+    text: "비 소식이 있는 경기 날. 운동장 입구에서 누가 우비를 내민다. 예전에 우산을 같이 썼던 옆 반 아이다. \"오늘은 내가 갚을게.\"",
+    choices: [
+      { label: "우비를 받아 벤치 가방에 넣는다", fx: { morale: 4 },
+        result: "비가 오든 말든 오늘은 춥지 않을 것 같다." },
+      { label: "같이 보자며 관중석 자리를 알려 준다", fx: { morale: 5, s: { "mental.teamwork": 0.3 } },
+        result: "그 아이는 끝까지 자리를 지켰다. 경기가 끝나고 우비를 돌려주려 했지만 받지 않았다." },
+    ] },
+  { id: "pay_junior_coach", once: true, needs: "junior", bg: "bg_field_day", who: "junior",
+    trigger: s => { const i = turnInfo(s); return marked(s, "junior_coach", 10) && i?.grade === 3 && !i.vacation; },
+    text: "후배 {junior|이/가} 연습경기에서 왼발로 골을 넣고는 세리머니도 잊고 나에게 달려온다. \"형! 봤어요? 형이 봐 준 그 왼발이요!\"",
+    choices: [
+      { label: "머리를 마구 헝클어 준다", fx: { morale: 4, rel: { junior: 5 } },
+        result: "{junior|이/가} 비명을 지르면서도 웃었다. 그 30분이 이렇게 돌아올 줄은 몰랐다." },
+      { label: "\"다음엔 오른발도 봐 줄게\"", fx: { s: { "mental.teamwork": 0.5 }, rel: { junior: 4 } },
+        result: "\"진짜죠? 약속이에요!\" 그날 훈련은 둘이 제일 늦게 끝났다." },
+    ] },
+  { id: "pay_asked_coach", once: true, bg: "ev_office", who: "coach",
+    trigger: s => { const m = lastMatch(s); return marked(s, "asked_coach", 2) && !!m && m.status === "start" && m.minutes > 0 && m.turn > s.marks.asked_coach; },
+    text: "경기가 끝나고 {coach}님께서 부르셨다. \"벤치 옆에서 '뭘 더 하면 되냐'고 물었던 거 기억하냐. 지난 경기에서 그 답을 네가 직접 보여 줬다.\"",
+    choices: [
+      { label: "\"아직 멀었습니다\"", fx: { coach: 3, s: { "mental.competitive": 0.4 } },
+        result: "\"그 말 할 줄 알았다. 그래서 너를 넣은 거다.\"" },
+      { label: "꾸벅 인사한다", fx: { coach: 3, morale: 3 },
+        result: "감독님은 고개만 한 번 끄덕이셨다. 그걸로 충분했다." },
+    ] },
+  { id: "pay_elder", once: true, bg: "bg_field_day", who: "narr",
+    trigger: s => marked(s, "elder", 20) && !!turnInfo(s)?.match,
+    text: "경기 시작 전, 운동장 울타리 앞에 낯익은 할머니가 서 계신다. 예전에 쌀 포대를 들어 드렸던 그 할머니다. 보자기에 싼 식혜 병을 내미신다. \"축구하는 학생들 다 같이 나눠 마셔.\"",
+    choices: [
+      { label: "두 손으로 받고 꾸벅 인사한다", fx: { morale: 5, s: { "student.attitude": 0.5 } },
+        act: s => bond(s, 0.03, "울타리 너머에서 할머니가 손을 흔드신다. 식혜 맛이 아직 입에 남아 있다."),
+        result: "할머니가 내 손을 꼭 잡으셨다. \"다치지 말고.\"" },
+      { label: "동료들을 불러 같이 인사드린다", fx: { morale: 4, s: { "mental.teamwork": 0.5 } },
+        act: s => bond(s, 0.03, "울타리 너머에서 할머니가 손을 흔드신다. 동료들이 일제히 고개를 숙여 인사한다."),
+        result: "열 명 넘는 아이들이 한꺼번에 인사하자 할머니가 소리 내어 웃으셨다." },
     ] },
 
   // ── 고흥 이야기 ────────────────────────────────

@@ -6,6 +6,7 @@ import { bgLayer } from "./intro.js";
 import { setScene } from "./fx.js";
 import { bgm } from "./bgm.js";
 import { esc, img, faceOf } from "./util.js";
+import { addHallCard, checkAchievements } from "./hall.js";
 
 // 학교 엠블럼 (그림 없이 이름 첫 글자로)
 export function crest(name, tier) {
@@ -87,6 +88,7 @@ export function showEnding(app) {
   bgm.play("ending");
   const { ending, c } = decideEnding(state);
   markEnding(ending.id);
+  try { addHallCard(state, ending, c); } catch (e) { console.warn(e); }   // 기록실에 선수 카드
   app.saveTo("auto");
   const g = GRADE_INFO[ending.grade];
   const p = state.player;
@@ -123,6 +125,7 @@ export function showEnding(app) {
   app.root.querySelector(".ending").addEventListener("click", e => { if (!e.target.closest("button")) { clearInterval(t); finish(); } });
   app.root.querySelector("[data-gallery]").addEventListener("click", () => galleryModal());
   app.root.querySelector("[data-title]").addEventListener("click", () => app.toTitle());
+  setTimeout(() => { try { checkAchievements(app, { end: true }); } catch (e) { console.warn(e); } }, 1500);
 }
 
 export function galleryModal() {

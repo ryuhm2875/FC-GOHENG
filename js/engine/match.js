@@ -279,6 +279,12 @@ export function prepareMatch(state, info, fx) {
     star, meRate: onPitch ? clamp(0.09 + star * 0.11 + (hasTrait(p, "ace") ? 0.03 : 0), 0.08, 0.32) : 0, me: p.name, myPos: p.position,
     minIn: status === "sub" ? minIn : 0, onPitch,
     prep: state.meetingBuff?.turn === info.turn ? state.meetingBuff : null,    // 경기 전 미팅에서 한 대답
+    bond: (() => {                                   // 복선 회수: 정해진 기간 안의 선발 경기 한 번
+      const b = state.flags.bond; if (!b) return null;
+      if (b.until != null && info.turn > b.until) { state.flags.bond = null; return null; }
+      if (status !== "start") return null;
+      state.flags.bond = null; return b;
+    })(),
     lineupStart: lineup.map(x => ({ ...x })),
     ours, theirs, lineup, oppPlayers, oppAce, oppAceAbsent: known?.absent?.name || null, bench, talk: pickTalk(state, fx, status, star),
     gk: { us: cup ? cup.gk : ourKeeper(state), them: (() => { let n; do { n = randomName(); } while (usedNames.has(n)); usedNames.add(n); return n; })() }, myNumber: p.number,
@@ -478,7 +484,8 @@ export function next(state, m) {
   let lines = [];
 
   if (ev.type === "kickoff") {
-    lines.push(L(say(LINES.kickoff, { us: TEAM_NAME }), "whistle", { ball: [52.5, 34], poss: "us" }));
+    lines.push(L(say(LINES.kickoff, { us: m.fx.usName || TEAM_NAME }), "whistle", { ball: [52.5, 34], poss: "us" }));
+    if (m.bond && m.status === "start") lines.push(L(m.bond.line, "me"));   // 예전 선택이 돌아오는 순간
     if (m.status !== "start") lines.push(L(m.status === "bench" || m.status === "sub" ? "벤치에서 경기를 지켜본다. 언제 부를지 모른다." : (m.reason || "관중석에서 경기를 지켜본다.")));
     if (m.restNote) lines.push(L(m.restNote, "coach"));
     if (m.star >= 1 && m.status === "start") lines.push(L(fill(pick(ME_IN_PLAY.marked), { me: m.me }), "me-auto"));
@@ -658,6 +665,7 @@ export function prob(state, m, c) {
   if (m.talk?.tag && choiceTag(c) === m.talk.tag) x += 0.04;
   if (m.prep && (!m.prep.tag || choiceTag(c) === m.prep.tag)) x += m.prep.bonus;   // 미팅에서 다짐한 대로
   if (m.htBuff && (!m.htBuff.tag || choiceTag(c) === m.htBuff.tag)) x += m.htBuff.bonus;   // 하프타임 이야기
+  if (m.bond) x += m.bond.bonus;                                                            // 예전에 쌓은 인연
   if (hasTrait(p, "clutch") && m.score[0] < m.score[1] && m.minute > HALF) x += 0.07;
   if (c.physical) x -= m.physGap;
   x += m.formSwing;

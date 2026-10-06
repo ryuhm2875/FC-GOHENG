@@ -519,3 +519,34 @@ body:has(#modal-root .backdrop) .fs-btn { opacity: 0; pointer-events: none; }
 .mg .sp-glabel { font-size: 13px; font-weight: 800; color: rgba(255,255,255,.75); }
 .mg .sp-gauge { height: 14px; }
 .mg .sp-gauge b { top: -4px; height: 22px; }
+
+/* 입장 코드 화면 (개발 단계) */
+.gate { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px 16px; text-align: center;
+  background: radial-gradient(80% 60% at 50% 30%, rgba(255, 107, 26, .18), transparent 70%), var(--night, #0B1030); }
+.gate-logo { width: 88px; height: auto; margin-bottom: 6px; filter: drop-shadow(0 6px 18px rgba(0,0,0,.5)); }
+.gate h1 { margin: 4px 0 0; font-size: 22px; }
+.gate-form { width: min(320px, 100%); display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.gate-input { -webkit-text-security: disc; font-size: 16px; padding: 14px 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.06); color: #fff; text-align: center; letter-spacing: .1em; }
+.gate-input:focus { outline: 2px solid #FF6B1A; outline-offset: 1px; }
+.gate-msg { min-height: 1.4em; color: #FF6B78; font-size: 14px; margin: 0; }
+.gate-form.shake { animation: shake .35s; }
+
+/* 기록실 */
+.hall-modal .sheet { max-width: 640px; }
+.hall-list { display: flex; flex-direction: column; gap: 10px; max-height: 60dvh; overflow: auto; padding-right: 2px; }
+.hall-card { display: flex; gap: 12px; padding: 12px; border-radius: 12px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); }
+.hc-face { flex: none; width: 64px; height: 64px; border-radius: 10px; overflow: hidden; background: rgba(0,0,0,.25); }
+.hc-face img { width: 100%; height: 100%; object-fit: cover; }
+.hc-body { min-width: 0; display: flex; flex-direction: column; gap: 3px; font-size: 13.5px; }
+.hc-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 15px; }
+.hc-end { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+.hc-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.hall-empty { padding: 24px 4px; text-align: center; }
+.ach-count { margin: 0 0 8px; }
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; max-height: 60dvh; overflow: auto; }
+.ach { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 10px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06); opacity: .55; }
+.ach.on { opacity: 1; border-color: rgba(255, 201, 60, .45); background: linear-gradient(90deg, rgba(255, 201, 60, .12), rgba(255,255,255,.03)); }
+.ach-ic { font-size: 20px; width: 24px; text-align: center; flex: none; }
+.ach-tx { display: flex; flex-direction: column; min-width: 0; }
+.ach-tx small { color: rgba(255,255,255,.65); font-size: 11.5px; line-height: 1.35; }
+.ach-tx b { font-size: 13.5px; }

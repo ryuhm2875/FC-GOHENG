@@ -16,6 +16,7 @@ import { homeView, playerView, teamView, scheduleView, inboxView } from "./ui/vi
 import { ask, eventModal, actionPicker, weekReport, mailModal, saveModal, numberModal, yearModal, meetingModal } from "./ui/modals.js";
 import { esc } from "./ui/util.js";
 import { admissionModal, nationalModal, showEnding, galleryModal } from "./ui/career.js";
+import { hallModal, checkAchievements } from "./ui/hall.js";
 import { setScene, enter, preload, SCENES } from "./ui/fx.js";
 import { sfx } from "./ui/sfx.js";
 import { bgm } from "./ui/bgm.js";
@@ -157,6 +158,7 @@ const app = {
     const s = this.state;
     const rep = endWeek(s, ctx, result);
     this.saveTo("auto");
+    try { checkAchievements(this); } catch (e) { console.warn(e); }   // 업적 (이 기기에 남음)
     this.render();
     window.scrollTo(0, 0);
     weekReport(this, rep, () => {
@@ -197,6 +199,7 @@ function renderTitle(app) {
       <button class="ft-tile ${cont ? "" : "main"}" data-new><span class="ft-t">새 커리어</span><span class="ft-s">중학교 1학년, 입단 첫날부터</span></button>
       <button class="ft-tile" data-loadmenu><span class="ft-t">불러오기</span><span class="ft-s">저장 슬롯, 저장 코드</span></button>
       <button class="ft-tile" data-gallery><span class="ft-t">엔딩 도감</span><span class="ft-s">지금까지 본 엔딩</span></button>
+      <button class="ft-tile" data-hall><span class="ft-t">기록실</span><span class="ft-s">졸업생 카드와 업적</span></button>
     </nav>
     <p class="ft-foot">made by 류봉두</p>
     <button class="snd-btn ft-snd" data-sound aria-label="효과음" aria-pressed="${app.settings.sound}">${soundIcon(app.settings.sound)}</button>
@@ -215,6 +218,7 @@ function renderTitle(app) {
   });
   r.querySelector("[data-loadmenu]").addEventListener("click", () => saveModal(app, { loadOnly: true }));
   r.querySelector("[data-gallery]").addEventListener("click", () => galleryModal());
+  r.querySelector("[data-hall]").addEventListener("click", () => hallModal());
   r.querySelector("[data-sound]").addEventListener("click", e => { e.stopPropagation(); app.toggleSound(); });
   r.querySelector("[data-music]").addEventListener("click", e => { e.stopPropagation(); app.toggleMusic(); });
 }
@@ -302,5 +306,39 @@ function renderShell(app) {
 
 sfx.set(app.settings.sound);
 bgm.set(app.settings.music);
-app.render();
+
+// ── 개발 단계 입장 코드 ──
+// 코드 원문 대신 계산값만 적어 둠. 한 번 맞히면 이 기기·브라우저에서는 다시 묻지 않음.
+// 정식 공개 때는 GATE를 null로 바꾸면 바로 열림.
+const GATE = "2edu84", GATE_KEY = "gfc_gate";
+const gateHash = s => { let x = 5381; for (const c of s.trim().normalize("NFC")) x = ((x * 33) ^ c.codePointAt(0)) >>> 0; return x.toString(36); };
+const gateOpen = () => { try { return !GATE || localStorage.getItem(GATE_KEY) === GATE; } catch { return false; } };
+function showGate() {
+  const root = document.getElementById("app");
+  root.innerHTML = `<div class="gate">
+    <img class="gate-logo" src="assets/img/logo.png" alt="">
+    <span class="eyebrow">GOHEUNG FC · DREAM PROJECT</span>
+    <h1>개발 중인 게임입니다</h1>
+    <p class="mute">입장 코드를 입력해 주세요.</p>
+    <form class="gate-form" autocomplete="off">
+      <input class="gate-input" type="text" autocapitalize="off" spellcheck="false" aria-label="입장 코드" placeholder="입장 코드">
+      <button class="btn btn-kit btn-wide" type="submit">들어가기</button>
+    </form>
+    <p class="gate-msg" role="status" aria-live="polite"></p>
+  </div>`;
+  const form = root.querySelector(".gate-form"), input = root.querySelector(".gate-input"), msg = root.querySelector(".gate-msg");
+  input.focus();
+  form.addEventListener("submit", e => {
+    e.preventDefault();
+    if (gateHash(input.value) === GATE) {
+      try { localStorage.setItem(GATE_KEY, GATE); } catch { /* 저장이 안 되면 이번만 통과 */ }
+      app.render();
+    } else {
+      msg.textContent = "코드가 맞지 않습니다.";
+      form.classList.remove("shake"); void form.offsetWidth; form.classList.add("shake");
+      input.select();
+    }
+  });
+}
+if (gateOpen()) app.render(); else showGate();
 window.gfc = app; // 개발 확인용
