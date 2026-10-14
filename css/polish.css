@@ -550,3 +550,29 @@ body:has(#modal-root .backdrop) .fs-btn { opacity: 0; pointer-events: none; }
 .ach-tx { display: flex; flex-direction: column; min-width: 0; }
 .ach-tx small { color: rgba(255,255,255,.65); font-size: 11.5px; line-height: 1.35; }
 .ach-tx b { font-size: 13.5px; }
+
+/* ── 능력치 설명 (선수 탭에서 누르면 펼침) ── */
+.sdet > summary { list-style: none; cursor: pointer; border-radius: 6px; }
+.sdet > summary::-webkit-details-marker { display: none; }
+.sdet > summary .k::after { content: " ⓘ"; font-size: 11px; opacity: .45; font-weight: 400; }
+.sdet[open] > summary { background: rgba(255,255,255,.05); }
+.sdet > summary:hover { background: rgba(255,255,255,.04); }
+.shelp { margin: 2px 0 10px; padding: 10px 12px; border-left: 3px solid var(--kit); background: rgba(255,255,255,.04); border-radius: 0 8px 8px 0; font-size: 13px; line-height: 1.55; }
+.shelp ul { margin: 0; padding-left: 16px; }
+.shelp li + li { margin-top: 3px; }
+.shelp-n { font-weight: 700; color: var(--kit); margin-bottom: 4px; font-size: 12px; }
+.shelp-t { margin-top: 6px; color: var(--mute); font-size: 12px; }
+
+/* ── 감독님 주간 지시 ── */
+.order-card { margin: 4px 0 12px; padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,.04); border: 1px dashed rgba(255,255,255,.18); }
+.order-card.on { border-style: solid; border-color: var(--turf); background: rgba(46,160,90,.08); }
+.oc-head { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 700; color: var(--gold); letter-spacing: .02em; }
+.oc-ok { color: var(--turf); }
+.oc-text { margin: 6px 0 8px; font-size: 14px; line-height: 1.5; }
+.oc-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.oc-acts .chip { font-size: 12px; }
+.oc-note { font-size: 11.5px; margin-top: 6px; line-height: 1.45; }
+.order-chip { font-size: 11px; padding: 1px 6px; vertical-align: 1px; }
+
+/* ── 경기장 움직임: 매 프레임 직접 그리므로 CSS 전환은 끔 (js/ui/pitch.js) ── */
+.match-screen .pitch .dot { transition: none !important; }

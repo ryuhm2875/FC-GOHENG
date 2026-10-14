@@ -74,6 +74,7 @@ export function actionPicker(app, slotId) {
   const state = app.state;
   let cat = ACTIONS.find(a => a.id === state.plan[slotId])?.cat || (state.player.condition.injury ? "rest" : "personal");
   const slot = SLOTS.find(s => s.id === slotId);
+  const order = state.order?.turn === state.calendar.turn && !state.order.none ? state.order : null;
   const html = () => `<button class="close" data-close aria-label="닫기">×</button>
     <h2>${slot.label}</h2><p class="sub">무엇을 할까요?</p>
     <div class="tabs" role="tablist">${CATEGORIES.map(c => `<button role="tab" data-cat="${c.id}" aria-selected="${c.id === cat}">${c.label}</button>`).join("")}</div>
@@ -81,7 +82,7 @@ export function actionPicker(app, slotId) {
       const ok = actionAllowed(state, a);
       if (!ok.ok && a.injured === "only") return "";
       return `<button class="act ${state.plan[slotId] === a.id ? "sel" : ""}" data-act="${a.id}" ${ok.ok ? "" : "disabled"}>
-        <span class="n">${a.icon} ${a.label}${ok.ok ? "" : ` <small class="mute">(${ok.reason})</small>`}</span>
+        <span class="n">${a.icon} ${a.label}${ok.ok ? "" : ` <small class="mute">(${ok.reason})</small>`}${ok.ok && order?.acts?.includes(a.id) ? ` <span class="chip kit order-chip">📋 지시</span>` : ""}</span>
         <span class="d">${esc(fillText(a.desc, eventVars(state)))}</span><span class="fx">${fxLine(a)}</span></button>`;
     }).join("")}</div>`;
   openModal(html(), function mount(el, close) {
@@ -114,6 +115,7 @@ export function weekReport(app, rep, done) {
     ${rep.exam ? `<div class="alert gold">📝 ${rep.exam.name}${rep.exam.tier ? `: ${rep.exam.tier}` : " 끝"}</div>` : ""}
     ${rep.injury ? `<div class="alert">🩹 ${rep.injury.label}. ${rep.injury.weeks}주 정도 쉬어야 합니다.</div>` : ""}
     ${rep.recovered ? `<div class="alert gold">💪 부상에서 회복했습니다.</div>` : ""}
+    ${rep.order ? `<div class="alert ${rep.order.ok ? "gold" : ""}">${esc(rep.order.text)}</div>` : ""}
     ${rep.camp ? `<div class="alert gold">⛺ 합숙 훈련 주간: 훈련 효과 1.2배</div>` : ""}
     ${(rep.traits || []).map(t => `<div class="alert gold trait-new">✨ 새 특성 <b>${esc(t.label)}</b>: ${esc(t.desc)}</div>`).join("")}
     ${rep.body ? `<div class="alert gold">📏 신체 측정: 키가 ${rep.body.cm}cm 자랐습니다.</div>` : ""}

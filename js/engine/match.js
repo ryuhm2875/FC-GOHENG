@@ -12,6 +12,7 @@ import { matchMails } from "./advice.js";
 import { isBirthdayWeek } from "./birthday.js";
 import { turnInfo } from "./calendar.js";
 import { oppLineup, noteOpp } from "./opponents.js";
+import { SCENES } from "../../data/scenes.js";
 
 export const LENGTH = 70;
 export const MY_SLOT = { FW: 0, MF: 1, DF: 1 };        // 경기장에서 내가 서는 자리 (포지션 안 순서)          // 중등부 전후반 35분씩
@@ -279,6 +280,11 @@ export function prepareMatch(state, info, fx) {
     star, meRate: onPitch ? clamp(0.09 + star * 0.11 + (hasTrait(p, "ace") ? 0.03 : 0), 0.08, 0.32) : 0, me: p.name, myPos: p.position,
     minIn: status === "sub" ? minIn : 0, onPitch,
     prep: state.meetingBuff?.turn === info.turn ? state.meetingBuff : null,    // 경기 전 미팅에서 한 대답
+    order: (() => {                                  // 감독님 주간 지시를 따른 주 (orders.js)
+      const o = state.order;
+      if (!o || !o.done || o.turn !== state.calendar.turn || !o.stat || o.stat.startsWith("student")) return null;
+      return o.tag ? { tag: o.tag, bonus: 0.03 } : { tag: null, bonus: 0.015 };
+    })(),
     bond: (() => {                                   // 복선 회수: 정해진 기간 안의 선발 경기 한 번
       const b = state.flags.bond; if (!b) return null;
       if (b.until != null && info.turn > b.until) { state.flags.bond = null; return null; }
@@ -387,8 +393,9 @@ function runPlay(m, team) {
     const last = i === play.steps.length - 1;
     let t = st.t.length ? fill(pick(st.t), { a: actors[i], b: actors[i + 1] || actors[i] }) : "";
     if (mine && !last && !st.t.length) t = fill(pick(i === play.steps.length - 2 ? ME_IN_PLAY.pass : ME_IN_PLAY.build), { me: m.me });
-    if (t) lines.push({ t, k: mine ? "me-auto" : team === "us" ? "us" : "them", minute: min, ball: pt, poss: team, fast: true, meHold: mine, actor: actors[i] });
-    else lines.push({ t: "", k: "", minute: min, ball: pt, poss: team, fast: true, silent: true, actor: actors[i] });
+    const set = i === 0 && ["corner", "freekick", "penalty"].includes(play.id) ? { set: play.id } : {};      // 화면: 세트피스 배치
+    if (t) lines.push({ t, k: mine ? "me-auto" : team === "us" ? "us" : "them", minute: min, ball: pt, poss: team, fast: true, meHold: mine, actor: actors[i], ...set });
+    else lines.push({ t: "", k: "", minute: min, ball: pt, poss: team, fast: true, silent: true, actor: actors[i], ...set });
   });
   // 슈팅까지 못 가고 끊기는 공격 (약 30%)
   if (!["pk", "fk"].includes(play.finish) && play.steps.length >= 2 && chance(0.3)) {
@@ -556,9 +563,11 @@ export function next(state, m) {
     const oppPref = poss === "them" ? ({ DF: ["FW"], MF: ["MF", "FW"], FW: ["DF"] }[myPos]) : (myPos === "DF" ? ["FW", "MF"] : ["DF", "MF"]);
     const sv = { mate: mateName(m), opp: oppName(m, oppPref), gk: m.gk.us, ogk: m.gk.them, coach: STAFF.coach };
     const zone = sit.zone;
-    const ball = sit.spot ? [range(...sit.spot[0]), range(...sit.spot[1])]      // 장면마다 정해 둔 자리 (골문 앞 혼전 등)
+    const spot = sit.spot || SCENES[sit.id]?.at;                                  // 장면마다 정해 둔 자리 (data/scenes.js)
+    const ball = spot ? [range(...spot[0]), range(...spot[1])]
       : zone === "att" ? [range(80, 88), range(24, 44)] : zone === "mid" ? [range(48, 60), range(18, 50)] : [range(20, 30), range(18, 50)];
-    const holder = poss === "them" ? sv.opp : m.me;
+    const sh = sceneHolder(sit, sv, m);
+    const holder = sh !== undefined ? sh : poss === "them" ? sv.opp : m.me;
     if (sit.intro !== false) lines.push(L(fill(pick(TO_ME[poss === "them" ? "def" : zone] || TO_ME.mid), sv), "me", { ball, poss, toMe: poss !== "them", actor: holder, press: poss === "them" }));
     // 상대 에이스와 처음 마주칠 때 한 줄 (경기마다 한 번)
     if (poss === "them" && sit.intro !== false && m.oppAce && sv.opp === m.oppAce.name && !m._aceSeen) {
@@ -619,6 +628,12 @@ export function statLine(m) {
   return `점유율 ${m.stats.poss}% 대 ${100 - m.stats.poss}%, 슈팅 ${u.shots} 대 ${t.shots} (유효 ${u.on} 대 ${t.on}), 코너킥 ${u.corners} 대 ${t.corners}`;
 }
 
+// 장면 연출에서 공을 가진 선수가 내가 아닐 때 (data/scenes.js의 holder). df는 이름 없이 화면이 가까운 수비수를 고름
+function sceneHolder(sit, v, m) {
+  const h = SCENES[sit.id]?.holder;
+  return h === "mate" ? v.mate : h === "me" ? m.me : h === "df" ? null : undefined;
+}
+
 function pickSituation(state, m) {
   const pos = state.player.position;
   const [a, b] = m.score;
@@ -665,6 +680,7 @@ export function prob(state, m, c) {
   if (m.talk?.tag && choiceTag(c) === m.talk.tag) x += 0.04;
   if (m.prep && (!m.prep.tag || choiceTag(c) === m.prep.tag)) x += m.prep.bonus;   // 미팅에서 다짐한 대로
   if (m.htBuff && (!m.htBuff.tag || choiceTag(c) === m.htBuff.tag)) x += m.htBuff.bonus;   // 하프타임 이야기
+  if (m.order && (!m.order.tag || choiceTag(c) === m.order.tag)) x += m.order.bonus;   // 감독님 지시대로 준비한 주
   if (m.bond) x += m.bond.bonus;                                                            // 예전에 쌓은 인연
   if (hasTrait(p, "clutch") && m.score[0] < m.score[1] && m.minute > HALF) x += 0.07;
   if (c.physical) x -= m.physGap;
@@ -688,7 +704,8 @@ export function resolve(state, m, ci, timing = null) {
   const [bx, by] = pd.ball;
   // 상황 설명을 기록에 남겨야 나중에 읽어도 앞뒤가 이어짐
   const them = pd.sit.poss === "them";
-  const holder0 = them ? v.opp : m.me;
+  const sh = sceneHolder(pd.sit, v, m);
+  const holder0 = sh !== undefined ? sh : them ? v.opp : m.me;
   const lines = [{ t: pd.text, k: "me", minute: min, ball: pd.ball, poss: pd.sit.poss || "us", fast: true, actor: holder0, press: them },
                  { t: `▶ ${c.label}${timing ? ` ${{ perfect: "(완벽한 타이밍!)", good: "(좋은 타이밍)", miss: "(타이밍이 어긋났다)" }[timing]}` : ""}`, k: "me", minute: min, ball: pd.ball, poss: pd.sit.poss || "us", actor: holder0, press: them }];
 
@@ -708,7 +725,8 @@ export function resolve(state, m, ci, timing = null) {
     assist: v.mate, keyPass: v.mate, killPass: v.mate, matePk: v.mate, setPiece: v.mate,
     turnover: v.opp, danger: v.opp, pkAgainst: v.opp, offside: null, miss: null, longShot: m.me, acro: m.me, card: null, decoy: v.mate }[out];
   const actorNow = out === "keep" && pd.sit.poss === "them" ? v.opp : actorOf;
-  lines.push({ t: fill(pick(ok ? c.winText : c.loseText), v), k: ok ? "me-good" : "me-bad", minute: min, ball: after[0], poss: after[1], actor: actorNow });
+  const set = out === "setPiece" ? { set: "freekick" } : ["pk", "matePk", "pkAgainst"].includes(out) ? { set: "penalty" } : {};   // 화면: 세트피스 배치
+  lines.push({ t: fill(pick(ok ? c.winText : c.loseText), v), k: ok ? "me-good" : "me-bad", minute: min, ball: after[0], poss: after[1], actor: actorNow, ...set });
   if (ok && pd.choices[ci].follow) lines.push({ t: fill("{c|이/가} 벤치에서 주먹을 쥔다. 경기 전 지시 그대로다.", { c: m.talk.who === "coach" ? STAFF.coach : STAFF.assistant }), k: "coach", minute: min });
 
   const main = Object.entries(c.stats).sort((a, b) => b[1] - a[1])[0][0];

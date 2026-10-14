@@ -1,17 +1,17 @@
 // 게임 안 화면들: 홈, 선수, 팀, 일정, 메시지
-import { ACTION_MAP } from "../../data/actions.js";
+import { ACTION_MAP, ACTIONS } from "../../data/actions.js";
 import { POSITIONS, GROWTH_TYPES, TRAITS, STAT_GROUPS, ROLES, EARNABLE } from "../../data/player.js";
 import { STAFF, ROSTER } from "../../data/roster.js";
 import { PHASES, MONTHS } from "../../data/calendar.js";
 import { turnInfo, upcoming, yearTurns, label } from "../engine/calendar.js";
-import { SLOTS, slotLocked } from "../engine/week.js";
+import { SLOTS, slotLocked, weekOrder } from "../engine/week.js";
 import { INJURIES } from "../engine/injury.js";
 import { sortTable, US, tierLabel, ensureSeason, stillScheduled } from "../engine/season.js";
 import { HIGH_SCHOOLS } from "../../data/world.js";
 import { ovr, depthChart, activeRoster, mateGrade } from "../engine/team.js";
 import { efficiency, conditionOf } from "../engine/growth.js";
-import { SIGNATURE } from "../../data/match.js";
-import { STAT_LABEL } from "../../data/player.js";
+import { SIGNATURE, SITUATIONS } from "../../data/match.js";
+import { STAT_LABEL, STAT_INFO } from "../../data/player.js";
 import { esc, img, faceOf, fl, stars, gauge, statLevel, AVATAR } from "./util.js";
 import { getPath } from "../rng.js";
 import { REL_ROLES, rivalGap, captainScore } from "../engine/relations.js";
@@ -134,6 +134,7 @@ function weekPanel(state, opts = {}) {
     <h2>이번 주 <small>훈련 효율 ${eff}%</small>
       <button class="linkbtn mg-toggle" data-mgtoggle aria-pressed="${!!opts.minigame}">🎮 미니게임 ${opts.minigame ? "ON" : "OFF"}</button>
       ${state.lastPlan ? `<button class="linkbtn right" data-repeat>지난주처럼</button>` : ""}</h2>
+    ${orderCard(state)}
     <div class="slots">${SLOTS.map(s => {
       const locked = slotLocked(state, s.id);
       if (locked) {
@@ -149,6 +150,19 @@ function weekPanel(state, opts = {}) {
         <span class="chev" aria-hidden="true">›</span></button>`;
     }).join("")}</div>
   </section>`;
+}
+
+// 감독님 주간 지시 카드
+function orderCard(state) {
+  const o = weekOrder(state);
+  if (!o || o.none) return "";
+  const inPlan = SLOTS.some(s => !slotLocked(state, s.id) && o.acts.includes(state.plan[s.id]));
+  return `<div class="order-card ${inPlan ? "on" : ""}">
+    <div class="oc-head"><span>📋 ${esc(STAFF.coach)}님 이번 주 지시</span>${inPlan ? `<span class="oc-ok">✔ 계획에 넣음</span>` : ""}</div>
+    <p class="oc-text">"${esc(o.text)}"</p>
+    <div class="oc-acts">${o.acts.map(id => `<span class="chip">${ACTION_MAP[id].icon} ${esc(ACTION_MAP[id].label)}</span>`).join("")}</div>
+    <div class="oc-note mute">한 칸이라도 하면 감독 신뢰가 오르고${o.stat && !o.stat.startsWith("student") ? ", 이번 주 경기에서 관련 선택이 조금 더 잘 됩니다" : ""}. 안 하면 신뢰가 조금 떨어집니다.</div>
+  </div>`;
 }
 
 // 이미 탈락한 대회의 토너먼트 주간은 일정에서 뺍니다
@@ -268,12 +282,13 @@ export function playerView(state, tab = "stats") {
       ${g.stats.map(([k, l]) => {
         const v = p.stats[g.id][k], from = state.yearStart.stats[g.id][k], d = fl(v) - fl(from);
         const key = keys.includes(`${g.id}.${k}`);
-        return `<div class="srow ${key ? "key" : ""}"><span class="k">${l}</span>
+        return `<details class="sdet"><summary class="srow ${key ? "key" : ""}"><span class="k">${l}</span>
           <div class="track"><div class="fill ${statLevel(v)}" style="width:${v}%"></div></div>
           <span class="v num">${fl(v)}</span>
-          <span class="ch num ${d > 0 ? "up" : d < 0 ? "down" : "mute"}">${d > 0 ? `▲${d}` : d < 0 ? `▼${-d}` : "–"}</span></div>`;
+          <span class="ch num ${d > 0 ? "up" : d < 0 ? "down" : "mute"}">${d > 0 ? `▲${d}` : d < 0 ? `▼${-d}` : "–"}</span></summary>
+          ${statHelp(state, `${g.id}.${k}`)}</details>`;
       }).join("")}</div>`).join("")}</div>
-      <p class="mute" style="font-size:12px;margin:12px 0 0">주황색 이름은 ${POSITIONS[p.position].label} 종합 능력치에 들어가는 능력치입니다. 화살표는 올해 3월 대비 변화입니다.</p>`;
+      <p class="mute" style="font-size:12px;margin:12px 0 0">능력치 이름을 누르면 게임에서 실제로 어디에 쓰이는지 볼 수 있습니다. 주황색 이름은 ${POSITIONS[p.position].label} 종합 능력치에 들어가는 능력치입니다. 화살표는 올해 3월 대비 변화입니다.</p>`;
   }
   if (tab === "body") {
     body = `<dl class="kv" style="margin-bottom:14px">
@@ -332,6 +347,30 @@ export function playerView(state, tab = "stats") {
       <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" data-ptab="${k}" aria-selected="${tab === k}">${l}</button>`).join("")}</div>
       ${body}
     </section></div>`;
+}
+
+// 능력치 설명: data/player.js의 STAT_INFO + 실제 데이터에서 센 숫자 (경기 장면 수, 종합 비중, 특기, 올리는 훈련)
+function statHelp(state, path) {
+  const p = state.player, pos = p.position;
+  const lines = [...(STAT_INFO[path] || [])];
+  const w = POSITIONS[pos].weights[path];
+  if (w) lines.unshift(`${POSITIONS[pos].label} 종합 능력치의 ${Math.round(w * 100)}%를 차지합니다. 종합 능력치는 선발 경쟁과 진학 평가의 바탕입니다.`);
+  if (path.startsWith("student")) return helpBox(lines, null, trainersOf(path));
+  const sits = SITUATIONS.filter(x => x.pos.includes(pos));
+  const all = sits.reduce((a, x) => a + x.choices.length, 0);
+  const n = sits.reduce((a, x) => a + x.choices.filter(c => c.stats?.[path]).length, 0);
+  const sigs = Object.entries(SIGNATURE).filter(([id, sg]) => sigPos(id).includes(pos) && sg.requires[path])
+    .map(([, sg]) => `'${sg.label}'(${Object.entries(sg.requires).map(([k, v]) => `${STAT_LABEL[k]} ${v}`).join(", ")})`);
+  if (sigs.length) lines.push(`이 능력치로 열리는 경기 특기: ${sigs.join(", ")}`);
+  return helpBox(lines, n ? `${POSITIONS[pos].label} 경기 선택지 ${all}개 중 ${n}개에 쓰임` : `${POSITIONS[pos].label} 경기 선택지에는 쓰이지 않음`, trainersOf(path));
+}
+function trainersOf(path) {
+  return ACTIONS.filter(a => (a.gains?.[path] || 0) >= 0.8).sort((a, b) => b.gains[path] - a.gains[path]).map(a => a.label);
+}
+function helpBox(lines, count, trainers) {
+  return `<div class="shelp">${count ? `<div class="shelp-n">${esc(count)}</div>` : ""}
+    <ul>${lines.map(t => `<li>${esc(t)}</li>`).join("")}</ul>
+    ${trainers.length ? `<div class="shelp-t">올리는 훈련: ${trainers.map(esc).join(", ")}</div>` : ""}</div>`;
 }
 
 function sigPos(id) {

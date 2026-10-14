@@ -20,6 +20,43 @@ const STAT_GROUPS = [
     ["academic", "학업"], ["attitude", "생활태도"] ] },
 ];
 
+// 선수 탭에서 능력치를 누르면 보이는 설명. 엔진에서 실제로 쓰이는 곳만 적음
+// (경기 장면 수와 종합 능력치 비중은 화면에서 데이터를 세어 자동으로 붙임)
+const STAT_INFO = {
+  "tech.dribble": ["경기에서 공을 몰고 수비를 제치는 장면의 성공률을 정합니다.",
+    "드리블 훈련 미니게임이 쉬워집니다."],
+  "tech.pass": ["패스·연결 장면의 성공률을 정합니다. 도움이 나오는 장면 대부분이 여기에 걸려 있습니다.",
+    "패스 훈련 미니게임이 쉬워집니다."],
+  "tech.shoot": ["슈팅 장면의 성공률과, 내가 찬 공이 골로 들어갈 확률을 함께 정합니다.",
+    "페널티킥과 승부차기 성공률에도 들어갑니다. 헤딩슛은 점프력과 나눠서 계산합니다.",
+    "슈팅 훈련 미니게임이 쉬워집니다."],
+  "tech.firstTouch": ["압박 속에서 공을 받아 두는 장면, 원터치로 내주는 장면의 성공률을 정합니다."],
+  "tech.cross": ["측면에서 올리는 크로스 장면의 성공률을 정합니다.", "종합 능력치에는 들어가지 않습니다."],
+  "tech.defense": ["태클·가로채기 장면의 성공률을 정합니다.",
+    "수비수·미드필더라면 상대가 공격할 때 내가 알아서 공을 끊어 낼 확률도 올라갑니다.",
+    "수비 훈련 미니게임이 쉬워집니다."],
+  "phys.speed": ["뒷공간으로 뛰어드는 장면, 따라붙어 막는 장면의 성공률을 정합니다.", "스프린트 훈련 미니게임의 초록 칸이 넓어집니다."],
+  "phys.agility": ["방향을 바꾸며 빠져나가는 장면의 성공률을 정합니다.", "바이시클킥 같은 곡예 슈팅의 골 확률에도 들어갑니다."],
+  "phys.stamina": ["후반에 덜 무뎌집니다. 60보다 낮으면 후반으로 갈수록 모든 선택의 성공률이 조금씩 떨어집니다.",
+    "65 이상에서 합숙 훈련을 두 번 다녀오면 특성 '강철 체력'이 생깁니다."],
+  "phys.strength": ["몸싸움 장면의 성공률을 정합니다.", "고등학교 형들과 연습경기를 할 때 키와 함께 체격 차이를 줄여 줍니다.",
+    "웨이트 트레이닝 미니게임이 쉬워집니다. 키가 클 때 조금씩 함께 오릅니다."],
+  "phys.jump": ["공중볼 경합과 헤딩 장면의 성공률을 정합니다. 헤딩슛 골 확률의 60%를 차지합니다.",
+    "키가 클 때 조금씩 함께 오릅니다."],
+  "mental.focus": ["경기 장면에 가장 많이 쓰이는 능력치입니다. 침착하게 판단해야 하는 장면 대부분에 들어갑니다.",
+    "청소년 국가대표 평가에서 정신 능력치 평균에 들어갑니다."],
+  "mental.competitive": ["물러서지 않고 부딪혀야 하는 일부 장면에 들어갑니다.", "청소년 국가대표 평가에서 정신 능력치 평균에 들어갑니다."],
+  "mental.teamwork": ["동료와 주고받는 연계 장면의 성공률을 정합니다.",
+    "주장 선거 점수의 25%를 차지하고, 중간 목표 '주장 후보' 조건에도 들어갑니다."],
+  "mental.confidence": ["모든 경기 선택의 성공률에 조금씩 더해집니다. 50보다 높으면 플러스, 낮으면 마이너스입니다.",
+    "내 슈팅이 골로 들어갈 확률에도 들어갑니다. 골을 넣으면 오르고, 평점이 낮은 경기 뒤에는 떨어집니다."],
+  "student.academic": ["정기시험 점수를 정합니다. 40 아래로 떨어지면 경고가 오고, 계속 떨어지면 대회와 공식 경기에 나갈 수 없습니다.",
+    "80 이상이면 매주 감독님 신뢰와 집중력이 조금씩 오르고, 20주를 지키면 특성 '모범생'이 생깁니다.",
+    "진학 상담에서 80 이상은 추천 가산, 30 미만은 감점입니다."],
+  "student.attitude": ["70 이상이면 매주 감독님 신뢰가 오르고, 40 아래면 매주 떨어집니다. 감독님 신뢰는 선발 경쟁에 직접 들어갑니다.",
+    "주장 선거 점수의 20%를 차지합니다.", "진학 상담에서 감독님 추천을 받으려면 60 이상이 필요하고, 40 미만이면 감점입니다."],
+};
+
 const STAT_LABEL = Object.fromEntries(
   STAT_GROUPS.flatMap(g => g.stats.map(([k, l]) => [`${g.id}.${k}`, l]))
 );
@@ -121,7 +158,7 @@ const ROLES = [
   { id: "reserve",  label: "육성 대상" },
 ];
 
-return { STAT_GROUPS, STAT_LABEL, POSITIONS, GROWTH_TYPES, TRAITS, EARNABLE, FACES, ROLES };
+return { STAT_GROUPS, STAT_INFO, STAT_LABEL, POSITIONS, GROWTH_TYPES, TRAITS, EARNABLE, FACES, ROLES };
 })();
 (__fix["data/player.js"] || []).forEach(f => f());
 
@@ -2787,6 +2824,98 @@ const SITUATIONS = [
       { label: "주심이 불 때까지 계속 플레이한다", stats: { "tech.pass": 0.6, "mental.focus": 0.4 }, diff: 2, win: "keyPass", lose: "turnover",
         winText: ["앞으로 빠르게 연결했다. 상대 벤치에서 항의가 쏟아진다. 주심은 그대로 진행시킨다."], loseText: ["서두른 패스가 끊겼다. 관중석에서 야유도 섞여 나온다."] },
     ] },
+  // ── 현대 축구 장면 (경기장 움직임과 함께 추가. 연출은 data/scenes.js) ──
+  { id: "mf_halfspace_turn", intro: false, pos: ["MF"], zone: "att", weight: 3,
+    text: ["측면과 중앙 사이, 수비 두 명 틈에서 몸을 반쯤 열고 공을 받았다. 바깥으로 {mate|이/가} 겹쳐 뛰어 올라간다.",
+      "하프스페이스에서 공을 잡았다. 상대 측면 수비가 끌려 나온 자리 뒤로 {mate|이/가} 달려 나간다."],
+    choices: [
+      { label: "겹쳐 뛰는 동료에게 찔러 준다", stats: { "tech.pass": 0.6, "mental.teamwork": 0.4 }, diff: 1, win: "assist", lose: "turnover",
+        winText: ["수비 뒤로 찌른 공을 {mate|이/가} 골라인 앞에서 받아 그대로 때린다!", "타이밍이 딱 맞았다. {mate|이/가} 수비를 떼어 내고 골문 앞까지 파고든다!"], loseText: ["패스가 반 박자 늦었다. 상대 측면 수비가 다리를 뻗어 끊어 낸다."] },
+      { label: "몸을 돌려 직접 박스로 파고든다", stats: { "tech.dribble": 0.6, "phys.agility": 0.4 }, diff: 6, win: "shot", lose: "turnover",
+        winText: ["반쯤 열어 둔 몸을 그대로 돌렸다. 수비 둘 사이가 열린다!"], loseText: ["돌아서는 순간 두 번째 수비가 공을 빼앗는다."] },
+      { label: "한 번 더 돌려 상대를 끌어낸다", stats: { "mental.focus": 0.6, "tech.pass": 0.4 }, diff: -7, win: "keep", lose: "turnover",
+        winText: ["뒤로 돌려 주자 상대 블록이 한 칸 따라 올라온다. 다시 빈틈을 찾는다."], loseText: ["돌린 공이 짧았다. 상대 공격수가 가로챈다."] },
+    ] },
+  { id: "mf_rest_defense", intro: false, pos: ["MF"], zone: "att", weight: 2,
+    text: ["우리가 상대 박스 앞에서 공을 돌린다. {mate|이/가} 공을 잡았다. 여기서 뺏기면 바로 역습이다. 나는 어디에 설까?"],
+    choices: [
+      { label: "뒤에 남아 역습 길목을 지킨다", stats: { "mental.focus": 0.6, "mental.teamwork": 0.4 }, diff: -6, win: "keep", lose: "turnover",
+        winText: ["공이 끊기자마자 내가 먼저 길목에 서 있었다. 상대 역습이 시작도 못 하고 끝난다."], loseText: ["자리는 잡았지만 상대가 반대쪽으로 빠르게 빠져나간다."] },
+      { label: "박스 앞까지 올라가 숫자를 더한다", stats: { "tech.shoot": 0.5, "mental.competitive": 0.5 }, diff: 5, win: "longShot", lose: "danger",
+        winText: ["흘러나온 공이 내 앞으로 굴러온다! 박스 바깥에서 그대로 발을 갖다 댄다."], loseText: ["공이 끊겼다. 뒤가 텅 비었다. 상대가 우리 진영으로 내달린다!"] },
+      { label: "상대 공격수 옆에 바짝 붙어 둔다", stats: { "tech.defense": 0.6, "mental.focus": 0.4 }, diff: 0, win: "keyPass", lose: "turnover",
+        winText: ["상대가 걷어 낸 공을 붙어 있던 내가 먼저 끊어 다시 앞으로 찔러 준다!"], loseText: ["붙어 있던 공격수가 몸을 돌려 빠져나간다."] },
+    ] },
+  { id: "mf_drop_between", intro: false, pos: ["MF"], zone: "def", weight: 2,
+    text: ["상대 공격수 둘이 우리 센터백 두 명을 하나씩 막아섰다. 내가 둘 사이로 내려가면 수비가 셋이 된다."],
+    choices: [
+      { label: "센터백 사이로 내려가 받는다", stats: { "tech.firstTouch": 0.5, "tech.pass": 0.5 }, diff: -4, win: "keep", lose: "danger",
+        winText: ["센터백 사이에서 받아 돌아섰다. 상대 공격수 둘이 한꺼번에 따돌려졌다."], loseText: ["내려와 받는 순간 뒤에서 발이 들어왔다. 우리 골문 앞이다!"] },
+      { label: "압박 뒤 공간에서 기다린다", stats: { "mental.focus": 0.6, "tech.firstTouch": 0.4 }, diff: 3, win: "keyPass", lose: "turnover",
+        winText: ["상대 공격수 등 뒤에서 받았다. 몸을 돌리니 앞이 다 열려 있다!"], loseText: ["센터백의 패스가 나에게 오기 전에 끊겼다."] },
+      { label: "골키퍼에게 돌리라고 손짓한다", stats: { "mental.teamwork": 0.7, "mental.focus": 0.3 }, diff: -9, win: "keep", lose: "turnover",
+        winText: ["골키퍼를 거쳐 반대편으로 돌았다. 압박이 한쪽으로 쏠린 사이 빠져나간다."], loseText: ["골키퍼의 킥이 짧았다. 상대 미드필더가 머리로 따낸다."] },
+    ] },
+  { id: "fw_cutback_arrive", intro: false, pos: ["FW"], zone: "att", weight: 3,
+    text: ["{mate|이/가} 골라인 앞까지 파고들었다. 곧 뒤로 내줄 것 같다. 어디로 뛰어 들어갈까?"],
+    choices: [
+      { label: "니어포스트로 먼저 뛰어든다", stats: { "phys.speed": 0.5, "tech.shoot": 0.5 }, diff: 3, win: "tapIn", lose: "miss",
+        winText: ["수비보다 반 발 먼저 니어포스트에 닿았다. 발만 갖다 대면 된다!"], loseText: ["수비가 같이 따라붙었다. 공이 발끝을 스치고 지나간다."] },
+      { label: "멈춰 서서 페널티 지점 쪽 빈자리를 기다린다", stats: { "mental.focus": 0.6, "tech.shoot": 0.4 }, diff: 1, win: "shot", lose: "miss",
+        winText: ["수비가 모두 골문 쪽으로 쏠렸다. 내 앞에만 공간이 남았다!"], loseText: ["공이 한 박자 늦게 왔다. 수비 발에 걸린다."] },
+      { label: "박스 바깥에 남아 흘러나오는 공을 노린다", stats: { "tech.shoot": 0.6, "mental.focus": 0.4 }, diff: 6, win: "longShot", lose: "turnover",
+        winText: ["걷혀 나온 공이 그대로 내 앞으로 굴러온다!"], loseText: ["공은 박스 안에서 끊겼다. 상대가 길게 걷어 낸다."] },
+    ] },
+  { id: "fw_press_curve", intro: false, poss: "them", pos: ["FW"], zone: "att", weight: 2,
+    text: ["상대 골키퍼가 센터백 {opp}에게 짧게 내준다. 가운데 미드필더에게 연결되면 압박이 풀린다."],
+    choices: [
+      { label: "휘어 들어가 가운데 길을 막는다", stats: { "mental.focus": 0.6, "mental.teamwork": 0.4 }, diff: -2, win: "keyPass", lose: "keep",
+        winText: ["가운데로 가는 길을 몸으로 가렸다. 측면으로 밀려난 공을 {mate|이/가} 끊어 낸다!"], loseText: ["상대가 침착하게 골키퍼에게 돌린다. 처음부터 다시다."] },
+      { label: "곧장 달려들어 공을 뺏으러 간다", stats: { "phys.speed": 0.5, "mental.competitive": 0.5 }, diff: 6, win: "shot", lose: "turnover",
+        winText: ["{opp|이/가} 당황해 공을 길게 끌었다. 그 틈을 낚아챘다! 바로 골문 앞이다!"], loseText: ["가볍게 제쳐졌다. 내 뒤로 길이 열렸다."] },
+      { label: "멀찍이 서서 숨을 고른다", stats: { "phys.stamina": 0.7, "mental.focus": 0.3 }, diff: -9, win: "keep", lose: "keep",
+        winText: ["무리하지 않았다. 다음 압박을 위해 힘을 아꼈다."], loseText: ["상대가 편하게 공을 돌린다. 감독님이 팔을 휘저으신다."] },
+    ] },
+  { id: "fw_false_nine", intro: false, pos: ["FW"], zone: "mid", weight: 2,
+    text: ["하프라인 근처까지 내려와 공을 받았다. 상대 센터백 {opp|이/가} 나를 따라 올라왔다. 그 뒤가 비었다."],
+    choices: [
+      { label: "돌아서서 빈 공간으로 동료를 보낸다", stats: { "tech.pass": 0.6, "mental.focus": 0.4 }, diff: 3, win: "killPass", lose: "turnover",
+        winText: ["센터백이 비운 자리로 공을 찔렀다. 측면에서 뛰어든 {mate|이/가} 골키퍼와 마주한다!"], loseText: ["돌아서는 순간 {opp|이/가} 발을 넣었다."] },
+      { label: "등지고 버티며 반칙을 얻어 낸다", stats: { "phys.strength": 0.7, "mental.focus": 0.3 }, diff: -4, win: "setPiece", lose: "turnover",
+        winText: ["끝까지 버텼다. 참다못한 {opp|이/가} 뒤에서 밀어 넘어뜨린다. 프리킥!"], loseText: ["버티다가 균형을 잃었다. 공이 상대 발에 걸린다."] },
+      { label: "원터치로 내주고 다시 뒤로 뛴다", stats: { "tech.firstTouch": 0.5, "phys.speed": 0.5 }, diff: 6, win: "shot", lose: "offside",
+        winText: ["내주자마자 뒤로 돌아 뛰었다. 다시 돌아온 공이 내 앞에 떨어진다!"], loseText: ["돌려받는 순간 부심 깃발이 올라간다. 오프사이드."] },
+    ] },
+  { id: "df_gk_triangle", intro: false, pos: ["DF"], zone: "def", weight: 2,
+    text: ["골키퍼 {gk}에게서 공을 받았다. 상대 공격수가 골키퍼와 나 사이를 가르며 달려온다."],
+    choices: [
+      { label: "골키퍼에게 다시 돌려 압박을 끌어낸다", stats: { "tech.pass": 0.5, "mental.focus": 0.5 }, diff: -3, win: "keep", lose: "danger",
+        winText: ["골키퍼에게 돌리자 상대 공격수가 따라붙는다. 그 사이 반대편이 텅 비었다."], loseText: ["돌린 공이 느렸다. 상대 공격수가 골키퍼 앞까지 쫓아온다!"] },
+      { label: "반대편 센터백에게 길게 벌린다", stats: { "tech.pass": 0.6, "tech.firstTouch": 0.4 }, diff: 2, win: "keep", lose: "turnover",
+        winText: ["압박 반대편으로 공을 옮겼다. 상대가 다시 뛰어야 한다."], loseText: ["패스가 휘었다. 상대 측면 공격수가 가로챈다."] },
+      { label: "압박 뒤 미드필더에게 바로 찌른다", stats: { "tech.pass": 0.7, "mental.confidence": 0.3 }, diff: 6, win: "keyPass", lose: "danger",
+        winText: ["압박을 한 번에 건너뛰었다. 미드필더가 앞을 보고 공을 잡는다!"], loseText: ["끊겼다! 골문 바로 앞이다!"] },
+    ] },
+  { id: "df_high_line_cover", intro: false, poss: "them", pos: ["DF"], zone: "def", weight: 2,
+    text: ["우리 수비 라인이 하프라인 근처까지 올라와 있다. 상대가 그 뒤로 길게 찬다. {opp|과/와} 나란히 공을 쫓는다."],
+    choices: [
+      { label: "몸을 먼저 넣어 공과 상대 사이를 막는다", stats: { "phys.strength": 0.6, "phys.speed": 0.4 }, diff: 2, win: "win", lose: "danger",
+        winText: ["어깨부터 먼저 들이밀었다. {opp|이/가} 공에 닿지 못한다."], loseText: ["{opp|이/가} 한 발 빨랐다. 골키퍼와 단둘이다!"] },
+      { label: "골키퍼에게 맡기고 뒤를 받친다", stats: { "mental.teamwork": 0.6, "mental.focus": 0.4 }, diff: -3, win: "win", lose: "danger",
+        winText: ["골키퍼 {gk|이/가} 뛰어나와 걷어 냈다. 나는 그 뒤를 지켰다."], loseText: ["골키퍼와 서로 미루다 공이 그 사이로 빠졌다!"] },
+      { label: "끝까지 따라가 태클로 걷어 낸다", stats: { "tech.defense": 0.6, "phys.speed": 0.4 }, diff: 5, win: "win", lose: "card",
+        winText: ["미끄러지며 공만 정확히 걷어 냈다!"], loseText: ["늦은 태클이 다리에 걸렸다. 주심이 카드를 꺼낸다."] },
+    ] },
+  { id: "df_step_out", intro: false, poss: "them", pos: ["DF"], zone: "def", weight: 2,
+    text: ["상대 공격수 {opp|이/가} 미드필드로 내려와 등지고 공을 받는다. 따라 올라가면 뺏을 수 있지만, 놓치면 내 뒤가 빈다."],
+    choices: [
+      { label: "따라 올라가 등 뒤에서 바로 붙는다", stats: { "tech.defense": 0.5, "phys.strength": 0.5 }, diff: 2, win: "win", lose: "danger",
+        winText: ["돌아서기 전에 발을 넣었다. 공이 우리 쪽으로 흐른다!"], loseText: ["{opp|이/가} 등으로 버티며 옆으로 흘렸다. 내가 비운 자리로 상대가 뛰어든다!"] },
+      { label: "자리를 지키고 앞으로 못 돌게만 한다", stats: { "mental.focus": 0.7, "mental.teamwork": 0.3 }, diff: -5, win: "keep", lose: "turnover",
+        winText: ["거리를 두고 버텼다. {opp|은/는} 결국 뒤로 공을 돌린다."], loseText: ["너무 물러섰다. {opp|이/가} 편하게 돌아서서 앞을 본다."] },
+      { label: "미드필더와 같이 가둔다", stats: { "mental.teamwork": 0.6, "phys.stamina": 0.4 }, diff: 0, win: "win", lose: "danger",
+        winText: ["앞뒤에서 동시에 조였다. 갇힌 공을 미드필더가 걷어 낸다!"], loseText: ["둘이 동시에 붙는 사이 옆으로 빠진 공이 그대로 앞으로 간다!"] },
+    ] },
 ];
 
 // 팀 단위 해설
@@ -4442,9 +4571,169 @@ function welcomeMails(state) {
     `${STAFF.assistant}: 신입생들 환영한다~ 3월 2주부터 주말리그 시작이다.\n\n주장 ${captain}: 1학년들 선배 보면 인사 잘하고, 축구화는 각자 챙겨라. 물통 당번은 1학년 돌아가면서 😄`);
 }
 
-return { drillFor, meetingScript, applyMeeting, previewChat, matchMails, weeklyAdvice, welcomeMails };
+return { drillFor, styleOf, meetingScript, applyMeeting, previewChat, matchMails, weeklyAdvice, welcomeMails };
 })();
 (__fix["js/engine/advice.js"] || []).forEach(f => f());
+
+// ── data/scenes.js
+__m["data/scenes.js"] = (function () {
+
+// 내 장면(경기 중 선택 상황)마다 경기장에서 보여 줄 움직임
+// 좌표는 엔진 기준(우리 팀이 오른쪽으로 공격, 105×68). 공 위치 B는 장면 공 자리(at, 없으면 data/match.js의 spot 또는 구역)
+// 상대 좌표 [dx, dy]: dx는 B에서 앞(+x, 상대 골문 쪽)으로, dy는 공에 가까운 터치라인 쪽이 +
+//
+// at     : 공이 놓일 자리 [[x 최소, x 최대], [y 최소, y 최대]] (엔진이 이 범위에서 고름)
+// from   : 공이 오는 방식
+//          우리 공 — pass(뒤에서 패스) back(앞에서 내려 줌) long(뒤에서 길게) through(뒷공간 스루패스) cross(측면 크로스) lowcross(땅볼 크로스)
+//                    save(골키퍼가 쳐 낸 공) loose(흘러나온 공) carry(몰고 옴) gk(우리 골키퍼가 줌) turn(상대 공을 끊음)
+//                    corner(코너킥이 날아옴) kicker(공 앞에 섬) fk(프리킥, 상대 벽) throw(스로인) pk(페널티킥) hold(그대로)
+//          상대 공 — oppCarry(몰고 옴) oppPass oppLong oppCross oppCorner oppThrow oppGk(상대 골키퍼가 굴려 줌) oppHold backpass(짧은 백패스)
+// src    : 공이 출발하는 자리 [dx, dy] (없으면 방식마다 정한 자리)
+// giver  : 공을 주는 선수 (mate·fw·mf·df·fb·wing, 상대는 앞에 opp. fb·wing은 공 쪽 측면 선수, far를 붙이면 반대편)
+// holder : 장면 끝에 공을 가진 선수 (기본은 우리 공이면 나, 상대 공이면 {opp}). mate·me
+// pre    : 장면 전에 미리 서 있는 자리 [[누구, dx, dy], ...]
+// runs   : 공이 오는 동안 뛰어 들어가는 선수 [[누구, dx, dy, 속도], ...]
+// press  : 공 가진 선수에게 붙는 수비 수 (기본: 우리 공 1, 상대 공 0 + 내가 붙음)
+// pressGap: 붙는 거리 (m)
+// mePress: 상대 공일 때 내가 붙지 않으면 false. meGap: 내가 붙는 거리
+// block  : 수비 팀 블록 높이 low·mid·high (또는 { us, them })
+// pack   : 박스 안 몸싸움 (true 또는 "us": 우리가 공격, "them": 상대가 공격)
+// gk     : 상대 골키퍼 자리 [dx, dy]. gkAt: 절대 좌표. gkNear: 가까운 포스트
+// line   : 수비 팀 마지막 라인의 x를 B.x + line 으로 (엔진 좌표. 우리가 공격하다 이미 뚫린 장면은 음수)
+// hold   : 장면이 다 준비된 뒤 선택지가 뜨기 전 잠깐 멈추는 시간(초)
+
+const SCENES = {
+  // ── 공격수 ──
+  fw_1v1: { at: [[80, 86], [26, 42]], from: "pass", giver: "mf", runs: [["fw", 9, -9, 7.6]], press: 1, pressGap: 3 },
+  fw_through: { at: [[86, 93], [26, 42]], line: -4, from: "through", giver: "mf", src: [-24, -4], runs: [["oppdf", -1, -2.5, 8.4]], press: 0 },
+  fw_cross: { at: [[92, 97], [28, 40]], from: "cross", runs: [["fw", 2, -7, 7.6]], press: 1, pressGap: 1.2, pack: true },
+  fw_hold: { at: [[74, 82], [26, 42]], from: "pass", giver: "df", src: [-24, -6], press: 1, pressGap: 1.4 },
+  fw_press: { at: [[86, 94], [20, 48]], from: "oppPass", giver: "oppdf", src: [3, -16], meGap: 6, block: { us: "high" } },
+  fw_rebound: { at: [[92, 97], [28, 40]], from: "save", runs: [["oppdf", -1, 2, 8]], press: 0 },
+  fw_counter: { at: [[70, 78], [24, 44]], from: "carry", src: [-18, 0], v: 7.6,
+    pre: [["oppdf", -18, -10], ["oppdf", -22, 8], ["oppmf", -16, 14], ["oppmf", -20, -16], ["oppmf", -12, 4], ["oppmf", -14, -6]], runs: [["mate", 6, -13, 8.4]], press: 1, pressGap: 6 },
+  fw_offside: { at: [[60, 68], [24, 44]], from: "pass", holder: "mate", giver: "df",
+    pre: [["me", 21, 2], ["oppdf", 21.5, -14], ["oppdf", 21.5, -5], ["oppdf", 21.5, 4], ["oppdf", 21.5, 13]], press: 1, pressGap: 4 },
+  fw_volley: { at: [[80, 86], [28, 40]], from: "loose", src: [12, -2], press: 0 },
+  fw_last: { at: [[80, 86], [26, 42]], from: "pass", giver: "mf", press: 2, block: { them: "low" } },
+  fw_gk_out: { line: -5, from: "long", giver: "df", gk: [6, 0], runs: [["oppdf", -4, 3, 8.4]], press: 0 },
+  fw_near_post: { from: "lowcross", src: [3, 26], runs: [["oppdf", 1, -3, 8]], press: 0, pack: true },
+  fw_far_post: { from: "cross", src: [2, -38], press: 1, pressGap: 1.4, pack: true },
+  fw_tight_angle: { from: "carry", src: [-12, 3], v: 6.6, press: 1, pressGap: 1.4, gkNear: true },
+  fw_corner_flag: { from: "carry", src: [-14, -3], v: 6.4, press: 1, pressGap: 1.2 },
+  fw_chase: { at: [[62, 70], [24, 44]], from: "loose", src: [-42, 0], pre: [["me", -9, 1.5], ["opp", -8.5, -1.5]], runs: [["opp", -0.5, -1.2, 8.2]], press: 0 },
+  fw_keeper_1v1: { line: -7, from: "carry", src: [-15, 0], v: 8, gk: [7, 0], runs: [["oppdf", -6, 2, 8.4]], press: 0 },
+  fw_drop_deep: { at: [[50, 58], [26, 42]], from: "pass", giver: "df", src: [-20, -5], press: 1, pressGap: 1.2 },
+  fw_solo_run: { at: [[46, 54], [24, 44]], from: "turn", block: { them: "high" }, press: 0 },
+  fw_gk_short: { from: "oppGk", meGap: 5, block: { us: "high" } },
+  fw_mindgame: { at: [[84, 92], [24, 44]], from: "oppHold", meGap: 1.1 },
+  fw_slide_finish: { from: "lowcross", src: [-5, -36], press: 1, pressGap: 1.6, pack: true },
+  fw_near_run: { at: [[96, 101], [6, 12]], from: "carry", holder: "mate", src: [-14, -3], pre: [["me", -14, -16]], runs: [["me", 1, -19, 8.4]], press: 1, pressGap: 1.4 },
+  fw_flow_storm: { at: [[78, 85], [26, 42]], from: "pass", giver: "mf", block: { them: "low" }, press: 1, pressGap: 3 },
+  fw_after_concede: { at: [[50, 58], [24, 44]], from: "pass", giver: "df", press: 1, pressGap: 3 },
+  fw_decoy: { at: [[78, 86], [8, 15]], from: "carry", holder: "mate", src: [-14, 2], pre: [["me", 15, -21], ["oppdf", 16.5, -19], ["oppdf", 16, -24]], press: 1, pressGap: 2.4 },
+  keeper_rush: { at: [[84, 90], [28, 40]], line: -4, from: "long", giver: "df", gk: [4, 0], press: 0 },
+  rebound_box: { at: [[90, 96], [28, 40]], from: "save", pack: true, press: 0 },
+  elder_shout: { at: [[84, 88], [15, 21]], from: "pass", giver: "mf", press: 1, pressGap: 3 },
+  fw_cutback_arrive: { at: [[98, 101], [8, 14]], from: "carry", holder: "mate", src: [-13, -3], pre: [["me", -17, -17]], press: 1, pressGap: 1.4, pack: true },
+  fw_press_curve: { at: [[86, 94], [18, 28]], from: "oppGk", meGap: 7, block: { us: "high" } },
+  fw_false_nine: { at: [[50, 58], [26, 42]], from: "pass", giver: "df", src: [-18, -4], pre: [["oppdf", 1.6, 0]], runs: [["wing", 30, 4, 8.4]], press: 0 },
+
+  // ── 미드필더 ──
+  mf_press: { at: [[48, 60], [20, 48]], from: "pass", giver: "df", press: 2, pressGap: 1.6 },
+  mf_space: { from: "pass", giver: "df", runs: [["fw", 26, -6, 8.2], ["fw", 24, 8, 8.2]], press: 0 },
+  mf_switch: { from: "pass", giver: "df", pre: [["oppmf", 4, 6], ["oppmf", 6, -2], ["oppdf", 18, 4]], runs: [["farwing", 18, -60, 8]], press: 1, pressGap: 4 },
+  mf_defend: { at: [[46, 56], [22, 46]], from: "oppCarry", src: [16, 0], v: 7.8, runs: [["oppfw", -18, -8, 8.4]], meGap: 3 },
+  mf_second: { at: [[48, 58], [24, 44]], from: "loose", src: [46, 0], runs: [["oppmf", 1, 1.5, 8]], press: 0 },
+  mf_intercept: { from: "oppPass", src: [14, -9], meGap: 3.2 },
+  mf_foul: { from: "pass", giver: "df", press: 1, pressGap: 1 },
+  mf_lead: { from: "pass", giver: "df", block: { them: "high" }, press: 2, pressGap: 2.6 },
+  mf_onetwo: { at: [[76, 83], [24, 44]], from: "pass", giver: "df", pre: [["mate", 6, -8]], press: 1, pressGap: 2.4 },
+  mf_corner: { at: [[103.6, 103.6], [0.9, 1.1]], from: "kicker", pack: true },
+  mf_heel: { at: [[80, 86], [28, 40]], from: "pass", giver: "mf", src: [-14, 6], pre: [["mate", -8, 3]], runs: [["mate", 6, -3, 8.2]], press: 1, pressGap: 1.2 },
+  mf_lowblock: { at: [[72, 78], [24, 44]], from: "pass", giver: "df", block: { them: "low" }, press: 1, pressGap: 4 },
+  mf_cover: { at: [[30, 40], [4, 10]], from: "oppPass", src: [14, -15], runs: [["me", 1, -3, 8.4]], mePress: false },
+  mf_halfway_shot: { from: "pass", giver: "df", gkAt: [86, 34], press: 0 },
+  mf_tempo: { from: "pass", giver: "df", press: 0 },
+  mf_third_man: { from: "pass", giver: "df", runs: [["mate", 9, -5, 7], ["fw", 26, 4, 8.4]], press: 1, pressGap: 3 },
+  mf_throwin: { from: "throw", runs: [["mate", 4, 6, 7]], press: 0 },
+  mf_backpass_steal: { from: "backpass", src: [-10, 0], runs: [["me", 0, 0, 8.6]], gk: [7, 0], mePress: false },
+  mf_split: { from: "pass", giver: "df", press: 2, pressGap: 4 },
+  mf_quick_fk: { from: "kicker", runs: [["fw", 22, 4, 7.6]], press: 0 },
+  mf_switch_receive: { at: [[70, 80], [5, 12]], from: "long", giver: "df", src: [-40, -42], press: 1, pressGap: 3 },
+  mf_late_run: { at: [[78, 84], [28, 40]], from: "lowcross", giver: "mate", src: [20, 30], press: 0 },
+  mf_rally: { from: "pass", giver: "df", press: 1, pressGap: 3.4 },
+  mf_shield_wing: { at: [[48, 60], [4, 10]], from: "oppCarry", src: [15, 0], meGap: 3 },
+  mf_hold_lead: { at: [[44, 56], [24, 44]], from: "pass", giver: "df", block: { them: "high" }, press: 3, pressGap: 2.2 },
+  mf_injury_time: { at: [[52, 58], [24, 44]], from: "pass", giver: "df", block: { them: "low" }, press: 1, pressGap: 5 },
+  mf_switch_wind: { from: "pass", giver: "df", gkAt: [90, 34], press: 0 },
+  mf_calm_storm: { at: [[34, 44], [24, 44]], from: "turn", block: { them: "high" }, press: 2, pressGap: 2 },
+  mf_counterpress: { at: [[56, 66], [22, 46]], from: "oppHold", meGap: 2.4, press: 1 },
+  mf_advantage: { at: [[74, 82], [24, 44]], from: "carry", src: [-10, 0], v: 6, pre: [["opp", -2, 2]], press: 1, pressGap: 3 },
+  mf_halfspace_turn: { at: [[64, 72], [14, 22]], from: "pass", giver: "fb", src: [-10, 8], runs: [["mate", 14, 10, 8.4], ["fw", 18, -6, 7.6]], press: 1, pressGap: 2.6, block: { them: "mid" } },
+  mf_rest_defense: { at: [[80, 88], [24, 44]], from: "pass", holder: "mate", giver: "mf", pre: [["me", -26, -6], ["oppfw", -28, -10]], block: { them: "low" }, press: 1, pressGap: 3 },
+  mf_drop_between: { at: [[18, 24], [26, 42]], from: "gk", holder: "df", pre: [["me", 12, 1]], press: 2, pressGap: 3, block: { them: "high" } },
+
+  // ── 수비수 ──
+  df_1v1: { at: [[26, 36], [22, 46]], from: "oppCarry", src: [15, 0], v: 7.8, meGap: 3 },
+  df_cross: { at: [[8, 14], [28, 40]], from: "oppCross", meGap: 1, pack: "them" },
+  df_build: { at: [[10, 16], [18, 50]], from: "gk", press: 1, pressGap: 4, block: { them: "high" } },
+  df_through: { at: [[34, 42], [24, 44]], from: "oppPass", src: [14, -6], runs: [["oppfw", -16, 2, 8.6]], mePress: false },
+  df_corner: { at: [[94, 99], [28, 40]], from: "corner", pack: true },
+  df_longshot: { at: [[80, 85], [26, 42]], from: "loose", src: [10, -3], pack: true, press: 1, pressGap: 4 },
+  att_corner_head: { at: [[94, 99], [29, 39]], from: "corner", pack: true },
+  skill_wing: { at: [[72, 84], [5, 11]], from: "pass", giver: "fb", src: [-14, 0], press: 1, pressGap: 3.4 },
+  df_slide_counter: { at: [[42, 52], [22, 46]], from: "oppCarry", src: [16, 0], v: 7.8, meGap: 3.6 },
+  freekick: { at: [[76, 82], [26, 42]], from: "fk" },
+  penalty: { at: [[94, 94], [34, 34]], from: "pk" },
+  df_2v1: { at: [[36, 44], [24, 44]], from: "oppCarry", src: [16, 0], v: 8, runs: [["oppfw", -6, -12, 8.4]], pre: [["df", 18, 12], ["df", 20, -12]], meGap: 5 },
+  df_box: { at: [[8, 14], [26, 42]], from: "loose", holder: "me", src: [3, -2], runs: [["opp", 1.5, 1.5, 8]], pack: "them" },
+  df_overlap: { at: [[70, 80], [4, 10]], from: "through", giver: "mate", src: [-8, -10], press: 0 },
+  df_boxdribble: { at: [[12, 18], [24, 44]], from: "oppCarry", src: [10, 4], v: 6, meGap: 2 },
+  df_last: { at: [[8, 14], [28, 40]], from: "oppLong", pack: "them", meGap: 1 },
+  df_offside_trap: { from: "oppHold", pre: [["oppfw", -12, -6], ["oppfw", -12.5, 6]], mePress: false },
+  df_scramble: { from: "loose", src: [4, 3], pack: "them", meGap: 1 },
+  df_target_man: { at: [[24, 32], [26, 42]], from: "oppLong", meGap: 0.9 },
+  df_back_to_goal: { at: [[18, 26], [24, 44]], from: "loose", holder: "me", src: [12, 0], pre: [["opp", 13, 2]], runs: [["opp", 4, 1, 8.2]] },
+  df_cover: { at: [[22, 30], [16, 52]], from: "oppCarry", src: [11, 6], v: 7.6, pre: [["mate", 9, 4]], meGap: 3 },
+  df_long_throw: { from: "oppThrow", pack: "them", meGap: 1 },
+  df_launch: { at: [[24, 32], [24, 44]], from: "turn", runs: [["fw", 40, -6, 8.6], ["fw", 38, 8, 8.6]], press: 0 },
+  df_block: { from: "oppCarry", src: [8, -2], v: 6, meGap: 1.6 },
+  df_dive: { from: "oppCarry", src: [6, 1], v: 5, meGap: 0.8 },
+  df_last_man: { from: "oppCarry", src: [15, 0], v: 8.2, pre: [["df", 20, -10], ["df", 22, 10], ["df", 18, 16]], meGap: 3 },
+  df_corner_choice: { from: "oppCorner", pack: "them", meGap: 1 },
+  df_split_pass: { at: [[14, 22], [20, 48]], from: "gk", press: 2, pressGap: 5, block: { them: "high" } },
+  df_keeper_call: { from: "oppLong", runs: [["gk", -1, 0, 8]], meGap: 1 },
+  df_fullback_duel: { at: [[30, 42], [4, 10]], from: "oppCarry", src: [14, 0], v: 8, meGap: 3 },
+  df_aerial_long: { from: "oppLong", src: [70, 0], meGap: 0.8 },
+  df_line_step: { from: "oppHold", pre: [["oppfw", -12, -7], ["oppfw", -12.5, 5]], mePress: false },
+  df_ace_mark: { at: [[28, 38], [22, 46]], from: "oppCarry", src: [9, 0], v: 5, meGap: 3.4 },
+  df_storm_hold: { from: "oppCross", pack: "them", meGap: 1 },
+  df_launch_counter: { at: [[24, 32], [24, 44]], from: "pass", giver: "df", src: [-4, 9], runs: [["fw", 38, -6, 8.6], ["fw", 36, 8, 8.6]], press: 0 },
+  df_player_down: { at: [[24, 32], [24, 44]], from: "turn", pre: [["opp", 2, 2.5]], press: 0 },
+  df_gk_triangle: { at: [[10, 16], [18, 26]], from: "gk", press: 1, pressGap: 5, block: { them: "high" } },
+  df_high_line_cover: { at: [[24, 32], [24, 44]], line: 20, from: "oppLong", src: [48, 0], pre: [["me", 20, 2], ["opp", 19, -2]], runs: [["me", 0.5, 1.4, 8.3]], mePress: false, block: { us: "high" } },
+  df_step_out: { at: [[30, 38], [26, 42]], from: "oppPass", src: [14, -4], meGap: 2 },
+
+  // ── 여러 포지션 ──
+  wx_rain_shot: { at: [[76, 82], [26, 42]], from: "pass", giver: "mf", press: 1, pressGap: 4 },
+  wx_rain_back: { holder: "me", from: "loose", src: [6, 0], runs: [["opp", 3, 1.5, 8]] },
+  wx_wind_cross: { at: [[86, 96], [4, 10]], from: "pass", giver: "fb", press: 1, pressGap: 3, pack: true },
+  wx_hot_late: { from: "pass", giver: "df", press: 1, pressGap: 3.4 },
+  wx_cold_touch: { from: "loose", src: [-30, 0], press: 1, pressGap: 2.4 },
+  crowd_boo: { at: [[72, 82], [4, 10]], from: "pass", giver: "fb", press: 1, pressGap: 3 },
+  opp_coach_shout: { from: "oppCarry", src: [12, 0], v: 6, meGap: 3 },
+  mate_yellow: { from: "oppCarry", src: [12, 0], v: 6, runs: [["mate", 1.8, 1.5, 8]], meGap: 4 },
+  parents_cheer: { from: "pass", giver: "df", press: 1, pressGap: 3 },
+  bench_signal: { from: "pass", giver: "df", press: 1, pressGap: 4 },
+  counter_3v2: { at: [[64, 72], [30, 38]], from: "carry", src: [-16, 0], v: 8,
+    pre: [["oppdf", 14, -6], ["oppdf", 14, 6], ["oppdf", -14, 12], ["oppdf", -16, -12], ["oppmf", -16, 0], ["oppmf", -18, 12], ["oppmf", -15, -12], ["oppmf", -20, 20]], runs: [["fw", 8, -13, 8.6], ["mf", 6, 13, 8.6]], press: 0 },
+  throw_in_trick: { at: [[44, 60], [1, 3]], from: "throw", press: 0, runs: [["mate", 3, 6, 6]] },
+};
+
+return { SCENES };
+})();
+(__fix["data/scenes.js"] || []).forEach(f => f());
 
 // ── js/engine/match.js
 __m["js/engine/match.js"] = (function () {
@@ -4460,8 +4749,10 @@ const {matchMails} = __m["js/engine/advice.js"];
 const {isBirthdayWeek} = __m["js/engine/birthday.js"];
 const {turnInfo} = __m["js/engine/calendar.js"];
 const {oppLineup, noteOpp} = __m["js/engine/opponents.js"];
+const {SCENES} = __m["data/scenes.js"];
 // 경기 엔진: 시간순 사건을 미리 깔아 두고, 내 장면에서 멈춰 선택을 받습니다.
 // 각 해설 줄에는 공 위치(ball)와 공을 가진 팀(poss)이 붙어 있어 화면이 선수들을 움직입니다.
+
 
 
 
@@ -4740,6 +5031,11 @@ function prepareMatch(state, info, fx) {
     star, meRate: onPitch ? clamp(0.09 + star * 0.11 + (hasTrait(p, "ace") ? 0.03 : 0), 0.08, 0.32) : 0, me: p.name, myPos: p.position,
     minIn: status === "sub" ? minIn : 0, onPitch,
     prep: state.meetingBuff?.turn === info.turn ? state.meetingBuff : null,    // 경기 전 미팅에서 한 대답
+    order: (() => {                                  // 감독님 주간 지시를 따른 주 (orders.js)
+      const o = state.order;
+      if (!o || !o.done || o.turn !== state.calendar.turn || !o.stat || o.stat.startsWith("student")) return null;
+      return o.tag ? { tag: o.tag, bonus: 0.03 } : { tag: null, bonus: 0.015 };
+    })(),
     bond: (() => {                                   // 복선 회수: 정해진 기간 안의 선발 경기 한 번
       const b = state.flags.bond; if (!b) return null;
       if (b.until != null && info.turn > b.until) { state.flags.bond = null; return null; }
@@ -4848,8 +5144,9 @@ function runPlay(m, team) {
     const last = i === play.steps.length - 1;
     let t = st.t.length ? fill(pick(st.t), { a: actors[i], b: actors[i + 1] || actors[i] }) : "";
     if (mine && !last && !st.t.length) t = fill(pick(i === play.steps.length - 2 ? ME_IN_PLAY.pass : ME_IN_PLAY.build), { me: m.me });
-    if (t) lines.push({ t, k: mine ? "me-auto" : team === "us" ? "us" : "them", minute: min, ball: pt, poss: team, fast: true, meHold: mine, actor: actors[i] });
-    else lines.push({ t: "", k: "", minute: min, ball: pt, poss: team, fast: true, silent: true, actor: actors[i] });
+    const set = i === 0 && ["corner", "freekick", "penalty"].includes(play.id) ? { set: play.id } : {};      // 화면: 세트피스 배치
+    if (t) lines.push({ t, k: mine ? "me-auto" : team === "us" ? "us" : "them", minute: min, ball: pt, poss: team, fast: true, meHold: mine, actor: actors[i], ...set });
+    else lines.push({ t: "", k: "", minute: min, ball: pt, poss: team, fast: true, silent: true, actor: actors[i], ...set });
   });
   // 슈팅까지 못 가고 끊기는 공격 (약 30%)
   if (!["pk", "fk"].includes(play.finish) && play.steps.length >= 2 && chance(0.3)) {
@@ -5017,9 +5314,11 @@ function next(state, m) {
     const oppPref = poss === "them" ? ({ DF: ["FW"], MF: ["MF", "FW"], FW: ["DF"] }[myPos]) : (myPos === "DF" ? ["FW", "MF"] : ["DF", "MF"]);
     const sv = { mate: mateName(m), opp: oppName(m, oppPref), gk: m.gk.us, ogk: m.gk.them, coach: STAFF.coach };
     const zone = sit.zone;
-    const ball = sit.spot ? [range(...sit.spot[0]), range(...sit.spot[1])]      // 장면마다 정해 둔 자리 (골문 앞 혼전 등)
+    const spot = sit.spot || SCENES[sit.id]?.at;                                  // 장면마다 정해 둔 자리 (data/scenes.js)
+    const ball = spot ? [range(...spot[0]), range(...spot[1])]
       : zone === "att" ? [range(80, 88), range(24, 44)] : zone === "mid" ? [range(48, 60), range(18, 50)] : [range(20, 30), range(18, 50)];
-    const holder = poss === "them" ? sv.opp : m.me;
+    const sh = sceneHolder(sit, sv, m);
+    const holder = sh !== undefined ? sh : poss === "them" ? sv.opp : m.me;
     if (sit.intro !== false) lines.push(L(fill(pick(TO_ME[poss === "them" ? "def" : zone] || TO_ME.mid), sv), "me", { ball, poss, toMe: poss !== "them", actor: holder, press: poss === "them" }));
     // 상대 에이스와 처음 마주칠 때 한 줄 (경기마다 한 번)
     if (poss === "them" && sit.intro !== false && m.oppAce && sv.opp === m.oppAce.name && !m._aceSeen) {
@@ -5080,6 +5379,12 @@ function statLine(m) {
   return `점유율 ${m.stats.poss}% 대 ${100 - m.stats.poss}%, 슈팅 ${u.shots} 대 ${t.shots} (유효 ${u.on} 대 ${t.on}), 코너킥 ${u.corners} 대 ${t.corners}`;
 }
 
+// 장면 연출에서 공을 가진 선수가 내가 아닐 때 (data/scenes.js의 holder). df는 이름 없이 화면이 가까운 수비수를 고름
+function sceneHolder(sit, v, m) {
+  const h = SCENES[sit.id]?.holder;
+  return h === "mate" ? v.mate : h === "me" ? m.me : h === "df" ? null : undefined;
+}
+
 function pickSituation(state, m) {
   const pos = state.player.position;
   const [a, b] = m.score;
@@ -5126,6 +5431,7 @@ function prob(state, m, c) {
   if (m.talk?.tag && choiceTag(c) === m.talk.tag) x += 0.04;
   if (m.prep && (!m.prep.tag || choiceTag(c) === m.prep.tag)) x += m.prep.bonus;   // 미팅에서 다짐한 대로
   if (m.htBuff && (!m.htBuff.tag || choiceTag(c) === m.htBuff.tag)) x += m.htBuff.bonus;   // 하프타임 이야기
+  if (m.order && (!m.order.tag || choiceTag(c) === m.order.tag)) x += m.order.bonus;   // 감독님 지시대로 준비한 주
   if (m.bond) x += m.bond.bonus;                                                            // 예전에 쌓은 인연
   if (hasTrait(p, "clutch") && m.score[0] < m.score[1] && m.minute > HALF) x += 0.07;
   if (c.physical) x -= m.physGap;
@@ -5149,7 +5455,8 @@ function resolve(state, m, ci, timing = null) {
   const [bx, by] = pd.ball;
   // 상황 설명을 기록에 남겨야 나중에 읽어도 앞뒤가 이어짐
   const them = pd.sit.poss === "them";
-  const holder0 = them ? v.opp : m.me;
+  const sh = sceneHolder(pd.sit, v, m);
+  const holder0 = sh !== undefined ? sh : them ? v.opp : m.me;
   const lines = [{ t: pd.text, k: "me", minute: min, ball: pd.ball, poss: pd.sit.poss || "us", fast: true, actor: holder0, press: them },
                  { t: `▶ ${c.label}${timing ? ` ${{ perfect: "(완벽한 타이밍!)", good: "(좋은 타이밍)", miss: "(타이밍이 어긋났다)" }[timing]}` : ""}`, k: "me", minute: min, ball: pd.ball, poss: pd.sit.poss || "us", actor: holder0, press: them }];
 
@@ -5169,7 +5476,8 @@ function resolve(state, m, ci, timing = null) {
     assist: v.mate, keyPass: v.mate, killPass: v.mate, matePk: v.mate, setPiece: v.mate,
     turnover: v.opp, danger: v.opp, pkAgainst: v.opp, offside: null, miss: null, longShot: m.me, acro: m.me, card: null, decoy: v.mate }[out];
   const actorNow = out === "keep" && pd.sit.poss === "them" ? v.opp : actorOf;
-  lines.push({ t: fill(pick(ok ? c.winText : c.loseText), v), k: ok ? "me-good" : "me-bad", minute: min, ball: after[0], poss: after[1], actor: actorNow });
+  const set = out === "setPiece" ? { set: "freekick" } : ["pk", "matePk", "pkAgainst"].includes(out) ? { set: "penalty" } : {};   // 화면: 세트피스 배치
+  lines.push({ t: fill(pick(ok ? c.winText : c.loseText), v), k: ok ? "me-good" : "me-bad", minute: min, ball: after[0], poss: after[1], actor: actorNow, ...set });
   if (ok && pd.choices[ci].follow) lines.push({ t: fill("{c|이/가} 벤치에서 주먹을 쥔다. 경기 전 지시 그대로다.", { c: m.talk.who === "coach" ? STAFF.coach : STAFF.assistant }), k: "coach", minute: min });
 
   const main = Object.entries(c.stats).sort((a, b) => b[1] - a[1])[0][0];
@@ -7592,6 +7900,122 @@ return { findEvent, blessKey, blessedThisTerm, rollEvent, eventVars, eventView, 
 })();
 (__fix["js/engine/events.js"] || []).forEach(f => f());
 
+// ── js/engine/orders.js
+__m["js/engine/orders.js"] = (function () {
+const {ACTIONS} = __m["data/actions.js"];
+const {POSITIONS, STAT_LABEL} = __m["data/player.js"];
+const {mail} = __m["js/state.js"];
+const {turnInfo} = __m["js/engine/calendar.js"];
+const {styleOf} = __m["js/engine/advice.js"];
+const {pick, getPath, rand} = __m["js/rng.js"];
+// 감독님 주간 지시: 한 주에 하나. 지시한 훈련을 한 칸이라도 하면 감독 신뢰가 오르고,
+// 그 주 경기에서 지시와 맞는 선택의 성공률이 조금 오름. 세 주 연속으로 무시하면 따로 부름
+
+
+
+
+
+
+// 능력치 → 경기 선택 태그 (match.js choiceTag와 같은 이름)
+const TAG_OF = {
+  "tech.shoot": "shoot", "tech.pass": "pass", "tech.cross": "pass", "tech.dribble": "dribble", "phys.agility": "dribble",
+  "phys.speed": "dribble", "tech.defense": "defend", "phys.strength": "physical", "phys.jump": "physical",
+};
+
+// 상대 성향에 맞춘 지시 (advice.js STYLES의 stat과 짝)
+const VS_STYLE = {
+  "tech.firstTouch": ["주말 상대는 전방 압박이 세다. 공 받을 때 첫 터치에서 다 갈린다.", "주말에 붙을 팀은 앞에서부터 몰아붙인다. 받기 전에 보는 습관, 이번 주에 들여라."],
+  "phys.jump": ["주말 상대는 롱볼로 밀어붙인다. 공중볼에서 밀리면 끝이다.", "이번 주 상대는 키 큰 공격수 하나 보고 차는 팀이다. 머리싸움 준비해 둬라."],
+  "phys.speed": ["주말 상대는 역습이 빠르다. 한 발 늦으면 바로 실점이다.", "이번 주 상대는 세 번 패스로 골문까지 온다. 발을 키워 둬라."],
+  "phys.stamina": ["주말 상대는 공을 오래 돌린다. 후반에 다리 남아 있는 쪽이 이긴다.", "이번 주는 많이 뛰는 경기가 된다. 체력부터 채워라."],
+  "phys.strength": ["주말 상대는 몸싸움이 거칠다. 부딪혀서 버텨야 한다.", "이번 주 상대는 밀어붙이는 팀이다. 몸 만들어 둬라."],
+  "mental.focus": ["주말 상대는 측면 크로스가 많다. 박스 안에서 한순간도 놓치지 마라.", "이번 주 상대는 집중력 싸움이다. 머리부터 정리해 둬라."],
+  "tech.pass": ["주말 상대는 내려앉아 버틴다. 패스 한 번으로 열어야 한다.", "이번 주 상대는 박스 앞에 다 서 있을 거다. 찔러 주는 패스 연습해 둬라."],
+  "tech.defense": ["주말 상대는 에이스 하나가 다 한다. 그 선수를 묶어야 한다.", "이번 주 상대 10번, 혼자 경기를 끌고 다닌다. 수비 훈련 빼먹지 마라."],
+};
+// 경기가 없는 주: 내 포지션 능력치 중 아쉬운 것
+const PLAIN = {
+  "tech.shoot": "슈팅이 골문 앞에서 자꾸 뜬다. 이번 주는 슈팅 훈련 빼먹지 마라.",
+  "tech.pass": "패스가 반 박자씩 늦다. 이번 주는 패스에 시간 써라.",
+  "tech.dribble": "공 잡으면 자꾸 뒤로 돌린다. 한 명은 제칠 줄 알아야 한다.",
+  "tech.firstTouch": "첫 터치가 길다. 공이 발에서 떨어지면 아무것도 못 한다.",
+  "tech.defense": "수비 가담이 아쉽다. 공 없을 때 네가 뭘 하는지 보고 있다.",
+  "phys.speed": "뒷공간 싸움에서 한 발씩 늦는다. 스프린트 해 둬라.",
+  "phys.stamina": "후반 20분이 되면 발이 멈춘다. 체력 훈련 해라.",
+  "phys.strength": "부딪히면 자꾸 넘어진다. 웨이트 거르지 마라.",
+  "phys.jump": "공중볼을 계속 내준다. 점프 타이밍부터 다시 잡아라.",
+  "mental.teamwork": "혼자 하려는 게 보인다. 이번 주는 동료랑 맞추는 훈련을 해라.",
+  "mental.focus": "경기 중에 멍해지는 순간이 있다. 전술 훈련 들어와서 머리 써라.",
+};
+
+const doable = (state, allowed, stat) => ACTIONS
+  .filter(a => (a.gains?.[stat] || 0) >= 0.6 && a.injured !== "only" && allowed(state, a).ok)
+  .sort((a, b) => b.gains[stat] - a.gains[stat]).map(a => a.id);
+
+function build(state, allowed, fx) {
+  const p = state.player, info = turnInfo(state);
+  const mk = (kind, stat, acts, text) => acts.length ? { turn: state.calendar.turn, kind, stat, tag: TAG_OF[stat] || null, acts, text } : null;
+  if (p.condition.injury) {
+    const acts = ["rehab"].filter(id => allowed(state, ACTIONS.find(a => a.id === id)).ok);
+    return mk("rehab", null, acts, "지금은 재활이 훈련이다. 급하게 돌아오면 더 오래 쉰다.");
+  }
+  if (p.condition.fatigue >= 76)
+    return mk("rest", null, ["sleep", "family", "hobby"].filter(id => allowed(state, ACTIONS.find(a => a.id === id)).ok),
+      pick(["얼굴이 반쪽이다. 이번 주 하루는 푹 쉬어라. 쉬는 것도 지시다.", "지친 몸으로 뛰면 다친다. 하루는 일찍 자라."]));
+  if (info.exam && !info.exam.free && p.stats.student.academic < 75)
+    return mk("study", "student.academic", doable(state, allowed, "student.academic"),
+      pick(["시험 주다. 하루는 책 펴라. 성적 떨어지면 나도 못 데려간다.", "이번 주 시험이지? 담임 선생님께 연락 오는 일 없게 해라."]));
+  if (fx?.opponent && !fx.jn && fx.comp !== "hs") {
+    const st = styleOf(fx.opponent.name);
+    const acts = doable(state, allowed, st.stat);
+    if (acts.length && VS_STYLE[st.stat]) return mk("vs", st.stat, acts, pick(VS_STYLE[st.stat]));
+  }
+  // 포지션 능력치 가운데 가장 낮은 것 (가끔은 둘째로 낮은 것)
+  const keys = Object.keys(POSITIONS[p.position].weights).filter(k => PLAIN[k]).sort((a, b) => getPath(p.stats, a) - getPath(p.stats, b));
+  const stat = keys[rand() < 0.7 ? 0 : 1] || keys[0];
+  return mk("plain", stat, doable(state, allowed, stat), PLAIN[stat]);
+}
+
+// 이번 주 지시가 없으면 만듦 (화면에서도 부름)
+function ensureOrder(state, allowed, fx) {
+  if (state.finished) return null;
+  if (state.order?.turn === state.calendar.turn) return state.order;
+  state.order = build(state, allowed, fx) || { turn: state.calendar.turn, none: true };
+  return state.order;
+}
+
+// 한 주가 끝날 때: 지시를 따랐는지 판정. 돌려주는 값은 주간 결과에 붙일 한 줄
+function judgeOrder(state, chosenIds) {
+  const o = state.order;
+  if (!o || o.none || o.turn !== state.calendar.turn) return null;
+  const ok = chosenIds.some(id => o.acts.includes(id));
+  o.done = ok;
+  const log = state.orderLog ||= { kept: 0, missed: 0, streakMiss: 0, streakKept: 0 };
+  if (ok) {
+    log.kept++; log.streakKept++; log.streakMiss = 0;
+    const up = o.kind === "vs" || o.kind === "plain" ? 0.4 : 0.2;     // 쉬기·재활·공부 지시는 따르기 쉬우니 조금만
+    state.relations.coach = Math.min(100, state.relations.coach + up);
+    if (log.streakKept === 5) {
+      state.relations.coach = Math.min(100, state.relations.coach + 1.5);
+      mail(state, "coach", "요즘 보기 좋다", "말한 걸 그대로 해 오는 선수가 생각보다 드물다. 너는 그걸 다섯 주째 하고 있다.\n\n계속 그렇게만 해라. 기회는 그런 선수한테 먼저 간다.");
+    }
+    return { ok: true, text: `📋 감독님 지시를 따랐다. 감독 신뢰 +${up}` + (o.tag || o.kind === "vs" ? ", 이번 경기 관련 선택 성공률 상승" : "") };
+  }
+  log.missed++; log.streakMiss++; log.streakKept = 0;
+  state.relations.coach = Math.max(0, state.relations.coach - 0.3);
+  if (log.streakMiss >= 3 && state.calendar.turn - (log.lastCall ?? -99) >= 12) {
+    log.lastCall = state.calendar.turn;
+    state.relations.coach = Math.max(0, state.relations.coach - 1);
+    mail(state, "coach", "끝나고 잠깐 보자", "세 주째 내가 한 말이 너한테 안 들어가는 것 같다.\n\n네 생각이 있으면 말로 해라. 말없이 다른 걸 하는 건 생각이 아니라 고집이다.");
+  }
+  return { ok: false, text: `📋 감독님 지시(${o.stat ? STAT_LABEL[o.stat] || "" : o.kind === "rest" ? "휴식" : "재활"})를 따르지 않았다. 감독 신뢰 −0.3` };
+}
+// 경기 보너스는 match.js prepareMatch의 order에서 (같은 값: 태그 맞으면 +3%p, 태그 없으면 모든 선택 +1.5%p)
+
+return { ensureOrder, judgeOrder };
+})();
+(__fix["js/engine/orders.js"] || []).forEach(f => f());
+
 // ── data/endings.js
 __m["data/endings.js"] = (function () {
 
@@ -7942,6 +8366,7 @@ const {prepareMatch, autoPlay, finishMatch} = __m["js/engine/match.js"];
 const {previewChat, weeklyAdvice, drillFor} = __m["js/engine/advice.js"];
 const {adjustRel, weeklyRelations, relationsNewYear, rivalGap, seniorsLeave} = __m["js/engine/relations.js"];
 const {rollEvent} = __m["js/engine/events.js"];
+const {ensureOrder, judgeOrder} = __m["js/engine/orders.js"];
 const {goalsWeekly} = __m["js/engine/goals.js"];
 const {birthdayWeek} = __m["js/engine/birthday.js"];
 const {careerMilestones} = __m["js/engine/career.js"];
@@ -7954,6 +8379,7 @@ const {INJURIES, injure} = __m["js/engine/injury.js"];
 const {checkTraits} = __m["js/engine/traits.js"];
 const {normal, chance, clamp, int, weighted, range} = __m["js/rng.js"];
 // 한 주 진행: 행동 → 경기 → 시험 → 부상 → 학업 체크 → 다음 주
+
 
 
 
@@ -7998,6 +8424,9 @@ function currentFixture(state) {
   return info ? matchFor(state, info) : null;
 }
 
+// 이번 주 감독님 지시 (없으면 만듦)
+const weekOrder = state => ensureOrder(state, actionAllowed, currentFixture(state));
+
 function slotLocked(state, slotId) {
   if (slotId !== "we") return null;
   const fx = currentFixture(state);
@@ -8039,6 +8468,8 @@ function beginWeek(state) {
   // 1. 행동
   const chosenSlots = SLOTS.filter(s => !slotLocked(state, s.id) && ACTION_MAP[state.plan[s.id]]).map(s => ({ slot: s.id, a: ACTION_MAP[state.plan[s.id]] }));
   const chosen = chosenSlots.map(x => x.a);
+  weekOrder(state);
+  report.order = judgeOrder(state, chosenSlots.filter(x => actionAllowed(state, x.a).ok).map(x => x.a.id));
   let risk = 0, didSchool = false, didTeam = false, rehab = 0, sprint = false;
   const gap = rivalGap(state);
   const rivalMult = gap != null && Math.abs(gap) <= 5 ? 1.05 : 1;
@@ -8378,7 +8809,7 @@ function diffStats(a, b) {
   return out.sort((x, y) => Math.abs(y.d) - Math.abs(x.d));
 }
 
-return { SLOTS, actionAllowed, currentFixture, slotLocked, planReady, runWeek, beginWeek, endWeek, POPULAR, numberChoices, chooseNumber };
+return { SLOTS, actionAllowed, currentFixture, weekOrder, slotLocked, planReady, runWeek, beginWeek, endWeek, POPULAR, numberChoices, chooseNumber };
 })();
 (__fix["js/engine/week.js"] || []).forEach(f => f());
 
@@ -8731,6 +9162,7 @@ function actionPicker(app, slotId) {
   const state = app.state;
   let cat = ACTIONS.find(a => a.id === state.plan[slotId])?.cat || (state.player.condition.injury ? "rest" : "personal");
   const slot = SLOTS.find(s => s.id === slotId);
+  const order = state.order?.turn === state.calendar.turn && !state.order.none ? state.order : null;
   const html = () => `<button class="close" data-close aria-label="닫기">×</button>
     <h2>${slot.label}</h2><p class="sub">무엇을 할까요?</p>
     <div class="tabs" role="tablist">${CATEGORIES.map(c => `<button role="tab" data-cat="${c.id}" aria-selected="${c.id === cat}">${c.label}</button>`).join("")}</div>
@@ -8738,7 +9170,7 @@ function actionPicker(app, slotId) {
       const ok = actionAllowed(state, a);
       if (!ok.ok && a.injured === "only") return "";
       return `<button class="act ${state.plan[slotId] === a.id ? "sel" : ""}" data-act="${a.id}" ${ok.ok ? "" : "disabled"}>
-        <span class="n">${a.icon} ${a.label}${ok.ok ? "" : ` <small class="mute">(${ok.reason})</small>`}</span>
+        <span class="n">${a.icon} ${a.label}${ok.ok ? "" : ` <small class="mute">(${ok.reason})</small>`}${ok.ok && order?.acts?.includes(a.id) ? ` <span class="chip kit order-chip">📋 지시</span>` : ""}</span>
         <span class="d">${esc(fillText(a.desc, eventVars(state)))}</span><span class="fx">${fxLine(a)}</span></button>`;
     }).join("")}</div>`;
   openModal(html(), function mount(el, close) {
@@ -8771,6 +9203,7 @@ function weekReport(app, rep, done) {
     ${rep.exam ? `<div class="alert gold">📝 ${rep.exam.name}${rep.exam.tier ? `: ${rep.exam.tier}` : " 끝"}</div>` : ""}
     ${rep.injury ? `<div class="alert">🩹 ${rep.injury.label}. ${rep.injury.weeks}주 정도 쉬어야 합니다.</div>` : ""}
     ${rep.recovered ? `<div class="alert gold">💪 부상에서 회복했습니다.</div>` : ""}
+    ${rep.order ? `<div class="alert ${rep.order.ok ? "gold" : ""}">${esc(rep.order.text)}</div>` : ""}
     ${rep.camp ? `<div class="alert gold">⛺ 합숙 훈련 주간: 훈련 효과 1.2배</div>` : ""}
     ${(rep.traits || []).map(t => `<div class="alert gold trait-new">✨ 새 특성 <b>${esc(t.label)}</b>: ${esc(t.desc)}</div>`).join("")}
     ${rep.body ? `<div class="alert gold">📏 신체 측정: 키가 ${rep.body.cm}cm 자랐습니다.</div>` : ""}
@@ -10573,6 +11006,688 @@ return { bgm };
 })();
 (__fix["js/ui/bgm.js"] || []).forEach(f => f());
 
+// ── js/ui/pitch.js
+__m["js/ui/pitch.js"] = (function () {
+const {SCENES} = __m["data/scenes.js"];
+// 경기장 움직임: 22명이 대형을 지키며 공 위치에 따라 움직이고, 공은 패스·드리블·슈팅처럼 굴러가거나 떠서 날아감
+// 결과는 엔진(engine/match.js)이 정하고, 여기서는 중계 문장(공 위치·소유 팀·공 가진 선수)을 움직임으로 옮기기만 함
+// 좌표는 엔진 기준(우리 팀이 오른쪽 +x로 공격, 105×68). 후반 진영 교체는 그릴 때만 뒤집음
+
+const ROLES = { GK: ["GK"], DF: ["LB", "LCB", "RCB", "RB"], MF: ["LM", "LCM", "RCM", "RM"], FW: ["ST1", "ST2"] };
+// 4-4-2. 자기 진영 기준 [수비 라인에서 앞으로 몇 m, 좌우 비율(−1 왼쪽 터치라인 쪽 ~ 1 오른쪽)]. d 수비할 때, a 공격할 때
+// 공격할 때는 왼쪽 풀백이 높이 오르고 왼쪽 미드필더가 안쪽(하프스페이스)으로 좁혀 2-3-5에 가까워짐
+const FORM = {
+  LB: { d: [0, -0.88], a: [20, -0.95] }, LCB: { d: [0, -0.3], a: [0, -0.42] }, RCB: { d: [0, 0.3], a: [0, 0.42] }, RB: { d: [0, 0.88], a: [14, 0.95] },
+  LM: { d: [11, -0.92], a: [30, -0.6] }, LCM: { d: [11, -0.28], a: [11, -0.14] }, RCM: { d: [11, 0.28], a: [19, 0.2] }, RM: { d: [11, 0.92], a: [31, 0.88] },
+  ST1: { d: [24, -0.2], a: [41, -0.14] }, ST2: { d: [22, 0.22], a: [38, 0.24] },
+};
+// 수비 블록 높이: [공에서 몇 m 뒤에 라인, 라인 최소, 라인 최대] (자기 골문에서 잰 거리)
+const BLOCK = { low: [24, 9, 24], mid: [25, 16, 38], high: [21, 24, 50] };
+const KICKOFF_X = { GK: 4, DF: 25, MF: 37, FW: 47 };
+const JOG = 6.2, RUN = 7.4, SPRINT = 8.6, DRIBBLE = 5.8;
+
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const own = (team, [x, y]) => team === "us" ? [x, y] : [105 - x, 68 - y];      // 절대 좌표 ↔ 그 팀 기준 좌표 (같은 식으로 왕복)
+const dirOf = team => team === "us" ? 1 : -1;                                   // 공격 방향 (절대 x)
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const other = t => t === "us" ? "them" : "us";
+
+function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blocks = {} }) {
+  const T = players;
+  for (const p of T) {
+    const [, pos, i] = p.id.split("-");
+    p.role = ROLES[pos][+i] || pos;
+    p.tx = p.x; p.ty = p.y; p.speed = JOG; p.ov = null; p.press = false;
+  }
+  const S = {
+    ball: { x: 52.5, y: 34, z: 0, fl: null }, holder: null, poss: "us", pending: null,
+    block: { us: blocks.us || "mid", them: blocks.them || "mid" }, scale: 1, flipped: false,
+    queue: [], cur: null, wait: 0, done: null, chasers: [], frozen: false,
+  };
+  let raf = 0, last = 0, idle = 0;
+
+  // ── 대형 ──
+  function shape(team) {
+    const att = S.poss === team;
+    const [bx, by] = own(team, S.focus || [S.ball.x, S.ball.y]);       // 장면 중에는 장면 공 자리 기준으로 대형을 잡음
+    const out = {};
+    let line, W, cy;
+    if (att) { line = clamp(bx - 31, 12, 58); W = 29; cy = 34 + (by - 34) * 0.15; }
+    else {
+      const [back, lo, hi] = BLOCK[S.block[team]] || BLOCK.mid;
+      line = clamp(bx - back, lo, Math.min(hi, Math.max(lo, bx - 4)));
+      W = 17; cy = clamp(34 + (by - 34) * 0.55, 19, 49);
+      if (S.forceLine && S.forceLine.team === team) line = own(team, [S.forceLine.x, 0])[0];   // 장면: 수비 라인이 이미 뚫림
+    }
+    const stretch = att ? 1.05 : S.block[team] === "high" && bx > 70 ? 1.5 : 0.95;     // 전방 압박 때는 앞줄이 상대 수비수에게 붙음
+    for (const [role, f] of Object.entries(FORM)) {
+      const [rx, ry] = att ? f.a : f.d;
+      out[role] = [line + rx * stretch, cy + ry * W];
+    }
+    // 공이 상대 박스 근처면 공격수·미드필더가 문전과 박스 앞을 채움
+    if (att && bx > 80) {
+      const fy = by < 34 ? 1 : -1;                                     // 먼 쪽
+      out.ST1 = [Math.max(out.ST1[0], 96), 34 - fy * 3];
+      out.ST2 = [Math.max(out.ST2[0], 92.5), 34 + fy * 5];
+      const farWing = fy > 0 ? "RM" : "LM";
+      out[farWing] = [Math.max(out[farWing][0], 89), 34 + fy * 11];
+      out.RCM = [Math.max(out.RCM[0], 80), 34 + fy * 4];
+    }
+    out.GK = att ? [clamp(line * 0.38, 4, 17), 34 + (by - 34) * 0.15] : [clamp(3 + (bx - 25) * 0.06, 3, 8), 34 + (by - 34) * 0.32];
+    return out;
+  }
+  function targets() {
+    const att = S.poss || "us", def = other(att);
+    const shD = shape(def), shA = shape(att);
+    const lastDef = Math.min(...["LB", "LCB", "RCB", "RB"].map(r => shD[r][0]));
+    const ballAtt = own(att, [S.ball.x, S.ball.y])[0];
+    const offAtt = Math.max(105 - lastDef, ballAtt) - 0.6;               // 오프사이드: 상대 마지막 수비수와 공보다 앞서지 않음
+    for (const p of T) {
+      const sh = p.team === att ? shA : shD;
+      let [x, y] = sh[p.role] || [52.5, 34];
+      if (p.team === att && p.role !== "GK") x = Math.min(x, offAtt);
+      [x, y] = own(p.team, [x, y]);
+      p.tx = clamp(x, 1.5, 103.5); p.ty = clamp(y, 1.5, 66.5); p.speed = JOG; p.press = false;
+    }
+    const H = S.holder;
+    const free = !S.ball.fl && !(H && H.role === "GK");
+    // 압박: 공에 가장 가까운 수비 팀 선수가 나가고, 두 번째가 뒤를 받침
+    if (free && S.poss && !S.chasers.length && !S.noPress) {
+      const g = -dirOf(def);
+      const cands = T.filter(p => p.team === def && p.role !== "GK" && !p.ov).map(p => ({ p, d: Math.hypot(p.x - S.ball.x, p.y - S.ball.y) })).sort((a, b) => a.d - b.d);
+      if (cands[0] && cands[0].d < 22) { const p = cands[0].p; p.tx = S.ball.x + g * 3; p.ty = S.ball.y + (34 - S.ball.y) * 0.06; p.speed = RUN; p.press = true; }
+      if (cands[1] && cands[1].d < 16) { const p = cands[1].p; p.tx = S.ball.x + g * 7; p.ty = S.ball.y + (34 - S.ball.y) * 0.3; p.speed = 6.8; }
+    }
+    for (const c of S.chasers) {                                          // 장면에서 정한 압박: 공을 향해 계속 좁혀 감
+      const p = c.p; if (p.ov) continue;
+      const g = -dirOf(p.team);
+      p.tx = S.ball.x + g * Math.max(2.8, c.gap); p.ty = S.ball.y + c.side; p.speed = c.v; p.press = true;
+    }
+    for (const p of T) if (p.ov) { p.tx = p.ov.x; p.ty = p.ov.y; p.speed = p.ov.v; }
+    if (H && !H.ov && !S.ball.fl) { H.tx = H.x; H.ty = H.y; }            // 공 가진 선수는 대본이 없으면 그 자리에서 공을 지킴
+    // 서로 너무 붙지 않게 (공 가진 선수·압박·대본 선수는 움직이지 않고 남이 비켜 줌)
+    for (let it = 0; it < 2; it++) for (let i = 0; i < T.length; i++) for (let j = i + 1; j < T.length; j++) {
+      const a = T[i], b = T[j];
+      const fa = a.press || a.ov || a === H || a.role === "GK", fb = b.press || b.ov || b === H || b.role === "GK";
+      if (fa && fb) continue;
+      let dx = b.tx - a.tx, dy = b.ty - a.ty, d = Math.hypot(dx, dy);
+      const MIN = 4;
+      if (d >= MIN) continue;
+      if (d < 0.01) { dx = 0; dy = 1; d = 1; }
+      const k = (MIN - d) / d, ka = fa ? 0 : fb ? 1 : 0.5, kb = fb ? 0 : fa ? 1 : 0.5;
+      a.tx -= dx * k * ka; a.ty -= dy * k * ka; b.tx += dx * k * kb; b.ty += dy * k * kb;
+    }
+  }
+
+  // ── 움직임 ──
+  function movePlayers(dt) {
+    let moving = false;
+    for (const p of T) {
+      const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy);
+      if (d < 0.03) continue;
+      moving = true;
+      const v = Math.min(p.speed, d * 1.9 + 0.4);
+      const s = Math.min(d, v * dt);
+      p.x += dx / d * s; p.y += dy / d * s;
+    }
+    return moving;
+  }
+  function toFeet() {
+    const h = S.holder; if (!h) return;
+    S.ball.x = clamp(h.x + dirOf(h.team) * 0.9, 0.4, 104.6); S.ball.y = h.y; S.ball.z = 0;
+  }
+  function moveBall(dt) {
+    const f = S.ball.fl;
+    if (!f) {
+      if (S.pending && Math.hypot(S.pending.x - S.ball.x, S.pending.y - S.ball.y) < 1.6) { take(S.pending); }
+      if (S.holder) toFeet();
+      return;
+    }
+    f.u = Math.min(1, f.u + dt / f.T);
+    const e = f.air ? f.u : 1 - (1 - f.u) ** 2;
+    S.ball.x = f.x0 + (f.x1 - f.x0) * e; S.ball.y = f.y0 + (f.y1 - f.y0) * e;
+    S.ball.z = f.air ? f.h * 4 * f.u * (1 - f.u) : 0;
+    if (f.u >= 1) { S.ball.fl = null; S.ball.z = 0; const cb = f.done; f.done = null; cb?.(); }
+  }
+  function launch(x1, y1, { air = false, Tsim, h, done } = {}) {
+    const x0 = S.ball.x, y0 = S.ball.y, d = Math.hypot(x1 - x0, y1 - y0);
+    const T0 = air ? 0.42 + d / 21 : 0.1 + d / 18;
+    S.ball.fl = { x0, y0, x1, y1, T: Math.max(0.08, Tsim != null ? Math.min(T0, Tsim) : T0), u: 0, air, h: h ?? Math.min(6.5, d * 0.2), done };
+    S.holder = null;
+    return S.ball.fl.T;
+  }
+  function take(p) {
+    S.holder = p; S.pending = null; S.poss = p.team;
+    if (p.ov && p.ov.recv) p.ov = null;
+  }
+
+  // ── 그리기 ──
+  const SX = x => (S.flipped ? 105 - x : x), SY = y => (S.flipped ? 68 - y : y);
+  function render() {
+    for (const p of T) {
+      const el = dotEls[p.id];
+      if (el) el.style.transform = `translate(${SX(p.x).toFixed(2)}px,${SY(p.y).toFixed(2)}px)`;
+    }
+    const b = S.ball, x = SX(b.x), y = SY(b.y);
+    ballEl.style.transform = `translate(${x.toFixed(2)}px,${(y - b.z).toFixed(2)}px) scale(${(1 + b.z * 0.06).toFixed(3)})`;
+    shadowEl.style.transform = `translate(${x.toFixed(2)}px,${(y + 0.7).toFixed(2)}px) scale(${Math.max(0.5, 1 - b.z * 0.07).toFixed(3)})`;
+    shadowEl.style.opacity = Math.max(0.25, 1 - b.z * 0.1).toFixed(2);
+  }
+
+  // ── 대본 실행 (장면 연출) ──
+  function runQueue(dt) {
+    if (S.cur) {
+      const c = S.cur;
+      if (c.until && c.until()) S.cur = null;
+      else if (c.t != null && (c.t -= dt) <= 0) { S.cur = null; c.timeout?.(); }
+      if (S.cur) return true;
+    }
+    if (S.wait > 0) { S.wait -= dt; return true; }
+    const st = S.queue.shift();
+    if (!st) { if (S.done) { const d = S.done; S.done = null; d(); } return false; }
+    st();
+    return true;
+  }
+
+  function frame(now) {
+    raf = 0;
+    const dtr = Math.min(0.05, (now - last) / 1000); last = now;
+    const dt = dtr * S.scale * (S.boost || 1);
+    const busy = runQueue(dt);
+    targets();
+    const moving = movePlayers(dt);
+    moveBall(dt);
+    render();
+    if (moving || S.ball.fl || busy || S.pending) idle = 0; else idle += dtr;
+    if (idle < 0.5) raf = requestAnimationFrame(frame);           // 다 멈추면 그리기도 쉼
+  }
+  function wake() {
+    idle = 0;
+    if (calm) return snap();
+    if (!raf && !document.hidden) { last = performance.now(); raf = requestAnimationFrame(frame); }
+  }
+  // 움직임 줄이기: 애니메이션 없이 바로 끝 상태로
+  function snap() {
+    for (let k = 0; k < 40 && (S.queue.length || S.cur || S.wait > 0); k++) {
+      S.cur = null; S.wait = 0;
+      if (S.ball.fl) { const f = S.ball.fl; f.u = 1; moveBall(0); }
+      runQueue(0);
+    }
+    if (S.ball.fl) { S.ball.fl.u = 1; moveBall(0); }
+    if (S.done) { const d = S.done; S.done = null; d(); }
+    for (let k = 0; k < 3; k++) {
+      targets();
+      for (const p of T) { p.x = p.tx; p.y = p.ty; }
+      if (S.pending) take(S.pending);
+      toFeet();
+    }
+    render();
+  }
+  const onVis = () => { if (document.hidden) { cancelAnimationFrame(raf); raf = 0; } else wake(); };
+  document.addEventListener("visibilitychange", onVis);
+
+  // ── 이름 → 선수 ──
+  const byName = (name, team) => name ? (T.find(p => p.name === name && p.team === team) || T.find(p => p.name === name)) : null;
+  const me = () => T.find(p => p.me);
+  const nearest = (team, pt, f = () => true, n = 0) => T.filter(p => p.team === team && f(p)).sort((a, b) => Math.hypot(a.x - pt[0], a.y - pt[1]) - Math.hypot(b.x - pt[0], b.y - pt[1]))[n] || null;
+  const isGkPt = (x) => x >= 99 || x <= 6;
+
+  // ── 중계 문장 한 줄 → 움직임 (ms: 이 줄이 화면에 머무는 시간) ──
+  // 돌려주는 값: 이 움직임에 필요한 실제 시간(ms). 화면은 이만큼 다음 줄을 기다릴 수 있음
+  function line(l, ms) {
+    if (!l || !l.ball) return 0;
+    const [bx, by] = l.ball;
+    S.chasers = S.chasers.filter(c => c.keep);
+    // 킥오프 자리 (경기 시작, 후반 시작, 골 뒤, 전·후반 종료)
+    if (bx === 52.5 && by === 34) { kickoff(l.poss || null, l.k === "whistle" && !l.half2 && l.poss === "us" && !S.started); return 0; }
+    // 주어진 시간 안에 끝내되, 먼 패스는 최대 1.35배까지 시간을 더 씀 (공이 비현실적으로 빠르지 않게)
+    const base = Math.max(0.15, ms / 1000 * S.scale * 0.82);
+    const d0 = Math.hypot(bx - S.ball.x, by - S.ball.y);
+    const est = d0 > 27 ? 0.4 + d0 / 23 : 0.1 + d0 / 19;
+    const avail = Math.max(base, Math.min(est, base * 1.35));
+    act(l, bx, by, avail);
+    return Math.round(avail / 0.82 / S.scale * 1000);
+  }
+  function act(l, bx, by, avail) {
+    const actor = l.actor ? byName(l.actor, l.poss || (l.k === "them" ? "them" : "us")) : null;
+    // 세트피스 배치
+    if (l.set) setPiece(l.set, l, actor);
+    // 골
+    if (l.k && l.k.startsWith("goal") && (bx >= 103.5 || bx <= 1.5)) return shot(bx, by, "goal", avail);
+    // 골키퍼 선방
+    if (actor && actor.role === "GK" && isGkPt(bx)) return shot(bx, by, "save", avail, actor);
+    // 골대
+    if ((bx >= 104.2 || bx <= 0.8) && (Math.abs(by - 30.4) < 0.4 || Math.abs(by - 37.6) < 0.4)) return shot(bx, by, "post", avail);
+    // 코너킥 키커가 코너 플래그로
+    if ((bx >= 103 || bx <= 2) && (by <= 2 || by >= 66) && actor) return corner(actor, bx, by);
+    // 밖으로 (빗나간 슈팅, 걷어 내기, 터치라인)
+    if (bx > 104.4 || bx < 0.6 || by < 0.8 || by > 67.2) {
+      const shotLike = S.holder && (bx > 104.4 || bx < 0.6) && Math.abs(by - 34) < 20;
+      if (shotLike) return shot(bx, by, "wide", avail);
+      S.poss = l.poss || S.poss;
+      launch(clamp(bx, -0.5, 105.5), clamp(by, -0.5, 68.5), { air: true, Tsim: avail, h: 3 });
+      return wake();
+    }
+    // 받을 선수
+    let r = actor;
+    if (!r && (l.toMe || l.meHold)) r = me();
+    if (!r && l.poss) r = nearest(l.poss, [bx, by], p => p.role !== "GK" || isGkPt(bx));
+    if (!r) { launch(bx, by, { Tsim: avail }); return wake(); }
+    move(r, bx, by, avail, l);
+    wake();
+  }
+
+  // 공을 r에게: 같은 선수면 드리블, 같은 팀이면 패스, 상대면 가로채기
+  function move(r, bx, by, avail, l = {}) {
+    if (S.pending && S.pending !== r && Math.hypot(S.pending.x - S.ball.x, S.pending.y - S.ball.y) < 3) take(S.pending);
+    const H = S.holder;
+    if (H === r) return carry(r, bx, by, avail);
+    S.pending = null;
+    if (H && H.team !== r.team) {
+      const d = Math.hypot(bx - S.ball.x, by - S.ball.y);
+      if (d > 14) {                                                  // 멀리 간 공: 근처에서 먼저 뺏고, 남은 길은 몰고 감
+        const ux = (bx - S.ball.x) / d, uy = (by - S.ball.y) / d;
+        const qx = S.ball.x + ux * 3, qy = S.ball.y + uy * 3;
+        const thief = Math.hypot(r.x - qx, r.y - qy) < 14 ? r : nearest(r.team, [qx, qy], p => p.role !== "GK");
+        steal(thief, qx, qy, avail * 0.35, () => thief === r ? carry(r, bx, by, avail * 0.65) : pass(thief, r, bx, by, avail * 0.65));
+        return;
+      }
+      return steal(r, bx, by, avail);
+    }
+    pass(H, r, bx, by, avail, l);
+  }
+  function pass(from, r, bx, by, avail, l = {}) {
+    if (from && from !== S.holder) { S.holder = from; toFeet(); }
+    const d = Math.hypot(bx - S.ball.x, by - S.ball.y);
+    const wide = S.ball.x > 80 && (S.ball.y < 16 || S.ball.y > 52) && bx > 86 && by > 16 && by < 52;   // 측면에서 문전으로: 크로스
+    const wideThem = S.ball.x < 25 && (S.ball.y < 16 || S.ball.y > 52) && bx < 19 && by > 16 && by < 52;
+    const air = l.air ?? (d > 27 || wide || wideThem);
+    const Tb = launch(bx, by, { air, Tsim: avail });
+    const need = Math.hypot(r.x - bx, r.y - by) / Math.max(0.1, Tb);
+    r.ov = { x: bx - dirOf(r.team) * 0.9, y: by, v: clamp(Math.max(RUN, need * 1.05), RUN, 12), recv: true };
+    S.ball.fl.done = () => {
+      if (Math.hypot(r.x - S.ball.x, r.y - S.ball.y) < 2.4) take(r);
+      else { S.pending = r; S.poss = r.team; }
+    };
+  }
+  function carry(r, bx, by, avail) {
+    const d = Math.hypot(bx - r.x, by - r.y);
+    if (d < 0.5) { take(r); return; }
+    take(r);
+    r.ov = { x: bx - dirOf(r.team) * 0.9, y: by, v: clamp(Math.max(DRIBBLE, d / Math.max(0.1, avail)), DRIBBLE, 10), recv: true, carry: true };
+    S.cur = { until: () => Math.hypot(r.x - r.ov?.x, r.y - r.ov?.y) < 0.4 || !r.ov, t: avail + 0.5 };
+    wake();
+  }
+  function steal(r, bx, by, avail, then) {
+    const H = S.holder;
+    S.poss = r.team;
+    const tb = launch(bx, by, { Tsim: Math.min(avail, 0.5), h: 1 });
+    const need = Math.hypot(r.x - bx, r.y - by) / Math.max(0.1, tb);
+    r.ov = { x: bx, y: by, v: clamp(Math.max(SPRINT, need), SPRINT, 12), recv: true };
+    if (H) H.ov = null;
+    S.ball.fl.done = () => { S.pending = r; if (Math.hypot(r.x - S.ball.x, r.y - S.ball.y) < 2) take(r); then && S.queue.unshift(() => then()); };
+  }
+  function shot(bx, by, kind, avail, keeper) {
+    const shooter = S.holder;
+    const team = shooter ? shooter.team : (bx > 52.5 ? "us" : "them");
+    const gk = keeper || T.find(p => p.role === "GK" && p.team === other(team));
+    const T1 = Math.min(avail, 0.1 + Math.hypot(bx - S.ball.x, by - S.ball.y) / 28);
+    if (gk) {
+      const gx = team === "us" ? 103.4 : 1.6;
+      const dive = kind === "save" ? by : kind === "goal" ? by + (by > 34 ? -2.6 : 2.6) : 34 + (by - 34) * 0.4;
+      gk.ov = { x: gx, y: clamp(dive, 29, 39), v: 9.5 };
+    }
+    const air = kind === "wide" && Math.random() < 0.5;
+    launch(bx, by, { air, Tsim: T1, h: 1.6 });
+    S.ball.fl.done = () => {
+      if (kind === "save" && gk) { gk.ov = null; take(gk); }
+      else if (kind === "post") launch(bx + (bx > 52 ? -5 : 5), by + (by < 34 ? -3 : 3), { Tsim: 0.5, h: 1 });
+      else { S.holder = null; }
+      if (kind === "goal" || kind === "wide") setTimeout(() => { if (gk) gk.ov = null; }, 600);
+    };
+    wake();
+  }
+  // 킥오프 자리로 (전반 시작은 그 자리에 바로 섬)
+  function kickoff(team, instant) {
+    S.started = true;
+    S.queue = []; S.cur = null; S.wait = 0; S.chasers = []; S.pending = null;
+    S.ball.fl = null; S.ball.x = 52.5; S.ball.y = 34; S.ball.z = 0; S.holder = null; S.poss = team || "us";
+    const spots = {};
+    for (const p of T) {
+      const f = FORM[p.role];
+      let pt = p.role === "GK" ? [4, 34] : [KICKOFF_X[p.pos], 34 + (f ? f.d[1] : 0) * 21];
+      if (p.team === team && p.role === "ST1") pt = [51.6, 34];
+      if (p.team === team && p.role === "ST2") pt = [49.5, 27.5];
+      spots[p.id] = own(p.team, pt);
+    }
+    for (const p of T) {
+      const [x, y] = spots[p.id];
+      if (instant) { p.x = x; p.y = y; p.ov = null; } else p.ov = { x, y, v: 13 };
+    }
+    S.cur = { until: () => T.every(p => !p.ov || Math.hypot(p.x - p.ov.x, p.y - p.ov.y) < 0.5), t: 2.2 };
+    S.queue.push(() => { for (const p of T) p.ov = null; if (team) { const k = T.find(p => p.team === team && p.role === "ST1"); if (k) take(k); } });
+    if (instant) { S.cur = null; S.queue = []; for (const p of T) p.ov = null; if (team) { const k = T.find(p => p.team === team && p.role === "ST1"); if (k) take(k); } }
+    wake(); render();
+  }
+  // 코너킥: 키커는 깃발로, 양 팀은 박스 안으로
+  function corner(taker, fx, fy) {
+    const team = taker.team, gx = team === "us" ? 1 : -1, s = fy < 34 ? -1 : 1;
+    S.chasers = [];
+    S.ball.fl = null; S.holder = null; S.pending = null; S.poss = team;
+    S.ball.x = team === "us" ? 104.2 : 0.8; S.ball.y = s < 0 ? 0.8 : 67.2;
+    taker.ov = { x: S.ball.x - gx * 0.6, y: S.ball.y + s * -0.4, v: 13 };
+    packBox(team, taker);
+    S.queue.push(() => { taker.ov = null; take(taker); });
+    S.cur = { until: () => Math.hypot(taker.x - taker.ov?.x, taker.y - taker.ov?.y) < 0.6 || !taker.ov, t: 1.6 };
+    wake();
+  }
+  // 박스 안 몸싸움 자리 (공격 팀 team이 노리는 골문 앞)
+  function packBox(team, except) {
+    const skip = except instanceof Set ? except : new Set([except]);
+    const gx = team === "us" ? 1 : -1, goalX = team === "us" ? 105 : 0;
+    const A = [[-7, -5], [-9, 3], [-12, -1], [-5, 6], [-14, 7]], D = [[-5, -3], [-6, 2], [-8, 6], [-10, -6], [-4, 0], [-11, 2]];
+    const atk = T.filter(p => p.team === team && !skip.has(p) && p.role !== "GK").sort((a, b) => (["LCB", "RCB", "ST1", "ST2", "RCM"].includes(b.role) ? 1 : 0) - (["LCB", "RCB", "ST1", "ST2", "RCM"].includes(a.role) ? 1 : 0));
+    const dfn = T.filter(p => p.team === other(team) && !skip.has(p) && p.role !== "GK").sort((a, b) => Math.abs(a.x - goalX) - Math.abs(b.x - goalX));
+    atk.slice(0, 5).forEach((p, i) => { p.ov = { x: goalX + gx * A[i][0], y: 34 + A[i][1], v: 12 }; });
+    dfn.slice(0, 6).forEach((p, i) => { p.ov = { x: goalX + gx * D[i][0], y: 34 + D[i][1], v: 12 }; });
+    const gk = T.find(p => p.role === "GK" && p.team === other(team)); if (gk) gk.ov = { x: goalX - gx * 1.5, y: 34, v: 8 };
+  }
+  // 세트피스: 프리킥 벽, 페널티킥 자리
+  function setPiece(kind, l, actor) {
+    const [bx, by] = l.ball;
+    const team = l.poss || actor?.team || "us";
+    const goalX = team === "us" ? 105 : 0;
+    if (kind === "freekick" || kind === "fk") {
+      const d = Math.hypot(goalX - bx, 34 - by), ux = (goalX - bx) / d, uy = (34 - by) / d;
+      const wall = T.filter(p => p.team === other(team) && p.role !== "GK").sort((a, b) => Math.hypot(a.x - bx, a.y - by) - Math.hypot(b.x - bx, b.y - by)).slice(0, 4);
+      wall.forEach((p, i) => { p.ov = { x: bx + ux * 9.2 - uy * (i - 1.5) * 1.1, y: by + uy * 9.2 + ux * (i - 1.5) * 1.1, v: 12 }; });
+      S.chasers = [];
+    }
+    if (kind === "penalty" || kind === "pk") {
+      const spot = team === "us" ? 94 : 11;
+      for (const p of T) {
+        if (p.role === "GK") { p.ov = p.team !== team ? { x: team === "us" ? 104.4 : 0.6, y: 34, v: 10 } : null; continue; }
+        if (p === actor) continue;
+        const inBox = team === "us" ? p.x > 86.5 : p.x < 18.5;
+        if (inBox || Math.hypot(p.x - spot, p.y - 34) < 10) p.ov = { x: team === "us" ? 85 : 20, y: clamp(p.y, 16, 52), v: 11 };
+      }
+      l.ball = [spot, 34];
+      if (actor) { actor.ov = null; S.ball.fl = null; S.ball.x = spot; S.ball.y = 34; actor.x = spot - dirOf(team) * 1.4; actor.y = 34.5; take(actor); }
+    }
+  }
+
+  // ── 내 장면 연출 ──
+  // spec: data/scenes.js. ctx: { ball:[x,y], poss, zone, names: { mate, opp } }. 다 준비되면 done()
+  function scene(spec, ctx, done) {
+    const sp = spec || {};
+    const [bx, by] = ctx.ball, poss = ctx.poss || "us";
+    const s = by < 34 ? -1 : 1;                                       // 공 쪽 터치라인 방향 (y가 작은 쪽이면 −1)
+    const P = (dx = 0, dy = 0) => [clamp(bx + dx, 1, 104), clamp(by + dy * s, 1, 67)];
+    const M = me();
+    const N = ctx.names || {};
+    const used = new Set();
+    const take1 = p => { if (p) used.add(p); return p; };
+    const near = (team, pos, pt, f = () => true) => T.filter(p => p.team === team && !used.has(p) && !p.me && p.role !== "GK" && (!pos || pos.includes(p.pos)) && f(p))
+      .sort((a, b) => Math.hypot(a.x - pt[0], a.y - pt[1]) - Math.hypot(b.x - pt[0], b.y - pt[1]))[0] || null;
+    // 공 쪽(또는 반대편) 측면 선수. 우리 팀 왼쪽은 y가 작은 쪽, 상대 팀은 반대
+    const sideRoles = (team, far) => { const left = (s < 0) !== !!far; return team === "us" ? (left ? ["LB", "LM"] : ["RB", "RM"]) : (left ? ["RB", "RM"] : ["LB", "LM"]); };
+    function who(w, pt = [bx, by]) {
+      if (w === "me") return M;
+      if (w === "mate") return take1(byName(N.mate, "us") && !byName(N.mate, "us").me ? byName(N.mate, "us") : near("us", ["FW", "MF"], pt));
+      if (w === "opp") return take1(byName(N.opp, "them") || near("them", null, pt));
+      if (w === "gk") return T.find(p => p.team === "us" && p.role === "GK");
+      if (w === "ogk") return T.find(p => p.team === "them" && p.role === "GK");
+      const m = /^(opp)?(far)?(fw|mf|df|fb|wing|any)$/.exec(w);
+      if (!m) return null;
+      const team = m[1] ? "them" : "us", far = !!m[2], kind = m[3];
+      if (kind === "fb" || kind === "wing") {
+        const pos = kind === "fb" ? "DF" : "MF";
+        return take1(near(team, [pos], pt, p => sideRoles(team, far).includes(p.role)) || near(team, [pos], pt));
+      }
+      return take1(near(team, kind === "any" ? null : [kind.toUpperCase()], pt));
+    }
+    // 지난 장면의 대본은 지우고 새로 시작
+    for (const p of T) p.ov = null;
+    S.queue = []; S.cur = null; S.wait = 0; S.chasers = []; S.pending = null;
+    if (sp.block) Object.assign(S.block, typeof sp.block === "string" ? { [other(poss)]: sp.block } : sp.block);
+    S.forceLine = sp.line != null ? { team: other(poss), x: clamp(bx + sp.line, 2, 103) } : null;
+    S.focus = [bx, by]; S.poss = poss;
+    const setFrom = ["kicker", "fk", "throw", "pk", "corner", "backpass"].includes(sp.from);
+    S.noPress = sp.press === 0 || (sp.press == null && setFrom);
+    const Q = S.queue;
+    const run = (p, pt, v = RUN) => { if (p) p.ov = { x: pt[0], y: pt[1], v }; };
+    // 도착을 기다림. 시간 안에 못 오면 그 자리로 옮겨 놓음 (장면 사이에 시간이 흐른 셈)
+    const arrive = (ps, tmax = 1.4) => {
+      S.cur = { until: () => ps.every(p => !p || !p.ov || Math.hypot(p.x - p.ov.x, p.y - p.ov.y) < 0.6), t: tmax,
+        timeout: () => { for (const p of ps) if (p?.ov) { p.x = p.ov.x; p.y = p.ov.y; } } };
+    };
+    const placeBall = (pt, holder) => {
+      S.ball.fl = null; S.pending = null;
+      if (holder) { take(holder); toFeet(); } else { S.holder = null; S.ball.x = pt[0]; S.ball.y = pt[1]; S.ball.z = 0; }
+    };
+    const goTo = (p, pt) => { Q.push(() => { run(p, [pt[0] - dirOf(p.team) * 0.9, pt[1]], 14); arrive([p], 1.3); }); Q.push(() => { p.ov = null; }); };
+    // 공을 출발점의 선수에게 먼저 모음 (가까우면 공이 굴러가고, 멀면 다음 장면으로 넘어간 셈이라 바로 놓음)
+    const gather = (p, pt) => {
+      Q.push(() => {
+        run(p, [pt[0] - dirOf(p.team) * 0.9, pt[1]], 14); arrive([p], 0.9);
+        const d = Math.hypot(S.ball.x - pt[0], S.ball.y - pt[1]);
+        if (d < 30 && !S.holder) launch(pt[0], pt[1], { air: d > 20, Tsim: 0.7, h: 3 });
+      });
+      Q.push(() => { p.ov = null; placeBall(pt, p); S.poss = p.team; });
+    };
+    const passTo = (from, r, pt, air = false, wait = 0.15) => {
+      Q.push(() => {
+        if (from) { take(from); toFeet(); }
+        const Tb = launch(pt[0], pt[1], { air });
+        const need = Math.hypot(r.x - pt[0], r.y - pt[1]) / Math.max(0.15, Tb);
+        r.ov = { x: pt[0] - dirOf(r.team) * 0.9, y: pt[1], v: clamp(Math.max(RUN, need * 1.05), RUN, 11), recv: true };
+        S.ball.fl.done = () => { S.pending = r; S.poss = r.team; };
+        S.cur = { until: () => S.holder === r, t: Tb + 1.6 };
+      });
+      if (wait) Q.push(() => { S.wait = wait; });
+    };
+    const carryTo = (p, pt, v = DRIBBLE) => Q.push(() => { take(p); p.ov = { x: pt[0] - dirOf(p.team) * 0.9, y: pt[1], v, recv: true }; S.cur = { until: () => !p.ov || Math.hypot(p.x - p.ov.x, p.y - p.ov.y) < 0.4, t: 3.2 }; });
+
+    // 장면 끝에 공을 가진 선수
+    let R;
+    if (sp.holder === "me") R = M;
+    else if (sp.holder === "mate") R = who("mate");
+    else if (sp.holder === "df") R = take1(near("us", ["DF"], [bx, by]));
+    else R = poss === "us" ? M : who("opp");
+    if (!R) { done?.(); return; }
+    used.add(R);
+    const from = sp.from || (poss === "us" ? (ctx.zone === "def" && bx < 26 ? "gk" : "pass") : (ctx.zone === "att" ? "oppHold" : "oppCarry"));
+    const pre = (sp.pre || []).map(([w, dx, dy]) => [who(w, P(dx, dy)), P(dx, dy)]).filter(x => x[0]);
+    if (from === "through" && M && !pre.some(([p]) => p === M)) pre.push([M, P(-9, -2)]);
+    const far = p => Math.hypot(p.x - bx, p.y - by);
+    const selfStart = ["carry", "oppCarry", "kicker", "fk", "throw", "pk", "turn", "hold", "oppHold", "backpass"];
+    const inPre = p => pre.some(([q]) => q === p) || (sp.runs || []).some(([w]) => (w === "me" && p === M));
+    if (!selfStart.includes(from) && !inPre(R) && far(R) > 15) { const g = poss === "us" ? 1 : -1; pre.push([R, P(-7 * g, -2)]); }
+    if (poss !== "us" && M && sp.mePress !== false && !inPre(M) && far(M) > 9) pre.push([M, [clamp(bx - (sp.meGap ?? 2.4) - 4, 6, 103), clamp(by + (34 - by) * 0.12, 2, 66)]]);
+    const runs = (sp.runs || []).map(([w, dx, dy, v]) => [who(w, P(dx, dy)), P(dx, dy), v || RUN]).filter(x => x[0]);
+
+    // 1) 장면에 맞는 대형으로 빠르게 모이고, 미리 서 있는 자리·세트피스 배치 (그사이 시간이 흐른 셈)
+    Q.push(() => {
+      for (const [p, pt] of pre) run(p, pt, 13);
+      if (sp.pack) packBox(sp.pack === "them" ? "them" : "us", new Set([R, ...pre.map(([p]) => p)]));
+      for (const [p] of pre) if (p.role === "GK") p.ov = null;
+      const np = S.noPress; S.noPress = true; targets(); S.noPress = np;     // 지난 공 자리 기준의 압박은 빼고 대형만
+      const fixed = new Set(T.filter(p => p.ov));
+      for (const p of T) if (!fixed.has(p) && p !== S.holder) p.ov = { x: p.tx, y: p.ty, v: 13, settle: true };
+      arrive(T, 0.9);
+    });
+    Q.push(() => { for (const p of T) if (p.ov?.settle) p.ov = null; });
+    // 2) 공이 R에게 오기까지
+    const src = sp.src ? P(...sp.src) : null;
+    let runAt = -1;                                                    // 뛰어 들어가기 시작하는 순서 (공이 출발할 때)
+    switch (from) {
+      case "pass": case "through": case "long": case "back": {
+        const sp0 = src || (from === "long" ? [24, clamp(by, 14, 54)] : from === "back" ? P(10, -6) : P(-15, -5));
+        const giver = (sp.giver && who(sp.giver, sp0)) || near("us", null, sp0);
+        if (giver) { gather(giver, sp0); runAt = Q.length; passTo(giver, R, [bx, by], from === "long" || Math.hypot(sp0[0] - bx, sp0[1] - by) > 28); }
+        else Q.push(() => placeBall([bx, by], R));
+        break;
+      }
+      case "cross": case "lowcross": {
+        const cp = src || [clamp(bx + 5, 88, 101), s < 0 ? 4.5 : 63.5];
+        const crosser = (sp.giver && who(sp.giver, cp)) || who("wing", cp) || near("us", null, cp);
+        if (crosser) { gather(crosser, cp); runAt = Q.length; passTo(crosser, R, [bx, by], from === "cross"); }
+        break;
+      }
+      case "save": case "loose": {
+        const gk = who("ogk");
+        const sp1 = from === "save" ? [101.6, clamp(by, 30, 38)] : (src || P(5, -3));
+        if (from === "save" && gk) goTo(gk, [102.5, sp1[1]]);
+        Q.push(() => placeBall(sp1, null));
+        runAt = Q.length;
+        Q.push(() => {
+          const d = Math.hypot(bx - S.ball.x, by - S.ball.y);
+          const Tb = launch(bx, by, { air: true, h: Math.min(5, 1.2 + d * 0.12) });
+          R.ov = { x: bx - dirOf(R.team) * 0.9, y: by, v: clamp(Math.hypot(R.x - bx, R.y - by) / Math.max(0.2, Tb), RUN, 10), recv: true };
+          S.ball.fl.done = () => { S.pending = R; S.poss = R.team; };
+          S.cur = { until: () => S.holder === R, t: Tb + 1.8 };
+        });
+        Q.push(() => { S.wait = 0.25; });
+        break;
+      }
+      case "carry": case "oppCarry": {
+        const st = src || P(from === "carry" ? -14 : 15, from === "carry" ? 0 : -2);
+        goTo(R, st);
+        Q.push(() => placeBall(st, R));
+        runAt = Q.length;
+        carryTo(R, [bx, by], sp.v || (from === "carry" ? 7 : 7.2));
+        break;
+      }
+      case "gk": case "oppGk": {
+        const gk = who(from === "gk" ? "gk" : "ogk"), gp = from === "gk" ? [5, 34] : [100, 34];
+        if (gk) { gather(gk, gp); runAt = Q.length; passTo(gk, R, [bx, by], false); }
+        break;
+      }
+      case "turn": {                                                     // 상대 공을 내가 끊어 냄
+        const o = who("opp") || near("them", null, [bx, by]);
+        if (o && M) {
+          goTo(o, [bx + 2.5, by]);
+          Q.push(() => { placeBall([bx + 2.5, by], o); M.ov = { x: bx, y: by, v: SPRINT }; S.cur = { until: () => Math.hypot(M.x - S.ball.x, M.y - S.ball.y) < 1.6, t: 2.4 }; });
+          Q.push(() => { M.ov = null; take(M); S.wait = 0.2; });
+          runAt = Q.length;
+        } else Q.push(() => placeBall([bx, by], R));
+        break;
+      }
+      case "corner": {
+        const taker = who(sp.giver || "wing", [104, by]) || near("us", ["MF"], [104, by]);
+        const fy = s < 0 ? 0.8 : 67.2;
+        if (taker) {
+          Q.push(() => { taker.ov = { x: 103.6, y: fy + (s < 0 ? 0.5 : -0.5), v: 14 }; arrive([taker], 1.3); });
+          Q.push(() => { taker.ov = null; S.ball.fl = null; S.ball.x = 104.2; S.ball.y = fy; take(taker); toFeet(); S.wait = 0.3; });
+          runAt = Q.length;
+          passTo(taker, R, [bx, by], true);
+        }
+        break;
+      }
+      case "kicker": case "fk": {                                        // 공 앞에 내가 섬
+        Q.push(() => { R.ov = { x: bx - dirOf(R.team) * 1.2, y: by, v: 13 }; arrive([R], 1.4); });
+        Q.push(() => { R.ov = null; take(R); S.ball.x = bx; S.ball.y = by; });
+        if (from === "fk") Q.push(() => { setPiece("fk", { ball: [bx, by], poss: "us" }, R); arrive(T.filter(p => p.ov), 1.4); });
+        runAt = Q.length;
+        break;
+      }
+      case "throw": {
+        const ty = s < 0 ? 0.4 : 67.6;
+        Q.push(() => { R.ov = { x: bx, y: ty, v: 13 }; arrive([R], 1.3); });
+        Q.push(() => { R.ov = null; S.ball.fl = null; take(R); S.ball.x = bx; S.ball.y = ty; });
+        runAt = Q.length;
+        break;
+      }
+      case "pk": {
+        Q.push(() => { const l = { ball: [94, 34], poss: "us" }; setPiece("pk", l, R); arrive(T.filter(p => p.ov), 1.4); });
+        break;
+      }
+      case "oppPass": case "oppLong": {
+        const sp0 = src || (from === "oppLong" ? [84, clamp(by, 18, 50)] : P(16, -7));
+        const giver = (sp.giver && who(sp.giver, sp0)) || near("them", from === "oppLong" ? ["DF"] : ["MF"], sp0) || near("them", null, sp0);
+        if (giver) { gather(giver, sp0); runAt = Q.length; passTo(giver, R, [bx, by], from === "oppLong" || Math.hypot(sp0[0] - bx, sp0[1] - by) > 28); }
+        break;
+      }
+      case "oppCross": {
+        const cp = src || [clamp(bx - 5, 4, 17), s < 0 ? 4.5 : 63.5];
+        const crosser = (sp.giver && who(sp.giver, cp)) || who("oppwing", cp) || near("them", null, cp);
+        if (crosser) { gather(crosser, cp); runAt = Q.length; passTo(crosser, R, [bx, by], true); }
+        break;
+      }
+      case "oppCorner": case "oppThrow": {
+        const corner = from === "oppCorner";
+        const tp = corner ? [0.8, s < 0 ? 0.8 : 67.2] : [bx + 2, s < 0 ? 0.4 : 67.6];
+        const taker = who(corner ? "oppwing" : "oppfb", tp) || near("them", null, tp);
+        if (taker) {
+          Q.push(() => { taker.ov = { x: tp[0] + (corner ? 0.6 : 0), y: tp[1], v: 14 }; arrive([taker], 1.3); });
+          Q.push(() => { taker.ov = null; S.ball.fl = null; S.ball.x = tp[0]; S.ball.y = tp[1]; take(taker); S.wait = 0.3; });
+          runAt = Q.length;
+          passTo(taker, R, [bx, by], true);
+        }
+        break;
+      }
+      case "backpass": {                                                 // 상대 센터백의 짧은 백패스가 중간에 멈춤
+        const st = src || P(-10, 0);
+        goTo(R, st);
+        Q.push(() => placeBall(st, R));
+        runAt = Q.length;
+        Q.push(() => { launch(bx, by, { Tsim: 1.3 }); S.poss = "them"; S.cur = { until: () => !S.ball.fl, t: 1.6 }; });
+        break;
+      }
+      case "hold": case "oppHold": default:
+        goTo(R, [bx, by]);
+        Q.push(() => placeBall([bx, by], R));
+        runAt = Q.length;
+        break;
+    }
+    // 준비 단계(모이기)는 빠르게 돌리고, 공이 출발하면 원래 속도로
+    Q.unshift(() => { S.boost = 3; });
+    if (runAt >= 0) runAt++;
+    Q.splice(runAt < 0 ? Q.length : runAt, 0, () => { S.boost = 1; });
+    // 뛰어 들어가는 선수들: 공이 출발할 때 같이 출발
+    const startRuns = () => { for (const [p, pt, v] of runs) run(p, pt, v); };
+    if (runs.length) Q.splice(runAt < 0 ? Q.length : runAt, 0, startRuns);
+    // 골키퍼 자리
+    if (sp.gk || sp.gkAt || sp.gkNear) Q.splice(runAt < 0 ? Q.length : runAt, 0, () => {
+      const g = who("ogk"); if (!g) return;
+      const pt = sp.gkAt ? sp.gkAt : sp.gkNear ? [103.4, s < 0 ? 31 : 37] : P(...sp.gk);
+      run(g, pt, 9);
+    });
+    // 압박: 공 가진 선수에게 붙는 수비 (상대 공이면 기본으로 내가 붙음)
+    Q.push(() => {
+      const holder = S.holder || R;
+      const defTeam = other(holder.team);
+      const n = typeof sp.press === "number" ? sp.press : (poss === "us" ? 1 : 0);
+      const list = [];
+      if (poss !== "us" && M && sp.mePress !== false && !runs.some(([p]) => p === M)) list.push({ p: M, gap: sp.meGap ?? 2.4, side: 0, v: RUN, keep: true });
+      const cand = T.filter(p => p.team === defTeam && p.role !== "GK" && !p.ov && !list.some(c => c.p === p) && !(p.me && poss !== "us")).sort((a, b) => dist(a, holder) - dist(b, holder));
+      const gap = sp.pressGap ?? 1.8;
+      for (let i = 0; i < n && cand[i]; i++) list.push({ p: cand[i], gap: i === 0 ? gap : gap + 1.4, side: i === 0 ? 0 : (i % 2 ? 2.6 : -2.6), v: RUN, keep: true });
+      S.chasers = list;
+      S.wait = sp.hold ?? 0.3;
+    });
+    S.done = () => { S.boost = 1; done?.(); };
+    wake();
+  }
+
+  return {
+    line, scene, kickoff,
+    setSpeed(name) { S.scale = name === "fast" ? 2.6 : 1; },
+    setFlip(v) { S.flipped = v; render(); },
+    setBlocks(b) { Object.assign(S.block, b); },
+    clearRuns() { for (const p of T) if (!p.ov?.recv) p.ov = null; S.chasers = []; S.forceLine = null; S.focus = null; S.noPress = false; },
+    finish() { const c = calm; snap(); return c; },
+    ball() { return [S.ball.x, S.ball.y]; },
+    destroy() { cancelAnimationFrame(raf); raf = 0; document.removeEventListener("visibilitychange", onVis); },
+    render,
+    _state: S,
+  };
+}
+
+return { createPitch };
+})();
+(__fix["js/ui/pitch.js"] || []).forEach(f => f());
+
 // ── js/ui/match.js
 __m["js/ui/match.js"] = (function () {
 const {next, resolve, autoChoice, autoPlay, finishMatch, applyHalftime, STATUS_LABEL, TAG_LABEL, MY_SLOT} = __m["js/engine/match.js"];
@@ -10584,7 +11699,13 @@ const {conditionOf} = __m["js/engine/growth.js"];
 const {setScene, enter, buzz} = __m["js/ui/fx.js"];
 const {sfx} = __m["js/ui/sfx.js"];
 const {bgm} = __m["js/ui/bgm.js"];
+const {createPitch} = __m["js/ui/pitch.js"];
+const {SCENES} = __m["data/scenes.js"];
+const {styleOf} = __m["js/engine/advice.js"];
 // 경기 화면: 전광판 → 22명이 움직이는 경기장 → 문자 중계 → 내 장면 선택지
+
+
+
 
 
 
@@ -10615,7 +11736,6 @@ const BASE = {
   MF: [[38, 12], [35, 27], [35, 41], [38, 56]],
   FW: [[55, 26], [55, 42]],
 };
-const LIMIT = { GK: [2, 10], DF: [7, 72], MF: [14, 88], FW: [24, 98] };
 
 // 선수 22명 만들기. 점 하나하나가 명단의 실제 선수(이름·등번호)와 이어져 있음
 function buildPlayers(state, m) {
@@ -10637,76 +11757,6 @@ function buildPlayers(state, m) {
   }
   return list;
 }
-
-// 공 위치와 소유 팀, 공을 가진 선수(actor)에 맞춰 모두의 목표 위치 계산
-function layout(players, ball, poss, opt = {}) {
-  const [bx, by] = ball;
-  const t = (bx - 52.5) / 52.5;
-  for (const pl of players) {
-    const [x0, y0] = pl.base;
-    if (pl.pos === "GK") {
-      const near = pl.team === "us" ? Math.max(0, 22 - bx) : Math.max(0, bx - 83);
-      pl.x = pl.team === "us" ? 3 + near * 0.12 : 102 - near * 0.12;
-      pl.y = 34 + (by - 34) * 0.25;
-      continue;
-    }
-    const attack = pl.team === poss;
-    const dir = pl.team === "us" ? 1 : -1;
-    let x = x0 + t * 20 + dir * (attack ? 7 : -3);
-    let y = y0 + (by - 34) * 0.32;
-    const [lo, hi] = LIMIT[pl.pos];
-    x = pl.team === "us" ? Math.min(hi, Math.max(lo, x)) : Math.min(105 - lo, Math.max(105 - hi, x));
-    pl.x = x; pl.y = Math.min(65, Math.max(3, y));
-  }
-  if (bx < 1 || bx > 104) return [];                                // 골망·라인 밖
-  const named = opt.actor ? players.find(p => p.name === opt.actor) : null;
-  const team = named ? named.team : poss;
-  if (!team) return [];
-  const holder = named || (opt.holderIsMe ? players.find(p => p.me) : null)
-    || players.filter(p => p.team === team && p.pos !== "GK").sort((a, b) => dist(a, ball) - dist(b, ball))[0];
-  const side = team === "us" ? 1 : -1;
-  if (holder) { holder.x = holder.pos === "GK" ? bx : bx - side * 1.6; holder.y = by; }
-  // 수비 쪽: 가장 가까운 두 명이 붙음. 내가 막는 장면이면 내가 제일 먼저 붙음
-  const meTok = players.find(p => p.me);
-  const foes = players.filter(p => p.team !== team && p.pos !== "GK" && p !== holder).sort((a, b) => dist(a, ball) - dist(b, ball));
-  if (opt.press && meTok && meTok.team !== team) { foes.splice(foes.indexOf(meTok), 1); foes.unshift(meTok); }
-  if (foes[0]) { foes[0].x = bx + side * 3; foes[0].y = by + (foes[0].y > by ? 2 : -2); }
-  if (foes[1] && dist(foes[1], ball) < 14) { foes[1].x = bx + side * 6; foes[1].y = by + (foes[1].y > by ? 6 : -6); }
-  // 수비가 골라인·터치라인 밖으로 밀려나지 않게. 코너킥·스로인 키커만 라인 바로 바깥에 설 수 있음
-  for (const p of players) {
-    const m = p === holder ? 0 : 1.5;
-    p.x = Math.min(105 - m, Math.max(m, p.x)); p.y = Math.min(68 - m, Math.max(m, p.y));
-  }
-  return [holder, foes[0], foes[1]].filter(Boolean);
-}
-
-// 겹친 점 떼어 놓기 + 공과 상관없는 선수들의 작은 움직임 (화면 연출만. 엔진 판정과 무관)
-function spread(players, fixed) {
-  const lock = new Set(fixed);
-  for (const pl of players) {
-    if (lock.has(pl) || pl.pos === "GK") continue;
-    pl.x += (Math.random() - 0.5) * 1.6; pl.y += (Math.random() - 0.5) * 1.6;
-  }
-  const MIN = 3.6;
-  for (let it = 0; it < 3; it++) {
-    for (let i = 0; i < players.length; i++) for (let j = i + 1; j < players.length; j++) {
-      const a = players[i], b = players[j];
-      let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
-      if (d >= MIN) continue;
-      if (d < 0.01) { dx = 0; dy = 1; d = 1; }
-      const push = (MIN - d) / 2, ux = dx / d, uy = dy / d;
-      const fa = lock.has(a) || a.pos === "GK", fb = lock.has(b) || b.pos === "GK";
-      if (fa && fb) continue;
-      const ka = fa ? 0 : fb ? 2 : 1, kb = fb ? 0 : fa ? 2 : 1;
-      a.x -= ux * push * ka; a.y -= uy * push * ka; b.x += ux * push * kb; b.y += uy * push * kb;
-    }
-  }
-  for (const pl of players) {
-    if (lock.has(pl)) continue;
-    pl.x = Math.min(103.5, Math.max(1.5, pl.x)); pl.y = Math.min(66.5, Math.max(1.5, pl.y));
-  }
-}
-const dist = (p, [x, y]) => Math.hypot(p.x - x, p.y - y);
 
 function pitchSvg(players, kit) {
   return `<svg class="pitch" viewBox="0 0 105 68" role="img" aria-label="경기장" style="--opp:${kit.fill};--opp2:${kit.stroke};--oppText:${kit.text};--oppGk:${kit.gk};--oppGkText:${kit.gkText}">
@@ -10735,7 +11785,6 @@ function showMatch(app, m, onDone) {
   let speed = "normal", timer = null, paused = false, queue = [], after = null;
   const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const players = buildPlayers(state, m);
-  layout(players, [52.5, 34], null);
 
   app.root.innerHTML = `<div class="match-screen">
     <header class="board">
@@ -10780,42 +11829,18 @@ function showMatch(app, m, onDone) {
   const raiseMe = () => { const t = players.find(x => x.me); if (t) svg.insertBefore(dotEls[t.id], ballEl); };   // 내 점은 맨 위에
   raiseMe();
 
-  // 화면에 그릴 때만 좌표를 돌림: 후반에는 우리 팀이 왼쪽으로 공격 (엔진 좌표는 그대로)
+  // 경기장 움직임 (js/ui/pitch.js): 22명이 대형을 지키며 공을 따라 움직임. 결과는 엔진이 정하고 화면은 따라감
+  // 후반에는 그릴 때만 좌우를 뒤집음 (엔진 좌표는 그대로)
   let flipped = false, lastBall = [52.5, 34];
-  const SX = x => (flipped ? 105 - x : x), SY = y => (flipped ? 68 - y : y);
-  // 공: 짧은 패스는 땅으로 굴러가고, 먼 거리는 포물선으로 떠서 날아감 (그림자는 땅에 남음)
-  let bCur = [52.5, 34], bRaf = 0;
-  function moveBall(tx, ty, ms) {
-    cancelAnimationFrame(bRaf);
-    const [fx0, fy0] = bCur, d = Math.hypot(tx - fx0, ty - fy0);
-    const put = (x, y, z) => {
-      ballEl.style.transform = `translate(${x.toFixed(2)}px,${(y - z).toFixed(2)}px) scale(${(1 + z * 0.06).toFixed(3)})`;
-      shadowEl.style.transform = `translate(${x.toFixed(2)}px,${(y + 0.7).toFixed(2)}px) scale(${Math.max(0.5, 1 - z * 0.07).toFixed(3)})`;
-      shadowEl.style.opacity = Math.max(0.25, 1 - z * 0.1).toFixed(2);
-    };
-    if (calm || d < 0.3) { bCur = [tx, ty]; return put(tx, ty, 0); }
-    const air = d > 17, h = air ? Math.min(7, d * 0.15) : 0, T = Math.max(140, Math.min(ms * 0.85, air ? 300 + d * 9 : 200 + d * 12)), t0 = performance.now();
-    const stepB = now => {
-      const u = Math.min(1, (now - t0) / T);
-      const e = air ? (u < 0.5 ? 2 * u * u : 1 - (-2 * u + 2) ** 2 / 2) : 1 - (1 - u) ** 3;
-      const x = fx0 + (tx - fx0) * e, y = fy0 + (ty - fy0) * e;
-      bCur = [x, y];
-      put(x, y, h * 4 * u * (1 - u));
-      if (u < 1) bRaf = requestAnimationFrame(stepB);
-    };
-    bRaf = requestAnimationFrame(stepB);
-  }
-  function draw(ball, poss, ms, opt = {}) {
-    if (ball) { const fixed = layout(players, ball, poss, opt); if (!calm) spread(players, fixed); lastBall = ball; }
-    const dur = `${Math.max(120, ms * 0.85)}ms`;
-    for (const pl of players) {
-      const el = dotEls[pl.id];
-      el.style.transitionDuration = dur;
-      el.style.transform = `translate(${SX(pl.x).toFixed(2)}px,${SY(pl.y).toFixed(2)}px)`;
-    }
-    const b = ball || lastBall;
-    moveBall(SX(b[0]), SY(b[1]), ms);
-  }
+  const SX = x => (flipped ? 105 - x : x);
+  const blockOf = name => ({ "수비를 내리고 버티는 팀": "low", "전방 압박이 강한 팀": "high" })[styleOf(name).label] || "mid";
+  const oppBlock = blockOf(fx.opponent.name);
+  const pitch = createPitch({ svg, players, dotEls, ballEl, shadowEl, calm, blocks: { us: "mid", them: oppBlock } });
+  // 경기 상황에 따라 블록 높이: 막판에 이기는 팀은 내려앉고, 지는 팀은 올라감
+  const updateBlocks = () => {
+    const [a, b] = m.score, late = m.minute >= 52;
+    pitch.setBlocks({ us: late && a > b ? "low" : late && a < b ? "high" : "mid", them: late && b > a ? "low" : late && b < a ? "high" : oppBlock });
+  };
   // 골 장면: 골문 쪽으로 화면이 살짝 다가가고, 골망이 출렁임
   function goalCam(k) {
     if (calm) return;
@@ -10833,7 +11858,7 @@ function showMatch(app, m, onDone) {
     const a = root.querySelector("#atk");
     a.textContent = flipped ? "◀ 공격 방향" : "공격 방향 ▶";
     a.classList.remove("swap"); void a.offsetWidth; a.classList.add("swap");
-    draw(null, null, 1400);
+    pitch.setFlip(flipped);
   }
 
   // 경기 전 선발 명단: 경기장 위 점과 같은 순서·번호
@@ -10914,14 +11939,16 @@ function showMatch(app, m, onDone) {
     const ms = SPEED[speed] * (l.fast ? 0.62 : 1);
     if (l.subIn) { const tok = players.find(x => x.team === "us" && x.name === l.outName) || players.find(x => x.subSlot); if (tok) swapToken(tok, { name: p.name, number: p.number }, true); subBoard(l.outNo); }
     if (l.injuredOff) { const tok = players.find(x => x.me); if (tok) swapToken(tok, l.injuredOff, false); }
-    if (l.ball) draw(l.ball, l.poss, ms, { actor: l.actor, press: l.press, holderIsMe: !!(l.toMe || l.meHold) && !l.actor });
+    let need = 0;
+    if (l.ball) { lastBall = l.ball; if (!l.staged) need = pitch.line(l, ms); }
     addLine(l);
     if (l.score) shown = l.score.slice();
     if (l.minute != null) shownMin = l.minute;
     if (l.half2 || (l.minute != null && l.minute > HALF_MIN)) setHalf(true);   // 후반 킥오프 문장부터 진영 교체
     if (l.k?.startsWith("goal")) goalFlash(l.k);
     updateBoard();
-    timer = setTimeout(step, l.subIn ? Math.max(2600, ms) : l.silent ? ms * 0.7 : (l.k?.startsWith("goal") ? ms * 1.4 : ms));
+    const base = l.subIn ? Math.max(2600, ms) : l.silent ? ms * 0.7 : (l.k?.startsWith("goal") ? ms * 1.4 : ms);
+    timer = setTimeout(step, Math.max(base, Math.min(need, l.silent ? ms : ms * 1.35)));   // 먼 패스는 공이 도착할 때까지 조금 더 기다림
   }
 
   // ── 경기 전 ──
@@ -10958,6 +11985,7 @@ function showMatch(app, m, onDone) {
     <div class="ctl-row"><button class="btn btn-ghost" data-skip>결과만 보기</button><button class="btn btn-kit" data-start>${m.status === "start" ? "킥오프" : "경기 지켜보기"}</button></div>
   </div>`;
   ctl.querySelector("[data-start]").addEventListener("click", () => { setScene("bg_stadium", "match"); sfx.play("kickoff"); controls(); tick(); });
+  pitch.kickoff("us", true);
   ctl.querySelector("[data-skip]").addEventListener("click", skipAll);
 
   function controls() {
@@ -10971,6 +11999,7 @@ function showMatch(app, m, onDone) {
     });
     ctl.querySelector("[data-speed]").addEventListener("click", e => {
       speed = speed === "normal" ? "fast" : "normal"; e.target.textContent = speed === "fast" ? "보통 속도" : "빠르게";
+      pitch.setSpeed(speed);
     });
     ctl.querySelector("[data-skip]").addEventListener("click", skipAll);
   }
@@ -10979,12 +12008,25 @@ function showMatch(app, m, onDone) {
     clearTimeout(timer);
     if (paused) return;
     const r = next(state, m);
+    pitch.clearRuns();
+    updateBlocks();
+    if (r.kind === "moment" && m.pending) return stage(r.lines);
     play(r.lines, () => {
       if (r.kind === "moment") return showMoment();
       if (r.kind === "ht") { sfx.play("half"); return showHalftime(); }
       if (r.kind === "ft") { sfx.play("full"); return end(); }
       timer = setTimeout(tick, r.lines.length ? 120 : 0);
     });
+  }
+
+  // 내 장면: 경기장에서 장면 연출(data/scenes.js)을 보여 준 뒤 선택지를 띄움
+  function stage(lines) {
+    const pd = m.pending;
+    let a = false, b = false;
+    const go = () => { if (a && b && m.pending === pd && !m.done) showMoment(); };
+    for (const l of lines) l.staged = true;
+    pitch.scene(SCENES[pd.sit.id], { ball: pd.ball, poss: pd.sit.poss || "us", zone: pd.sit.zone, names: { mate: pd.vars.mate, opp: pd.vars.opp } }, () => { a = true; go(); });
+    play(lines, () => { b = true; go(); });
   }
 
   function showMoment() {
@@ -11001,6 +12043,7 @@ function showMatch(app, m, onDone) {
       if (!m.pending || m.done) return;                 // 그 사이 '결과만 보기'를 눌렀으면 무시
       ctl.classList.remove("ask");
       const r = resolve(state, m, i, timing);
+      pitch.clearRuns();
       controls();
       paused = false;
       play(r.lines, () => { timer = setTimeout(tick, 200); });
@@ -11082,6 +12125,7 @@ function showMatch(app, m, onDone) {
 
   function skipAll() {
     clearTimeout(timer);
+    pitch.finish();
     root.querySelector(".ht-scene")?.remove();
     setScene("bg_stadium", "match");
     ctl.classList.remove("ask");
@@ -11098,7 +12142,7 @@ function showMatch(app, m, onDone) {
     const before = m.feed.length;
     const res = finishMatch(state, m);
     m.feed.slice(before).forEach(addLine);
-    draw([52.5, 34], null, 600);
+    pitch.line({ ball: [52.5, 34], poss: null }, 900);
     shown = m.score.slice();
     updateBoard();
     const resCls = { 승: "W", 무: "D", 패: "L" }[res.result];
@@ -11121,7 +12165,7 @@ function showMatch(app, m, onDone) {
       <p class="mute" style="font-size:13px;margin:0">감독님 면담과 경기 기록은 메시지함에 왔습니다.</p>
       <button class="btn btn-kit btn-wide" data-done>${fx.jn && state.jnCup?.alive && !p.condition.injury ? `다음 경기로 (${["1회전", "준결승", "결승"][state.jnCup.stage]})` : "이번 주 마무리"}</button>
     </div>`;
-    ctl.querySelector("[data-done]").addEventListener("click", () => { ro?.disconnect(); removeEventListener("resize", fitPitch); cancelAnimationFrame(bRaf); onDone(res); });
+    ctl.querySelector("[data-done]").addEventListener("click", () => { ro?.disconnect(); removeEventListener("resize", fitPitch); pitch.destroy(); onDone(res); });
     ctl.querySelector("[data-done]").focus({ preventScroll: true });
   }
 }
@@ -11588,19 +12632,19 @@ return { renderCreate };
 
 // ── js/ui/views.js
 __m["js/ui/views.js"] = (function () {
-const {ACTION_MAP} = __m["data/actions.js"];
+const {ACTION_MAP, ACTIONS} = __m["data/actions.js"];
 const {POSITIONS, GROWTH_TYPES, TRAITS, STAT_GROUPS, ROLES, EARNABLE} = __m["data/player.js"];
 const {STAFF, ROSTER} = __m["data/roster.js"];
 const {PHASES, MONTHS} = __m["data/calendar.js"];
 const {turnInfo, upcoming, yearTurns, label} = __m["js/engine/calendar.js"];
-const {SLOTS, slotLocked} = __m["js/engine/week.js"];
+const {SLOTS, slotLocked, weekOrder} = __m["js/engine/week.js"];
 const {INJURIES} = __m["js/engine/injury.js"];
 const {sortTable, US, tierLabel, ensureSeason, stillScheduled} = __m["js/engine/season.js"];
 const {HIGH_SCHOOLS} = __m["data/world.js"];
 const {ovr, depthChart, activeRoster, mateGrade} = __m["js/engine/team.js"];
 const {efficiency, conditionOf} = __m["js/engine/growth.js"];
-const {SIGNATURE} = __m["data/match.js"];
-const {STAT_LABEL} = __m["data/player.js"];
+const {SIGNATURE, SITUATIONS} = __m["data/match.js"];
+const {STAT_LABEL, STAT_INFO} = __m["data/player.js"];
 const {esc, img, faceOf, fl, stars, gauge, statLevel, AVATAR} = __m["js/ui/util.js"];
 const {getPath} = __m["js/rng.js"];
 const {REL_ROLES, rivalGap, captainScore} = __m["js/engine/relations.js"];
@@ -11743,6 +12787,7 @@ function weekPanel(state, opts = {}) {
     <h2>이번 주 <small>훈련 효율 ${eff}%</small>
       <button class="linkbtn mg-toggle" data-mgtoggle aria-pressed="${!!opts.minigame}">🎮 미니게임 ${opts.minigame ? "ON" : "OFF"}</button>
       ${state.lastPlan ? `<button class="linkbtn right" data-repeat>지난주처럼</button>` : ""}</h2>
+    ${orderCard(state)}
     <div class="slots">${SLOTS.map(s => {
       const locked = slotLocked(state, s.id);
       if (locked) {
@@ -11758,6 +12803,19 @@ function weekPanel(state, opts = {}) {
         <span class="chev" aria-hidden="true">›</span></button>`;
     }).join("")}</div>
   </section>`;
+}
+
+// 감독님 주간 지시 카드
+function orderCard(state) {
+  const o = weekOrder(state);
+  if (!o || o.none) return "";
+  const inPlan = SLOTS.some(s => !slotLocked(state, s.id) && o.acts.includes(state.plan[s.id]));
+  return `<div class="order-card ${inPlan ? "on" : ""}">
+    <div class="oc-head"><span>📋 ${esc(STAFF.coach)}님 이번 주 지시</span>${inPlan ? `<span class="oc-ok">✔ 계획에 넣음</span>` : ""}</div>
+    <p class="oc-text">"${esc(o.text)}"</p>
+    <div class="oc-acts">${o.acts.map(id => `<span class="chip">${ACTION_MAP[id].icon} ${esc(ACTION_MAP[id].label)}</span>`).join("")}</div>
+    <div class="oc-note mute">한 칸이라도 하면 감독 신뢰가 오르고${o.stat && !o.stat.startsWith("student") ? ", 이번 주 경기에서 관련 선택이 조금 더 잘 됩니다" : ""}. 안 하면 신뢰가 조금 떨어집니다.</div>
+  </div>`;
 }
 
 // 이미 탈락한 대회의 토너먼트 주간은 일정에서 뺍니다
@@ -11877,12 +12935,13 @@ function playerView(state, tab = "stats") {
       ${g.stats.map(([k, l]) => {
         const v = p.stats[g.id][k], from = state.yearStart.stats[g.id][k], d = fl(v) - fl(from);
         const key = keys.includes(`${g.id}.${k}`);
-        return `<div class="srow ${key ? "key" : ""}"><span class="k">${l}</span>
+        return `<details class="sdet"><summary class="srow ${key ? "key" : ""}"><span class="k">${l}</span>
           <div class="track"><div class="fill ${statLevel(v)}" style="width:${v}%"></div></div>
           <span class="v num">${fl(v)}</span>
-          <span class="ch num ${d > 0 ? "up" : d < 0 ? "down" : "mute"}">${d > 0 ? `▲${d}` : d < 0 ? `▼${-d}` : "–"}</span></div>`;
+          <span class="ch num ${d > 0 ? "up" : d < 0 ? "down" : "mute"}">${d > 0 ? `▲${d}` : d < 0 ? `▼${-d}` : "–"}</span></summary>
+          ${statHelp(state, `${g.id}.${k}`)}</details>`;
       }).join("")}</div>`).join("")}</div>
-      <p class="mute" style="font-size:12px;margin:12px 0 0">주황색 이름은 ${POSITIONS[p.position].label} 종합 능력치에 들어가는 능력치입니다. 화살표는 올해 3월 대비 변화입니다.</p>`;
+      <p class="mute" style="font-size:12px;margin:12px 0 0">능력치 이름을 누르면 게임에서 실제로 어디에 쓰이는지 볼 수 있습니다. 주황색 이름은 ${POSITIONS[p.position].label} 종합 능력치에 들어가는 능력치입니다. 화살표는 올해 3월 대비 변화입니다.</p>`;
   }
   if (tab === "body") {
     body = `<dl class="kv" style="margin-bottom:14px">
@@ -11941,6 +13000,30 @@ function playerView(state, tab = "stats") {
       <div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button role="tab" data-ptab="${k}" aria-selected="${tab === k}">${l}</button>`).join("")}</div>
       ${body}
     </section></div>`;
+}
+
+// 능력치 설명: data/player.js의 STAT_INFO + 실제 데이터에서 센 숫자 (경기 장면 수, 종합 비중, 특기, 올리는 훈련)
+function statHelp(state, path) {
+  const p = state.player, pos = p.position;
+  const lines = [...(STAT_INFO[path] || [])];
+  const w = POSITIONS[pos].weights[path];
+  if (w) lines.unshift(`${POSITIONS[pos].label} 종합 능력치의 ${Math.round(w * 100)}%를 차지합니다. 종합 능력치는 선발 경쟁과 진학 평가의 바탕입니다.`);
+  if (path.startsWith("student")) return helpBox(lines, null, trainersOf(path));
+  const sits = SITUATIONS.filter(x => x.pos.includes(pos));
+  const all = sits.reduce((a, x) => a + x.choices.length, 0);
+  const n = sits.reduce((a, x) => a + x.choices.filter(c => c.stats?.[path]).length, 0);
+  const sigs = Object.entries(SIGNATURE).filter(([id, sg]) => sigPos(id).includes(pos) && sg.requires[path])
+    .map(([, sg]) => `'${sg.label}'(${Object.entries(sg.requires).map(([k, v]) => `${STAT_LABEL[k]} ${v}`).join(", ")})`);
+  if (sigs.length) lines.push(`이 능력치로 열리는 경기 특기: ${sigs.join(", ")}`);
+  return helpBox(lines, n ? `${POSITIONS[pos].label} 경기 선택지 ${all}개 중 ${n}개에 쓰임` : `${POSITIONS[pos].label} 경기 선택지에는 쓰이지 않음`, trainersOf(path));
+}
+function trainersOf(path) {
+  return ACTIONS.filter(a => (a.gains?.[path] || 0) >= 0.8).sort((a, b) => b.gains[path] - a.gains[path]).map(a => a.label);
+}
+function helpBox(lines, count, trainers) {
+  return `<div class="shelp">${count ? `<div class="shelp-n">${esc(count)}</div>` : ""}
+    <ul>${lines.map(t => `<li>${esc(t)}</li>`).join("")}</ul>
+    ${trainers.length ? `<div class="shelp-t">올리는 훈련: ${trainers.map(esc).join(", ")}</div>` : ""}</div>`;
 }
 
 function sigPos(id) {

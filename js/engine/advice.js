@@ -60,7 +60,7 @@ const STYLES = [
   { label: "수비를 내리고 버티는 팀", stat: "tech.pass", tips: ["공은 우리가 오래 잡을 거다. 서두르면 역습 맞는다. 옆으로 흔들다가 한 번에 찔러라.", "박스 앞에 열 명이 서 있을 거다. 중거리 하나가 경기를 연다.", "이런 팀은 한 골 먹으면 무너진다. 선제골이 전부다."] },
   { label: "에이스 한 명이 끌고 가는 팀", stat: "tech.defense", tips: ["10번 하나만 묶으면 반은 끝난다. 그 선수가 공 잡으면 두 명이 붙어라.", "그 에이스가 왼발잡이다. 오른쪽으로 몰아라.", "에이스 쪽 측면은 내버려 두지 마라. 거기로만 공이 간다."] },
 ];
-function styleOf(name) {
+export function styleOf(name) {
   let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return STYLES[h % STYLES.length];
 }

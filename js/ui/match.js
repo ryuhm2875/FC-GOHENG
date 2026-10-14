@@ -8,6 +8,9 @@ import { conditionOf } from "../engine/growth.js";
 import { setScene, enter, buzz } from "./fx.js";
 import { sfx } from "./sfx.js";
 import { bgm } from "./bgm.js";
+import { createPitch } from "./pitch.js";
+import { SCENES } from "../../data/scenes.js";
+import { styleOf } from "../engine/advice.js";
 
 const SPEED = { normal: 1250, fast: 420 };
 const HALF_MIN = 35;                                  // 후반부터는 양 팀이 진영을 바꿔 공격 방향이 반대가 됨
@@ -30,7 +33,6 @@ const BASE = {
   MF: [[38, 12], [35, 27], [35, 41], [38, 56]],
   FW: [[55, 26], [55, 42]],
 };
-const LIMIT = { GK: [2, 10], DF: [7, 72], MF: [14, 88], FW: [24, 98] };
 
 // 선수 22명 만들기. 점 하나하나가 명단의 실제 선수(이름·등번호)와 이어져 있음
 function buildPlayers(state, m) {
@@ -52,76 +54,6 @@ function buildPlayers(state, m) {
   }
   return list;
 }
-
-// 공 위치와 소유 팀, 공을 가진 선수(actor)에 맞춰 모두의 목표 위치 계산
-function layout(players, ball, poss, opt = {}) {
-  const [bx, by] = ball;
-  const t = (bx - 52.5) / 52.5;
-  for (const pl of players) {
-    const [x0, y0] = pl.base;
-    if (pl.pos === "GK") {
-      const near = pl.team === "us" ? Math.max(0, 22 - bx) : Math.max(0, bx - 83);
-      pl.x = pl.team === "us" ? 3 + near * 0.12 : 102 - near * 0.12;
-      pl.y = 34 + (by - 34) * 0.25;
-      continue;
-    }
-    const attack = pl.team === poss;
-    const dir = pl.team === "us" ? 1 : -1;
-    let x = x0 + t * 20 + dir * (attack ? 7 : -3);
-    let y = y0 + (by - 34) * 0.32;
-    const [lo, hi] = LIMIT[pl.pos];
-    x = pl.team === "us" ? Math.min(hi, Math.max(lo, x)) : Math.min(105 - lo, Math.max(105 - hi, x));
-    pl.x = x; pl.y = Math.min(65, Math.max(3, y));
-  }
-  if (bx < 1 || bx > 104) return [];                                // 골망·라인 밖
-  const named = opt.actor ? players.find(p => p.name === opt.actor) : null;
-  const team = named ? named.team : poss;
-  if (!team) return [];
-  const holder = named || (opt.holderIsMe ? players.find(p => p.me) : null)
-    || players.filter(p => p.team === team && p.pos !== "GK").sort((a, b) => dist(a, ball) - dist(b, ball))[0];
-  const side = team === "us" ? 1 : -1;
-  if (holder) { holder.x = holder.pos === "GK" ? bx : bx - side * 1.6; holder.y = by; }
-  // 수비 쪽: 가장 가까운 두 명이 붙음. 내가 막는 장면이면 내가 제일 먼저 붙음
-  const meTok = players.find(p => p.me);
-  const foes = players.filter(p => p.team !== team && p.pos !== "GK" && p !== holder).sort((a, b) => dist(a, ball) - dist(b, ball));
-  if (opt.press && meTok && meTok.team !== team) { foes.splice(foes.indexOf(meTok), 1); foes.unshift(meTok); }
-  if (foes[0]) { foes[0].x = bx + side * 3; foes[0].y = by + (foes[0].y > by ? 2 : -2); }
-  if (foes[1] && dist(foes[1], ball) < 14) { foes[1].x = bx + side * 6; foes[1].y = by + (foes[1].y > by ? 6 : -6); }
-  // 수비가 골라인·터치라인 밖으로 밀려나지 않게. 코너킥·스로인 키커만 라인 바로 바깥에 설 수 있음
-  for (const p of players) {
-    const m = p === holder ? 0 : 1.5;
-    p.x = Math.min(105 - m, Math.max(m, p.x)); p.y = Math.min(68 - m, Math.max(m, p.y));
-  }
-  return [holder, foes[0], foes[1]].filter(Boolean);
-}
-
-// 겹친 점 떼어 놓기 + 공과 상관없는 선수들의 작은 움직임 (화면 연출만. 엔진 판정과 무관)
-function spread(players, fixed) {
-  const lock = new Set(fixed);
-  for (const pl of players) {
-    if (lock.has(pl) || pl.pos === "GK") continue;
-    pl.x += (Math.random() - 0.5) * 1.6; pl.y += (Math.random() - 0.5) * 1.6;
-  }
-  const MIN = 3.6;
-  for (let it = 0; it < 3; it++) {
-    for (let i = 0; i < players.length; i++) for (let j = i + 1; j < players.length; j++) {
-      const a = players[i], b = players[j];
-      let dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
-      if (d >= MIN) continue;
-      if (d < 0.01) { dx = 0; dy = 1; d = 1; }
-      const push = (MIN - d) / 2, ux = dx / d, uy = dy / d;
-      const fa = lock.has(a) || a.pos === "GK", fb = lock.has(b) || b.pos === "GK";
-      if (fa && fb) continue;
-      const ka = fa ? 0 : fb ? 2 : 1, kb = fb ? 0 : fa ? 2 : 1;
-      a.x -= ux * push * ka; a.y -= uy * push * ka; b.x += ux * push * kb; b.y += uy * push * kb;
-    }
-  }
-  for (const pl of players) {
-    if (lock.has(pl)) continue;
-    pl.x = Math.min(103.5, Math.max(1.5, pl.x)); pl.y = Math.min(66.5, Math.max(1.5, pl.y));
-  }
-}
-const dist = (p, [x, y]) => Math.hypot(p.x - x, p.y - y);
 
 function pitchSvg(players, kit) {
   return `<svg class="pitch" viewBox="0 0 105 68" role="img" aria-label="경기장" style="--opp:${kit.fill};--opp2:${kit.stroke};--oppText:${kit.text};--oppGk:${kit.gk};--oppGkText:${kit.gkText}">
@@ -150,7 +82,6 @@ export function showMatch(app, m, onDone) {
   let speed = "normal", timer = null, paused = false, queue = [], after = null;
   const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const players = buildPlayers(state, m);
-  layout(players, [52.5, 34], null);
 
   app.root.innerHTML = `<div class="match-screen">
     <header class="board">
@@ -195,42 +126,18 @@ export function showMatch(app, m, onDone) {
   const raiseMe = () => { const t = players.find(x => x.me); if (t) svg.insertBefore(dotEls[t.id], ballEl); };   // 내 점은 맨 위에
   raiseMe();
 
-  // 화면에 그릴 때만 좌표를 돌림: 후반에는 우리 팀이 왼쪽으로 공격 (엔진 좌표는 그대로)
+  // 경기장 움직임 (js/ui/pitch.js): 22명이 대형을 지키며 공을 따라 움직임. 결과는 엔진이 정하고 화면은 따라감
+  // 후반에는 그릴 때만 좌우를 뒤집음 (엔진 좌표는 그대로)
   let flipped = false, lastBall = [52.5, 34];
-  const SX = x => (flipped ? 105 - x : x), SY = y => (flipped ? 68 - y : y);
-  // 공: 짧은 패스는 땅으로 굴러가고, 먼 거리는 포물선으로 떠서 날아감 (그림자는 땅에 남음)
-  let bCur = [52.5, 34], bRaf = 0;
-  function moveBall(tx, ty, ms) {
-    cancelAnimationFrame(bRaf);
-    const [fx0, fy0] = bCur, d = Math.hypot(tx - fx0, ty - fy0);
-    const put = (x, y, z) => {
-      ballEl.style.transform = `translate(${x.toFixed(2)}px,${(y - z).toFixed(2)}px) scale(${(1 + z * 0.06).toFixed(3)})`;
-      shadowEl.style.transform = `translate(${x.toFixed(2)}px,${(y + 0.7).toFixed(2)}px) scale(${Math.max(0.5, 1 - z * 0.07).toFixed(3)})`;
-      shadowEl.style.opacity = Math.max(0.25, 1 - z * 0.1).toFixed(2);
-    };
-    if (calm || d < 0.3) { bCur = [tx, ty]; return put(tx, ty, 0); }
-    const air = d > 17, h = air ? Math.min(7, d * 0.15) : 0, T = Math.max(140, Math.min(ms * 0.85, air ? 300 + d * 9 : 200 + d * 12)), t0 = performance.now();
-    const stepB = now => {
-      const u = Math.min(1, (now - t0) / T);
-      const e = air ? (u < 0.5 ? 2 * u * u : 1 - (-2 * u + 2) ** 2 / 2) : 1 - (1 - u) ** 3;
-      const x = fx0 + (tx - fx0) * e, y = fy0 + (ty - fy0) * e;
-      bCur = [x, y];
-      put(x, y, h * 4 * u * (1 - u));
-      if (u < 1) bRaf = requestAnimationFrame(stepB);
-    };
-    bRaf = requestAnimationFrame(stepB);
-  }
-  function draw(ball, poss, ms, opt = {}) {
-    if (ball) { const fixed = layout(players, ball, poss, opt); if (!calm) spread(players, fixed); lastBall = ball; }
-    const dur = `${Math.max(120, ms * 0.85)}ms`;
-    for (const pl of players) {
-      const el = dotEls[pl.id];
-      el.style.transitionDuration = dur;
-      el.style.transform = `translate(${SX(pl.x).toFixed(2)}px,${SY(pl.y).toFixed(2)}px)`;
-    }
-    const b = ball || lastBall;
-    moveBall(SX(b[0]), SY(b[1]), ms);
-  }
+  const SX = x => (flipped ? 105 - x : x);
+  const blockOf = name => ({ "수비를 내리고 버티는 팀": "low", "전방 압박이 강한 팀": "high" })[styleOf(name).label] || "mid";
+  const oppBlock = blockOf(fx.opponent.name);
+  const pitch = createPitch({ svg, players, dotEls, ballEl, shadowEl, calm, blocks: { us: "mid", them: oppBlock } });
+  // 경기 상황에 따라 블록 높이: 막판에 이기는 팀은 내려앉고, 지는 팀은 올라감
+  const updateBlocks = () => {
+    const [a, b] = m.score, late = m.minute >= 52;
+    pitch.setBlocks({ us: late && a > b ? "low" : late && a < b ? "high" : "mid", them: late && b > a ? "low" : late && b < a ? "high" : oppBlock });
+  };
   // 골 장면: 골문 쪽으로 화면이 살짝 다가가고, 골망이 출렁임
   function goalCam(k) {
     if (calm) return;
@@ -248,7 +155,7 @@ export function showMatch(app, m, onDone) {
     const a = root.querySelector("#atk");
     a.textContent = flipped ? "◀ 공격 방향" : "공격 방향 ▶";
     a.classList.remove("swap"); void a.offsetWidth; a.classList.add("swap");
-    draw(null, null, 1400);
+    pitch.setFlip(flipped);
   }
 
   // 경기 전 선발 명단: 경기장 위 점과 같은 순서·번호
@@ -329,14 +236,16 @@ export function showMatch(app, m, onDone) {
     const ms = SPEED[speed] * (l.fast ? 0.62 : 1);
     if (l.subIn) { const tok = players.find(x => x.team === "us" && x.name === l.outName) || players.find(x => x.subSlot); if (tok) swapToken(tok, { name: p.name, number: p.number }, true); subBoard(l.outNo); }
     if (l.injuredOff) { const tok = players.find(x => x.me); if (tok) swapToken(tok, l.injuredOff, false); }
-    if (l.ball) draw(l.ball, l.poss, ms, { actor: l.actor, press: l.press, holderIsMe: !!(l.toMe || l.meHold) && !l.actor });
+    let need = 0;
+    if (l.ball) { lastBall = l.ball; if (!l.staged) need = pitch.line(l, ms); }
     addLine(l);
     if (l.score) shown = l.score.slice();
     if (l.minute != null) shownMin = l.minute;
     if (l.half2 || (l.minute != null && l.minute > HALF_MIN)) setHalf(true);   // 후반 킥오프 문장부터 진영 교체
     if (l.k?.startsWith("goal")) goalFlash(l.k);
     updateBoard();
-    timer = setTimeout(step, l.subIn ? Math.max(2600, ms) : l.silent ? ms * 0.7 : (l.k?.startsWith("goal") ? ms * 1.4 : ms));
+    const base = l.subIn ? Math.max(2600, ms) : l.silent ? ms * 0.7 : (l.k?.startsWith("goal") ? ms * 1.4 : ms);
+    timer = setTimeout(step, Math.max(base, Math.min(need, l.silent ? ms : ms * 1.35)));   // 먼 패스는 공이 도착할 때까지 조금 더 기다림
   }
 
   // ── 경기 전 ──
@@ -373,6 +282,7 @@ export function showMatch(app, m, onDone) {
     <div class="ctl-row"><button class="btn btn-ghost" data-skip>결과만 보기</button><button class="btn btn-kit" data-start>${m.status === "start" ? "킥오프" : "경기 지켜보기"}</button></div>
   </div>`;
   ctl.querySelector("[data-start]").addEventListener("click", () => { setScene("bg_stadium", "match"); sfx.play("kickoff"); controls(); tick(); });
+  pitch.kickoff("us", true);
   ctl.querySelector("[data-skip]").addEventListener("click", skipAll);
 
   function controls() {
@@ -386,6 +296,7 @@ export function showMatch(app, m, onDone) {
     });
     ctl.querySelector("[data-speed]").addEventListener("click", e => {
       speed = speed === "normal" ? "fast" : "normal"; e.target.textContent = speed === "fast" ? "보통 속도" : "빠르게";
+      pitch.setSpeed(speed);
     });
     ctl.querySelector("[data-skip]").addEventListener("click", skipAll);
   }
@@ -394,12 +305,25 @@ export function showMatch(app, m, onDone) {
     clearTimeout(timer);
     if (paused) return;
     const r = next(state, m);
+    pitch.clearRuns();
+    updateBlocks();
+    if (r.kind === "moment" && m.pending) return stage(r.lines);
     play(r.lines, () => {
       if (r.kind === "moment") return showMoment();
       if (r.kind === "ht") { sfx.play("half"); return showHalftime(); }
       if (r.kind === "ft") { sfx.play("full"); return end(); }
       timer = setTimeout(tick, r.lines.length ? 120 : 0);
     });
+  }
+
+  // 내 장면: 경기장에서 장면 연출(data/scenes.js)을 보여 준 뒤 선택지를 띄움
+  function stage(lines) {
+    const pd = m.pending;
+    let a = false, b = false;
+    const go = () => { if (a && b && m.pending === pd && !m.done) showMoment(); };
+    for (const l of lines) l.staged = true;
+    pitch.scene(SCENES[pd.sit.id], { ball: pd.ball, poss: pd.sit.poss || "us", zone: pd.sit.zone, names: { mate: pd.vars.mate, opp: pd.vars.opp } }, () => { a = true; go(); });
+    play(lines, () => { b = true; go(); });
   }
 
   function showMoment() {
@@ -416,6 +340,7 @@ export function showMatch(app, m, onDone) {
       if (!m.pending || m.done) return;                 // 그 사이 '결과만 보기'를 눌렀으면 무시
       ctl.classList.remove("ask");
       const r = resolve(state, m, i, timing);
+      pitch.clearRuns();
       controls();
       paused = false;
       play(r.lines, () => { timer = setTimeout(tick, 200); });
@@ -497,6 +422,7 @@ export function showMatch(app, m, onDone) {
 
   function skipAll() {
     clearTimeout(timer);
+    pitch.finish();
     root.querySelector(".ht-scene")?.remove();
     setScene("bg_stadium", "match");
     ctl.classList.remove("ask");
@@ -513,7 +439,7 @@ export function showMatch(app, m, onDone) {
     const before = m.feed.length;
     const res = finishMatch(state, m);
     m.feed.slice(before).forEach(addLine);
-    draw([52.5, 34], null, 600);
+    pitch.line({ ball: [52.5, 34], poss: null }, 900);
     shown = m.score.slice();
     updateBoard();
     const resCls = { 승: "W", 무: "D", 패: "L" }[res.result];
@@ -536,7 +462,7 @@ export function showMatch(app, m, onDone) {
       <p class="mute" style="font-size:13px;margin:0">감독님 면담과 경기 기록은 메시지함에 왔습니다.</p>
       <button class="btn btn-kit btn-wide" data-done>${fx.jn && state.jnCup?.alive && !p.condition.injury ? `다음 경기로 (${["1회전", "준결승", "결승"][state.jnCup.stage]})` : "이번 주 마무리"}</button>
     </div>`;
-    ctl.querySelector("[data-done]").addEventListener("click", () => { ro?.disconnect(); removeEventListener("resize", fitPitch); cancelAnimationFrame(bRaf); onDone(res); });
+    ctl.querySelector("[data-done]").addEventListener("click", () => { ro?.disconnect(); removeEventListener("resize", fitPitch); pitch.destroy(); onDone(res); });
     ctl.querySelector("[data-done]").focus({ preventScroll: true });
   }
 }

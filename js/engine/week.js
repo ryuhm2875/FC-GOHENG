@@ -8,6 +8,7 @@ import { prepareMatch, autoPlay, finishMatch } from "./match.js";
 import { previewChat, weeklyAdvice, drillFor } from "./advice.js";
 import { adjustRel, weeklyRelations, relationsNewYear, rivalGap, seniorsLeave } from "./relations.js";
 import { rollEvent } from "./events.js";
+import { ensureOrder, judgeOrder } from "./orders.js";
 import { goalsWeekly } from "./goals.js";
 import { birthdayWeek } from "./birthday.js";
 import { careerMilestones } from "./career.js";
@@ -43,6 +44,9 @@ export function currentFixture(state) {
   const info = turnInfo(state);
   return info ? matchFor(state, info) : null;
 }
+
+// 이번 주 감독님 지시 (없으면 만듦)
+export const weekOrder = state => ensureOrder(state, actionAllowed, currentFixture(state));
 
 export function slotLocked(state, slotId) {
   if (slotId !== "we") return null;
@@ -85,6 +89,8 @@ export function beginWeek(state) {
   // 1. 행동
   const chosenSlots = SLOTS.filter(s => !slotLocked(state, s.id) && ACTION_MAP[state.plan[s.id]]).map(s => ({ slot: s.id, a: ACTION_MAP[state.plan[s.id]] }));
   const chosen = chosenSlots.map(x => x.a);
+  weekOrder(state);
+  report.order = judgeOrder(state, chosenSlots.filter(x => actionAllowed(state, x.a).ok).map(x => x.a.id));
   let risk = 0, didSchool = false, didTeam = false, rehab = 0, sprint = false;
   const gap = rivalGap(state);
   const rivalMult = gap != null && Math.abs(gap) <= 5 ? 1.05 : 1;
