@@ -177,7 +177,7 @@ export function timingOf(c) {
 // 모두 우리 전력 − 상대 전력(D)에 따라 바뀜
 // 시험 도구(tools/dev)가 경기 끝마다 내용을 받아 볼 수 있게
 export const DEV = { onFinish: null };
-export const CAL = { brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 5.3, kcu: 5.8, kcun: 80, ct: 3.3, kct: 22, kctn: 13, ft: 0.2, meShot: 1.1, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.09 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정
+export const CAL = { brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 5.8, kcu: 5.8, kcun: 80, ct: 3.3, kct: 22, kctn: 13, ft: 0.2, meShot: 1.1, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.09 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정
 const sig = x => 1 / (1 + Math.exp(-x));
 
 // 상대 성향 → 경기장 움직임
@@ -451,7 +451,19 @@ function narrate(state, m, e) {
       add(fill(pick(tx), { a: e.a, b: e.b }), kt(e.team));
       break;
     }
-    case "recv": if (e.me) my.involved = (my.involved || 0) + 1; break;
+    case "recv":
+      if (e.me) my.involved = (my.involved || 0) + 1;
+      // 수비수인 내가 빌드업에서 이어 준 패스 (한 경기 최대 +0.3)
+      if (m.myPos === "DF" && e.team === "us" && e.from === m.me && (my.buildCredit || 0) < 0.3) { my.buildCredit = (my.buildCredit || 0) + 0.015; my.delta += 0.015; }
+      if (m.switchPend && m.switchPend.to === e.p && e.t - m.switchPend.t < 4) {
+        const sp = m.switchPend; m.switchPend = null;
+        if (!quiet() && chance(0.65) && tac(m, "switch", 3, 15)) { add(fill(pick(SIM_LINES.switch), { a: sp.from, b: e.p }), e.me ? "me-auto" : kt(e.team)); break; }
+      }
+      if (e.overlap && !quiet() && e.ax > 55) add(fill(pick(SIM_LINES.overlap), { a: e.p }), e.me ? "me-auto" : kt(e.team));
+      break;
+    case "build":
+      if (!quiet() && chance(0.55) && tac(m, "build" + e.team, 2, 30)) add(fill(pick(e.team === "us" ? SIM_LINES.buildUs : SIM_LINES.buildThem), { a: e.by }), kt(e.team));
+      break;
     case "intercept": case "tackle": {
       const atk = e.team === "us" ? "them" : "us";
       const ax = ownX(atk, S.ball.x);
@@ -526,7 +538,17 @@ function narrate(state, m, e) {
       S.lastClear = true;
       if (e.me && e.x != null && e.x < 40 && m.myPos !== "FW") { my.delta += 0.16; my.stops = (my.stops || 0) + 1; }   // 우리 진영에서 내가 걷어 낸 공 (수비 기여)
       break;
-    case "pass": S.lastClear = false; break;
+    case "pass": {
+      S.lastClear = false;
+      if (e.silent) break;
+      const lp = m.lastPass;
+      m.lastPass = { from: e.from, to: e.to, t: e.t, team: e.team };
+      // 원투: A→B 다음 바로 B→A
+      if (lp && lp.team === e.team && lp.from === e.to && lp.to === e.from && e.t - lp.t < 3 && !quiet() && chance(0.75) && tac(m, "oneTwo", 3, 15)) { add(fill(pick(SIM_LINES.oneTwo), { a: e.to, b: e.from }), e.me || e.toMe ? "me-auto" : kt(e.team)); break; }
+      // 방향 전환: 반대편으로 길게. 문장은 공이 그 선수에게 닿았을 때
+      if ((e.kind === "air" || e.kind === "long") && e.fy != null && Math.abs(e.ty - e.fy) > 28) m.switchPend = { from: e.from, to: e.to, t: e.t, team: e.team };
+      break;
+    }
     case "shot": {
       if (e.forced) break;
       m.stats[e.team].shots++;
@@ -558,6 +580,12 @@ function narrate(state, m, e) {
   return out;
 }
 
+// 전술 문장 횟수 제한: 같은 종류는 한 경기 max번까지, gap초(시뮬레이션) 넘게 떨어져서
+function tac(m, key, max, gap) {
+  const r = ((m.tacUse ||= {})[key] ||= { n: 0, t: -99 });
+  if (r.n >= max || m.sim.t - r.t < gap) return false;
+  r.n++; r.t = m.sim.t; return true;
+}
 // 해설이 한참 없을 때: 지금 공 가진 선수와 자리를 짧게 (경기 시간 2분 40초쯤 조용하면)
 function holdLine(m) {
   const S = m.sim, H = S.holder, x = ownX(H.team, H.x);
@@ -712,7 +740,7 @@ function geoFit(m, s) {
   const dyA = Math.max(0, box[1][0] - by, by - box[1][1]), dyB = Math.max(0, box[1][0] - (68 - by), (68 - by) - box[1][1]);
   return Math.exp(-Math.hypot(dx, Math.min(dyA, dyB)) / 6);
 }
-const ctxFits = (ctx, cat) => (ctx.cat.includes(":") || cat.includes(":") ? (ctx.cat === cat ? 1 : 0) : COMPAT[ctx.cat]?.[cat] ?? 0);   // 세트피스는 그 세트피스일 때만
+const ctxFits = (ctx, cat) => (ctx.cat.includes(":") || cat.includes(":") ? (ctx.cat === cat ? 1 : 0) : cat === "mate" && ctx.cat !== "mate" ? 0 : COMPAT[ctx.cat]?.[cat] ?? 0);   // 세트피스는 그 세트피스일 때만, 동료가 공 가진 장면은 동료가 실제로 가졌을 때만
 
 // 이번에 나올 장면을 먼저 고름 (예전처럼 장면 비중대로). 그다음 경기장에서 그 장면에 맞는 상황이 오기를 기다림
 function wantSituation(state, m) {
