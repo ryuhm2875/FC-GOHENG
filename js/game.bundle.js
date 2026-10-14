@@ -6216,7 +6216,7 @@ function timingOf(c) {
 // 모두 우리 전력 − 상대 전력(D)에 따라 바뀜
 // 시험 도구(tools/dev)가 경기 끝마다 내용을 받아 볼 수 있게
 const DEV = { onFinish: null };
-const CAL = { brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 5.8, kcu: 5.8, kcun: 80, ct: 3.3, kct: 22, kctn: 13, ft: 0.2, meShot: 1.1, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.09 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정
+const CAL = { brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 5.8, kcu: 5.8, kcun: 80, ct: 3.3, kct: 22, kctn: 13, ft: 0.2, meShot: 1.1, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.09, dfk: 1.45 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비(가로채기·태클·헤더·걷어 내기·슈팅 막기) 기여 배수
 const sig = x => 1 / (1 + Math.exp(-x));
 
 // 상대 성향 → 경기장 움직임
@@ -6507,7 +6507,7 @@ function narrate(state, m, e) {
       const atk = e.team === "us" ? "them" : "us";
       const ax = ownX(atk, S.ball.x);
       if (e.me) {
-        my.delta += m.myPos === "DF" ? 0.24 : 0.2; my.stops = (my.stops || 0) + 1; my.involved = (my.involved || 0) + 1;
+        my.delta += m.myPos === "DF" ? 0.24 * CAL.dfk : 0.2; my.stops = (my.stops || 0) + 1; my.involved = (my.involved || 0) + 1;
         add(fill(pick(ME_IN_PLAY.stop.slice(0, 2)), { me: m.me }), "me-auto");
       } else if (e.victimMe) {
         my.delta -= 0.04;
@@ -6519,7 +6519,7 @@ function narrate(state, m, e) {
       break;
     }
     case "header": {
-      if (e.me) { my.delta += 0.15; my.stops = (my.stops || 0) + 1; add(fill(pick(SIM_LINES.headClear), { d: m.me }), "me-auto"); break; }
+      if (e.me) { my.delta += 0.15 * (m.myPos === "DF" ? CAL.dfk : 1); my.stops = (my.stops || 0) + 1; add(fill(pick(SIM_LINES.headClear), { d: m.me }), "me-auto"); break; }
       const atk = e.team === "us" ? "them" : "us";
       if (ownX(atk, S.ball.x) > 84 && !quiet() && chance(0.6)) add(fill(pick(SIM_LINES.headClear), { d: e.by }), kt(e.team));
       break;
@@ -6575,7 +6575,7 @@ function narrate(state, m, e) {
     }
     case "clear":
       S.lastClear = true;
-      if (e.me && e.x != null && e.x < 40 && m.myPos !== "FW") { my.delta += 0.16; my.stops = (my.stops || 0) + 1; }   // 우리 진영에서 내가 걷어 낸 공 (수비 기여)
+      if (e.me && e.x != null && e.x < 40 && m.myPos !== "FW") { my.delta += 0.16 * (m.myPos === "DF" ? CAL.dfk : 1); my.stops = (my.stops || 0) + 1; }   // 우리 진영에서 내가 걷어 낸 공 (수비 기여)
       break;
     case "pass": {
       S.lastClear = false;
@@ -6601,7 +6601,7 @@ function narrate(state, m, e) {
       const team = e.team, R = RESULT[team];
       const vars = { a: e.by, gk: e.gk || (team === "us" ? m.gk.them : m.gk.us), d: e.blocker || (team === "us" ? oppName(m, ["DF"]) : mateName(m, ["DF"])) };
       if (e.result === "goal" || e.result === "save") m.stats[team].on++;
-      if (e.blockerMe) { my.delta += 0.15; my.stops = (my.stops || 0) + 1; }
+      if (e.blockerMe) { my.delta += 0.15 * (m.myPos === "DF" ? CAL.dfk : 1); my.stops = (my.stops || 0) + 1; }
       if (e.result === "goal") {
         team === "us" ? m.score[0]++ : m.score[1]++;
         const ast = e.kind === "long" || e.kind === "fk" || e.kind === "pk" ? null : e.assist;
