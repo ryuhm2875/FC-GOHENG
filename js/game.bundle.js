@@ -5265,7 +5265,7 @@ function next(state, m) {
     const t = INJURY_LINES[type];
     m.injured = { type, minute: min, cause: t.cause };
     m.onPitch = false;
-    lines.push(L(fill(pick(t.lines), { me: m.me }), "me-bad", { ball: [range(40, 80), range(15, 55)], poss: "them" }));
+    lines.push(L(fill(pick(t.lines), { me: m.me }), "me-bad", { ball: [range(40, 80), range(15, 55)], poss: "them", amb: true }));
     lines.push(L(fill("의무 트레이너가 뛰어 들어간다. {coach|이/가} 벤치에서 교체 사인을 보낸다.", { coach: STAFF.coach }), "coach"));
     const rep = m.bench?.[0];
     if (rep) m.lineup.push({ name: rep.name, number: rep.number, pos: m.myPos });
@@ -5303,7 +5303,7 @@ function next(state, m) {
     if (a.card) m.carded.push(a.card === "them" ? av.o : av.a);   // 경고 받은 선수가 또 받지 않게
     const actor = /\{a[|}]/.test(a.t) ? av.a : /\{o[|}]/.test(a.t) ? av.o : /\{gk[|}]/.test(a.t) ? av.gk : null;
     lines.push(L(fill(a.t, av), a.card ? "card" : "info",
-      { ball: actor === av.gk ? [range(5, 9), range(28, 40)] : [range(30, 75), range(10, 58)], poss, actor }));
+      { ball: actor === av.gk ? [range(5, 9), range(28, 40)] : [range(30, 75), range(10, 58)], poss, actor, amb: true }));   // amb: 화면은 공을 옮기지 않음
   }
   if (ev.type === "moment" && (m.injured || m.subbedOff)) { m.feed.push(...lines); return { kind: "line", lines }; }
   if (ev.type === "moment") {
@@ -11088,12 +11088,14 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
     for (const p of T) {
       const sh = p.team === att ? shA : shD;
       let [x, y] = sh[p.role] || [52.5, 34];
+      // 공격 팀 공격수·측면 선수는 수시로 뒷공간으로 뛰어들었다 돌아옴 (오프사이드 선까지)
+      if (p.team === att && ["ST1", "ST2", "LM", "RM"].includes(p.role)) { const q = Math.max(0, Math.sin(S.clock * 0.75 + p.ph[0] * 1.7)); x += q * q * 8; }
       if (p.team === att && p.role !== "GK") x = Math.min(x, offAtt);
       [x, y] = own(p.team, [x, y]);
       // 제자리에 서 있지 않고 늘 조금씩 움직임 (자리를 고쳐 잡는 걸음)
       const a = p.role === "GK" ? 0.35 : 1, c = S.clock, f = p.ph;
-      x += a * (1.3 * Math.sin(c * 0.43 + f[0]) + 0.6 * Math.sin(c * 1.17 + f[1]));
-      y += a * (1.1 * Math.sin(c * 0.37 + f[2]) + 0.5 * Math.sin(c * 0.91 + f[3]));
+      x += a * (1.8 * Math.sin(c * 0.43 + f[0]) + 0.8 * Math.sin(c * 1.17 + f[1]));
+      y += a * (1.5 * Math.sin(c * 0.37 + f[2]) + 0.7 * Math.sin(c * 0.91 + f[3]));
       p.tx = clamp(x, 1.5, 103.5); p.ty = clamp(y, 1.5, 66.5); p.speed = JOG; p.press = false;
     }
     const H = S.holder;
@@ -11112,7 +11114,13 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
     }
     for (const p of T) if (p.ov?.keep && Math.hypot(p.x - p.ov.x, p.y - p.ov.y) < 0.6) p.ov = null;
     for (const p of T) if (p.ov) { p.tx = p.ov.x; p.ty = p.ov.y; p.speed = p.ov.v; }
-    if (H && !H.ov && !S.ball.fl) { H.tx = H.x; H.ty = H.y; }            // 공 가진 선수는 대본이 없으면 그 자리에서 공을 지킴
+    // 공 가진 선수: 압박이 없으면 천천히 앞으로 몰고 나가고, 붙으면 그 자리에서 공을 지킴 (내 장면에서는 그대로 섬)
+    if (H && !H.ov && !S.ball.fl) {
+      const g = dirOf(H.team), ox = own(H.team, [H.x, H.y])[0];
+      const pressed = T.some(p => p.team !== H.team && Math.hypot(p.x - H.x, p.y - H.y) < 3.4);
+      if (!S.focus && !pressed && H.role !== "GK" && ox < 88) { H.tx = H.x + g * 2.4; H.ty = H.y + (34 - H.y) * 0.04; H.speed = 3.6; }
+      else { H.tx = H.x; H.ty = H.y; }
+    }
     // 서로 너무 붙지 않게 (공 가진 선수·압박·대본 선수는 움직이지 않고 남이 비켜 줌)
     for (let it = 0; it < 2; it++) for (let i = 0; i < T.length; i++) for (let j = i + 1; j < T.length; j++) {
       const a = T[i], b = T[j];
@@ -11280,6 +11288,8 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
   }
   function act(l, bx, by, avail) {
     const actor = l.actor ? byName(l.actor, l.poss || (l.k === "them" ? "them" : "us")) : null;
+    // 지난 패스를 받으러 뛰던 선수·드리블 목표는 새 장면이 시작되면 풀어 줌 (안 그러면 엉뚱한 자리에 멈춰 섬)
+    if (!l.amb) { for (const p of T) if (p.ov?.recv && p !== S.pending) p.ov = null; S.cur = null; }
     // 세트피스 배치: 공은 그 자리로 굴러가고 키커가 공 앞에 섬 (가로채기가 아님)
     if (l.set) {
       setPiece(l.set, l, actor);
@@ -11308,33 +11318,59 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
       launch(clamp(bx, -0.5, 105.5), clamp(by, -0.5, 68.5), { air: true, Tsim: avail, h: 3 });
       return wake();
     }
+    // 분위기 문장(관중, 날씨, 반칙 등): 공을 엉뚱한 곳으로 옮기지 않음. 흘러 있는 공만 가까운 선수가 주움
+    if (l.amb) {
+      if (!S.holder && !S.ball.fl) { const r = nearest(l.poss || S.poss, [S.ball.x, S.ball.y], p => p.role !== "GK"); if (r) pass(null, r, S.ball.x, S.ball.y, avail); }
+      return wake();
+    }
     // 받을 선수
     let r = actor;
     if (!r && (l.toMe || l.meHold)) r = me();
     if (!r && l.poss) r = nearest(l.poss, [bx, by], p => p.role !== "GK" || isGkPt(bx));
-    if (!r) { launch(bx, by, { Tsim: avail }); return wake(); }
+    if (!r) return wake();
     move(r, bx, by, avail, l);
     wake();
   }
 
-  // 공을 r에게: 같은 선수면 드리블, 같은 팀이면 패스, 상대면 가로채기
+  // 받는 자리: 엔진이 준 좌표가 아니라, 받을 선수가 지금 서 있는 곳(조금 앞으로 뛰어 들어가며)
+  // 엔진 좌표 쪽으로는 몇 m만 끌어당김. 그래야 공과 사람이 늘 맞음
+  function recvPoint(r, bx, by, lead = 2.5) {
+    const g = dirOf(r.team);
+    let px = r.x * 0.4 + r.tx * 0.6 + g * lead, py = r.y * 0.4 + r.ty * 0.6;
+    const dx = bx - px, dy = by - py, d = Math.hypot(dx, dy);
+    if (d > 0.1) { const k = Math.min(d, 5) / d * 0.7; px += dx * k; py += dy * k; }
+    return [clamp(px, 2, 103), clamp(py, 2, 66)];
+  }
+  // 드리블 도착점: 엔진 좌표 방향으로, 시간 안에 갈 수 있는 만큼만
+  function carryPoint(r, bx, by, avail) {
+    const dx = bx - r.x, dy = by - r.y, d = Math.hypot(dx, dy);
+    const can = Math.min(d, 4 + avail * 6, 16);
+    return d < 0.1 ? [r.x, r.y] : [clamp(r.x + dx / d * can, 2, 103), clamp(r.y + dy / d * can, 2, 66)];
+  }
+
+  // 공을 r에게: 같은 선수면 드리블, 같은 팀이면 그 선수 자리로 패스, 상대면 공 가까운 수비가 가로챔
   function move(r, bx, by, avail, l = {}) {
     if (S.pending && S.pending !== r && Math.hypot(S.pending.x - S.ball.x, S.pending.y - S.ball.y) < 3) take(S.pending);
     const H = S.holder;
-    if (H === r) return carry(r, bx, by, avail);
+    if (H === r) { const [cx, cy] = carryPoint(r, bx, by, avail); return carry(r, cx, cy, avail); }
+    if (S.pending && S.pending !== r && S.pending.ov?.recv) S.pending.ov = null;
     S.pending = null;
+    const ball = [S.ball.x, S.ball.y];
     if (H && H.team !== r.team) {
-      const d = Math.hypot(bx - S.ball.x, by - S.ball.y);
-      if (d > 14) {                                                  // 멀리 간 공: 근처에서 먼저 뺏고, 남은 길은 몰고 감
-        const ux = (bx - S.ball.x) / d, uy = (by - S.ball.y) / d;
-        const qx = S.ball.x + ux * 3, qy = S.ball.y + uy * 3;
-        const thief = Math.hypot(r.x - qx, r.y - qy) < 14 ? r : nearest(r.team, [qx, qy], p => p.role !== "GK");
-        steal(thief, qx, qy, avail * 0.35, () => thief === r ? carry(r, bx, by, avail * 0.65) : pass(thief, r, bx, by, avail * 0.65));
-        return;
-      }
-      return steal(r, bx, by, avail);
+      // 가로채기: 이름 불린 선수가 가까우면 그 선수, 멀면 공 가장 가까운 수비가 끊음
+      const thief = Math.hypot(r.x - ball[0], r.y - ball[1]) < 16 ? r : nearest(r.team, ball, p => p.role !== "GK") || r;
+      const g = dirOf(thief.team);
+      const sx = clamp(ball[0] + g * 1.5, 1, 104), sy = ball[1];
+      steal(thief, sx, sy, Math.min(avail * 0.45, 0.6), () => {
+        if (thief === r) { const [cx, cy] = carryPoint(r, bx, by, avail * 0.55); carry(r, cx, cy, avail * 0.55); }
+        else { const [px, py] = recvPoint(r, bx, by); pass(thief, r, px, py, avail * 0.55); }
+      });
+      return;
     }
-    pass(H, r, bx, by, avail, l);
+    const out = ball[0] < 0.6 || ball[0] > 104.4 || ball[1] < 0.8 || ball[1] > 67.2;
+    const [px, py] = recvPoint(r, bx, by);
+    if (!H && !out && Math.hypot(r.x - ball[0], r.y - ball[1]) < 10) return pass(null, r, ball[0], ball[1], avail, l);   // 흘러 있는 공을 주움
+    pass(H, r, px, py, avail, { ...l, air: out ? true : l.air });           // 패스, 또는 경기장 밖 공을 다시 넣음
   }
   function pass(from, r, bx, by, avail, l = {}) {
     if (from && from !== S.holder) { S.holder = from; toFeet(); }

@@ -514,7 +514,7 @@ export function next(state, m) {
     const t = INJURY_LINES[type];
     m.injured = { type, minute: min, cause: t.cause };
     m.onPitch = false;
-    lines.push(L(fill(pick(t.lines), { me: m.me }), "me-bad", { ball: [range(40, 80), range(15, 55)], poss: "them" }));
+    lines.push(L(fill(pick(t.lines), { me: m.me }), "me-bad", { ball: [range(40, 80), range(15, 55)], poss: "them", amb: true }));
     lines.push(L(fill("의무 트레이너가 뛰어 들어간다. {coach|이/가} 벤치에서 교체 사인을 보낸다.", { coach: STAFF.coach }), "coach"));
     const rep = m.bench?.[0];
     if (rep) m.lineup.push({ name: rep.name, number: rep.number, pos: m.myPos });
@@ -552,7 +552,7 @@ export function next(state, m) {
     if (a.card) m.carded.push(a.card === "them" ? av.o : av.a);   // 경고 받은 선수가 또 받지 않게
     const actor = /\{a[|}]/.test(a.t) ? av.a : /\{o[|}]/.test(a.t) ? av.o : /\{gk[|}]/.test(a.t) ? av.gk : null;
     lines.push(L(fill(a.t, av), a.card ? "card" : "info",
-      { ball: actor === av.gk ? [range(5, 9), range(28, 40)] : [range(30, 75), range(10, 58)], poss, actor }));
+      { ball: actor === av.gk ? [range(5, 9), range(28, 40)] : [range(30, 75), range(10, 58)], poss, actor, amb: true }));   // amb: 화면은 공을 옮기지 않음
   }
   if (ev.type === "moment" && (m.injured || m.subbedOff)) { m.feed.push(...lines); return { kind: "line", lines }; }
   if (ev.type === "moment") {
