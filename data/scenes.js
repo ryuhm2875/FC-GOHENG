@@ -28,7 +28,7 @@ export const SCENES = {
   fw_through: { at: [[86, 93], [26, 42]], line: -4, from: "through", giver: "mf", src: [-24, -4], runs: [["oppdf", -1, -2.5, 8.4]], press: 0 },
   fw_cross: { at: [[92, 97], [28, 40]], from: "cross", runs: [["fw", 2, -7, 7.6]], press: 1, pressGap: 1.2, pack: true },
   fw_hold: { at: [[74, 82], [26, 42]], from: "pass", giver: "df", src: [-24, -6], press: 1, pressGap: 1.4 },
-  mf_open_lane: { at: [[46, 62], [18, 50]], from: "pass", press: 0 },
+  mf_open_lane: { at: [[46, 62], [18, 50]], from: "pass", press: 0, clear: true },
   fw_press_cb: { at: [[66, 80], [22, 46]], from: "oppHold", meGap: 5 },
   fw_press_fb: { at: [[64, 82], [3, 12]], from: "oppHold", meGap: 3 },
   fw_counterpress: { at: [[64, 80], [16, 52]], from: "oppHold", meGap: 2.5 },
@@ -48,7 +48,7 @@ export const SCENES = {
   fw_chase: { at: [[62, 70], [24, 44]], from: "loose", src: [-42, 0], pre: [["me", -9, 1.5], ["opp", -8.5, -1.5]], runs: [["opp", -0.5, -1.2, 8.2]], press: 0 },
   fw_keeper_1v1: { line: -7, from: "carry", src: [-15, 0], v: 8, gk: [7, 0], runs: [["oppdf", -6, 2, 8.4]], press: 0 },
   fw_drop_deep: { at: [[50, 58], [26, 42]], from: "pass", giver: "df", src: [-20, -5], press: 1, pressGap: 1.2 },
-  fw_solo_run: { at: [[46, 54], [24, 44]], from: "turn", block: { them: "high" }, press: 0 },
+  fw_solo_run: { at: [[46, 54], [24, 44]], from: "turn", block: { them: "high" }, press: 0, clear: true },
   fw_gk_short: { from: "oppGk", meGap: 5, block: { us: "high" } },
   fw_mindgame: { at: [[84, 92], [24, 44]], from: "oppHold", meGap: 1.1 },
   fw_slide_finish: { from: "lowcross", src: [-5, -36], press: 1, pressGap: 1.6, pack: true },
@@ -66,7 +66,7 @@ export const SCENES = {
   // ── 미드필더 ──
   mf_press: { at: [[48, 60], [20, 48]], from: "pass", giver: "df", press: 2, pressGap: 1.6 },
   mf_space: { from: "pass", giver: "df", runs: [["fw", 26, -6, 8.2], ["fw", 24, 8, 8.2]], press: 0 },
-  mf_switch: { from: "pass", giver: "df", pre: [["oppmf", 4, 6], ["oppmf", 6, -2], ["oppdf", 18, 4]], runs: [["farwing", 18, -60, 8]], press: 1, pressGap: 4 },
+  mf_switch: { from: "pass", giver: "df", pre: [["oppmf", 4, 6], ["oppmf", 6, -2], ["oppdf", 18, 4]], runs: [["farwing", 18, -60, 8]], press: 1, pressGap: 4, side: 9, shift: true },
   mf_defend: { at: [[46, 56], [22, 46]], from: "oppCarry", src: [16, 0], v: 7.8, runs: [["oppfw", -18, -8, 8.4]], meGap: 3 },
   mf_second: { at: [[48, 58], [24, 44]], from: "loose", src: [46, 0], runs: [["oppmf", 1, 1.5, 8]], press: 0 },
   mf_intercept: { from: "oppPass", src: [14, -9], meGap: 3.2 },
@@ -96,7 +96,7 @@ export const SCENES = {
   mf_advantage: { at: [[74, 82], [24, 44]], from: "carry", src: [-10, 0], v: 6, pre: [["opp", -2, 2]], press: 1, pressGap: 3 },
   mf_halfspace_turn: { at: [[64, 72], [14, 22]], from: "pass", giver: "fb", src: [-10, 8], runs: [["mate", 14, 10, 8.4], ["fw", 18, -6, 7.6]], press: 1, pressGap: 2.6, block: { them: "mid" } },
   mf_rest_defense: { at: [[80, 88], [24, 44]], from: "pass", holder: "mate", giver: "mf", pre: [["me", -26, -6], ["oppfw", -28, -10]], block: { them: "low" }, press: 1, pressGap: 3 },
-  mf_drop_between: { at: [[18, 24], [26, 42]], from: "gk", holder: "df", pre: [["me", 12, 1]], press: 2, pressGap: 3, block: { them: "high" } },
+  mf_drop_between: { at: [[18, 24], [26, 42]], from: "gk", holder: "df", pre: [["me", 12, 1]], press: 2, pressGap: 3, mark2: true, block: { them: "high" } },
 
   // ── 수비수 ──
   df_1v1: { at: [[26, 36], [22, 46]], from: "oppCarry", src: [15, 0], v: 7.8, meGap: 3 },

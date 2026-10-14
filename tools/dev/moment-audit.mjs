@@ -30,7 +30,7 @@ for (let k = 0; k < N; k++) {
   const m = prepareMatch(s, ctx.info, ctx.fx);
   games++;
   const S = m.sim;
-  let guard = 0;
+  let guard = 0, lastOut = null;
   while (!m.done && guard++ < 4000) {
     if (!m.pending) { next(s, m); continue; }
     moments++;
@@ -45,6 +45,25 @@ for (let k = 0; k < N; k++) {
       if (want !== got) bad("선택할 때 공 가진 선수가 장면과 다름", `${tag} 장면은 ${want}, 실제 ${got}${H ? `(${H.name})` : ""}: ${pd.text.slice(0, 36)}`);
       if (want === "them" && H && me && Math.hypot(H.x - me.x, H.y - me.y) > 18) bad("상대 장면인데 내가 상대와 멂", `${tag} ${Math.hypot(H.x - me.x, H.y - me.y).toFixed(0)}m: ${pd.text.slice(0, 36)}`);
     }
+    // 1-2) 장면 문장이 말하는 압박·빈 공간이 경기장과 맞는지 (공 가진 선수 기준)
+    if (!cat.includes(":") && H) {
+      const opp = S.P.filter(p => p.team !== H.team && p.pos !== "GK");
+      const ds = opp.map(p => Math.hypot(p.x - H.x, p.y - H.y)).sort((a, b) => a - b);
+      const nPress = typeof sc.press === "number" ? sc.press : poss === "us" ? 1 : 0;
+      const txt = pd.text;
+      if (poss === "us" && nPress >= 1 && /압박|붙|달려든|밀어붙|막아|둘이|셋이|몸을 붙/.test(txt) && ds[0] > (sc.pressGap ?? 1.8) + 3.5) bad("압박 장면인데 상대가 멂", `${tag} 가장 가까운 상대 ${ds[0].toFixed(1)}m: ${txt.slice(0, 36)}`);
+      if (sc.mark2) {   // 두 번째 상대는 센터백 짝을 막음
+        const pair = S.P.filter(q => q.team === H.team && q !== H && q.pos === "DF" && !q.me).sort((a, b) => Math.hypot(a.x - H.x, a.y - H.y) - Math.hypot(b.x - H.x, b.y - H.y))[0];
+        const dp = pair ? Math.min(...opp.map(p => Math.hypot(p.x - pair.x, p.y - pair.y))) : 0;
+        if (dp > 5) bad("센터백 짝을 막는 상대가 없음", `${tag} ${dp.toFixed(1)}m: ${txt.slice(0, 36)}`);
+      } else if (poss === "us" && /둘이|두 명|둘 사이|셋이|세 명/.test(txt) && /달려든|붙|막아|좁혀/.test(txt) && ds[1] > 8) bad("두 명 압박 장면인데 한 명뿐", `${tag} 두 번째 상대 ${ds[1].toFixed(1)}m: ${txt.slice(0, 36)}`);
+      if (poss === "us" && /텅 비었|아무도 없|앞에 아무도|아무도 막지/.test(txt) && !/반대편|측면이 텅/.test(txt)) {
+        const g = 1, ahead = opp.filter(p => (p.x - H.x) * g > 0 && (p.x - H.x) * g < 12 && Math.abs(p.y - H.y) < 6);
+        if (ahead.length) bad("빈 공간 장면인데 앞에 상대가 있음", `${tag} 앞 12m 안 상대 ${ahead.length}명: ${txt.slice(0, 36)}`);
+      }
+    }
+    // 1-3) 앞 장면의 결과 문장이 이 장면 설명보다 먼저 나왔는지
+    if (lastOut && lastOut.ts != null && lastOut.ts > S.t + 0.05) bad("앞 장면 결과보다 다음 장면이 먼저", `${tag} 앞 결과 ${lastOut.t.slice(0, 24)}`);
     // 2) 선택하고 대본 따라가기
     const pick = RANDOM ? Math.floor(Math.random() * pd.list.length) : autoChoice(m);
     const c = pd.list[pick];
@@ -87,6 +106,7 @@ for (let k = 0; k < N; k++) {
     acts[r.act || r.outcome] = (acts[r.act || r.outcome] || 0) + 1;
     // 결과 문장이 나온 시각: 선택 뒤 몇 초 (시뮬레이션)
     const ol = newLines.find(l => l.t === r.outText);
+    lastOut = ol || null;
     if (ol && ol.ts != null) { const dt = ol.ts - tSel; outDelay.push(dt); if (dt > 6) bad("결과 문장이 늦게 나옴", `${tag} ${dt.toFixed(1)}초: ${r.outText.slice(0, 30)}`); }
     else bad("결과 문장이 안 나옴", `${tag} ${r.outcome}`);
   }

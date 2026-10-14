@@ -754,6 +754,15 @@ function geoFit(m, s) {
   const dyA = Math.max(0, box[1][0] - by, by - box[1][1]), dyB = Math.max(0, box[1][0] - (68 - by), (68 - by) - box[1][1]);
   return Math.exp(-Math.hypot(dx, Math.min(dyA, dyB)) / 6);
 }
+// 장면이 "수비수가 공을 가졌다"(holder df)면 실제로 수비수나 골키퍼가 가졌을 때만
+// 두 명이 센터백 둘을 막는 장면(mark2)은 상대 둘이 실제로 가까이(18m) 올라와 있을 때만
+// 한쪽으로 몰린 장면(side)은 공이 측면 쪽(가운데에서 side m 넘게)에 있을 때만
+const holderOk = (ctx, s, S) => { const sc = SCENES[s.id];
+  if (sc?.side && S) { const M = meOf(S), y = (sc.holder ? ctx.holder : M)?.y ?? S.ball.y; if (Math.abs(y - 34) < sc.side) return false; }
+  if (!sc || sc.holder !== "df") return true;
+  if (!["DF", "GK"].includes(ctx.holder?.pos)) return false;
+  if (sc.mark2 && S) { const h = ctx.holder; let n = 0; for (const p of S.P) if (p.team === "them" && p.pos !== "GK" && Math.hypot(p.x - h.x, p.y - h.y) < 18) n++; if (n < 2) return false; }
+  return true; };
 const ctxFits = (ctx, cat) => (ctx.cat.includes(":") || cat.includes(":") ? (ctx.cat === cat ? 1 : 0) : cat === "mate" && ctx.cat !== "mate" ? 0 : COMPAT[ctx.cat]?.[cat] ?? 0);   // 세트피스는 그 세트피스일 때만, 동료가 공 가진 장면은 동료가 실제로 가졌을 때만
 
 // 이번에 나올 장면을 먼저 고름 (예전처럼 장면 비중대로). 그다음 경기장에서 그 장면에 맞는 상황이 오기를 기다림
@@ -766,7 +775,7 @@ function pickSituation(state, m, ctx) {
   const pool = [];
   let best = 0;
   for (const s of SITUATIONS) {
-    if (!canSit(state, m, s) || (s.poss || "us") !== ctx.poss) continue;
+    if (!canSit(state, m, s) || (s.poss || "us") !== ctx.poss || !holderOk(ctx, s, m.sim)) continue;
     const cat = sitCat(s), c = ctxFits(ctx, cat);
     if (!c) continue;
     const geo = cat.includes(":") ? 1 : geoFit(m, s);
@@ -781,7 +790,7 @@ function pickSituation(state, m, ctx) {
 // 기다리던 장면이 지금 상황과 맞는지. 오래 기다릴수록 자리는 덜 따짐
 function wantFits(m, want, ctx) {
   const s = want.sit;
-  if ((s.poss || "us") !== ctx.poss) return false;
+  if ((s.poss || "us") !== ctx.poss || !holderOk(ctx, s, m.sim)) return false;
   const c = ctxFits(ctx, want.cat), wait = m.minute - want.t0;
   if (c < (wait < 1.5 ? 1 : wait < 3 ? 0.5 : 0.3)) return false;                    // 처음엔 딱 맞는 상황만, 기다릴수록 비슷한 상황도
   if (want.cat.includes(":")) return true;
@@ -845,7 +854,8 @@ function startMoment(state, m, sit, ctx, lines, ts) {
   let mateP = null, passer = null;
   const last = S.chain[S.chain.length - 1];
   if (last && last.team === "us" && !last.me && last.ri) passer = last;            // 방금 나에게 공을 준 동료 (공이 오는 문장에만)
-  if (ctx.cat === "mate" && holder?.team === "us") mateP = holder;
+  if (ctx.cat === "mate" && holder?.team === "us" && sc.holder === "df" && holder.pos === "GK") mateP = nearestP(S, "us", holder, p => p.pos === "DF" && !p.me && p.ri);   // 골키퍼가 수비수에게 주며 시작
+  else if (ctx.cat === "mate" && holder?.team === "us") mateP = holder;
   else if (ctx.cat === "set:corner" || ctx.cat === "set:throw" || ctx.cat === "set:cornerKick") mateP = ctx.set?.taker && ctx.set.taker !== M ? ctx.set.taker : nearestP(S, "us", { x: 96, y: 34 }, p => !p.me && p.ri && p.pos !== "GK");
   else if (poss === "us") {
     // 같이 공격할 동료: 내 앞쪽(또는 나란히)에 있는 공격수·미드필더 중 가까운 선수. 없으면 방금 패스한 동료
@@ -878,7 +888,7 @@ function startMoment(state, m, sit, ctx, lines, ts) {
   const stageHolder = poss === "them" ? (holder?.team === "them" ? holder : null) : mateHolds ? mateP : M;
   const hint = setPiece ? { dur: 0.3, press: 0, mePress: false } : {
     holder: stageHolder, dur: 0.7,
-    press: typeof sc.press === "number" ? sc.press : poss === "us" ? 1 : 0, pressGap: sc.pressGap, meGap: sc.meGap, mePress: sc.mePress,
+    press: typeof sc.press === "number" ? sc.press : poss === "us" ? 1 : 0, pressGap: sc.pressGap, meGap: sc.meGap, mePress: sc.mePress, clear: !!sc.clear, mark2: !!sc.mark2, shift: !!sc.shift,
     gk: sc.gk ? sc.gk[0] : sc.gkNear ? 10 : null,
   };
   m.staging = { sit, ctx, sv, mateP, oppP };
@@ -1219,8 +1229,10 @@ export function resolve(state, m, ci, timing = null) {
   if (out === "card") m.stats.us.cards++;
   if (out === "decoy") teammateFinish(0.3, ["{mate|이/가} 빈 공간에서 마무리한다! 골!", "내가 비운 자리로 {mate|이/가} 뛰어들었다! 골!"], LINES.assistMiss, false);   // 도움은 아니지만 공간을 만든 몫
   if (out === "pkAgainst") concede(0.74, LINES.pkAgainstGoal, LINES.pkAgainstSave);
-  if (out === "turnover") concede(0.1, pd.sit.poss === "them" ? LINES.leakGoal : LINES.turnoverGoal, null);
-  if (out === "danger") concede(0.38, LINES.dangerGoal, LINES.dangerSave);
+  // 공이 라인 밖으로 나간 결과 문장이면 그 자리에서 바로 실점하지 않음 (경기장에서는 다시 시작부터)
+  const wentOut = /^out/.test(actOf(outTpl, out, pd.sit.poss || "us") || "");
+  if (out === "turnover" && !wentOut) concede(0.1, pd.sit.poss === "them" ? LINES.leakGoal : LINES.turnoverGoal, null);
+  if (out === "danger" && !wentOut) concede(0.38, LINES.dangerGoal, LINES.dangerSave);
   if (out === "pk" || out === "miss") { /* pk는 위에서, miss는 대본에서 */ }
   if (out === "miss" && pd.sit.id === "penalty") R = { who: "me", res: "save", kind: "pk" };
 

@@ -92,7 +92,8 @@ for (let k = 0; k < N; k++) {
     prevC = prevL?.t.includes("코너킥");
     prevL = l;
     if (!ACTION.has(l.k) || !F.length) continue;
-    const i0 = at(l.ts - 2), i1 = at(l.ts + 1.5);
+    // 긴 공(방향 전환·라인 밖으로 나간 패스·크로스)은 찬 사람을 공이 도착한 뒤에 말하므로 조금 더 앞까지 봄
+    const i0 = at(l.ts - (/방향 전환|반대편|라인 아웃|터치라인|골라인/.test(l.t) ? 4.5 : 2)), i1 = at(l.ts + (/주고받|원투/.test(l.t) ? 3 : 1.5));   // 원투는 되돌려 받는 공이 도착할 때까지
     // 이름 근처
     for (let pi = 0; pi < P.length; pi++) {
       const nm = names[pi]; if (!nm || nm.length < 2 || !l.t.includes(nm)) continue;

@@ -1046,21 +1046,63 @@ export function stageStart(S, hint) {
   if (H) H.ov = OV(H.x + dirOf(H.team) * 0.6, H.y, 2.5);
 }
 function stageTick(S) {
-  const st = S.stage, H = st.holder || S.holder;
-  if (!H) { if (S.t >= st.until) S.stage = null; return; }
+  const st = S.stage;
+  // 공이 날아가는 중이면 받는 선수가 잡을 때까지 기다림 (그 선수 기준으로 자리를 잡게)
+  if (!st.holder || st.holder !== S.holder) { if (S.holder && !S.ball.fl) { st.holder = S.holder; st.pressers = null; } else { if (S.t >= st.until + 3) { S.stage = null; for (const p of S.P) if (p.ov?.stage) p.ov = null; } return; } }
+  const H = st.holder;
   const def = other(H.team);
   const n = st.press ?? (H.team === "us" ? 1 : 0);
-  const list = S.P.filter(p => p.team === def && p.pos !== "GK" && !p.me).sort((a, b) => hyp(a.x - H.x, a.y - H.y) - hyp(b.x - H.x, b.y - H.y));
-  for (let i = 0; i < n && list[i]; i++) {
-    const gap = (st.pressGap ?? 1.8) + i * 1.4, side = i === 0 ? 0 : (i % 2 ? 2.6 : -2.6);
-    list[i].ov = OV(clamp(H.x - dirOf(def) * gap, 1, 104), clamp(H.y + side, 1, 67), RUN, "stage");
+  // 압박하는 선수는 처음 정한 사람을 끝까지 (가까운 순서가 바뀌어도 다른 선수로 바뀌지 않게)
+  if (!st.pressers) {
+    const pool = S.P.filter(p => p.team === def && p.pos !== "GK" && !p.me), near = pt => pool.slice().sort((a, b) => hyp(a.x - pt.x, a.y - pt.y) - hyp(b.x - pt.x, b.y - pt.y));
+    st.pressers = near(H).slice(0, n);
+    // 센터백 짝을 막는 선수: 그 짝에게 가장 가까운 상대 (첫 번째 압박 선수 말고)
+    const pair = st.mark2 && S.P.filter(q => q.team === H.team && q !== H && q.pos === "DF" && !q.me).sort((a, b) => hyp(a.x - H.x, a.y - H.y) - hyp(b.x - H.x, b.y - H.y))[0];
+    if (pair && n >= 2) { st.pressers[1] = near(pair).find(p => p !== st.pressers[0]); st.pair = pair; }
+  }
+  let arrived = true;
+  st.pressers.forEach((p, i) => {
+    let tx, ty;
+    if (i === 1 && st.mark2) {
+      // 두 번째 선수는 공 가진 선수 옆의 다른 동료(센터백 짝)를 막음
+      const pair = st.pair;
+      if (pair) {
+        // 짝 센터백은 공 가진 선수와 12m 넘게 벌려 섬 (골키퍼 앞에 뭉치지 않게)
+        if (!st.pairAt) { const sy = pair.y >= H.y ? 1 : -1; let py = Math.abs(pair.y - H.y) < 12 ? H.y + sy * 14 : pair.y; if (py < 6 || py > 62) py = H.y - sy * 14; st.pairAt = [Math.max(pair.x, H.x), clamp(py, 6, 62)]; }
+        pair.ov = OV(st.pairAt[0], st.pairAt[1], RUN, "stage");
+        tx = pair.x - dirOf(def) * 2; ty = pair.y;
+        if (hyp(pair.x - st.pairAt[0], pair.y - st.pairAt[1]) > 2) arrived = false;
+      }
+    }
+    if (tx == null) { const gap = (st.pressGap ?? 1.8) + i * 1.4, side = i === 0 ? 0 : (i % 2 ? 2.6 : -2.6); tx = H.x - dirOf(def) * gap; ty = H.y + side; }
+    p.ov = OV(clamp(tx, 1, 104), clamp(ty, 1, 67), hyp(p.x - tx, p.y - ty) > 5 ? SPRINT : RUN, "stage");
+    if (hyp(p.x - tx, p.y - ty) > 2.5) arrived = false;
+  });
+  // 한쪽으로 몰린 장면: 상대 필드 선수들이 공 쪽 측면으로 좁혀 들어옴 (반대편 측면이 빔)
+  if (st.shift) {
+    if (!st.shiftY) st.shiftY = new Map(S.P.filter(p => p.team === def && p.pos !== "GK" && !st.pressers.includes(p)).map(p => [p, [p.x, clamp(p.y + (H.y - p.y) * 0.45, 3, 65)]]));
+    for (const [p, t] of st.shiftY) { p.ov = OV(t[0], t[1], RUN, "stage"); if (hyp(p.x - t[0], p.y - t[1]) > 3) arrived = false; }
+  }
+  // 빈 공간 장면: 공 가진 선수 앞 12m 길목의 상대는 옆으로 비켜남 (한 박자 늦게 돌아오는 모습)
+  if (st.clear) {
+    const g = dirOf(H.team);
+    for (const p of S.P) {
+      if (p.team !== def || p.pos === "GK" || st.pressers.includes(p)) continue;
+      const ax = (p.x - H.x) * g;
+      if (ax > -1 && ax < 13 && Math.abs(p.y - H.y) < 7) {
+        const sy = p.y >= H.y ? 1 : -1;
+        let ty = H.y + sy * 8.5; if (ty < 2 || ty > 66) ty = H.y - sy * 8.5;
+        p.ov = OV(clamp(p.x - g * 3, 1, 104), clamp(ty, 1, 67), SPRINT, "stage");
+        arrived = false;
+      } else if (p.ov?.stage) p.ov = null;
+    }
   }
   const me = meOf(S);
   if (me && H.team !== me.team && st.mePress !== false) me.ov = OV(clamp(H.x - dirOf(me.team) * (st.meGap ?? 2.4), 1, 104), H.y + (34 - H.y) * 0.1, RUN, "stage");
   if (st.gk) { const g = gkOf(S, def); if (g) g.ov = OV(clamp(H.x + dirOf(H.team) * st.gk, 1, 104), 34 + (H.y - 34) * 0.4, 7, "stage"); }
   // 상대 공 장면: 내가 그 선수 가까이 붙을 때까지 (최대 2.5초 더). 화면에서 "막아야 한다" 때 내가 멀리 있지 않게
   const close = !me || H.team === me.team || st.mePress === false || hyp(me.x - H.x, me.y - H.y) < (st.meGap ?? 2.4) + 2.5;
-  if (S.t >= st.until && (close || S.t >= st.until + 2.5)) { S.stage = null; for (const p of S.P) if (p.ov?.stage) p.ov = null; if (H.ov) H.ov = null; }
+  if (S.t >= st.until && ((close && arrived) || S.t >= st.until + 2.5)) { S.stage = null; for (const p of S.P) if (p.ov?.stage) p.ov = null; if (H.ov) H.ov = null; }
 }
 export function stageDone(S) { return !S.stage; }
 
