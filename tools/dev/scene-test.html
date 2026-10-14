@@ -1,0 +1,48 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="../../css/style.css"><link rel="stylesheet" href="../../css/fc.css"><link rel="stylesheet" href="../../css/polish.css">
+<style>body{background:#0D1433;margin:0;padding:8px}#wrap{width:520px}#cap{color:#fff;font:14px sans-serif;margin:4px 0}</style></head>
+<body><div class="match-screen"><div id="cap"></div><div id="wrap" class="pitch-wrap"></div></div>
+<script type="module">
+import { createPitch } from "../../js/ui/pitch.js";
+import { SCENES } from "../../data/scenes.js";
+import { SITUATIONS } from "../../data/match.js";
+const BASE = { GK: [[4, 34]], DF: [[18, 10], [16, 26], [16, 42], [18, 58]], MF: [[38, 12], [35, 27], [35, 41], [38, 56]], FW: [[55, 26], [55, 42]] };
+const MY = { FW: 0, MF: 1, DF: 1 };
+let pitch;
+function build(myPos) {
+  const list = []; let n = 2;
+  for (const [pos, spots] of Object.entries(BASE)) spots.forEach((pt, i) => {
+    const me = pos === myPos && i === MY[pos];
+    list.push({ id: `u-${pos}-${i}`, team: "us", pos, number: me ? 7 : pos === "GK" ? 1 : n++, name: me ? "나" : `우리${pos}${i}`, me, x: pt[0], y: pt[1] });
+    list.push({ id: `t-${pos}-${i}`, team: "them", pos, number: pos === "GK" ? 1 : 20 + n, name: `상대${pos}${i}`, me: false, x: 105 - pt[0], y: pt[1] + 3 });
+  });
+  document.getElementById("wrap").innerHTML = `<svg class="pitch" viewBox="0 0 105 68" style="--opp:#F3F5FB;--opp2:#1F2C8F;--oppText:#1F2C8F;--oppGk:#212121;--oppGkText:#fff">
+    <rect x="0" y="0" width="105" height="68" class="turf"/>${Array.from({ length: 7 }, (_, i) => `<rect x="${i * 15}" y="0" width="7.5" height="68" class="stripe"/>`).join("")}
+    <g class="lines"><rect x="1" y="1" width="103" height="66"/><line x1="52.5" y1="1" x2="52.5" y2="67"/><circle cx="52.5" cy="34" r="9.15"/><rect x="1" y="13.85" width="16.5" height="40.3"/><rect x="87.5" y="13.85" width="16.5" height="40.3"/><rect x="1" y="24.85" width="5.5" height="18.3"/><rect x="98.5" y="24.85" width="5.5" height="18.3"/><rect x="-1" y="30.3" width="2" height="7.4" class="goal"/><rect x="104" y="30.3" width="2" height="7.4" class="goal"/></g>
+    <ellipse class="bshadow" rx="1.25" ry=".55"/>
+    ${list.map(p => `<g class="dot ${p.team} ${p.pos === "GK" ? "gk" : ""} ${p.me ? "me" : ""}" data-id="${p.id}"><circle r="4" class="ring"/><circle r="2.3" class="body"/><text y="0.75" class="no">${p.number}</text><text y="-4.3" class="tag">나</text></g>`).join("")}
+    <g class="ball"><circle r="1.2"/></g></svg>`;
+  const svg = document.querySelector("svg"), dotEls = Object.fromEntries([...svg.querySelectorAll(".dot")].map(el => [el.dataset.id, el]));
+  pitch?.destroy();
+  pitch = createPitch({ svg, players: list, dotEls, ballEl: svg.querySelector(".ball"), shadowEl: svg.querySelector(".bshadow") });
+  pitch.kickoff("us", true);
+  return list;
+}
+const r = (a, b) => a + Math.random() * (b - a);
+window.runScene = (id, speed = 1) => new Promise(res => {
+  const sit = SITUATIONS.find(s => s.id === id);
+  const myPos = sit.pos[0];
+  const list = build(myPos);
+  pitch.setSpeed(speed > 1 ? "fast" : "normal");
+  const sp = sit.spot || SCENES[id]?.at;
+  const z = sit.zone;
+  const ball = sp ? [r(...sp[0]), r(...sp[1])] : z === "att" ? [r(80, 88), r(24, 44)] : z === "mid" ? [r(48, 60), r(18, 50)] : [r(20, 30), r(18, 50)];
+  const mate = list.find(p => p.team === "us" && !p.me && (p.pos === "FW" || p.pos === "MF"));
+  const opp = list.filter(p => p.team === "them" && p.pos !== "GK").sort((a, b) => Math.hypot(a.x - ball[0], a.y - ball[1]) - Math.hypot(b.x - ball[0], b.y - ball[1]))[0];
+  document.getElementById("cap").textContent = `${id} (${myPos}) ${sit.text[0].slice(0, 46)}`;
+  // 이전 장면에서 이어지는 느낌: 공을 중앙에서 시작
+  setTimeout(() => pitch.scene(SCENES[id], { ball, poss: sit.poss || "us", zone: z, names: { mate: mate.name, opp: opp.name } }, () => setTimeout(() => res({ B: ball.map(v => +v.toFixed(1)), now: pitch.ball().map(v => +v.toFixed(1)), hold: pitch._state.holder?.name }), 350)), 100);
+});
+window.ids = SITUATIONS.map(s => s.id);
+window.ready = true;
+</script></body></html>
