@@ -61,7 +61,7 @@ export function createSim(cfg) {
     str: { ...cfg.str }, style: { us: {}, them: {}, ...cfg.style }, block: { us: "mid", them: "mid", ...(cfg.blocks || {}) },
     ev: [], rec: null, phase: "play", restart: null, decideAt: 0, script: [], scur: null, stage: null,
     pass: null, chain: [], possT: { us: 0, them: 0 }, flow: 0, bias: null, gkHold: 0, stopped: false, kickTeam: "us",
-    pickOnly: null, trace: null, traceEnd: false, onTick: null, lastRestart: null, wonAt: null, wonBy: null, lastClear: false,
+    pickOnly: null, trace: null, traceEnd: false, onTick: null, lastRestart: null, deflect: null, wonAt: null, wonBy: null, lastClear: false,
     shot: null, pending: null, clockOff: 0, tk: cfg.tk ?? 0.32, ik: cfg.ik ?? 0.8, prog: cfg.prog ?? 0.00045, dw: cfg.dw ?? 17, ft: cfg.ft ?? 1, brk0: cfg.brk ?? 1,
   };
   S.GK = P.filter(p => p.pos === "GK");
@@ -575,7 +575,7 @@ function outCheck(S) {
   }
   const atkGoalOf = b.x >= 105 ? "us" : "them";            // 이 골라인을 공격하는 팀
   if (lastTeam === atkGoalOf) { emit(S, "out", { kind: "goalkick", team: other(atkGoalOf), by: S.last?.name, byTeam: lastTeam }); setRestart(S, "goalkick", other(atkGoalOf)); }
-  else { emit(S, "out", { kind: "corner", team: atkGoalOf, by: S.last?.name, byTeam: lastTeam }); setRestart(S, "corner", atkGoalOf, b.x >= 105 ? 104.3 : 0.7, b.y < 34 ? 0.7 : 67.3); }
+  else { emit(S, "out", { kind: "corner", team: atkGoalOf, by: S.last?.name, byTeam: lastTeam, cause: S.deflect && S.t - S.deflect.t < 4 ? S.deflect.kind : S.last?.pos === "GK" ? "save" : "clear" }); S.deflect = null; setRestart(S, "corner", atkGoalOf, b.x >= 105 ? 104.3 : 0.7, b.y < 34 ? 0.7 : 67.3); }
   return true;
 }
 
@@ -618,7 +618,7 @@ export function shoot(S, H, opts = {}) {
     const dive = result === "save" ? ty : result === "goal" ? ty + (ty > 34 ? -2.4 : 2.4) : 34 + (ty - 34) * 0.4;
     gk.ov = OV(goalX - dirOf(team) * 1.2, clamp(dive, 30, 38), 9);
   }
-  S.shot = { by: H, team, result, kind, assist, forced: !!opts.result, gk, blocker };
+  S.shot = { by: H, team, result, kind, assist, forced: !!opts.result, gk, blocker, saveKind: opts.saveKind || null };
   emit(S, "shot", { by: H.name, team, kind, result, me: H.me, assist: assist?.name || null, assistMe: !!assist?.me, x: hx, y: hy, q, silent: !!opts.silent, forced: !!opts.result });
   S.last = H; S.lastTeam = team; H.ov = null;
   launch(S, tx, ty, { shot: true, air: kind === "head" || kind === "long" || rand() < 0.3, h: kind === "head" ? 1.6 : 1.2, kind: "shot", then: S2 => shotEnd(S2) });
@@ -629,7 +629,11 @@ function shotEnd(S) {
   const { team, result, gk, by } = sh;
   const def = other(team);
   if (gk) gk.ov = null;
-  emit(S, "shotEnd", { by: by.name, team, result, me: by.me, gk: gk?.name, blocker: sh.blocker?.name, blockerMe: !!sh.blocker?.me, kind: sh.kind, forced: sh.forced, assist: sh.assist?.name || null, assistMe: !!sh.assist?.me });
+  // 선방: 잡음(catch) / 쳐 냄(parry) / 쳐 내서 골라인 밖(corner). 중계 문장이 이 값을 보고 고름
+  let save = null;
+  if (result === "save") save = sh.saveKind || (gk && rand() < 0.62 ? "catch" : rand() < 0.45 ? "corner" : "parry");
+  if (save === "catch" && !gk) save = "parry";
+  emit(S, "shotEnd", { by: by.name, team, result, me: by.me, gk: gk?.name, blocker: sh.blocker?.name, blockerMe: !!sh.blocker?.me, kind: sh.kind, forced: sh.forced, assist: sh.assist?.name || null, assistMe: !!sh.assist?.me, save });
   if (result === "goal") {
     S.ball.x = team === "us" ? 104.6 : 0.4;
     emit(S, "goal", { team, by: by.name, me: by.me, assist: sh.assist?.name || null, assistMe: !!sh.assist?.me, forced: sh.forced, kind: sh.kind });
@@ -637,17 +641,25 @@ function shotEnd(S) {
     S.holder = null;
     return;
   }
+  // 공을 골라인 밖으로 실제로 보냄 (코너킥은 공이 라인을 넘은 뒤 outCheck가 선언)
+  const overLine = (kind, spread) => {
+    const goalX = team === "us" ? 106.5 : -1.5;
+    let ty = S.ball.y + range(-spread, spread);
+    if (Math.abs(ty - 34) < 6) ty = 34 + (ty < 34 ? -1 : 1) * range(6, 12);
+    S.deflect = { kind, t: S.t };
+    launch(S, goalX, clamp(ty, 2, 66), { air: true, h: 2.2, kind: "deflect", then: S2 => landLoose(S2) });
+  };
   if (result === "save") {
-    if (gk && rand() < 0.62) return give(S, gk);
-    const g = dirOf(def);
-    if (rand() < 0.45) { emit(S, "out", { kind: "corner", team, by: gk?.name, byTeam: def }); return setRestart(S, "corner", team, team === "us" ? 104.3 : 0.7, S.ball.y < 34 ? 0.7 : 67.3); }
+    if (save === "catch") return give(S, gk);
     S.last = gk; S.lastTeam = def;
+    if (save === "corner") return overLine("save", 9);
+    const g = dirOf(def);
     launch(S, clamp(S.ball.x + g * range(6, 12), 2, 103), clamp(S.ball.y + range(-10, 10), 2, 66), { air: true, h: 2, kind: "parry", then: S2 => landLoose(S2) });
     return;
   }
   if (result === "block") {
     S.last = sh.blocker; S.lastTeam = def;
-    if (rand() < 0.3) { emit(S, "out", { kind: "corner", team, by: sh.blocker?.name, byTeam: def }); return setRestart(S, "corner", team, team === "us" ? 104.3 : 0.7, S.ball.y < 34 ? 0.7 : 67.3); }
+    if (rand() < 0.3) return overLine("block", 12);
     const g = dirOf(def);
     launch(S, clamp(S.ball.x + g * range(4, 12), 2, 103), clamp(S.ball.y + range(-9, 9), 2, 66), { air: rand() < 0.5, h: 2, kind: "deflect", then: S2 => landLoose(S2) });
     return;
@@ -1219,7 +1231,7 @@ function startStep(S, st) {
   if (st.do === "shot") {
     const p = st.by;
     if (S.holder !== p) { if (hyp(p.x - S.ball.x, p.y - S.ball.y) > 3) { S.ball.fl = null; S.ball.x = p.x + dirOf(p.team) * 0.8; S.ball.y = p.y; } give(S, p); }
-    shoot(S, p, { result: st.result, kind: st.kind || "shot", assist: st.assist ?? null, silent: true });
+    shoot(S, p, { result: st.result, kind: st.kind || "shot", assist: st.assist ?? null, silent: true, saveKind: st.saveKind || null });
     return busy(() => !S.shot, 4);                         // 슈팅 결과가 나는 순간 다음 단계(중계 문장)로
   }
   if (st.do === "restart") {
