@@ -724,7 +724,17 @@ function canSit(state, m, s) {
   if ((s.late && !late) || (s.leading && a <= b) || (s.trailing && a >= b)) return false;
   return true;
 }
-const sitWeight = (m, s) => s.weight * (m.score[0] < m.score[1] && m.minute > 50 && s.zone === "att" ? 1.6 : 1) * 0.3 ** (m.seen?.[s.id] || 0);   // 같은 장면이 되풀이되지 않게
+// 포지션 맛: 미드필더는 수비·깊은 진영 장면이 경기장 구조상 많이 생기므로 줄이고, 앞으로 찔러 주는 패스 장면을 늘림
+const ATT_PASS = new Set(["assist", "keyPass", "killPass"]);
+const posTaste = (m, s) => {
+  if (m.myPos !== "MF") return 1;
+  let k = 1;
+  if ((s.poss || "us") === "them") k *= 0.4;
+  else if (s.zone === "def") k *= 0.35;
+  if (s.choices.some(c => ATT_PASS.has(c.win))) k *= 1.6;
+  return k;
+};
+const sitWeight = (m, s) => s.weight * posTaste(m, s) * (m.score[0] < m.score[1] && m.minute > 50 && s.zone === "att" ? 1.6 : 1) * 0.3 ** (m.seen?.[s.id] || 0);   // 같은 장면이 되풀이되지 않게
 // 장면이 말하는 자리와 지금 공 자리가 얼마나 맞는지 (1이면 그 자리)
 // 장면이 시작될 때 공이 있을 자리: 동료가 공을 가졌는데 장면은 내가 받는 장면이면 동료가 나에게 패스하므로 내 자리
 function sceneBall(m, s) {
@@ -777,7 +787,8 @@ function wantFits(m, want, ctx) {
 // 공격 장면을 기다리는데 상대 공 상황이 왔을 때, 세트피스를 기다릴 때는 더 오래 참음 (한쪽 장면으로 쏠리지 않게)
 function wantPatience(m, want, ctx) {
   if (want.cat.includes(":")) return 6;
-  return (want.sit.poss || "us") === ctx.poss ? 3 : 4.5;
+  if ((want.sit.poss || "us") === ctx.poss) return 3;
+  return m.myPos === "MF" && (want.sit.poss || "us") === "us" ? 7 : 4.5;      // 미드필더가 공격 장면을 기다릴 때는 수비 장면으로 쉽게 넘어가지 않게
 }
 // 세트피스 장면을 기다리는데 오래 안 나오면, 그럴듯한 순간에 경기장에서 만들어 줌 (코너킥, 박스 앞 반칙, 스로인…)
 function makeSetPiece(m, want) {
@@ -962,7 +973,9 @@ export function next(state, m) {
       S.bias = { me: 3, planPos: m.want && (m.want.sit.poss || "us") === "us" && m.want.sit.zone === "att" ? state.player.position : null,
         defSide: m.want?.sit.poss === "them",
         them: m.want?.sit.poss === "them" && m.minute - m.want.t0 >= 1.5 };          // 내 수비 장면을 오래 기다리면 상대가 조금 더 적극적으로 올라옴
-      const ctx = momentCtx(state, m, S.ev.slice(n0));
+      let ctx = momentCtx(state, m, S.ev.slice(n0));
+      // 미드필더: 공이 우리 진영 깊은 곳(x34 안)이면 중원으로 나올 때까지 기다림 (수비·뒤로 돌리기 장면만 나오지 않게). 5분 넘게 기다리면 허용
+      if (ctx && m.myPos === "MF" && !ctx.cat.includes(":") && S.ball.x < 34 && m.want && m.minute - m.want.t0 < 5 && m.minute < 63) ctx = null;
       let sit = null;
       if (ctx && m.want && wantFits(m, m.want, ctx)) sit = m.want.sit;
       else if (ctx && (!m.want || m.minute - m.want.t0 >= wantPatience(m, m.want, ctx))) sit = pickSituation(state, m, ctx);   // 오래 안 맞으면 지금 상황에 맞는 장면으로
