@@ -36,7 +36,7 @@ self.OFFLINE_FILES = [
   ["js/ui/match.js","dd327d91af"],
   ["js/ui/minigames.js","79644c41f1"],
   ["js/ui/modals.js","9960891c5b"],
-  ["js/ui/pitch.js","5365de6d2c"],
+  ["js/ui/pitch.js","795e804e88"],
   ["js/ui/sfx.js","1c7f5bc70c"],
   ["js/ui/util.js","8e55bec0cd"],
   ["js/ui/views.js","9a6f0f5cea"],

@@ -11038,11 +11038,14 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
     const [, pos, i] = p.id.split("-");
     p.role = ROLES[pos][+i] || pos;
     p.tx = p.x; p.ty = p.y; p.speed = JOG; p.ov = null; p.press = false;
+    p.vx = 0; p.vy = 0; p.ph = [Math.random() * 6.3, Math.random() * 6.3, Math.random() * 6.3, Math.random() * 6.3];
+    const el = dotEls[p.id]; if (el) el.style.transform = "";        // 위치는 SVG transform 속성으로 (아이폰 사파리에서 더 부드러움)
   }
+  ballEl.style.transform = ""; shadowEl.style.transform = "";
   const S = {
     ball: { x: 52.5, y: 34, z: 0, fl: null }, holder: null, poss: "us", pending: null,
     block: { us: blocks.us || "mid", them: blocks.them || "mid" }, scale: 1, flipped: false,
-    queue: [], cur: null, wait: 0, done: null, chasers: [], frozen: false,
+    queue: [], cur: null, wait: 0, done: null, chasers: [], frozen: false, clock: 0,
   };
   let raf = 0, last = 0, idle = 0;
 
@@ -11087,6 +11090,10 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
       let [x, y] = sh[p.role] || [52.5, 34];
       if (p.team === att && p.role !== "GK") x = Math.min(x, offAtt);
       [x, y] = own(p.team, [x, y]);
+      // 제자리에 서 있지 않고 늘 조금씩 움직임 (자리를 고쳐 잡는 걸음)
+      const a = p.role === "GK" ? 0.35 : 1, c = S.clock, f = p.ph;
+      x += a * (1.3 * Math.sin(c * 0.43 + f[0]) + 0.6 * Math.sin(c * 1.17 + f[1]));
+      y += a * (1.1 * Math.sin(c * 0.37 + f[2]) + 0.5 * Math.sin(c * 0.91 + f[3]));
       p.tx = clamp(x, 1.5, 103.5); p.ty = clamp(y, 1.5, 66.5); p.speed = JOG; p.press = false;
     }
     const H = S.holder;
@@ -11103,6 +11110,7 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
       const g = -dirOf(p.team);
       p.tx = S.ball.x + g * Math.max(2.8, c.gap); p.ty = S.ball.y + c.side; p.speed = c.v; p.press = true;
     }
+    for (const p of T) if (p.ov?.keep && Math.hypot(p.x - p.ov.x, p.y - p.ov.y) < 0.6) p.ov = null;
     for (const p of T) if (p.ov) { p.tx = p.ov.x; p.ty = p.ov.y; p.speed = p.ov.v; }
     if (H && !H.ov && !S.ball.fl) { H.tx = H.x; H.ty = H.y; }            // 공 가진 선수는 대본이 없으면 그 자리에서 공을 지킴
     // 서로 너무 붙지 않게 (공 가진 선수·압박·대본 선수는 움직이지 않고 남이 비켜 줌)
@@ -11120,39 +11128,58 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
   }
 
   // ── 움직임 ──
+  // 가속도가 있어서 갑자기 서거나 튀어 나가지 않음 (최대 가속 16m/s²)
   function movePlayers(dt) {
     let moving = false;
+    const ACC = 16 * dt;
     for (const p of T) {
       const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy);
-      if (d < 0.03) continue;
+      const v = d < 0.02 ? 0 : Math.min(p.speed, d * 2.2);
+      const wx = d < 0.02 ? 0 : dx / d * v, wy = d < 0.02 ? 0 : dy / d * v;
+      let ax = wx - p.vx, ay = wy - p.vy; const am = Math.hypot(ax, ay);
+      const acc = p.ov && p.ov.v >= 12 ? ACC * 2 : ACC;                // 장면 준비처럼 빨리 모일 때는 더 빨리
+      if (am > acc && am > 0) { ax *= acc / am; ay *= acc / am; }
+      p.vx += ax; p.vy += ay;
+      const sp = Math.hypot(p.vx, p.vy);
+      if (sp < 0.01) continue;
       moving = true;
-      const v = Math.min(p.speed, d * 1.9 + 0.4);
-      const s = Math.min(d, v * dt);
-      p.x += dx / d * s; p.y += dy / d * s;
+      let mx = p.vx * dt, my = p.vy * dt;
+      if (Math.hypot(mx, my) > d && d < 0.5) { mx = dx; my = dy; p.vx *= 0.5; p.vy *= 0.5; }   // 목표를 지나치지 않게
+      p.x += mx; p.y += my;
     }
     return moving;
   }
-  function toFeet() {
+  // 공을 공 가진 선수 발밑으로. 멀리 있으면 순간이동하지 않고 moveBall에서 따라붙음
+  function toFeet(force) {
     const h = S.holder; if (!h) return;
-    S.ball.x = clamp(h.x + dirOf(h.team) * 0.9, 0.4, 104.6); S.ball.y = h.y; S.ball.z = 0;
+    const fx = clamp(h.x + dirOf(h.team) * 0.9, 0.4, 104.6), fy = h.y;
+    if (force || Math.hypot(fx - S.ball.x, fy - S.ball.y) < 1.2) { S.ball.x = fx; S.ball.y = fy; S.ball.z = 0; }
   }
   function moveBall(dt) {
     const f = S.ball.fl;
     if (!f) {
       if (S.pending && Math.hypot(S.pending.x - S.ball.x, S.pending.y - S.ball.y) < 1.6) { take(S.pending); }
-      if (S.holder) toFeet();
+      const h = S.holder;
+      if (h) {
+        const fx = clamp(h.x + dirOf(h.team) * 0.9, 0.4, 104.6), fy = h.y;
+        const dx = fx - S.ball.x, dy = fy - S.ball.y, d = Math.hypot(dx, dy);
+        const step = Math.min(d * (1 - Math.exp(-dt * 16)), 42 * dt + (d < 2 ? d : 0));   // 멀리 있으면 굴러서 감 (초속 42m 이하)
+        if (d > 0.001) { S.ball.x += dx / d * step; S.ball.y += dy / d * step; }
+        S.ball.z *= Math.exp(-dt * 10);
+      }
       return;
     }
     f.u = Math.min(1, f.u + dt / f.T);
     const e = f.air ? f.u : 1 - (1 - f.u) ** 2;
     S.ball.x = f.x0 + (f.x1 - f.x0) * e; S.ball.y = f.y0 + (f.y1 - f.y0) * e;
-    S.ball.z = f.air ? f.h * 4 * f.u * (1 - f.u) : 0;
+    S.ball.z = (f.air ? f.h * 4 * f.u * (1 - f.u) : 0) + f.z0 * Math.max(0, 1 - f.u * 3);   // 떠 있던 공은 이어서 내려옴
     if (f.u >= 1) { S.ball.fl = null; S.ball.z = 0; const cb = f.done; f.done = null; cb?.(); }
   }
-  function launch(x1, y1, { air = false, Tsim, h, done } = {}) {
+  function launch(x1, y1, { air = false, Tsim, h, done, shot = false } = {}) {
     const x0 = S.ball.x, y0 = S.ball.y, d = Math.hypot(x1 - x0, y1 - y0);
     const T0 = air ? 0.42 + d / 21 : 0.1 + d / 18;
-    S.ball.fl = { x0, y0, x1, y1, T: Math.max(0.08, Tsim != null ? Math.min(T0, Tsim) : T0), u: 0, air, h: h ?? Math.min(6.5, d * 0.2), done };
+    const Tmin = shot ? 0.08 : Math.max(0.08, d / (air ? 36 : 32));      // 패스·걷어 내기는 초속 32~36m보다 빠르지 않게
+    S.ball.fl = { x0, y0, x1, y1, T: Math.max(Tmin, Tsim != null ? Math.min(T0, Tsim) : T0), u: 0, air, h: h ?? Math.min(6.5, d * 0.2), done, z0: S.ball.z || 0 };
     S.holder = null;
     return S.ball.fl.T;
   }
@@ -11163,15 +11190,17 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
 
   // ── 그리기 ──
   const SX = x => (S.flipped ? 105 - x : x), SY = y => (S.flipped ? 68 - y : y);
+  const put = (el, v) => { if (el._t !== v) { el._t = v; el.setAttribute("transform", v); } };
   function render() {
     for (const p of T) {
       const el = dotEls[p.id];
-      if (el) el.style.transform = `translate(${SX(p.x).toFixed(2)}px,${SY(p.y).toFixed(2)}px)`;
+      if (el) put(el, `translate(${SX(p.x).toFixed(2)} ${SY(p.y).toFixed(2)})`);
     }
     const b = S.ball, x = SX(b.x), y = SY(b.y);
-    ballEl.style.transform = `translate(${x.toFixed(2)}px,${(y - b.z).toFixed(2)}px) scale(${(1 + b.z * 0.06).toFixed(3)})`;
-    shadowEl.style.transform = `translate(${x.toFixed(2)}px,${(y + 0.7).toFixed(2)}px) scale(${Math.max(0.5, 1 - b.z * 0.07).toFixed(3)})`;
-    shadowEl.style.opacity = Math.max(0.25, 1 - b.z * 0.1).toFixed(2);
+    put(ballEl, `translate(${x.toFixed(2)} ${(y - b.z).toFixed(2)}) scale(${(1 + b.z * 0.06).toFixed(3)})`);
+    put(shadowEl, `translate(${x.toFixed(2)} ${(y + 0.7).toFixed(2)}) scale(${Math.max(0.5, 1 - b.z * 0.07).toFixed(3)})`);
+    const op = Math.max(0.25, 1 - b.z * 0.1).toFixed(2);
+    if (shadowEl._o !== op) { shadowEl._o = op; shadowEl.setAttribute("opacity", op); }
   }
 
   // ── 대본 실행 (장면 연출) ──
@@ -11191,15 +11220,16 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
 
   function frame(now) {
     raf = 0;
-    const dtr = Math.min(0.05, (now - last) / 1000); last = now;
+    const dtr = clamp((now - last) / 1000, 0, 0.1); last = Math.max(last, now);   // 느린 휴대폰에서도 시간은 제대로 흐르게 (첫 프레임 시각이 앞설 때는 0)
     const dt = dtr * S.scale * (S.boost || 1);
+    S.clock += dtr;
     const busy = runQueue(dt);
     targets();
     const moving = movePlayers(dt);
     moveBall(dt);
     render();
     if (moving || S.ball.fl || busy || S.pending) idle = 0; else idle += dtr;
-    if (idle < 0.5) raf = requestAnimationFrame(frame);           // 다 멈추면 그리기도 쉼
+    if (!S.dead) raf = requestAnimationFrame(frame);                // 경기 중에는 늘 조금씩 움직임 (다른 앱으로 가면 멈춤)
   }
   function wake() {
     idle = 0;
@@ -11219,7 +11249,7 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
       targets();
       for (const p of T) { p.x = p.tx; p.y = p.ty; }
       if (S.pending) take(S.pending);
-      toFeet();
+      toFeet(true);
     }
     render();
   }
@@ -11239,7 +11269,7 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
     const [bx, by] = l.ball;
     S.chasers = S.chasers.filter(c => c.keep);
     // 킥오프 자리 (경기 시작, 후반 시작, 골 뒤, 전·후반 종료)
-    if (bx === 52.5 && by === 34) { kickoff(l.poss || null, l.k === "whistle" && !l.half2 && l.poss === "us" && !S.started); return 0; }
+    if (bx === 52.5 && by === 34) { const first = l.k === "whistle" && !l.half2 && l.poss === "us" && !S.started; kickoff(l.poss || null, first); return first ? 0 : Math.round(1700 / S.scale); }
     // 주어진 시간 안에 끝내되, 먼 패스는 최대 1.35배까지 시간을 더 씀 (공이 비현실적으로 빠르지 않게)
     const base = Math.max(0.15, ms / 1000 * S.scale * 0.82);
     const d0 = Math.hypot(bx - S.ball.x, by - S.ball.y);
@@ -11250,12 +11280,22 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
   }
   function act(l, bx, by, avail) {
     const actor = l.actor ? byName(l.actor, l.poss || (l.k === "them" ? "them" : "us")) : null;
-    // 세트피스 배치
-    if (l.set) setPiece(l.set, l, actor);
+    // 세트피스 배치: 공은 그 자리로 굴러가고 키커가 공 앞에 섬 (가로채기가 아님)
+    if (l.set) {
+      setPiece(l.set, l, actor);
+      const [sx, sy] = l.ball;
+      const kicker = actor || nearest(l.poss || "us", [sx, sy], p => p.role !== "GK");
+      S.holder = null; S.pending = kicker || null; S.poss = l.poss || kicker?.team || S.poss;
+      launch(sx, sy, { Tsim: avail });
+      if (kicker) kicker.ov = { x: sx - dirOf(kicker.team) * 1.1, y: sy, v: clamp(Math.hypot(kicker.x - sx, kicker.y - sy) / Math.max(0.3, avail), RUN, 11), recv: true };
+      return wake();
+    }
     // 골
     if (l.k && l.k.startsWith("goal") && (bx >= 103.5 || bx <= 1.5)) return shot(bx, by, "goal", avail);
     // 골키퍼 선방
-    if (actor && actor.role === "GK" && isGkPt(bx)) return shot(bx, by, "save", avail, actor);
+    // 골키퍼 선방: 상대 팀 문장에서 골키퍼가 공을 잡을 때만 (우리 골키퍼의 골킥·공 돌리기는 선방이 아님)
+    const speak = /^(us|me|goal-us|goal-me)/.test(l.k || "") ? "us" : /^(them|goal-them)/.test(l.k || "") ? "them" : S.poss;
+    if (actor && actor.role === "GK" && isGkPt(bx) && speak !== actor.team) return shot(bx, by, "save", avail, actor);
     // 골대
     if ((bx >= 104.2 || bx <= 0.8) && (Math.abs(by - 30.4) < 0.4 || Math.abs(by - 37.6) < 0.4)) return shot(bx, by, "post", avail);
     // 코너킥 키커가 코너 플래그로
@@ -11338,7 +11378,7 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
       gk.ov = { x: gx, y: clamp(dive, 29, 39), v: 9.5 };
     }
     const air = kind === "wide" && Math.random() < 0.5;
-    launch(bx, by, { air, Tsim: T1, h: 1.6 });
+    launch(bx, by, { air, Tsim: T1, h: 1.6, shot: true });
     S.ball.fl.done = () => {
       if (kind === "save" && gk) { gk.ov = null; take(gk); }
       else if (kind === "post") launch(bx + (bx > 52 ? -5 : 5), by + (by < 34 ? -3 : 3), { Tsim: 0.5, h: 1 });
@@ -11350,32 +11390,30 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
   // 킥오프 자리로 (전반 시작은 그 자리에 바로 섬)
   function kickoff(team, instant) {
     S.started = true;
-    S.queue = []; S.cur = null; S.wait = 0; S.chasers = []; S.pending = null;
-    S.ball.fl = null; S.ball.x = 52.5; S.ball.y = 34; S.ball.z = 0; S.holder = null; S.poss = team || "us";
-    const spots = {};
+    S.queue = []; S.cur = null; S.wait = 0; S.chasers = []; S.pending = null; S.focus = null; S.forceLine = null;
+    S.holder = null; S.poss = team || "us";
+    const k = team ? T.find(p => p.team === team && p.role === "ST1") : null;
     for (const p of T) {
       const f = FORM[p.role];
       let pt = p.role === "GK" ? [4, 34] : [KICKOFF_X[p.pos], 34 + (f ? f.d[1] : 0) * 21];
       if (p.team === team && p.role === "ST1") pt = [51.6, 34];
       if (p.team === team && p.role === "ST2") pt = [49.5, 27.5];
-      spots[p.id] = own(p.team, pt);
+      const [x, y] = own(p.team, pt);
+      if (instant) { p.x = x; p.y = y; p.ov = null; p.vx = 0; p.vy = 0; }
+      else p.ov = { x, y, v: 11, keep: true };                            // 도착하면 저절로 풀림
     }
-    for (const p of T) {
-      const [x, y] = spots[p.id];
-      if (instant) { p.x = x; p.y = y; p.ov = null; } else p.ov = { x, y, v: 13 };
-    }
-    S.cur = { until: () => T.every(p => !p.ov || Math.hypot(p.x - p.ov.x, p.y - p.ov.y) < 0.5), t: 2.2 };
-    S.queue.push(() => { for (const p of T) p.ov = null; if (team) { const k = T.find(p => p.team === team && p.role === "ST1"); if (k) take(k); } });
-    if (instant) { S.cur = null; S.queue = []; for (const p of T) p.ov = null; if (team) { const k = T.find(p => p.team === team && p.role === "ST1"); if (k) take(k); } }
+    if (instant) { S.ball.fl = null; S.ball.x = 52.5; S.ball.y = 34; S.ball.z = 0; if (k) take(k); }
+    else launch(52.5, 34, { air: true, Tsim: 1.1, h: 4, done: () => { if (k) S.pending = k; } });   // 골망·경기장 밖의 공이 가운데로
     wake(); render();
   }
   // 코너킥: 키커는 깃발로, 양 팀은 박스 안으로
   function corner(taker, fx, fy) {
     const team = taker.team, gx = team === "us" ? 1 : -1, s = fy < 34 ? -1 : 1;
     S.chasers = [];
-    S.ball.fl = null; S.holder = null; S.pending = null; S.poss = team;
-    S.ball.x = team === "us" ? 104.2 : 0.8; S.ball.y = s < 0 ? 0.8 : 67.2;
-    taker.ov = { x: S.ball.x - gx * 0.6, y: S.ball.y + s * -0.4, v: 13 };
+    S.holder = null; S.pending = null; S.poss = team;
+    const flag = [team === "us" ? 104.2 : 0.8, s < 0 ? 0.8 : 67.2];
+    launch(flag[0], flag[1], { air: true, Tsim: 0.8, h: 2.5 });          // 새 공이 코너로
+    taker.ov = { x: flag[0] - gx * 0.6, y: flag[1] + s * -0.4, v: 13 };
     packBox(team, taker);
     S.queue.push(() => { taker.ov = null; take(taker); });
     S.cur = { until: () => Math.hypot(taker.x - taker.ov?.x, taker.y - taker.ov?.y) < 0.6 || !taker.ov, t: 1.6 };
@@ -11412,7 +11450,7 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
         if (inBox || Math.hypot(p.x - spot, p.y - 34) < 10) p.ov = { x: team === "us" ? 85 : 20, y: clamp(p.y, 16, 52), v: 11 };
       }
       l.ball = [spot, 34];
-      if (actor) { actor.ov = null; S.ball.fl = null; S.ball.x = spot; S.ball.y = 34; actor.x = spot - dirOf(team) * 1.4; actor.y = 34.5; take(actor); }
+      if (actor) { actor.ov = null; S.holder = null; S.pending = null; }     // 공과 키커는 이어지는 움직임에서 페널티 지점으로
     }
   }
 
@@ -11458,12 +11496,15 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
     const run = (p, pt, v = RUN) => { if (p) p.ov = { x: pt[0], y: pt[1], v }; };
     // 도착을 기다림. 시간 안에 못 오면 그 자리로 옮겨 놓음 (장면 사이에 시간이 흐른 셈)
     const arrive = (ps, tmax = 1.4) => {
-      S.cur = { until: () => ps.every(p => !p || !p.ov || Math.hypot(p.x - p.ov.x, p.y - p.ov.y) < 0.6), t: tmax,
-        timeout: () => { for (const p of ps) if (p?.ov) { p.x = p.ov.x; p.y = p.ov.y; } } };
+      S.cur = { until: () => ps.every(p => !p || !p.ov || Math.hypot(p.x - p.ov.x, p.y - p.ov.y) < 0.6), t: tmax };   // 시간 안에 못 와도 순간이동하지 않고 계속 뛰어감
     };
+    // 공을 그 자리·그 선수에게 (순간이동 없이 굴러가거나 떠서 감)
     const placeBall = (pt, holder) => {
-      S.ball.fl = null; S.pending = null;
-      if (holder) { take(holder); toFeet(); } else { S.holder = null; S.ball.x = pt[0]; S.ball.y = pt[1]; S.ball.z = 0; }
+      S.pending = null;
+      if (holder) { S.ball.fl = null; take(holder); return; }
+      const d = Math.hypot(pt[0] - S.ball.x, pt[1] - S.ball.y);
+      if (d < 0.5) return;
+      launch(pt[0], pt[1], { air: d > 16, Tsim: 0.25 + d / 45, h: Math.min(4, d * 0.1) });
     };
     const goTo = (p, pt) => { Q.push(() => { run(p, [pt[0] - dirOf(p.team) * 0.9, pt[1]], 14); arrive([p], 1.3); }); Q.push(() => { p.ov = null; }); };
     // 공을 출발점의 선수에게 먼저 모음 (가까우면 공이 굴러가고, 멀면 다음 장면으로 넘어간 셈이라 바로 놓음)
@@ -11473,7 +11514,7 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
         const d = Math.hypot(S.ball.x - pt[0], S.ball.y - pt[1]);
         if (d < 30 && !S.holder) launch(pt[0], pt[1], { air: d > 20, Tsim: 0.7, h: 3 });
       });
-      Q.push(() => { p.ov = null; placeBall(pt, p); S.poss = p.team; });
+      Q.push(() => { p.ov = null; placeBall(pt, p); S.poss = p.team; S.cur = { until: () => Math.hypot(S.ball.x - p.x, S.ball.y - p.y) < 1.5, t: 1.4 }; });
     };
     const passTo = (from, r, pt, air = false, wait = 0.15) => {
       Q.push(() => {
@@ -11485,6 +11526,17 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
         S.cur = { until: () => S.holder === r, t: Tb + 1.6 };
       });
       if (wait) Q.push(() => { S.wait = wait; });
+    };
+    // 세트피스: 공은 그 자리로 굴러가고, 키커는 공 앞으로 뛰어가서 잡음 (순간이동 없음)
+    const toSpot = (p, pt, tmax = 7) => {
+      Q.push(() => {
+        S.holder = null; S.pending = null; S.poss = p.team;
+        const d = Math.hypot(pt[0] - S.ball.x, pt[1] - S.ball.y);
+        if (d > 0.5) launch(pt[0], pt[1], { air: d > 18, Tsim: 0.3 + d / 40, h: Math.min(4, d * 0.1) });
+        p.ov = { x: pt[0] - dirOf(p.team) * 1.1, y: pt[1], v: 14 };
+        S.cur = { until: () => !S.ball.fl && Math.hypot(p.x - p.ov.x, p.y - p.ov.y) < 0.8, t: tmax };
+      });
+      Q.push(() => { p.ov = null; take(p); });
     };
     const carryTo = (p, pt, v = DRIBBLE) => Q.push(() => { take(p); p.ov = { x: pt[0] - dirOf(p.team) * 0.9, y: pt[1], v, recv: true }; S.cur = { until: () => !p.ov || Math.hypot(p.x - p.ov.x, p.y - p.ov.y) < 0.4, t: 3.2 }; });
 
@@ -11538,7 +11590,7 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
         const gk = who("ogk");
         const sp1 = from === "save" ? [101.6, clamp(by, 30, 38)] : (src || P(5, -3));
         if (from === "save" && gk) goTo(gk, [102.5, sp1[1]]);
-        Q.push(() => placeBall(sp1, null));
+        Q.push(() => { placeBall(sp1, null); S.cur = { until: () => !S.ball.fl, t: 1.2 }; });
         runAt = Q.length;
         Q.push(() => {
           const d = Math.hypot(bx - S.ball.x, by - S.ball.y);
@@ -11577,29 +11629,28 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
         const taker = who(sp.giver || "wing", [104, by]) || near("us", ["MF"], [104, by]);
         const fy = s < 0 ? 0.8 : 67.2;
         if (taker) {
-          Q.push(() => { taker.ov = { x: 103.6, y: fy + (s < 0 ? 0.5 : -0.5), v: 14 }; arrive([taker], 1.3); });
-          Q.push(() => { taker.ov = null; S.ball.fl = null; S.ball.x = 104.2; S.ball.y = fy; take(taker); toFeet(); S.wait = 0.3; });
+          toSpot(taker, [104.2, fy]);
+          Q.push(() => { S.wait = 0.3; });
           runAt = Q.length;
           passTo(taker, R, [bx, by], true);
         }
         break;
       }
       case "kicker": case "fk": {                                        // 공 앞에 내가 섬
-        Q.push(() => { R.ov = { x: bx - dirOf(R.team) * 1.2, y: by, v: 13 }; arrive([R], 1.4); });
-        Q.push(() => { R.ov = null; take(R); S.ball.x = bx; S.ball.y = by; });
+        toSpot(R, [bx, by]);
         if (from === "fk") Q.push(() => { setPiece("fk", { ball: [bx, by], poss: "us" }, R); arrive(T.filter(p => p.ov), 1.4); });
         runAt = Q.length;
         break;
       }
       case "throw": {
         const ty = s < 0 ? 0.4 : 67.6;
-        Q.push(() => { R.ov = { x: bx, y: ty, v: 13 }; arrive([R], 1.3); });
-        Q.push(() => { R.ov = null; S.ball.fl = null; take(R); S.ball.x = bx; S.ball.y = ty; });
+        toSpot(R, [bx, ty]);
         runAt = Q.length;
         break;
       }
       case "pk": {
-        Q.push(() => { const l = { ball: [94, 34], poss: "us" }; setPiece("pk", l, R); arrive(T.filter(p => p.ov), 1.4); });
+        Q.push(() => { const l = { ball: [94, 34], poss: "us" }; setPiece("pk", l, R); });
+        toSpot(R, [94, 34]);
         break;
       }
       case "oppPass": case "oppLong": {
@@ -11619,8 +11670,8 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
         const tp = corner ? [0.8, s < 0 ? 0.8 : 67.2] : [bx + 2, s < 0 ? 0.4 : 67.6];
         const taker = who(corner ? "oppwing" : "oppfb", tp) || near("them", null, tp);
         if (taker) {
-          Q.push(() => { taker.ov = { x: tp[0] + (corner ? 0.6 : 0), y: tp[1], v: 14 }; arrive([taker], 1.3); });
-          Q.push(() => { taker.ov = null; S.ball.fl = null; S.ball.x = tp[0]; S.ball.y = tp[1]; take(taker); S.wait = 0.3; });
+          toSpot(taker, tp);
+          Q.push(() => { S.wait = 0.3; });
           runAt = Q.length;
           passTo(taker, R, [bx, by], true);
         }
@@ -11641,7 +11692,7 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
         break;
     }
     // 준비 단계(모이기)는 빠르게 돌리고, 공이 출발하면 원래 속도로
-    Q.unshift(() => { S.boost = 3; });
+    Q.unshift(() => { S.boost = 2; });
     if (runAt >= 0) runAt++;
     Q.splice(runAt < 0 ? Q.length : runAt, 0, () => { S.boost = 1; });
     // 뛰어 들어가는 선수들: 공이 출발할 때 같이 출발
@@ -11673,12 +11724,17 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false, blo
   return {
     line, scene, kickoff,
     setSpeed(name) { S.scale = name === "fast" ? 2.6 : 1; },
-    setFlip(v) { S.flipped = v; render(); },
+    // 후반 진영 교체: 잠깐 어두워졌다가 뒤집힌 채로 나타남 (순간이동처럼 보이지 않게)
+    setFlip(v) {
+      if (calm) { S.flipped = v; return render(); }
+      svg.style.transition = "opacity .25s"; svg.style.opacity = "0";
+      setTimeout(() => { S.flipped = v; render(); svg.style.opacity = "1"; }, 260);
+    },
     setBlocks(b) { Object.assign(S.block, b); },
-    clearRuns() { for (const p of T) if (!p.ov?.recv) p.ov = null; S.chasers = []; S.forceLine = null; S.focus = null; S.noPress = false; },
+    clearRuns() { for (const p of T) if (!p.ov?.recv && !p.ov?.keep) p.ov = null; S.chasers = []; S.forceLine = null; S.focus = null; S.noPress = false; },
     finish() { const c = calm; snap(); return c; },
     ball() { return [S.ball.x, S.ball.y]; },
-    destroy() { cancelAnimationFrame(raf); raf = 0; document.removeEventListener("visibilitychange", onVis); },
+    destroy() { S.dead = true; cancelAnimationFrame(raf); raf = 0; document.removeEventListener("visibilitychange", onVis); },
     render,
     _state: S,
   };
