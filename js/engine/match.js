@@ -177,7 +177,7 @@ export function timingOf(c) {
 // 모두 우리 전력 − 상대 전력(D)에 따라 바뀜
 // 시험 도구(tools/dev)가 경기 끝마다 내용을 받아 볼 수 있게
 export const DEV = { onFinish: null };
-export const CAL = { brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 5.8, kcu: 5.8, kcun: 80, ct: 3.3, kct: 22, kctn: 13, ft: 0.2, meShot: 1.1, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.09, dfk: 1.45 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비(가로채기·태클·헤더·걷어 내기·슈팅 막기) 기여 배수
+export const CAL = { brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 5.8, kcu: 5.8, kcun: 80, ct: 3.3, kct: 22, kctn: 13, ft: 0.2, meShot: 1.1, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.09, dfk: 1.45, mfk: 0.6 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비 기여 배수, mfk: 미드필더 선택 하나가 평점에 주는 몫 (선택이 많은 만큼)
 const sig = x => 1 / (1 + Math.exp(-x));
 
 // 상대 성향 → 경기장 움직임
@@ -309,7 +309,10 @@ export function prepareMatch(state, info, fx) {
   if (onPitch) {
     const from = status === "start" ? 1 : minIn + 1;
     // 능력치가 팀 평균보다 높을수록 공이 더 자주 나에게 옴
-    const n = status === "start" ? int(6, 7) + Math.round(star * 1.5) + (chance(CAL.mq) ? 1 : 0) : Math.max(2, Math.round((LENGTH - minIn) / LENGTH * (7 + star * 2)));
+    // 미드필더는 조율·도움·수비를 다 하는 자리라 선택 상황이 2~3번 더 (교체 출전은 뛴 시간만큼)
+    const extra = p.position === "MF" ? int(3, 4) : 0;               // 계획의 80%쯤이 실제로 나오므로 3~4개를 더 넣어 실제로 2~3번 더
+    const n = status === "start" ? int(6, 7) + Math.round(star * 1.5) + (chance(CAL.mq) ? 1 : 0) + extra
+      : Math.max(2, Math.round((LENGTH - minIn) / LENGTH * (7 + star * 2 + extra)));
     for (let i = 0; i < n; i++) momentQ.push(int(from, Math.max(from + 4, LENGTH - 6)));   // 경기장에서 상황이 올 때까지 기다리므로 끝나기 조금 전까지만
     if (status === "sub") timed.push({ type: "subIn", minute: minIn });
     // 경기 중 부상 (드묾). 피로가 높을수록, 유리몸이면 더 자주
@@ -731,6 +734,7 @@ const posTaste = (m, s) => {
   let k = 1;
   if ((s.poss || "us") === "them") k *= 0.4;
   else if (s.zone === "def") k *= 0.35;
+  else if (s.zone === "att") k *= 0.6;                     // 미드필더가 공격 지역에서 공을 받는 일은 드묾 (기다리느라 선택 상황이 줄지 않게)
   if (s.choices.some(c => ATT_PASS.has(c.win))) k *= 1.6;
   return k;
 };
@@ -787,8 +791,10 @@ function wantFits(m, want, ctx) {
 // 공격 장면을 기다리는데 상대 공 상황이 왔을 때, 세트피스를 기다릴 때는 더 오래 참음 (한쪽 장면으로 쏠리지 않게)
 function wantPatience(m, want, ctx) {
   if (want.cat.includes(":")) return 6;
+  // 미드필더는 장면 종류가 많고 자리 조건이 있으므로 기다리지 않고 지금 상황에 맞는 장면으로 (선택 상황이 많아지게). 상대 공 장면으로만 조금 기다림
+  if (m.myPos === "MF") return (want.sit.poss || "us") === ctx.poss ? 0.5 : (want.sit.poss || "us") === "us" ? 5 : 1;
   if ((want.sit.poss || "us") === ctx.poss) return 3;
-  return m.myPos === "MF" && (want.sit.poss || "us") === "us" ? 7 : 4.5;      // 미드필더가 공격 장면을 기다릴 때는 수비 장면으로 쉽게 넘어가지 않게
+  return 4.5;
 }
 // 세트피스 장면을 기다리는데 오래 안 나오면, 그럴듯한 순간에 경기장에서 만들어 줌 (코너킥, 박스 앞 반칙, 스로인…)
 function makeSetPiece(m, want) {
@@ -975,7 +981,8 @@ export function next(state, m) {
         them: m.want?.sit.poss === "them" && m.minute - m.want.t0 >= 1.5 };          // 내 수비 장면을 오래 기다리면 상대가 조금 더 적극적으로 올라옴
       let ctx = momentCtx(state, m, S.ev.slice(n0));
       // 미드필더: 공이 우리 진영 깊은 곳(x34 안)이면 중원으로 나올 때까지 기다림 (수비·뒤로 돌리기 장면만 나오지 않게). 5분 넘게 기다리면 허용
-      if (ctx && m.myPos === "MF" && !ctx.cat.includes(":") && S.ball.x < 34 && m.want && m.minute - m.want.t0 < 5 && m.minute < 63) ctx = null;
+      const backlog = m.momentQ.length >= 2 && m.minute >= m.momentQ[1];        // 밀린 장면이 쌓였으면 깊은 곳에서도
+      if (ctx && m.myPos === "MF" && !ctx.cat.includes(":") && S.ball.x < 34 && m.want && m.minute - m.want.t0 < 5 && m.minute < 63 && !backlog) ctx = null;
       let sit = null;
       if (ctx && m.want && wantFits(m, m.want, ctx)) sit = m.want.sit;
       else if (ctx && (!m.want || m.minute - m.want.t0 >= wantPatience(m, m.want, ctx))) sit = pickSituation(state, m, ctx);   // 오래 안 맞으면 지금 상황에 맞는 장면으로
@@ -990,7 +997,7 @@ export function next(state, m) {
   }
   const min = m.minute;
   const L = (t, k = "info", extra = {}) => lines.push({ t, k, minute: min, ts: S.t, ...extra });
-  if (kind === "moment") { m.nextOk = S.t + 3; }
+  if (kind === "moment") { m.nextOk = S.t + (m.myPos === "MF" ? 1.5 : 3); }   // 미드필더는 선택 상황이 많아 간격을 짧게
   if (kind === "ht") {
     m.half = 2; m.half2Pending = true; m.minute = HALF;
     const [a, b] = m.score;
@@ -1119,7 +1126,7 @@ export function resolve(state, m, ci, timing = null) {
   const main = Object.entries(c.stats).sort((a, b) => b[1] - a[1])[0][0];
   m.my.decisions++; if (ok) m.my.successes++;
   m.my.log.push({ sit: pd.sit.id, label: c.label, ok, out, stat: main, value: getPath(pl.stats, main), level: pd.choices[ci].level, minute: min, signature: !!c.signature });
-  m.my.delta += OUTCOMES[out].rating;
+  m.my.delta += OUTCOMES[out].rating * (m.myPos === "MF" ? CAL.mfk : 1);      // 미드필더는 선택이 많은 만큼 하나하나의 몫을 조금 줄여 평점 수준을 맞춤
   if (pd.sit.id === "penalty" && out === "miss") { m.stats.us.shots++; m.stats.us.on++; }
   else if (out === "miss" && isShotChoice(c)) m.stats.us.shots++;   // 빗나간 슈팅도 슈팅 수에
   if (/corner/.test(pd.sit.id)) m.stats.us.corners++;
