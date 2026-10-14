@@ -1,5 +1,6 @@
 // 경기 화면: 전광판 → 22명이 움직이는 경기장 → 문자 중계 → 내 장면 선택지
-import { next, resolve, autoChoice, autoPlay, finishMatch, applyHalftime, STATUS_LABEL, TAG_LABEL, MY_SLOT } from "../engine/match.js";
+import { next, resolve, autoChoice, autoPlay, finishMatch, applyHalftime, STATUS_LABEL, TAG_LABEL } from "../engine/match.js";
+import { frameNow } from "../engine/sim.js";
 import { STAFF } from "../../data/roster.js";
 import { getPath } from "../rng.js";
 import { tierLabel, TEAM_NAME } from "../engine/season.js";
@@ -9,10 +10,10 @@ import { setScene, enter, buzz } from "./fx.js";
 import { sfx } from "./sfx.js";
 import { bgm } from "./bgm.js";
 import { createPitch } from "./pitch.js";
-import { SCENES } from "../../data/scenes.js";
-import { styleOf } from "../engine/advice.js";
 
-const SPEED = { normal: 1250, fast: 420 };
+const TS_EPS = 0.01;                               // 중계 줄 시각과 경기장 시각 비교 여유 (초)
+
+const GAP = { normal: 600, fast: 260 };              // 중계 줄 사이 최소 간격(ms). 경기장은 그동안 계속 움직임
 const HALF_MIN = 35;                                  // 후반부터는 양 팀이 진영을 바꿔 공격 방향이 반대가 됨
 
 // 상대 팀 유니폼 색. 데이터에 없으면 팀 이름으로 정해진 색을 씀
@@ -26,33 +27,10 @@ function kitOf(opp) {
   return { fill, stroke: stroke || "#FFFFFF", text: lum > 0.55 ? "#14181F" : "#FFFFFF", gk, gkText: lum > 0.5 ? "#FFFFFF" : "#14181F" };
 }
 
-// 기본 대형 (우리 팀이 오른쪽으로 공격). 상대는 좌우를 뒤집어 씀
-const BASE = {
-  GK: [[4, 34]],
-  DF: [[18, 10], [16, 26], [16, 42], [18, 58]],
-  MF: [[38, 12], [35, 27], [35, 41], [38, 56]],
-  FW: [[55, 26], [55, 42]],
-};
-
-// 선수 22명 만들기. 점 하나하나가 명단의 실제 선수(이름·등번호)와 이어져 있음
-function buildPlayers(state, m) {
-  const p = state.player;
-  const list = [];
-  const ours = { GK: [{ name: m.gk.us, number: 1 }], DF: [], MF: [], FW: [] };
-  for (const x of m.lineup) ours[x.pos].push({ ...x });
-  for (const [pos, spots] of Object.entries(BASE)) {
-    spots.forEach((pt, i) => {
-      let who = ours[pos][i], me = false;
-      const mySlot = pos === p.position && i === MY_SLOT[pos];
-      if (mySlot && m.status === "start") { ours[pos].splice(i, 0, { name: p.name, number: p.number }); who = ours[pos][i]; me = true; }
-      list.push({ id: `u-${pos}-${i}`, team: "us", pos, base: pt, number: who?.number ?? "", name: who?.name ?? "", me,
-        subSlot: mySlot && m.status === "sub", x: pt[0], y: pt[1] });
-      const oy = Math.min(64, Math.max(4, pt[1] + (pos === "GK" ? 0 : 3)));
-      const opp = pos === "GK" ? { name: m.gk.them, number: 1 } : m.oppPlayers.filter(o => o.pos === pos)[i];
-      list.push({ id: `t-${pos}-${i}`, team: "them", pos, base: [105 - pt[0], oy], number: opp?.number ?? "", name: opp?.name ?? "", me: false, x: 105 - pt[0], y: oy });
-    });
-  }
-  return list;
+// 경기장 위 선수 22명: 엔진이 정한 명단(m.players)과 시뮬레이션의 처음 자리를 그대로 씀
+function buildPlayers(m) {
+  return m.players.map((p, i) => ({ id: p.id, team: p.team, pos: p.pos, name: p.name, number: p.number, me: p.me, subSlot: p.subSlot,
+    x: m.sim.P[i].x, y: m.sim.P[i].y }));
 }
 
 function pitchSvg(players, kit) {
@@ -79,9 +57,9 @@ export function showMatch(app, m, onDone) {
   const state = app.state;
   const p = state.player;
   const fx = m.fx;
-  let speed = "normal", timer = null, paused = false, queue = [], after = null;
+  let speed = "normal", paused = false, pend = [], after = null, waiting = false, lastShown = 0, holdUntil = 0, finished = false;
   const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const players = buildPlayers(state, m);
+  const players = buildPlayers(m);
 
   app.root.innerHTML = `<div class="match-screen">
     <header class="board">
@@ -126,22 +104,17 @@ export function showMatch(app, m, onDone) {
   const raiseMe = () => { const t = players.find(x => x.me); if (t) svg.insertBefore(dotEls[t.id], ballEl); };   // 내 점은 맨 위에
   raiseMe();
 
-  // 경기장 움직임 (js/ui/pitch.js): 22명이 대형을 지키며 공을 따라 움직임. 결과는 엔진이 정하고 화면은 따라감
+  // 경기장 (js/ui/pitch.js): 엔진의 경기장 시뮬레이션이 기록한 움직임을 그대로 재생
   // 후반에는 그릴 때만 좌우를 뒤집음 (엔진 좌표는 그대로)
-  let flipped = false, lastBall = [52.5, 34];
+  let flipped = false;
   const SX = x => (flipped ? 105 - x : x);
-  const blockOf = name => ({ "수비를 내리고 버티는 팀": "low", "전방 압박이 강한 팀": "high" })[styleOf(name).label] || "mid";
-  const oppBlock = blockOf(fx.opponent.name);
-  const pitch = createPitch({ svg, players, dotEls, ballEl, shadowEl, calm, blocks: { us: "mid", them: oppBlock } });
-  // 경기 상황에 따라 블록 높이: 막판에 이기는 팀은 내려앉고, 지는 팀은 올라감
-  const updateBlocks = () => {
-    const [a, b] = m.score, late = m.minute >= 52;
-    pitch.setBlocks({ us: late && a > b ? "low" : late && a < b ? "high" : "mid", them: late && b > a ? "low" : late && b < a ? "high" : oppBlock });
-  };
+  const pitch = createPitch({ svg, players, dotEls, ballEl, shadowEl, calm });
+  m.record = true;
+  pitch.load([frameNow(m.sim)]);
   // 골 장면: 골문 쪽으로 화면이 살짝 다가가고, 골망이 출렁임
   function goalCam(k) {
     if (calm) return;
-    const right = SX(lastBall[0]) > 52.5, gx = right ? 104.2 : 0.8;
+    const right = SX(pitch.ball()[0]) > 52.5, gx = right ? 104.2 : 0.8;
     netFx.innerHTML = [0, 1, 2].map(i => `<path class="net-wave" style="animation-delay:${i * 0.12}s" d="M${gx} 30.3 Q${(gx + (right ? 2.4 : -2.4)).toFixed(1)} 34 ${gx} 37.7"/>`).join("")
       + `<circle class="net-burst" cx="${gx}" cy="34" r="2"/>`;
     svg.classList.remove("cam-l", "cam-r"); void svg.getBoundingClientRect();
@@ -181,6 +154,10 @@ export function showMatch(app, m, onDone) {
     if (now !== lastScore) { lastScore = now; sc.classList.remove("bump"); void sc.offsetWidth; sc.classList.add("bump"); }
     root.querySelector("#clock").textContent = m.done ? "종료" : `${shownMin ?? m.minute}'`;
   };
+  // 해설 칸 크기가 바뀔 때(선택 창, 타이밍, 하프타임) 맨 아래를 보고 있었으면 계속 맨 아래로
+  let stick = true;
+  feed.addEventListener("scroll", () => { stick = feed.scrollTop + feed.clientHeight >= feed.scrollHeight - 6; }, { passive: true });
+  if (typeof ResizeObserver === "function") new ResizeObserver(() => { if (stick) feed.scrollTop = feed.scrollHeight; }).observe(feed);
   function addLine(l) {
     if (l.silent || !l.t) return;
     const li = document.createElement("li");
@@ -222,30 +199,50 @@ export function showMatch(app, m, onDone) {
     setTimeout(() => wrap.querySelector(".sub-board")?.remove(), 2800);
   }
 
-  // 줄을 하나씩 보여 주며 선수들을 움직임
-  function play(lines, then) {
-    queue = lines.slice();
-    after = then;
-    step();
-  }
-  function step() {
-    clearTimeout(timer);
-    if (paused) return;
-    const l = queue.shift();
-    if (!l) { const f = after; after = null; f?.(); return; }
-    const ms = SPEED[speed] * (l.fast ? 0.62 : 1);
-    if (l.subIn) { const tok = players.find(x => x.team === "us" && x.name === l.outName) || players.find(x => x.subSlot); if (tok) swapToken(tok, { name: p.name, number: p.number }, true); subBoard(l.outNo); }
+  // 중계 줄 하나를 화면에 (골, 교체 같은 연출 포함)
+  function showLine(l) {
+    if (l.subIn) {
+      const tok = players.find(x => x.team === "us" && x.name === l.outName) || players.find(x => x.subSlot);
+      if (tok) swapToken(tok, { name: p.name, number: p.number }, true);
+      subBoard(l.outNo);
+      holdUntil = performance.now() + 2400;              // 번호판을 보는 동안 경기장도 잠깐 멈춤
+      pitch.pause(true);
+    }
     if (l.injuredOff) { const tok = players.find(x => x.me); if (tok) swapToken(tok, l.injuredOff, false); }
-    let need = 0;
-    if (l.ball) { lastBall = l.ball; if (!l.staged) need = pitch.line(l, ms); }
     addLine(l);
     if (l.score) shown = l.score.slice();
     if (l.minute != null) shownMin = l.minute;
     if (l.half2 || (l.minute != null && l.minute > HALF_MIN)) setHalf(true);   // 후반 킥오프 문장부터 진영 교체
     if (l.k?.startsWith("goal")) goalFlash(l.k);
     updateBoard();
-    const base = l.subIn ? Math.max(2600, ms) : l.silent ? ms * 0.7 : (l.k?.startsWith("goal") ? ms * 1.4 : ms);
-    timer = setTimeout(step, Math.max(base, Math.min(need, l.silent ? ms : ms * 1.35)));   // 먼 패스는 공이 도착할 때까지 조금 더 기다림
+  }
+  // 경기장 시계에 맞춰 중계 줄을 내보내고, 기록이 끝나면 다음을 이어 감
+  pitch.onTime((clock, atEnd) => {
+    if (paused || finished) return;
+    const now = performance.now();
+    if (holdUntil && now < holdUntil) return;
+    if (holdUntil) { holdUntil = 0; pitch.pause(false); }
+    const gap = calm ? GAP[speed] * 1.3 : GAP[speed];
+    // 경기장 기록의 시각은 32비트 소수라 조금 작게 저장됨 (예: 111.1 → 111.0999985). 기록 간격(0.1초)보다 훨씬 작은 여유를 둬서 줄이 멈춰 있지 않게
+    if (pend.length && (pend[0].ts ?? 0) <= clock + TS_EPS && now - lastShown >= gap) { showLine(pend.shift()); lastShown = now; }
+    pitch.setSlow(pend.length > 3 && (pend[2].ts ?? 0) <= clock + TS_EPS ? 0.6 : 1);    // 읽을 줄이 많이 밀리면 경기장을 잠깐 천천히
+    if (atEnd && !pend.length && !waiting && after) {
+      const k = after; after = null;
+      if (k === "line") return tick();
+      if (k === "moment") return showMoment();
+      if (k === "ht") { sfx.play("half"); return showHalftime(); }
+      if (k === "ft") { sfx.play("full"); return end(); }
+    }
+  });
+  // 엔진에서 다음 장면을 받아 경기장 기록과 중계 줄을 이어 붙임
+  function tick() {
+    if (paused || finished) return;
+    waiting = true;
+    const r = next(state, m);
+    waiting = false;
+    pitch.load(r.frames, r.cut);
+    pend.push(...r.lines);
+    after = r.kind;
   }
 
   // ── 경기 전 ──
@@ -282,7 +279,6 @@ export function showMatch(app, m, onDone) {
     <div class="ctl-row"><button class="btn btn-ghost" data-skip>결과만 보기</button><button class="btn btn-kit" data-start>${m.status === "start" ? "킥오프" : "경기 지켜보기"}</button></div>
   </div>`;
   ctl.querySelector("[data-start]").addEventListener("click", () => { setScene("bg_stadium", "match"); sfx.play("kickoff"); controls(); tick(); });
-  pitch.kickoff("us", true);
   ctl.querySelector("[data-skip]").addEventListener("click", skipAll);
 
   function controls() {
@@ -292,7 +288,8 @@ export function showMatch(app, m, onDone) {
       <button class="btn" data-skip>결과만 보기</button></div>`;
     ctl.querySelector("[data-pause]").addEventListener("click", e => {
       paused = !paused; e.target.textContent = paused ? "계속" : "일시정지";
-      if (!paused) (queue.length || after ? step() : tick()); else clearTimeout(timer);
+      pitch.pause(paused);
+      if (!paused && !after && !pend.length && pitch.clock() >= pitch.end() - 1e-6) tick();
     });
     ctl.querySelector("[data-speed]").addEventListener("click", e => {
       speed = speed === "normal" ? "fast" : "normal"; e.target.textContent = speed === "fast" ? "보통 속도" : "빠르게";
@@ -301,33 +298,9 @@ export function showMatch(app, m, onDone) {
     ctl.querySelector("[data-skip]").addEventListener("click", skipAll);
   }
 
-  function tick() {
-    clearTimeout(timer);
-    if (paused) return;
-    const r = next(state, m);
-    pitch.clearRuns();
-    updateBlocks();
-    if (r.kind === "moment" && m.pending) return stage(r.lines);
-    play(r.lines, () => {
-      if (r.kind === "moment") return showMoment();
-      if (r.kind === "ht") { sfx.play("half"); return showHalftime(); }
-      if (r.kind === "ft") { sfx.play("full"); return end(); }
-      timer = setTimeout(tick, r.lines.length ? 120 : 0);
-    });
-  }
-
-  // 내 장면: 경기장에서 장면 연출(data/scenes.js)을 보여 준 뒤 선택지를 띄움
-  function stage(lines) {
-    const pd = m.pending;
-    let a = false, b = false;
-    const go = () => { if (a && b && m.pending === pd && !m.done) showMoment(); };
-    for (const l of lines) l.staged = true;
-    pitch.scene(SCENES[pd.sit.id], { ball: pd.ball, poss: pd.sit.poss || "us", zone: pd.sit.zone, names: { mate: pd.vars.mate, opp: pd.vars.opp } }, () => { a = true; go(); });
-    play(lines, () => { b = true; go(); });
-  }
-
   function showMoment() {
     const pd = m.pending;
+    shownMin = m.minute; updateBoard();
     ctl.innerHTML = `<div class="moment" role="group" aria-label="선택">
       <p class="mo-text"><span class="num">${m.minute}'</span> ${esc(pd.text)}</p>
       <div class="mo-choices">${pd.choices.map((c, i) => `<button class="mo-btn" data-c="${i}">
@@ -335,15 +308,17 @@ export function showMatch(app, m, onDone) {
       <button class="linkbtn" data-autopick>알아서 하기</button>
     </div>`;
     ctl.classList.add("ask");
+    feed.scrollTop = feed.scrollHeight;               // 선택 창이 커지면 해설 칸이 줄어드니 최신 줄이 보이게
     buzz(60);
     const pickIt = (i, timing = null) => {
       if (!m.pending || m.done) return;                 // 그 사이 '결과만 보기'를 눌렀으면 무시
       ctl.classList.remove("ask");
       const r = resolve(state, m, i, timing);
-      pitch.clearRuns();
       controls();
-      paused = false;
-      play(r.lines, () => { timer = setTimeout(tick, 200); });
+      feed.scrollTop = feed.scrollHeight;
+      paused = false; pitch.pause(false);
+      pend.push(...r.lines);
+      tick();                                          // 선택 결과가 경기장에서 이어짐
     };
     const choose = i => {
       const kind = pd.choices[i].timing;
@@ -395,7 +370,7 @@ export function showMatch(app, m, onDone) {
     const startBtn = (extra = "") => {
       let left = 8;
       ctl.innerHTML = `${extra}<div class="ctl-row"><button class="btn btn-kit btn-wide" data-second>${m.subbedOff ? "후반 지켜보기" : "후반 시작"} <span class="mute" id="htc">(${left})</span></button></div>`;
-      const go = () => { clearInterval(iv); root.querySelector(".ht-scene")?.remove(); controls(); tick(); };
+      const go = () => { clearInterval(iv); root.querySelector(".ht-scene")?.remove(); controls(); paused = false; pitch.pause(false); tick(); };
       const iv = setInterval(() => { left--; const c = ctl.querySelector("#htc"); if (c) c.textContent = `(${left})`; if (left <= 0) go(); }, 1000);
       ctl.querySelector("[data-second]").addEventListener("click", go);
     };
@@ -421,25 +396,25 @@ export function showMatch(app, m, onDone) {
   }
 
   function skipAll() {
-    clearTimeout(timer);
-    pitch.finish();
+    finished = true; after = null;
     root.querySelector(".ht-scene")?.remove();
     setScene("bg_stadium", "match");
     ctl.classList.remove("ask");
-    queue.forEach(addLine); queue = []; after = null;
+    pend.forEach(addLine); pend = [];
+    m.record = false;
     const before = m.feed.length;
     autoPlay(state, m);
     m.feed.slice(before).forEach(addLine);
+    pitch.jump(frameNow(m.sim));
     shown = m.score.slice();
     end();
   }
 
   function end() {
-    clearTimeout(timer);
+    finished = true;
     const before = m.feed.length;
     const res = finishMatch(state, m);
     m.feed.slice(before).forEach(addLine);
-    pitch.line({ ball: [52.5, 34], poss: null }, 900);
     shown = m.score.slice();
     updateBoard();
     const resCls = { 승: "W", 무: "D", 패: "L" }[res.result];

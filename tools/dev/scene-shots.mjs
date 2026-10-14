@@ -1,7 +1,7 @@
 // 내 장면 116개를 하나씩 경기장에 연출해 /tmp/scene-shots/ 에 그림으로 저장 (장면 연출 확인용)
 // python3 -m http.server 8765 (저장소 폴더) 를 켠 뒤: node tools/dev/scene-shots.mjs [장면id,장면id]
 import { createRequire } from "module";
-const require = createRequire("/usr/lib/node_modules/");
+const require = createRequire(process.env.PW_ROOT || "/usr/lib/node_modules/");   // 다른 컴퓨터에서는 PW_ROOT로 playwright 위치 지정
 const { chromium } = require("playwright");
 const D = "/tmp/scene-shots/"; (await import("fs")).mkdirSync(D, { recursive: true });
 const browser = await chromium.launch();

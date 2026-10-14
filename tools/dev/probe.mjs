@@ -2,7 +2,7 @@
 // node tools/dev/probe.mjs [포지션 FW|MF|DF] [초] [주소]   환경변수 THROTTLE=6 (느린 휴대폰), FAST=1 (빠르게)
 // 출력: 공이 혼자 멈춰 있는 시간, 선수 순간이동(초속 40m 초과), 공 순간이동(초속 90m 초과), 0.6초 넘게 다 멈춘 구간
 import { createRequire } from "module";
-const require = createRequire("/usr/lib/node_modules/");
+const require = createRequire(process.env.PW_ROOT || "/usr/lib/node_modules/");   // 다른 컴퓨터에서는 PW_ROOT로 playwright 위치 지정
 const { chromium, devices } = require("playwright");
 const pos = process.argv[2] || "MF", secs = +(process.argv[3] || 60), base = process.argv[4] || "http://localhost:8765";
 const browser = await chromium.launch();

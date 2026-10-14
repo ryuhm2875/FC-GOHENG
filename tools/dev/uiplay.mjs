@@ -1,7 +1,7 @@
 // 화면에서 3년을 자동으로 끝까지 진행하며 오류를 찾음 (Playwright). 먼저 python3 -m http.server 8765
-// node tools/dev/uiplay.mjs [포지션] [이름]   약 9분. 마지막 줄이 "no errors"면 통과
+// node tools/dev/uiplay.mjs [포지션] [이름]   약 9분 (LIMIT=밀리초 로 제한 시간 변경). 마지막 줄이 "no errors"면 통과
 import { createRequire } from "module";
-const require = createRequire("/usr/lib/node_modules/");
+const require = createRequire(process.env.PW_ROOT || "/usr/lib/node_modules/");   // 다른 컴퓨터에서는 PW_ROOT로 playwright 위치 지정
 const { chromium, devices } = require("playwright");
 const OUT = "/tmp/uiplay-shots/";
 const pos = process.argv[2] || "MF", seedName = process.argv[3] || "김민준";
@@ -21,7 +21,7 @@ await page.evaluate(async ([pos, nm]) => {
 const ACTS = { FW: ["shoot", "dribble", "sprint"], MF: ["pass", "defend", "tactics"], DF: ["defend", "weight", "sprint"] }[pos];
 let weeks = 0, matches = 0, stuck = 0, lastTurn = 0;
 const t0 = Date.now();
-while (Date.now() - t0 < 520000) {
+while (Date.now() - t0 < +(process.env.LIMIT || 520000)) {
   const st = await page.evaluate(() => ({ view: gfc.view, turn: gfc.state?.calendar.turn, fin: gfc.state?.finished, modal: !!document.querySelector("#modal-root .backdrop") }));
   if (st.view === "ending") break;
   // 열린 창 처리
@@ -29,7 +29,7 @@ while (Date.now() - t0 < 520000) {
     const q = s => document.querySelector(s);
     const order = ["#modal-root [data-skip]", "#modal-root .meeting [data-k]", "#modal-root [data-ok]", "#modal-root .vn-choice[data-i]", "#modal-root [data-n]", "#modal-root [data-id]",
       "#modal-root [data-close]", "#modal-root .btn-kit"];
-    for (const s of order) { const b = q(s); if (b && !b.disabled) { b.click(); return s; } }
+    for (const s of order) { const b = q(s + ":not([disabled])"); if (b) { b.click(); return s; } }   // 잠긴 버튼(진학 상담의 잠긴 학교 등)은 건너뜀
     // 경기 화면
     for (const s of ["[data-start]", ".ctl [data-skip]", "[data-done]", "[data-second]", ".mo-btn[data-c]", "[data-h]"]) { const b = q(s); if (b) { b.click(); return s; } }
     return null;
