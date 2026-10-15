@@ -15,7 +15,7 @@ import { renderIntro } from "./ui/intro.js";
 import { homeView, playerView, teamView, scheduleView, inboxView } from "./ui/views.js";
 import { ask, eventModal, actionPicker, weekReport, mailModal, saveModal, numberModal, yearModal, meetingModal } from "./ui/modals.js";
 import { esc } from "./ui/util.js";
-import { admissionModal, nationalModal, showEnding, galleryModal } from "./ui/career.js";
+import { admissionModal, nationalModal, detailModal, showEnding, galleryModal } from "./ui/career.js";
 import { hallModal, checkAchievements } from "./ui/hall.js";
 import { setScene, enter, preload, SCENES } from "./ui/fx.js";
 import { sfx } from "./ui/sfx.js";
@@ -117,6 +117,7 @@ const app = {
     if (t === "number") numberModal(this, done);
     else if (t === "admission") admissionModal(this, done);
     else if (t === "national") nationalModal(this, done);
+    else if (t === "detail") detailModal(this, done);
     else done();
   },
 

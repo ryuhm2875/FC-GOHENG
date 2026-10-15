@@ -1,6 +1,6 @@
 // 게임 안 화면들: 홈, 선수, 팀, 일정, 메시지
 import { ACTION_MAP, ACTIONS } from "../../data/actions.js";
-import { POSITIONS, GROWTH_TYPES, TRAITS, STAT_GROUPS, ROLES, EARNABLE } from "../../data/player.js";
+import { POSITIONS, GROWTH_TYPES, TRAITS, STAT_GROUPS, ROLES, EARNABLE, DETAIL_POS } from "../../data/player.js";
 import { STAFF, ROSTER } from "../../data/roster.js";
 import { PHASES, MONTHS } from "../../data/calendar.js";
 import { turnInfo, upcoming, yearTurns, label } from "../engine/calendar.js";
@@ -50,7 +50,7 @@ export function fcCard(state, { big = false } = {}) {
       ${state.flags.captain ? `<div class="fc-cap" title="주장">C</div>` : ""}
     </div>
     <div class="fc-face">${img(faceOf(p, state.calendar.grade), `${p.name} 얼굴`)}</div>
-    <div class="fc-name">${esc(p.name)}</div>
+    <div class="fc-name">${esc(p.name)}${p.detailPos && DETAIL_POS[p.detailPos]?.pos === p.position ? `<span class="fc-detail">${esc(DETAIL_POS[p.detailPos].label)}</span>` : ""}</div>
     <div class="fc-stats">${sixStats(p).map(([k, v]) => `<div><b class="num">${fl(v)}</b><span>${k}</span></div>`).join("")}</div>
     <div class="fc-foot"><span class="num">#${p.number}</span><span>${GROWTH_TYPES[p.growthType].label}</span>${role ? `<span>${role.label}</span>` : ""}</div>
   </div>`;

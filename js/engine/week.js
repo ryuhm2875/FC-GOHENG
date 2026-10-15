@@ -11,7 +11,7 @@ import { rollEvent } from "./events.js";
 import { ensureOrder, judgeOrder } from "./orders.js";
 import { goalsWeekly } from "./goals.js";
 import { birthdayWeek } from "./birthday.js";
-import { careerMilestones } from "./career.js";
+import { careerMilestones, detailMeeting } from "./career.js";
 import { STAT_LABEL, POSITIONS } from "../../data/player.js";
 import { getPath } from "../rng.js";
 import { ovr, ageRoster, activeRoster, mateGrade, roleFor, randomFreeNumber, freeNumbers, depthChart } from "./team.js";
@@ -218,6 +218,7 @@ export function endWeek(state, ctx, matchResult) {
     birthdayWeek(state, next);
     goalsWeekly(state, next);
     rollEvent(state);
+    detailMeeting(state, next);                    // 세부 포지션 면담 (다른 이야기가 없는 주에)
     weeklyAdvice(state, report);
     const nfx = currentFixture(state);
     if (nfx) previewChat(state, nfx);              // 경기 분석은 경기 직전 미팅 장면에서

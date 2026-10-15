@@ -10,6 +10,7 @@ import { rollPlayer, newGame } from "../../js/state.js";
 import { beginWeek, endWeek } from "../../js/engine/week.js";
 import { prepareMatch, next, resolve, autoChoice, finishMatch } from "../../js/engine/match.js";
 import { SCENES } from "../../data/scenes.js";
+import { DETAIL_POS } from "../../data/player.js";
 
 const N = +process.argv[2] || 60, which = process.argv[3] || "all", SHOW = +(process.env.SHOW || 8);
 const RANDOM = !!process.env.RANDOM_PICK;           // 자동 선택 대신 무작위 선택 (모든 선택지를 고루 보기)
@@ -22,6 +23,7 @@ for (let k = 0; k < N; k++) {
   setSeed(30000 + k);
   const pos = which === "all" ? ["FW", "MF", "DF"][k % 3] : which;
   const s = newGame(rollPlayer({ name: "테스트", face: "face_01", position: pos, foot: "R", growthType: "steady" }));
+  if (process.env.DETAIL) { const ks = Object.keys(DETAIL_POS).filter(x => DETAIL_POS[x].pos === pos && (process.env.DETAIL === "all" || process.env.DETAIL.split(",").includes(x))); if (ks.length) s.player.detailPos = ks[k % ks.length]; }   // DETAIL=all 또는 DETAIL=winger_l,fb_r: 세부 포지션을 정해 두고 시험
   const lv = 45 + (k % 5) * 8;
   for (const g of ["tech", "phys", "mental"]) for (const q in s.player.stats[g]) s.player.stats[g][q] = lv;
   s.relations.coach = 95;
@@ -53,7 +55,7 @@ for (let k = 0; k < N; k++) {
       const txt = pd.text;
       if (poss === "us" && nPress >= 1 && /압박|붙|달려든|밀어붙|막아|둘이|셋이|몸을 붙/.test(txt) && ds[0] > (sc.pressGap ?? 1.8) + 3.5) bad("압박 장면인데 상대가 멂", `${tag} 가장 가까운 상대 ${ds[0].toFixed(1)}m: ${txt.slice(0, 36)}`);
       if (sc.mark2) {   // 두 번째 상대는 센터백 짝을 막음
-        const pair = S.P.filter(q => q.team === H.team && q !== H && q.pos === "DF" && !q.me).sort((a, b) => Math.hypot(a.x - H.x, a.y - H.y) - Math.hypot(b.x - H.x, b.y - H.y))[0];
+        const pair = S.P.find(q => q.team === H.team && q !== H && ["LCB", "RCB"].includes(q.role) && ["LCB", "RCB"].includes(H.role)) || S.P.filter(q => q.team === H.team && q !== H && q.pos === "DF" && !q.me).sort((a, b) => Math.hypot(a.x - H.x, a.y - H.y) - Math.hypot(b.x - H.x, b.y - H.y))[0];   // 엔진과 같은 기준 (센터백이면 다른 센터백)
         const dp = pair ? Math.min(...opp.map(p => Math.hypot(p.x - pair.x, p.y - pair.y))) : 0;
         if (dp > 5) bad("센터백 짝을 막는 상대가 없음", `${tag} ${dp.toFixed(1)}m: ${txt.slice(0, 36)}`);
       } else if (poss === "us" && /둘이|두 명|둘 사이|셋이|세 명/.test(txt) && /달려든|붙|막아|좁혀/.test(txt) && ds[1] > 8) bad("두 명 압박 장면인데 한 명뿐", `${tag} 두 번째 상대 ${ds[1].toFixed(1)}m: ${txt.slice(0, 36)}`);

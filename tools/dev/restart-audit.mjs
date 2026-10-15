@@ -5,6 +5,7 @@ const { setSeed } = await import(R + "js/rng.js");
 const { rollPlayer, newGame } = await import(R + "js/state.js");
 const { beginWeek, endWeek } = await import(R + "js/engine/week.js");
 const { prepareMatch, next, resolve, autoChoice, finishMatch } = await import(R + "js/engine/match.js");
+const { DETAIL_POS } = await import(R + "data/player.js");
 const { RESULT, SIM_LINES, AMBIENT, LINES } = await import(R + "data/match.js");
 let __r = 12345; const prand = () => ((__r = (__r * 1103515245 + 12345) % 2147483648) / 2147483648);
 const N = +process.argv[2] || 100, SHOW = +(process.env.SHOW || 5), PICK = process.env.PICK || "random", SEED0 = +(process.env.SEED || 50000);
@@ -19,6 +20,7 @@ for (let k = 0; k < N; k++) {
   const seed = SEED0 + k; setSeed(seed); __r = 1 + Math.abs(seed | 0);
   const pos = ["FW", "MF", "DF"][k % 3];
   const s = newGame(rollPlayer({ name: "테스트", face: "face_01", position: pos, foot: "R", growthType: "steady" }));
+  if (process.env.DETAIL) { const ks = Object.keys(DETAIL_POS).filter(x => DETAIL_POS[x].pos === pos && (process.env.DETAIL === "all" || process.env.DETAIL.split(",").includes(x))); if (ks.length) s.player.detailPos = ks[k % ks.length]; }   // DETAIL=all 또는 DETAIL=winger_l,fb_r: 세부 포지션을 정해 두고 시험
   const lv = 45 + (k % 5) * 8;
   for (const g of ["tech", "phys", "mental"]) for (const q in s.player.stats[g]) s.player.stats[g][q] = lv;
   s.relations.coach = 95;

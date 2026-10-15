@@ -5,7 +5,7 @@ import { rollPlayer, newGame } from "../../js/state.js";
 import { runWeek, slotLocked, chooseNumber, numberChoices, actionAllowed } from "../../js/engine/week.js";
 import { ACTIONS } from "../../data/actions.js";
 import { chooseEvent, findEvent, reqOk } from "../../js/engine/events.js";
-import { schoolOptions, chooseSchool, decideEnding } from "../../js/engine/career.js";
+import { schoolOptions, chooseSchool, decideEnding, detailOptions, chooseDetail } from "../../js/engine/career.js";
 import { CAL, DEV } from "../../js/engine/match.js";
 // 경기 수치 조절값 시험: CAL="brk:0.2,c0:1.5" node tools/dev/baseline.mjs 30
 if (process.env.CAL) for (const kv of process.env.CAL.split(",")) { const [k, v] = kv.split(":"); CAL[k] = +v; }
@@ -22,6 +22,7 @@ for (let i = 0; i < N; i++) {
   while (!s.finished) {
     if (s.pending?.type === "admission") chooseSchool(s, schoolOptions(s).list.find(x => x.ok).id);
     if (s.pending?.type === "national") s.pending = null;
+    if (s.pending?.type === "detail") { const o = detailOptions(s).list, g = o[Math.floor(i / 3) % o.length]; chooseDetail(s, g.keys[Math.floor(i / 12) % g.keys.length]); }   // 세부 포지션은 판마다 돌아가며
     if (s.pending?.type === "number") { let r, t = [10, 7, 9]; do { r = chooseNumber(s, t.shift() ?? pick(numberChoices(s))); } while (!r.ok); }
     const ok = id => ACTIONS.find(a => a.id === id && actionAllowed(s, a).ok);
     for (const k of ["wd1", "wd2", "we"]) if (!slotLocked(s, k)) s.plan[k] = s.player.condition.injury ? "sleep" : s.player.condition.fatigue > 65 ? "sleep" : pick(KEY[pos].filter(ok)) || "sleep";
@@ -39,6 +40,10 @@ console.log(`경기당 득점 ${avg(all, m => m.gf).toFixed(2)} 실점 ${avg(all
 for (const p of ["FW", "MF", "DF"]) {
   const x = played.filter(m => m.pos === p);
   console.log(`${p}: 평점 ${avg(x, m => m.rating).toFixed(2)} | 경기당 내 골 ${avg(x, m => m.goals).toFixed(2)} 도움 ${avg(x, m => m.assists).toFixed(2)} | 최우수 ${(avg(x, m => !!m.mom) * 100).toFixed(1)}%`);
+}
+{ const by = {};                                          // 세부 포지션별 (정해진 뒤 경기만)
+  for (const m of played) if (m.detail) (by[m.detail] ||= []).push(m);
+  console.log("세부 포지션: " + Object.entries(by).map(([k, x]) => `${k} ${x.length}경기 평점 ${avg(x, m => m.rating).toFixed(2)} 골 ${avg(x, m => m.goals).toFixed(2)} 도움 ${avg(x, m => m.assists).toFixed(2)} 순간 ${avg(x, m => m.decisions || 0).toFixed(1)}`).join("\n  "));
 }
 console.log("엔딩 등급", JSON.stringify(ends));
 // 전력 차이별 (우리 − 상대)

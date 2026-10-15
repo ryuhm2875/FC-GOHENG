@@ -1,16 +1,18 @@
 // 진로: 진학 상담(중3 10월), 국가대표 선발(중3 12월), 엔딩 판정(졸업)
 import { HIGH_SCHOOLS, HS_TIERS } from "../../data/world.js";
 import { ENDINGS } from "../../data/endings.js";
+import { DETAIL_POS } from "../../data/player.js";
 import { STAFF } from "../../data/roster.js";
 import { mail, mailFrom } from "../state.js";
 import { ovr } from "./team.js";
 import { person } from "./relations.js";
-import { clamp } from "../rng.js";
+import { clamp, getPath } from "../rng.js";
 
 export const MILESTONES = {
   guide:     { grade: 3, month: 9,  week: 1 },
   admission: { grade: 3, month: 10, week: 4 },
   national:  { grade: 3, month: 12, week: 2 },
+  detail:    { grade: 2, month: 9,  week: 1 },     // 세부 포지션 면담 (2학년 하계대회가 끝난 뒤). 그 뒤에 불러온 저장도 다음 주에 면담
 };
 const at = (info, m) => info && info.grade === m.grade && info.month === m.month && info.week === m.week;
 
@@ -38,6 +40,53 @@ export function careerMilestones(state, info) {
     state.pending = { type: "national" };
   }
 }
+
+// 세부 포지션 면담: 2학년 하계대회가 끝난 뒤 (그 주에 다른 이야기가 있으면 다음 주로). 예전 저장도 이 시기가 지났으면 다음 주에
+export function detailMeeting(state, info) {
+  const p = state.player;
+  if (state.pending || state.pendingEvent || p.detailPos || !info) return;
+  if (!(info.grade > 2 || (info.grade === 2 && (info.month >= 9 || info.month <= 2)))) return;
+  state.pending = { type: "detail" };
+  mail(state, "coach", "감독실로 와라", `${info.grade === 2 && info.month === 9 ? "하계대회 끝났으니 " : ""}이야기 좀 하자. 겁먹을 일은 아니다. 네가 앞으로 어디서 뛸지 정하려고 부르는 거다.`);
+}
+
+// ── 세부 포지션 (2학년 하계대회 뒤 면담) ──
+// 포지션마다 고를 수 있는 자리. 윙어·풀백은 왼쪽·오른쪽을 한 번 더 고름
+export const DETAIL_GROUPS = {
+  FW: [["poacher"], ["target"], ["second"]],
+  MF: [["winger_l", "winger_r"], ["am"], ["b2b"], ["dm"]],
+  DF: [["cb"], ["bcb"], ["fb_l", "fb_r"]],
+};
+const GROUP_LABEL = { winger: "윙어", fb: "풀백" };
+// 최근 경기 기록이 어울리는 자리 (골이 많으면 포처·타깃형, 도움이 많으면 패스하는 자리, 막아 낸 게 많으면 수비 쪽)
+const REC_FIT = { poacher: "goals", target: "goals", second: "assists", winger: "assists", am: "assists", b2b: "involved", dm: "stops", cb: "stops", bcb: "assists", fb: "assists" };
+export function detailOptions(state) {
+  const p = state.player;
+  const recent = state.record.matches.filter(x => x.minutes > 0).slice(-12);          // 최근 12경기
+  const n = Math.max(1, recent.length), sum = k => recent.reduce((a, x) => a + (x[k] || 0), 0);
+  const rec = { games: recent.length, goals: sum("goals"), assists: sum("assists"), stops: sum("stops"), involved: sum("involved"),
+    rating: recent.length ? Math.round(recent.reduce((a, x) => a + (x.rating || 6), 0) / recent.length * 100) / 100 : null };
+  const per = { goals: rec.goals / n, assists: rec.assists / n, stops: rec.stops / n, involved: rec.involved / n };
+  const scale = { goals: 12, assists: 14, stops: 2.5, involved: 1.2 };
+  const list = (DETAIL_GROUPS[p.position] || []).map(keys => {
+    const d = DETAIL_POS[keys[0]], g = d.group || keys[0];
+    const fit = Object.entries(d.fit).reduce((a, [k, w]) => a + getPath(p.stats, k) * w, 0);
+    const bonus = Math.min(4, per[REC_FIT[g]] * scale[REC_FIT[g]]);
+    return { keys, group: g, label: GROUP_LABEL[g] || d.label, desc: d.desc, why: d.why,
+      score: Math.round((fit + bonus) * 10) / 10, side: keys.length > 1 };
+  }).sort((a, b) => b.score - a.score);
+  const sideRec = p.foot === "L" ? "L" : "R";                 // 왼발잡이는 왼쪽, 오른발잡이는 오른쪽에서 크로스 올리기 편함
+  return { list, rec, sideRec };
+}
+export function chooseDetail(state, key) {
+  const d = DETAIL_POS[key], p = state.player;
+  if (!d || d.pos !== p.position) return { ok: false };
+  p.detailPos = key;
+  state.pending = null;
+  mail(state, "coach", `오늘부터 ${d.label}`, `오늘부터 너는 ${j(d.label, "이다", "다")}. 경기장에서 서는 자리도, 해야 할 일도 조금씩 달라진다.\n\n자리가 정해졌다고 다른 걸 놓으면 안 된다. 그 자리에서 제일 잘하는 선수가 돼라.`);
+  return { ok: true, d };
+}
+export const detailLabel = p => (p?.detailPos && DETAIL_POS[p.detailPos]?.pos === p.position ? DETAIL_POS[p.detailPos].label : null);
 
 // 감독님이 돌려서 말하는 진학 전망
 function outlook(state) {

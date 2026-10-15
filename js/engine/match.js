@@ -3,7 +3,7 @@
 // 선택 결과는 다시 경기장에서 일어나게 합니다 (슛이면 실제로 차고, 뺏기면 상대 공으로 이어짐).
 import { SITUATIONS, OUTCOMES, LINES, HALFTIME_TALK, HT_TALK, PLAYS, FINISH, RESULT, AMBIENT, TO_ME, SIGNATURE, ME_IN_PLAY, BREAK, PREMATCH, FLOW, SIM_LINES } from "../../data/match.js";
 import { SURNAMES, GIVEN_NAMES } from "../../data/world.js";
-import { POSITIONS } from "../../data/player.js";
+import { POSITIONS, DETAIL_POS } from "../../data/player.js";
 import { GOALKEEPERS, STAFF } from "../../data/roster.js";
 import { rand, int, range, normal, chance, pick, weighted, clamp, getPath, shuffle } from "../rng.js";
 import { ovr, depthChart, teamStrength, activeRoster, mateGrade } from "./team.js";
@@ -17,7 +17,9 @@ import { SCENES } from "../../data/scenes.js";
 import { createSim, step as simStep, DT, RATE, HALF_T, kickoffSetup, setScript, stageStart, minuteOf, meOf, gkOf, setRestart, passTo } from "./sim.js";
 
 export const LENGTH = 70;
-export const MY_SLOT = { FW: 0, MF: 1, DF: 1 };        // 경기장에서 내가 서는 자리 (포지션 안 순서)          // 중등부 전후반 35분씩
+export const MY_SLOT = { FW: 0, MF: 1, DF: 1 };        // 경기장에서 내가 서는 자리 (포지션 안 순서). 세부 포지션이 정해지면 그 자리
+export const detailOf = p => { const d = p?.detailPos && DETAIL_POS[p.detailPos]; return d && d.pos === p.position ? d : null; };
+export const mySlotOf = p => detailOf(p)?.slot ?? MY_SLOT[p.position];
 export const HALF = 35;
 export const STATUS_LABEL = { start: "선발 출전", sub: "교체 출전", bench: "벤치 대기", out: "명단 제외" };
 
@@ -201,11 +203,11 @@ function pitchPlayers(state, m) {
   for (const [pos, n] of SLOTS) {
     for (let i = 0; i < n; i++) {
       let who = ours[pos][i], me = false;
-      const mySlot = pos === p.position && i === MY_SLOT[pos];
+      const mySlot = pos === p.position && i === mySlotOf(p);
       if (mySlot && m.status === "start") { ours[pos].splice(i, 0, { name: p.name, number: p.number }); who = ours[pos][i]; me = true; }
       const base = m.ours + ((who?.ovr ?? avg) - avg) * 0.5;
       list.push({ id: `u-${pos}-${i}`, team: "us", pos, name: who?.name ?? "", number: who?.number ?? "", me, subSlot: mySlot && m.status === "sub",
-        st: me ? myStats(p) : st(base, pos), longShot: me ? p.stats.tech.shoot >= 62 && pos !== "DF" : pos === "MF" && (who?.ovr ?? 0) >= 64,
+        st: me ? myStats(p) : st(base, pos), tune: mySlot ? detailOf(p)?.tune : null, longShot: me ? p.stats.tech.shoot >= 62 && pos !== "DF" : pos === "MF" && (who?.ovr ?? 0) >= 64,
         qMul: me ? myShotMul(state, m) : null });
       const opp = pos === "GK" ? { name: m.gk.them, number: 1 } : m.oppPlayers.filter(o => o.pos === pos)[i];
       const ace = !!(opp && m.oppAce && opp.name === m.oppAce.name);
@@ -335,7 +337,7 @@ export function prepareMatch(state, info, fx) {
 
   const m = {
     fx, turn: info.turn, grade: info.grade, status, reason: elig.ok ? null : elig.reason, restNote,
-    star, me: p.name, myPos: p.position,
+    star, me: p.name, myPos: p.position, detail: detailOf(p), detailKey: detailOf(p) ? p.detailPos : null,
     minIn: status === "sub" ? minIn : 0, onPitch,
     prep: state.meetingBuff?.turn === info.turn ? state.meetingBuff : null,    // 경기 전 미팅에서 한 대답
     order: (() => {                                  // 감독님 주간 지시를 따른 주 (orders.js)
@@ -660,9 +662,10 @@ function timedEvent(state, m, ev, ts) {
   if (ev.type === "subIn") {
     // 경기장 위에서 내 자리에 서 있던 동료가 나간다 (화면의 점도 같은 사람)
     const same = m.lineup.filter(x => x.pos === m.myPos);
-    const outP = same.at(-1);                       // 같은 자리에서 가장 약한 선수가 나감 (명단은 능력치 순)
+    const slotTok = m.detail ? m.sim.P.find(p => p.subSlot) : null;                 // 세부 포지션이 정해졌으면 그 자리 선수와 바뀜 (왼쪽 윙어면 왼쪽 측면)
+    const outP = (slotTok && same.find(x => x.name === slotTok.name)) || same.at(-1);   // 아니면 같은 자리에서 가장 약한 선수가 나감 (명단은 능력치 순)
     if (outP) m.lineup = m.lineup.filter(x => x !== outP);
-    const tok = (outP && m.sim.P.find(p => p.team === "us" && p.name === outP.name)) || m.sim.P.find(p => p.subSlot);
+    const tok = (slotTok && outP && slotTok.name === outP.name ? slotTok : null) || (outP && m.sim.P.find(p => p.team === "us" && p.name === outP.name)) || m.sim.P.find(p => p.subSlot);
     if (tok) swapIn(state, m, tok);
     L(fill(`교체: {o|이/가} 나오고 {me|이/가} 들어간다. `, { o: outP?.name || "동료", me: m.me }) + pick(LINES.subIn), "me",
       { subIn: true, outNo: outP?.number ?? "", outName: outP?.name || "" });
@@ -726,7 +729,7 @@ function momentCtx(state, m, evs) {
     if (e.type === "setup" && S.restart) {
       const R = S.restart, sp = R.spot || [S.ball.x, S.ball.y];
       if (e.team === "us") {
-        if (e.kind === "corner") return { cat: R.taker === M ? "set:cornerKick" : "set:corner", poss: "us", set: R };
+        if (e.kind === "corner" && (R.taker === M || M.x >= 70)) return { cat: R.taker === M ? "set:cornerKick" : "set:corner", poss: "us", set: R };   // 코너킥 헤더는 내가 박스 쪽에 올라와 있을 때만 (수비형 미드필더는 뒤에 남음)
         if (e.kind === "fk" && e.x >= 74 && Math.abs(e.y - 34) < 16 && M.pos !== "DF") return { cat: "set:fkShot", poss: "us", set: R };
         if (e.kind === "fk" && R.taker === M) return { cat: "set:fkKick", poss: "us", set: R };
         if (e.kind === "pk" && M.pos !== "DF") return { cat: "set:pk", poss: "us", set: R };
@@ -750,6 +753,8 @@ function momentCtx(state, m, evs) {
   if (M.pos === "MF" && H.team === "us" && H.pos !== "GK" && H.x > 84 && Math.abs(H.y - 34) > 15 && M.x > 55 && dist2(H, M) < 40) return { cat: "mate", poss: "us", holder: H, arrive: true };
   // 수비수: 상대가 중원에서 공을 잡았고 상대 공격수가 우리 수비 라인에 붙어 있으면 뒷공간 경주 장면
   if (M.pos === "DF" && (m.want?.sit.id === "df_race" || (relax && chance(0.08))) && H.team === "them" && H.ri && H.x > 38 && H.x < 70 && M.x < H.x && dist2(H, M) < 32 && S.P.some(p => p.team === "them" && p.pos === "FW" && p.x < H.x - 8 && Math.abs(p.x - M.x) < 10)) return { cat: "def", poss: "them", holder: H, race: true };
+  // 타깃형 공격수: 뒤에서 수비수·골키퍼가 공을 잡았고 내가 상대 진영에 있으면 나를 보고 길게 차 줌 (등지고 받는 장면)
+  if (m.detailKey === "target" && H.team === "us" && ["DF", "GK"].includes(H.pos) && M.x > 56 && M.x - H.x > 24 && dist2(H, M) < 58 && (m.want?.sit.id === "target_hold" || (relax && chance(0.12)))) return { cat: "mate", poss: "us", holder: H, longIn: true };
   // 동료가 내 가까이에서 공을 가졌을 때 (골키퍼가 잡았을 때는 조금 멀어도). 그 동료가 나에게 주며 장면이 이어짐
   if (H.team === "us" && dist2(H, M) < (H.pos === "GK" ? 26 : relax ? 22 : 15)) return { cat: "mate", poss: "us", holder: H };
   return null;
@@ -759,6 +764,7 @@ function momentCtx(state, m, evs) {
 function canSit(state, m, s) {
   const [a, b] = m.score, late = m.minute >= 55;
   if (!s.pos.includes(state.player.position) || (s.once && m.used[s.id]) || !meets(state, s.requires) || s.chainOnly) return false;
+  if (s.detail && !s.detail.some(k => k === m.detailKey || k === m.detail?.group)) return false;   // 세부 포지션 장면 (윙어 1 대 1, 풀백 오버래핑…)은 그 자리에서만
   if (s.wx && !s.wx.includes(m.weather || "clear")) return false;
   if (SCENES[s.id]?.mateCard && !(m.cardsUs || []).some(n => n !== m.me && m.sim?.P.some(p => p.name === n && p.team === "us"))) return false;   // "경고 한 장이 있는 동료" 장면은 실제로 경고 받은 동료가 있을 때만
   if ((s.flowUp && (m.flow || 0) < 0.3) || (s.flowDown && (m.flow || 0) > -0.3)) return false;   // 경기 흐름에 맞는 장면
@@ -776,7 +782,7 @@ const posTaste = (m, s) => {
   if (s.choices.some(c => ATT_PASS.has(c.win))) k *= 1.6;
   return k;
 };
-const sitWeight = (m, s) => s.weight * posTaste(m, s) * (m.score[0] < m.score[1] && m.minute > 50 && s.zone === "att" ? 1.6 : 1) * 0.3 ** (m.seen?.[s.id] || 0);   // 같은 장면이 되풀이되지 않게
+const sitWeight = (m, s) => s.weight * posTaste(m, s) * (m.detail?.taste[s.id] ?? 1) * (m.score[0] < m.score[1] && m.minute > 50 && s.zone === "att" ? 1.6 : 1) * 0.3 ** (m.seen?.[s.id] || 0);   // 같은 장면이 되풀이되지 않게
 // 장면이 말하는 자리와 지금 공 자리가 얼마나 맞는지 (1이면 그 자리)
 // 장면이 시작될 때 공이 있을 자리: 동료가 공을 가졌는데 장면은 내가 받는 장면이면 동료가 나에게 패스하므로 내 자리
 function sceneBall(m, s) {
@@ -808,8 +814,17 @@ const holderOk = (ctx, s, S, m) => { const sc = SCENES[s.id];
   if (!!sc?.arrive !== !!ctx.arrive && (sc?.arrive || (S && ctx.holder && Math.hypot(ctx.holder.x - meOf(S).x, ctx.holder.y - meOf(S).y) > 22))) return false;   // 2선 침투 장면은 그 상황에서만 (그 상황에서 다른 장면은 가까울 때만)
   if (!!sc?.race !== !!ctx.race && (sc?.race || (S && ctx.holder && Math.hypot(ctx.holder.x - meOf(S).x, ctx.holder.y - meOf(S).y) > 16))) return false;   // 뒷공간 경주도 마찬가지
   if (sc?.side && S) { const M = meOf(S), y = (sc.holder || them ? ctx.holder : M)?.y ?? S.ball.y; if (Math.abs(y - 34) < sc.side) return false; }
-  if (sc?.counter && S && S.t - (S.wonAt ?? -99) > 8) return false;                // "역습" 장면은 공 주인이 막 바뀌었을 때만
-  if (sc?.air && !["air", "defair"].includes(ctx.cat)) return false;                 // 긴 공·공중볼 장면은 실제로 공이 날아왔을 때만
+  if (sc?.counter && S && S.t - (S.wonAt ?? -99) > 8) return false;
+  if (s.detail && m?.detail?.side && S) {                                             // 왼쪽 윙어·풀백의 장면은 실제로 왼쪽에서 (오른쪽도 마찬가지)
+    const y = (sc?.holder || them ? ctx.holder : meOf(S))?.y ?? S.ball.y;
+    if ((y < 34) !== (m.detail.side === "L")) return false;
+  }
+  if (sc?.overlap) {                                                                  // 오버래핑: 같은 쪽 측면 동료가 상대 진영에서 공을 잡았고 나는 그 뒤·바깥에 있을 때만
+    const H = ctx.holder, M = S && meOf(S);
+    if (!H || !M || ctx.cat !== "mate" || H.pos !== "MF" || Math.abs(H.y - 34) < 15 || (H.y < 34) !== (M.y < 34) || H.x < 50 || H.x > 86 || M.x > H.x + 12 || Math.abs(M.y - 34) < Math.abs(H.y - 34) - 7) return false;
+  }                // "역습" 장면은 공 주인이 막 바뀌었을 때만
+  if (!!ctx.longIn && !sc?.longIn) return false;                                       // 나를 보고 길게 차 주는 상황은 그 장면만
+  if (sc?.air && !["air", "defair"].includes(ctx.cat) && !ctx.longIn) return false;                 // 긴 공·공중볼 장면은 실제로 공이 날아왔을 때만
   if (sc?.after && S) {                                                               // 직전 슈팅이 막힌 뒤의 장면 (우리 슈팅 after:"us", 상대 슈팅 "them")
     let se = null; for (let i = S.ev.length - 1; i >= 0 && S.ev[i].t > S.t - 6; i--) if (S.ev[i].type === "shotEnd") { se = S.ev[i]; break; }
     if (!se || se.team !== sc.after || !["save", "post", "block"].includes(se.result) || (sc.after === "us" && se.me)) return false;
@@ -817,9 +832,10 @@ const holderOk = (ctx, s, S, m) => { const sc = SCENES[s.id];
   if (sc?.tight != null && m && sceneDist(m, s) > sc.tight) return false;            // "박스 안"처럼 자리가 분명한 장면은 그 자리에서만
   if (!sc || sc.holder !== "df") return true;
   if (!["DF", "GK"].includes(ctx.holder?.pos)) return false;
+  if (sc.mark2 && ctx.holder.pos === "DF" && !["LCB", "RCB"].includes(ctx.holder.role)) return false;   // "센터백 두 명" 장면은 센터백(이나 골키퍼)이 공을 가졌을 때만
   if (sc.mark2 && S) { const h = ctx.holder; let n = 0; for (const p of S.P) if (p.team === "them" && p.pos !== "GK" && Math.hypot(p.x - h.x, p.y - h.y) < 18) n++; if (n < 2) return false; }
   return true; };
-const ctxFits = (ctx, cat) => (ctx.cat.includes(":") || cat.includes(":") ? (ctx.cat === cat ? 1 : 0) : cat === "mate" && ctx.cat !== "mate" ? 0 : COMPAT[ctx.cat]?.[cat] ?? 0);   // 세트피스는 그 세트피스일 때만, 동료가 공 가진 장면은 동료가 실제로 가졌을 때만
+const ctxFits = (ctx, cat) => ctx.longIn ? (cat === "air" ? 1 : 0) : (ctx.cat.includes(":") || cat.includes(":") ? (ctx.cat === cat ? 1 : 0) : cat === "mate" && ctx.cat !== "mate" ? 0 : COMPAT[ctx.cat]?.[cat] ?? 0);   // 세트피스는 그 세트피스일 때만, 동료가 공 가진 장면은 동료가 실제로 가졌을 때만
 
 // 이번에 나올 장면을 먼저 고름 (예전처럼 장면 비중대로). 그다음 경기장에서 그 장면에 맞는 상황이 오기를 기다림
 function wantSituation(state, m) {
@@ -909,7 +925,9 @@ function startMoment(state, m, sit, ctx, lines, ts) {
   if (sc.mateCard) { const n = (m.cardsUs || []).filter(x => x !== m.me).at(-1), p = n && SP(m, n, "us"); if (p) mateP = p; }
   const oppP = poss === "them" ? (holder?.team === "them" ? holder : ctx.set?.taker || nearestP(S, "them", M, p => p.ri))
     : nearestP(S, "them", M, p => p.ri);
-  const sv = { mate: mateP?.name || mateName(m), opp: oppP?.name || oppName(m), gk: m.gk.us, ogk: m.gk.them, coach: STAFF.coach };
+  const sideY = (poss === "them" || sc.holder ? holder : M)?.y ?? S.ball.y;
+  const sv = { mate: mateP?.name || mateName(m), opp: oppP?.name || oppName(m), gk: m.gk.us, ogk: m.gk.them, coach: STAFF.coach,
+    wing: mateP?.name || mateName(m), side: sideY < 34 ? "왼쪽" : "오른쪽" };     // side: 장면이 벌어지는 쪽 (우리 팀이 공격하는 방향 기준, 경기장 y < 34가 왼쪽)
   const zone = sit.zone;
   const min = m.minute;
   const L = (t, k, extra = {}) => lines.push({ t, k, minute: min, ts, ...extra });
@@ -959,13 +977,19 @@ function startMoment(state, m, sit, ctx, lines, ts) {
     hint.dur = 0.9;
     M.ov = { x: 1.2, y: clamp(34 + ((holder?.y ?? 34) - 34) * 0.35, 30.5, 37.5), v: 8.6, recv: false, carry: false, plan: false, keep: false, stage: true };
   }
+  if (sc.overlap && mateP) {                               // 오버래핑: 측면 동료 바깥으로 내가 달려 올라감
+    const touch = mateP.y < 34 ? 3.5 : 64.5;
+    M.ov = { x: clamp(Math.max(M.x, mateP.x + 3) + 2, 2, 92), y: touch, v: 8.6, recv: false, carry: false, plan: false, keep: false, stage: true };
+    hint.dur = 1.0;
+  }
   // 내가 받아야 하는 장면인데 동료가 공을 갖고 있으면: 그 동료가 실제로 나에게 패스한 뒤 장면 시작
   const passer2 = S.holder, D = stageHolder;                 // D: 장면이 말하는 공 가진 선수
-  if (!setPiece && poss === "us" && D && passer2 && passer2 !== D && passer2.team === "us" && !S.ball.fl && Math.hypot(passer2.x - D.x, passer2.y - D.y) < 45) {
-    passTo(S, passer2, D, [clamp(D.x + (D === M ? 1 : 0), 2, 103), D.y], { force: true, kind: "ground" });
+  if (!setPiece && poss === "us" && D && passer2 && passer2 !== D && passer2.team === "us" && !S.ball.fl && Math.hypot(passer2.x - D.x, passer2.y - D.y) < (ctx.longIn ? 60 : 45)) {
+    passTo(S, passer2, D, [clamp(D.x + (D === M ? 1 : 0), 2, 103), D.y], ctx.longIn ? { force: true, air: true, kind: "long" } : { force: true, kind: "ground" });   // 타깃형: 나를 보고 길게
     if (S.ball.fl) { const need = Math.hypot(D.x - S.ball.fl.x1, D.y - S.ball.fl.y1) / 8 + 0.1; if (S.ball.fl.T < need) S.ball.fl.T = need; }
-    m.staging.waitRecv = S.t + 4; m.staging.hint = hint; m.staging.recvBy = D;
-    if (D === M && !lines.some(l => l.toMe)) {
+    m.staging.waitRecv = S.t + 4; m.staging.hint = hint; m.staging.recvBy = D; m.staging.mustRecv = !!ctx.longIn;
+    if (D === M && ctx.longIn) L(fill(pick(["{mate|이/가} 나를 보고 길게 찬다.", "{mate|이/가} 고개를 들더니 나에게 길게 올려 준다."]), { ...sv, mate: passer2.name }), "me", { toMe: true });
+    else if (D === M && !lines.some(l => l.toMe)) {
       const pool = TO_ME[zone] || TO_ME.mid, t = pick(pool.filter(x => /\{mate/.test(x)));
       if (t) L(fill(t, { ...sv, mate: passer2.name }), "me", { toMe: true });
     }
@@ -1010,6 +1034,10 @@ function kickoffLines(state, m) {
   if (m.bond && m.status === "start") L(m.bond.line, "me");   // 예전 선택이 돌아오는 순간
   if (m.status !== "start") L(m.status === "bench" || m.status === "sub" ? "벤치에서 경기를 지켜본다. 언제 부를지 모른다." : (m.reason || "관중석에서 경기를 지켜본다."));
   if (m.restNote) L(m.restNote, "coach");
+  if (m.detail && m.status === "start" && !state.flags.detailDebut) {               // 세부 포지션이 정해진 뒤 첫 선발
+    state.flags.detailDebut = true;
+    L(fill("{d|으로/로} 서는 첫 경기. 감독님이 정해 준 자리로 걸어가 섰다.", { d: m.detail.label }), "me");
+  }
   if (m.star >= 1 && m.status === "start") L(fill(pick(ME_IN_PLAY.marked), { me: m.me }), "me-auto");
   if (m.status === "start" && isBirthdayWeek(state, turnInfo(state)))
     L(fill("생일 주간에 선발 출전한 {me}. 벤치에서 {a|이/가} 손가락으로 케이크 모양을 그려 보인다.", { me: m.me, a: STAFF.assistant }), "coach");
@@ -1058,7 +1086,9 @@ export function next(state, m) {
     while (m.timed.length && m.timed[0].minute <= m.minute) lines.push(...timedEvent(state, m, m.timed.shift(), S.t));
     if (m.staging?.waitRecv) {                              // 동료 패스가 나에게 닿으면 장면 연출 시작
       const M = meOf(S);
-      if (S.holder === (m.staging.recvBy || M) || S.t > m.staging.waitRecv) { m.staging.waitRecv = 0; stageStart(S, m.staging.hint); }
+      const want = m.staging.recvBy || M;
+      if (m.staging.mustRecv && S.holder !== want && (S.t > m.staging.waitRecv || (!S.ball.fl && S.holder))) { m.staging = null; continue; }   // 긴 공을 상대가 먼저 따냈으면 장면 없음 (문장이 "받았다"고 말하므로)
+      if (S.holder === want || S.t > m.staging.waitRecv) { m.staging.waitRecv = 0; stageStart(S, m.staging.hint); }
       continue;
     }
     if (m.staging) { if (!S.stage) { finishStaging(state, m); kind = "moment"; break; } continue; }
@@ -1519,8 +1549,8 @@ function scriptSteps(state, m, pd, c, out, R, tail, outTpl) {
     holder = taker;
     if (ctx.cat === "set:corner") {
       const cy = spot[1] < 34 ? -1 : 1, near = /니어/.test(c.label), far = /먼 쪽/.test(c.label);
-      const tp = near ? [101, 34 + cy * 3.5] : far ? [97.5, 34 - cy * 5] : [M.x, M.y];
-      if (near || far) steps.push({ do: "runTo", p: M, x: tp[0], y: tp[1] });                // 니어로 끊어 들어가거나 먼 쪽에서 기다림
+      const tp = near ? [101, 34 + cy * 3.5] : far ? [97.5, 34 - cy * 5] : M.x < 88 ? [94, 34 - cy * 2] : [M.x, M.y];
+      if (near || far || M.x < 88) steps.push({ do: "runTo", p: M, x: tp[0], y: tp[1] });   // 니어로 끊어 들어가거나 먼 쪽에서 기다림 (박스 밖에 있었으면 박스 안으로)
       steps.push({ do: "pass", from: taker, to: M, air: true, cross: true, tp, kind: "cross", main: true }); holder = M;
     }
     if (ctx.cat.startsWith("defset")) {
@@ -1592,13 +1622,14 @@ function scriptSteps(state, m, pd, c, out, R, tail, outTpl) {
     if (!ran) ot = twoTxt && !setKind && oneTwo(mate && !mate.me ? mate : nearMate(M));
     // 결과 문장: 성공(슈팅 기회)은 슈팅 자리에 왔을 때(원투·침투면 받을 때, 드리블이면 제칠 때), 실패(빗나감)는 슈팅이 끝났을 때
     let mainDone = ran && out !== "miss" || ot;
-    if (!setKind && mv === "drib") { const o = nearestP(S, "them", { x: M.x + 6, y: M.y }, p => p.ri && p.pos !== "GK"); steps.push({ do: "carry", by: M, dist: 8, dy: o ? (o.y > M.y ? -3.5 : 3.5) : 0, beat: true, v: 7.8, main: out !== "miss" && !mainDone }); mainDone = mainDone || out !== "miss"; }
+    if (!setKind && mv === "drib") { const o = nearestP(S, "them", { x: M.x + 6, y: M.y }, p => p.ri && p.pos !== "GK"); steps.push({ do: "carry", by: M, dist: 8, dy: /안으로|안쪽으로/.test(c.label + outTpl) ? (M.y < 34 ? 4 : -4) : o ? (o.y > M.y ? -3.5 : 3.5) : 0, beat: true, v: 7.8, main: out !== "miss" && !mainDone }); mainDone = mainDone || out !== "miss"; }
     if (!setKind && !(arrive && ran)) approach(M, out === "longShot" || c.win === "longShot" ? 25 : out === "head" || out === "tapIn" ? 9 : mv === "first" ? 22 : ran ? 11 : 17, out !== "miss" && !mainDone, { gkOut: ran || ["chip", "tapIn"].includes(out) });
     const kind = setKind === "pk" ? "pk" : ctx.cat === "set:fkShot" ? "fk" : R?.kind === "head" || out === "head" || out === "acro" || (c.stats["phys.jump"] || 0) >= 0.5 ? "head" : shootKind[out] || (R?.kind ?? "shot");
     shotBy(M, R?.res || (out === "miss" ? "wide" : "save"), kind);
     if (out === "miss" || setKind) steps[steps.length - 1].main = !steps.some(x => x.main);
     steps.push(emit);
   } else if (["assist", "keyPass", "killPass"].includes(out)) {
+    if (SCENES[pd.sit.id]?.overlap && holder && holder.team === "us" && !holder.me) { steps.push({ do: "space", from: holder, to: M, along: true }); holder = M; }   // 오버래핑: 측면 동료가 터치라인 따라 내 앞 공간으로
     ensure(M, ctx.poss === "them");
     if (twoTxt) oneTwo(mate && !mate.me ? mate : nearMate(M));
     const tgt = mate && mate !== M && !mate.me ? mate : recvP || nearestP(S, "us", { x: 92, y: 34 }, p => !p.me && p.ri);
@@ -1623,6 +1654,12 @@ function scriptSteps(state, m, pd, c, out, R, tail, outTpl) {
     steps.push(emit);
   } else if (out === "decoy") {
     ensure(mate, true);
+    if (SCENES[pd.sit.id]?.overlap) {                                            // 오버래핑 미끼: 내가 바깥으로 달려 나가고 수비 한 명이 따라옴
+      const tx = clamp(M.x + 12, 2, 98), ty = M.y < 34 ? 3 : 65, fol = nearestP(S, "them", M, p => p.ri && p.pos !== "GK");
+      steps.push({ do: "runTo", p: M, x: tx, y: ty });
+      if (fol) steps.push({ do: "runTo", p: fol, x: tx - 1.5, y: ty + (ty < 34 ? 2 : -2), v: 8 });
+      steps.push({ do: "wait", t: 0.6 });
+    }
     approach(mate, 14);
     shotBy(mate, R?.res, "shot");
     steps.push(emit);
@@ -1927,7 +1964,7 @@ export function finishMatch(state, m) {
     rating, reason: m.reason, shootout, mom, momName, school: fx.school?.name || null,
     possession: m.stats.poss, shots: [m.stats.us.shots, m.stats.them.shots], involved: m.my.involved || 0, stops: m.my.stops || 0,
     injury: m.injured || null, subbedOff: !!m.subbedOff, clutch, elementary: !!fx.elementary, ko: !!fx.ko,
-    decisions: m.my.decisions, successes: m.my.successes,
+    decisions: m.my.decisions, successes: m.my.successes, detail: m.detailKey || null,
   };
   DEV.onFinish?.(m, res);                          // 시험 도구가 경기 내용을 들여다볼 때만
   rec.matches.push(res);

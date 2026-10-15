@@ -10,6 +10,7 @@ import { rollPlayer, newGame } from "../../js/state.js";
 import { beginWeek, endWeek } from "../../js/engine/week.js";
 import { prepareMatch, next, resolve, autoChoice, finishMatch } from "../../js/engine/match.js";
 import { SCENES } from "../../data/scenes.js";
+import { DETAIL_POS } from "../../data/player.js";
 const ZONE_BOX = { att: [[78, 94], [16, 52]], mid: [[44, 66], [8, 60]], def: [[10, 32], [8, 60]] };
 
 const N = +process.argv[2] || 60, which = process.argv[3] || "all", SHOW = +(process.env.SHOW || 6);
@@ -22,6 +23,7 @@ for (let k = 0; k < N; k++) {
   setSeed(20000 + k);
   const pos = which === "all" ? ["FW", "MF", "DF"][k % 3] : which;
   const s = newGame(rollPlayer({ name: "테스트", face: "face_01", position: pos, foot: "R", growthType: "steady" }));
+  if (process.env.DETAIL) { const ks = Object.keys(DETAIL_POS).filter(x => DETAIL_POS[x].pos === pos && (process.env.DETAIL === "all" || process.env.DETAIL.split(",").includes(x))); if (ks.length) s.player.detailPos = ks[k % ks.length]; }   // DETAIL=all 또는 DETAIL=winger_l,fb_r: 세부 포지션을 정해 두고 시험
   const lv = 45 + (k % 5) * 8;
   for (const g of ["tech", "phys", "mental"]) for (const q in s.player.stats[g]) s.player.stats[g][q] = lv;
   s.relations.coach = 95;

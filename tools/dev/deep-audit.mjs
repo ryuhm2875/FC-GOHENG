@@ -6,6 +6,7 @@ const { rollPlayer, newGame } = await import(R + "js/state.js");
 const { beginWeek, endWeek } = await import(R + "js/engine/week.js");
 const { prepareMatch, next, resolve, autoChoice, finishMatch } = await import(R + "js/engine/match.js");
 const { SCENES } = await import(R + "data/scenes.js");
+const { DETAIL_POS } = await import(R + "data/player.js");
 
 let __r = 12345; const prand = () => ((__r = (__r * 1103515245 + 12345) % 2147483648) / 2147483648);
 const N = +process.argv[2] || 60, which = process.argv[3] || "all", SHOW = +(process.env.SHOW || 6);
@@ -23,6 +24,7 @@ for (let k = 0; k < N; k++) {
   setSeed(seed); __r = 1 + Math.abs(seed | 0);
   const pos = which === "all" ? ["FW", "MF", "DF"][k % 3] : which;
   const s = newGame(rollPlayer({ name: "테스트", face: "face_01", position: pos, foot: "R", growthType: "steady" }));
+  if (process.env.DETAIL) { const ks = Object.keys(DETAIL_POS).filter(x => DETAIL_POS[x].pos === pos && (process.env.DETAIL === "all" || process.env.DETAIL.split(",").includes(x))); if (ks.length) s.player.detailPos = ks[k % ks.length]; }   // DETAIL=all 또는 DETAIL=winger_l,fb_r: 세부 포지션을 정해 두고 시험
   const lv = 45 + (k % 5) * 8;
   for (const g of ["tech", "phys", "mental"]) for (const q in s.player.stats[g]) s.player.stats[g][q] = lv;
   s.relations.coach = 95;
@@ -130,7 +132,7 @@ for (let k = 0; k < N; k++) {
       // 결과 문장 속 이름이 실제로 움직인 선수인지
       const firstMyPass = evs.find(e => e.type === "pass" && e.from === m.me);
       const myPassTo = firstMyPass?.to;
-      if (vars.mate && outText.includes(vars.mate) && /에게|패스|내줬|연결|찔러|벌렸|떨궜|밀어 줬|넘겼|건넸/.test(outText) && !/거치지 않고/.test(outText) && poss === "us" && !/돌려준다|돌아서지 못하고|컷백이|건넸다\. "네가|양보/.test(outText)) {
+      if (vars.mate && outText.includes(vars.mate) && /에게|패스|내줬|연결|찔러|벌렸|떨궜|밀어 줬|넘겼|건넸/.test(outText) && !/거치지 않고/.test(outText) && poss === "us" && !/돌려준다|돌아서지 못하고|컷백이|건넸다\. "네가|양보|의 패스를 받아|\{wing\}의 패스|의 패스가 /.test(outText) && !(vars.wing && outText.includes(vars.wing + "의 패스"))) {
         cnt("결과 문장 동료에게 패스");
         const ok = myPassTo === vars.mate || evs.some(e => e.type === "pass" && e.from === m.me && e.to === vars.mate);
         if (!ok) bad("결과 문장의 '{mate}에게 패스'인데 경기장에서는 다른 선수에게 감", `${tag} ${r.outcome}/${r.act ?? "-"} 문장 ${vars.mate}, 실제 ${myPassTo ?? "내 패스 없음"}: ${outText.slice(0, 40)}`);

@@ -1,11 +1,16 @@
 // 진로 화면: 진학 상담, 국가대표 발표, 엔딩, 엔딩 도감
 import { ENDINGS, GRADE_INFO } from "../../data/endings.js";
-import { schoolOptions, chooseSchool, decideEnding, markEnding, seenEndings, teacherLetter } from "../engine/career.js";
+import { schoolOptions, chooseSchool, decideEnding, markEnding, seenEndings, teacherLetter, detailOptions, chooseDetail } from "../engine/career.js";
+import { DETAIL_POS } from "../../data/player.js";
+import { turnInfo } from "../engine/calendar.js";
+const turnMonth = state => turnInfo(state)?.month;
+import { STAFF } from "../../data/roster.js";
+import { sfx } from "./sfx.js";
 import { openModal } from "./modals.js";
 import { bgLayer } from "./intro.js";
 import { setScene } from "./fx.js";
 import { bgm } from "./bgm.js";
-import { esc, img, faceOf } from "./util.js";
+import { esc, img, faceOf, fillText } from "./util.js";
 import { addHallCard, checkAchievements } from "./hall.js";
 
 // 학교 엠블럼 (그림 없이 이름 첫 글자로)
@@ -42,6 +47,73 @@ export function admissionModal(app, done) {
       el.querySelector("[data-close]").addEventListener("click", close);
     }));
   }, { dismissable: false, onClose: done });
+}
+
+// ── 세부 포지션 면담 (2학년 하계대회 뒤): 정 코치 기록 → 감독님 추천 → 내가 고름 (윙어·풀백은 왼쪽·오른쪽까지) ──
+export function detailModal(app, done) {
+  const state = app.state, p = state.player;
+  const { list, rec, sideRec } = detailOptions(state);
+  if (!list.length) { state.pending = null; done(); return; }
+  const top = list[0], second = list[1];
+  const WHO = { assist: { name: STAFF.assistant, face: "npc_assistant" }, coach: { name: STAFF.coach, face: "npc_coach" } };
+  const tj = (w, a, b) => fillText(`{w|${a}/${b}}`, { w });
+  const recLine = !rec.games ? "아직 경기 기록이 많지 않습니다. 훈련 때 본 것으로 말씀드리겠습니다."
+    : `최근 ${rec.games}경기 기록입니다. 평점 평균 ${rec.rating.toFixed(2)}, ${rec.goals}골 ${rec.assists}도움${p.position !== "FW" ? `, 상대 공격을 끊어 낸 장면이 ${rec.stops}번` : ""}입니다.`;
+  const lines = [
+    { t: `${state.calendar.grade === 2 && turnMonth(state) === 9 ? "하계대회가 끝나고 얼마 안 된 날." : "훈련이 끝난 저녁."} 감독실 문을 두드렸다. 감독님과 정 코치님이 나란히 앉아 계신다.` },
+    { who: "assist", t: recLine },
+    { who: "coach", t: `${state.calendar.grade === 2 ? "하계대회 보면서" : "요즘 경기 보면서"} 계속 생각했다. 이제 너도 네 자리를 정할 때가 됐다.` },
+    { who: "coach", t: `${top.why} 그래서 나는 너를 ${tj(top.label, "으로", "로")} 쓰고 싶다.` },
+    ...(second ? [{ who: "assist", t: `감독님 말씀도 맞는데, 나는 ${second.label}도 잘 어울린다고 본다. ${second.why}` }] : []),
+    { who: "coach", t: "마지막엔 네가 정해라. 정하면 그 자리에 맞게 키운다." },
+  ];
+  const lineHtml = l => { const w = WHO[l.who];
+    return w ? `<div class="ev mt-line"><div class="ev-por">${img(w.face, w.name)}</div>
+        <div class="ev-body"><div class="ev-who">${esc(w.name)}</div><p class="ev-text">"${esc(l.t)}"</p></div></div>`
+      : `<p class="mt-nar">${esc(l.t)}</p>`; };
+  openModal(`<div class="mt-head"><span class="chip kit">감독실 면담</span> <span class="mute">세부 포지션</span></div>
+    <div id="mtl" aria-live="polite"></div><div class="mt-ctl" id="mtc"></div>`, (el, close) => {
+    const box = el.querySelector("#mtl"), ctl = el.querySelector("#mtc");
+    let i = 0;
+    const show = () => {
+      box.innerHTML = lineHtml(lines[i]); box.firstElementChild.classList.add("mt-in");
+      ctl.innerHTML = `<div class="mt-row"><button class="linkbtn" data-skip>건너뛰기</button><span class="mute num">${i + 1} / ${lines.length}</span>
+        <button class="btn btn-kit" data-next>${i < lines.length - 1 ? "다음 ▶" : "고르기"}</button></div>`;
+      ctl.querySelector("[data-next]").addEventListener("click", () => { if (i < lines.length - 1) { i++; show(); } else pickRole(); });
+      ctl.querySelector("[data-skip]").addEventListener("click", pickRole);
+      ctl.querySelector("[data-next]").focus({ preventScroll: true });
+    };
+    const choices = (q, opts, onPick) => {
+      ctl.innerHTML = `<p class="mt-q mute">${esc(q)}</p><div class="vn-choices">${opts.map((o, k) => `<button class="vn-choice dp-choice" style="--i:${k}" data-k="${k}">
+        <b>${esc(o.label)}</b>${o.tag ? ` <span class="chip kit">${esc(o.tag)}</span>` : ""}${o.sub ? `<small>${esc(o.sub)}</small>` : ""}</button>`).join("")}</div>`;
+      ctl.querySelectorAll("[data-k]").forEach(b => b.addEventListener("click", () => onPick(opts[+b.dataset.k])));
+      ctl.querySelector("[data-k]")?.focus({ preventScroll: true });
+    };
+    const pickRole = () => {
+      box.innerHTML = lineHtml(lines.at(-1));
+      choices("어느 자리에서 뛸까?", list.map(o => ({ ...o, tag: o === top ? "감독님 추천" : o === second ? "코치님 추천" : "", sub: o.desc })), o => o.side ? pickSide(o) : finish(o.keys[0]));
+    };
+    const pickSide = o => {
+      const footW = p.foot === "L" ? "왼발잡이" : "오른발잡이", sideW = sideRec === "L" ? "왼쪽" : "오른쪽", other = sideRec === "L" ? "오른쪽" : "왼쪽";
+      box.innerHTML = lineHtml({ who: "assist", t: o.group === "winger"
+        ? `${footW}니까 ${sideW}에 서면 크로스가 편하다. 반대로 ${other}에 서서 안으로 접고 들어가 차는 윙어도 많다. 어느 쪽이 좋냐?`
+        : `${footW}니까 ${sideW}이 편할 거다. 터치라인 따라 올라가서 바로 올릴 수 있으니까. 그래도 네가 편한 쪽으로 골라라.` });
+      const L = o.keys.find(k => DETAIL_POS[k].side === "L"), R = o.keys.find(k => DETAIL_POS[k].side === "R");
+      choices("어느 쪽에 설까?", [{ key: L, label: DETAIL_POS[L].label, tag: sideRec === "L" ? "추천" : "" }, { key: R, label: DETAIL_POS[R].label, tag: sideRec === "R" ? "추천" : "" }], x => finish(x.key));
+    };
+    const finish = key => {
+      const r = chooseDetail(state, key);
+      if (!r.ok) return;
+      app.saveTo("auto");
+      box.innerHTML = lineHtml({ who: "coach", t: `좋다. 오늘부터 너는 ${tj(r.d.label, "이다", "다")}. 다음 경기부터 그 자리에 세운다.` });
+      ctl.innerHTML = `<div class="evchips"><span class="evchip up">${esc(r.d.label)}</span></div><p class="mute dp-desc">${esc(r.d.desc)}</p>
+        <button class="btn btn-kit btn-wide" data-close style="margin-top:12px">확인</button>`;
+      ctl.querySelector("[data-close]").addEventListener("click", close);
+      ctl.querySelector("[data-close]").focus({ preventScroll: true });
+      sfx.play("good");
+    };
+    show();
+  }, { dismissable: false, onClose: done, scene: "ev_meeting", cls: "event meeting" });
 }
 
 // ── 국가대표 발표 ───────────────────

@@ -50,7 +50,7 @@ export function createSim(cfg) {
     const [, pos, i] = p.id.split("-");
     const role = ROLES[pos][+i] || pos;
     return { id: p.id, team: p.team, pos: p.pos, name: p.name, number: p.number, me: !!p.me, st: { pass: 50, shoot: 50, drib: 50, def: 50, jump: 50, ...p.st },
-      longShot: !!p.longShot, ace: !!p.ace, qMul: p.qMul || null, slot: p.slot ?? null,
+      longShot: !!p.longShot, ace: !!p.ace, qMul: p.qMul || null, slot: p.slot ?? null, tune: p.tune || [0, 0, 0],   // tune: 세부 포지션 [공격, 수비] 앞뒤 조정, [2] 공격할 때 터치라인 쪽으로 (m)
       role, ri: RI[role], runner: ["ST1", "ST2", "LM", "RM"].includes(role), x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0, v: JOG, ov: null, stun: 0, cool: 0,
       press: false, held: false, pressedAt: 0, eng: 0, waitT: 0,
       runUntil: 0, runTo: [0, 0], overlap: false, ovStay: 0, boxRun: false,   // 경기 중에 쓰는 값도 처음부터 만들어 둠 (객체 모양이 바뀌면 느려짐)
@@ -173,6 +173,7 @@ function targets(S) {
   for (const p of P) {
     const A = p.team === att, sh = A ? shA : shD;
     let x = sh[p.ri * 2], y = sh[p.ri * 2 + 1];
+    if (p.ri) { x += A ? p.tune[0] : p.tune[1]; if (A && p.tune[2]) y += (y < 34 ? -1 : 1) * p.tune[2]; }   // 세부 포지션: 수비형은 한 칸 아래, 공격형은 한 칸 위, 윙어는 공격할 때 더 넓게
     if (A && p.ri) {
       if (p.pos === "FW") x = Math.max(x, off - 3.5);                // 공격수는 상대 마지막 수비 라인에 붙어 섬
       else if (p.runner) x = Math.max(x, Math.min(off - 9, x + 12));
@@ -1134,7 +1135,7 @@ function stageTick(S) {
     const pool = S.P.filter(p => p.team === def && p.pos !== "GK" && !p.me), near = pt => pool.slice().sort((a, b) => hyp(a.x - pt.x, a.y - pt.y) - hyp(b.x - pt.x, b.y - pt.y));
     st.pressers = near(H).slice(0, n);
     // 센터백 짝을 막는 선수: 그 짝에게 가장 가까운 상대 (첫 번째 압박 선수 말고)
-    const pair = st.mark2 && S.P.filter(q => q.team === H.team && q !== H && q.pos === "DF" && !q.me).sort((a, b) => hyp(a.x - H.x, a.y - H.y) - hyp(b.x - H.x, b.y - H.y))[0];
+    const pair = st.mark2 && (S.P.find(q => q.team === H.team && q !== H && (q.role === "LCB" || q.role === "RCB") && (H.role === "LCB" || H.role === "RCB")) || S.P.filter(q => q.team === H.team && q !== H && q.pos === "DF" && !q.me).sort((a, b) => hyp(a.x - H.x, a.y - H.y) - hyp(b.x - H.x, b.y - H.y))[0]);   // 센터백 짝 (공 가진 선수가 센터백이면 다른 센터백)
     if (pair && n >= 2) { st.pressers[1] = near(pair).find(p => p !== st.pressers[0]); st.pair = pair; }
   }
   let arrived = true;
@@ -1179,7 +1180,8 @@ function stageTick(S) {
   if (st.gk) { const g = gkOf(S, def); if (g) g.ov = OV(clamp(H.x + dirOf(H.team) * st.gk, 1, 104), 34 + (H.y - 34) * 0.4, 7, "stage"); }
   // 상대 공 장면: 내가 그 선수 가까이 붙을 때까지 (최대 2.5초 더). 화면에서 "막아야 한다" 때 내가 멀리 있지 않게
   const close = !me || H.team === me.team || st.mePress === false || hyp(me.x - H.x, me.y - H.y) < (st.meGap ?? 2.4) + 2.5;
-  if (S.t >= st.until && ((close && arrived) || S.t >= st.until + 2.5)) { S.stage = null; for (const p of S.P) if (p.ov?.stage) p.ov = null; if (H.ov) H.ov = null; }
+  // 센터백 둘을 막는 장면(mark2)은 두 번째 상대가 닿을 때까지 조금 더 기다림
+  if (S.t >= st.until && ((close && arrived) || S.t >= st.until + (st.mark2 ? 4 : 2.5))) { S.stage = null; for (const p of S.P) if (p.ov?.stage) p.ov = null; if (H.ov) H.ov = null; }
 }
 export function stageDone(S) { return !S.stage; }
 
@@ -1307,6 +1309,7 @@ function startStep(S, st) {
       px = clamp(Math.max(rx + (st.air ? 11 : 8), line + (st.air ? 6 : 4)), fx + 6, st.overhit ? 98 : 90);
       py = ry + (34 - ry) * (st.air ? 0.15 : 0.3);
       if (st.wide) { px = clamp(rx + 6, fx - 4, 88); py = ry; }
+      if (st.along) { px = clamp(rx + 9, fx + 4, 88); py = ry + (ry < 34 ? -1.5 : 1.5); }   // 터치라인을 따라 달리는 선수 앞으로 (오버래핑)
     }
     if (st.overhit) { px = Math.max(px, 95.5); py = 34 + (py - 34) * 0.4; }
     const tp = [clamp(ox(team, px), 2, 103), clamp(py, 3, 65)];
