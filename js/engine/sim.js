@@ -116,6 +116,7 @@ function moveBall(S) {
 function give(S, p) {
   if (S.trace) { const d = hyp(p.x - S.ball.x, p.y - S.ball.y); if (d > 3) S.trace.push({ t: S.t, k: "glide", p: p.name, d, scur: S.scur?.name || null }); }   // 점검용: 공이 멀리서 붙음
   S.holder = p; S.ball.fl = null; S.ball.roll = null; S.pending = null; p.held = false; p.pressedAt = 0;
+  if (S.pickOnly === p) S.pickOnly = null;
   for (const q of S.P) if (q.ov && (q.ov.recv || q.ov.carry)) q.ov = null;
   if (S.poss !== p.team) { S.poss = p.team; S.chain = []; endPlan(S); S.wonAt = S.t; S.wonBy = p; }
   S.last = p; S.lastTeam = p.team;
@@ -1140,7 +1141,8 @@ function startStep(S, st) {
   const busy = (fn, max = 6) => ({ until: fn, deadline: S.t + max });
   const ready = () => !S.ball.fl && S.phase === "play";
   if (st.do === "emit") { emit(S, "lines", { lines: st.lines }); return null; }
-  if (st.do === "waitNear") { const { p } = st; return busy(() => hyp(p.x - st.x, p.y - st.y) < (st.r ?? 3), st.max ?? 3); }
+  if (st.do === "runTo") { const p = st.p; if (p && p !== S.holder) p.ov = OV(clamp(st.x, 2, 103), clamp(st.y, 2, 66), st.v ?? SPRINT, "recv"); return null; }   // 공 없는 선수가 먼저 뛰어 들어감
+  if (st.do === "waitNear") { const { p } = st; if (st.hold && S.holder === st.hold) st.hold.ov = OV(st.hold.x, st.hold.y, 1.5, "carry"); return busy(() => hyp(p.x - st.x, p.y - st.y) < (st.r ?? 3), st.max ?? 3); }
   if (st.do === "wait") { const end = S.t + st.t; return busy(() => S.t >= end, st.t + 0.1); }
   if (st.do === "give") { const p = st.to; if (hyp(p.x - S.ball.x, p.y - S.ball.y) > 2.5 && !S.ball.fl) { launch(S, p.x, p.y, { T: 0.3, kind: "pass" }); return busy(() => !S.ball.fl, 1); } give(S, p); S.decideAt = S.t + range(0.4, 0.8); return null; }
   if (st.do === "steal") {
@@ -1178,17 +1180,28 @@ function startStep(S, st) {
   }
   // 가로채기: from이 to에게 준 패스를 by가 길목에서 끊음
   if (st.do === "passCut") {
-    const { from, to, by } = st;
+    const { from, to } = st;
     if (S.holder !== from) return null;
     const b = S.ball, dx = to.x - b.x, dy = to.y - b.y, L2 = Math.max(1, dx * dx + dy * dy);
-    const u = clamp(((by.x - b.x) * dx + (by.y - b.y) * dy) / L2, 0.3, 0.8), P = [b.x + dx * u, b.y + dy * u];
-    const T = Math.max(0.15 + hyp(P[0] - b.x, P[1] - b.y) / 15.5, hyp(by.x - P[0], by.y - P[1]) / 8.2);
+    // 패스 길 위에서 가장 빨리 닿을 수 있는 상대가 끊음 (문장이 이름을 말하면 그 선수, 단 너무 멀면 가까운 선수)
+    const reach = (o, uu) => hyp(o.x - (b.x + dx * uu), o.y - (b.y + dy * uu)) / 8.2 - (st.air ? 0.35 : 0.12) - uu * Math.sqrt(L2) / (st.air ? 26 : 15.5);
+    const bestU = o => { let bu = 0.5, bv = 1e9; for (let uu = 0.25; uu <= 0.86; uu += 0.05) { const v = reach(o, uu); if (v < bv) { bv = v; bu = uu; } } return [bu, bv]; };
+    let [u, slack] = bestU(st.by);
+    if (slack > 1.2) { for (const o of S.P) if (o.team !== from.team && o.ri && o.pos !== "GK") { const [uu, vv] = bestU(o); if (vv < slack) { slack = vv; u = uu; st.by = o; } } }
+    const cutBy = st.by, P = [b.x + dx * u, b.y + dy * u];
+    const T = Math.max((st.air ? 0.35 + hyp(P[0] - b.x, P[1] - b.y) / 26 : 0.15 + hyp(P[0] - b.x, P[1] - b.y) / 15.5), hyp(cutBy.x - P[0], cutBy.y - P[1]) / 8.2 + 0.1);
+    const by = cutBy;
     S.last = from; S.lastTeam = from.team; from.ov = null;
     emit(S, "pass", { from: from.name, to: to.name, team: from.team, kind: "ground", me: from.me, toMe: to.me, silent: true });
     by.ov = OV(P[0], P[1], SPRINT, "recv");
     S.pickOnly = by;
-    launch(S, P[0], P[1], { kind: "pass", T, then: S2 => { S2.pickOnly = null; if (hyp(by.x - P[0], by.y - P[1]) < 2.8) { give(S2, by); emit(S2, "intercept", { by: by.name, team: by.team, from: from.name, r: to.name, me: by.me, silent: true }); } else landLoose(S2); } });
-    return busy(() => !S.ball.fl, T + 1);
+    launch(S, P[0], P[1], { kind: "pass", T, air: !!st.air, h: st.air ? 3.5 : undefined, then: S2 => { S2.pickOnly = null;
+      if (hyp(by.x - P[0], by.y - P[1]) < 2.8) {
+        if (st.air && st.headClear) { emit(S2, "header", { by: by.name, team: by.team, me: by.me, from: from.name, r: to.name, x: P[0], silent: true }); S2.last = by; S2.lastTeam = by.team;
+          launch(S2, clamp(P[0] + dirOf(by.team) * range(14, 22), 2, 103), clamp(P[1] + range(-10, 10), 2, 66), { air: true, h: 5, kind: "clear", then: S3 => landLoose(S3) }); return; }
+        give(S2, by); emit(S2, "intercept", { by: by.name, team: by.team, from: from.name, r: to.name, me: by.me, silent: true });
+      } else { S2.pickOnly = by; by.ov = OV(P[0], P[1], SPRINT, "recv"); landLoose(S2); } } });
+    return busy(() => !S.ball.fl && (S.holder === by || S.phase !== "play"), T + 2.5);
   }
   // 제치기: by가 공을 몰고 victim을 지나쳐 감 (victim은 잠깐 멈칫)
   if (st.do === "beat") {
@@ -1212,12 +1225,53 @@ function startStep(S, st) {
     const ty0 = st.toGoal != null ? p.y + (34 - p.y) * 0.45 : p.y + (st.dy ?? (34 - p.y) * 0.25);
     const tx = clamp(p.x + g * dist, 3, 102), ty = clamp(ty0, 3, 65);
     p.ov = OV(tx, ty, st.v ?? 7.6, "carry");
-    for (const o of S.P) if (o.team !== p.team && hyp(o.x - p.x, o.y - p.y) < 4) o.stun = 0.9;   // 제친 수비는 잠깐 휘청
+    for (const o of S.P) if (o.team !== p.team && hyp(o.x - p.x, o.y - p.y) < (st.beat ? 7 : 4) && (o.pos !== "GK" || st.roundGK)) o.stun = st.beat ? 1.3 : 0.9;   // 제친 수비는 잠깐 휘청
+    if (st.gkOut) { const gk = gkOf(S, other(p.team)); if (gk) { const gx = p.team === "us" ? 105 : 0, k = 0.38; gk.ov = OV(gx + (tx - gx) * k, 34 + (ty - 34) * k, RUN, "recv"); } }   // 골키퍼가 각을 좁히며 나옴
     return busy(S2 => hyp(p.x - tx, p.y - ty) < 0.8 || S2.holder !== p, dist / (st.v ?? 7.6) + 2.2);
+  }
+  // 공간 패스: 받을 선수가 먼저 뛰기 시작하고, 공은 그 선수가 닿을 빈 공간(수비 라인 뒤·사이)으로
+  // air: 수비 머리 위로 띄움(뒷공간 한 방) / cross: 박스 안으로 / cut: 컷백(받는 선수가 뒤에서 들어옴) / overhit: 너무 길어서 골키퍼가 잡음
+  if (st.do === "space") {
+    const { from, to } = st, team = from.team, g = dirOf(team);
+    if (S.holder !== from) give(S, from);
+    const fx = ox(team, from.x), rx = ox(team, to.x), ry = to.y;
+    let px, py;
+    if (st.cross) { px = range(92, 96); py = 34 + (ry < 34 ? -1 : 1) * range(1, 5); }
+    else if (st.cut) { px = range(88, 91.5); py = 34 + (from.y < 34 ? 1 : -1) * range(0, 5); }
+    else {
+      const line = offLine(S, team);
+      px = clamp(Math.max(rx + (st.air ? 11 : 8), line + (st.air ? 6 : 4)), fx + 6, st.overhit ? 98 : 90);
+      py = ry + (34 - ry) * (st.air ? 0.15 : 0.3);
+      if (st.wide) { px = clamp(rx + 6, fx - 4, 88); py = ry; }
+    }
+    if (st.overhit) { px = Math.max(px, 95.5); py = 34 + (py - 34) * 0.4; }
+    const tp = [clamp(ox(team, px), 2, 103), clamp(py, 3, 65)];
+    const d = hyp(tp[0] - S.ball.x, tp[1] - S.ball.y);
+    S.last = from; S.lastTeam = team; S.chain.push(from); from.ov = null;
+    emit(S, "pass", { from: from.name, to: to.name, team, kind: st.cross ? "cross" : st.air ? (d > 40 ? "long" : "air") : "through", fx, fy: oy(team, from.y), tx: px, ty: oy(team, tp[1]), me: from.me, toMe: to.me, silent: true });
+    const air = !!(st.air || st.cross);
+    const T0 = air ? 0.35 + d / 26 : 0.12 + d / 15.5;
+    const need = hyp(to.x - tp[0], to.y - tp[1]) / 8.4 + 0.15;           // 받을 선수가 그 자리에 닿는 시간만큼은 날아감
+    const T = Math.max(T0, st.overhit ? T0 : need);
+    to.ov = OV(tp[0] - g * 0.4, tp[1], SPRINT, "recv");
+    // 수비: 가장 가까운 한 명이 반 박자 늦게 따라감 (뒷공간 경주)
+    const chaser = S.P.filter(p => p.team !== team && p.ri && p.pos !== "GK" && !p.stun).sort((a, b) => hyp(a.x - tp[0], a.y - tp[1]) - hyp(b.x - tp[0], b.y - tp[1]))[0];
+    if (chaser && !st.cross) chaser.ov = OV(tp[0] - g * 2.2, tp[1] + (chaser.y < tp[1] ? -1.2 : 1.2), 7.6, "recv");
+    const gk = gkOf(S, other(team));
+    if (st.overhit && gk) gk.ov = OV(tp[0], tp[1], SPRINT, "recv");
+    launch(S, tp[0], tp[1], { air, T, h: st.cross ? 3.2 : st.air ? Math.min(9, 2.5 + d * 0.12) : undefined, kind: "pass", then: S2 => {
+      if (st.overhit && gk) { give(S2, gk); return; }                                   // 문장은 결과 문장이 말함 (골키퍼가 잡는다)
+      if (hyp(to.x - tp[0], to.y - tp[1]) < 2.6) give(S2, to);
+      else { S2.pickOnly = to; S2.holder = null; S2.ball.fl = null; S2.ball.roll = null; to.ov = OV(tp[0], tp[1], SPRINT, "recv"); }   // 공은 그 자리에 멈추고 받을 선수가 달려가 잡음 (밖으로 나가지 않게)
+    } });
+    return busy(() => !S.ball.fl && S.holder === (st.overhit && gk ? gk : to), T + 3);
   }
   if (st.do === "pass") {
     const { from, to } = st;
-    if (S.holder !== from) give(S, from);
+    if (S.holder !== from) {
+      if (S.ball.fl || hyp(from.x - S.ball.x, from.y - S.ball.y) > 2.5) { if (st.reached) return null; S.script.unshift({ ...st, reached: true }); return startStep(S, { do: "steal", by: from }); }
+      give(S, from);
+    }
     const g = dirOf(to.team);
     const tp = st.tp || [clamp(to.x + g * (st.lead ?? 2), 2, 103), clamp(to.y, 2, 66)];
     passTo(S, from, to, tp, { air: !!st.air, cross: !!st.cross, force: true, kind: st.kind || (st.air ? "air" : "ground") });
