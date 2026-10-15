@@ -666,7 +666,8 @@ export function shoot(S, H, opts = {}) {
   if (result === "post") { ty = rand() < 0.5 ? 30.35 : 37.65; tx = goalX - dirOf(team) * 0.2; }
   if (result === "save") { tx = goalX - dirOf(team) * 1.3; }
   let blocker = null;
-  if (result === "block") {
+  if (result === "block" && opts.blocker) { blocker = opts.blocker; tx = blocker.x - dirOf(team) * 0.4; ty = blocker.y; }       // 정해진 수비(나)의 몸에 맞음
+  else if (result === "block") {
     blocker = S.P.filter(p => p.team === def && p.pos !== "GK").sort((a, b) => hyp(a.x - H.x, a.y - H.y) - hyp(b.x - H.x, b.y - H.y))[0];
     if (blocker) { tx = (H.x + blocker.x) / 2 + dirOf(team) * 0.8; ty = (H.y + blocker.y) / 2; } else result = "save";
   }
@@ -1348,7 +1349,7 @@ function startStep(S, st) {
   if (st.do === "shot") {
     const p = st.by;
     if (S.holder !== p) { if (hyp(p.x - S.ball.x, p.y - S.ball.y) > 3) { S.ball.fl = null; S.ball.x = p.x + dirOf(p.team) * 0.8; S.ball.y = p.y; } give(S, p); }
-    shoot(S, p, { result: st.result, kind: st.kind || "shot", assist: st.assist ?? null, silent: true, saveKind: st.saveKind || null });
+    shoot(S, p, { result: st.result, kind: st.kind || "shot", assist: st.assist ?? null, silent: true, saveKind: st.saveKind || null, blocker: st.blocker || null });
     return busy(() => !S.shot, 4);                         // 슈팅 결과가 나는 순간 다음 단계(중계 문장)로
   }
   if (st.do === "restart") {

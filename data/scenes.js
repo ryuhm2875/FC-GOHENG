@@ -140,6 +140,13 @@ export const SCENES = {
   df_player_down: { at: [[24, 32], [24, 44]], from: "turn", pre: [["opp", 2, 2.5]], press: 0 },
   df_gk_triangle: { at: [[10, 16], [18, 26]], from: "gk", press: 1, pressGap: 5, block: { them: "high" } },
   df_high_line_cover: { at: [[24, 32], [24, 44]], line: 20, from: "oppLong", src: [48, 0], pre: [["me", 20, 2], ["opp", 19, -2]], runs: [["me", 0.5, 1.4, 8.3]], mePress: false, block: { us: "high" } },
+  mf_late_arrive: { at: [[86, 101], [3, 15]], from: "carry", holder: "mate", arrive: true, press: 1, pressGap: 2.2 },
+  mf_counter_launch: { from: "turn", press: 0, clear: true },
+  mf_conductor: { from: "pass", giver: "df", press: 0 },
+  df_race: { at: [[8, 40], [8, 60]], from: "oppPass", race: true, mePress: false },   // at: 공이 수비 뒤로 넘어간 뒤 자리 (장면 고를 때는 자리를 따지지 않음)
+  df_goalline: { from: "oppCarry", goalline: true, tight: 4, mePress: false },
+  df_corner_attack: { at: [[94, 99], [29, 39]], from: "corner", pack: true },
+  df_long_assist: { from: "pass", giver: "df", press: 0 },
   df_step_out: { at: [[30, 38], [26, 42]], from: "oppPass", src: [14, -4], meGap: 2 },
 
   // ── 여러 포지션 ──
