@@ -196,7 +196,7 @@ for (let k = 0; k < N; k++) {
     if (!l.t || l.ts == null || l.amb || ["stat", "coach", "whistle"].includes(l.k)) continue;
     if (!["me-good", "me-bad", "goal-us", "goal-them", "goal-me", "us", "them", "me-auto", "info"].includes(l.k)) continue;
     if (/오프사이드|교체|경고|옐로카드|격차|동점|역전|선제골|가리키며|붙어 다닌다|양보|건넸다|신호를|손짓|불러 모|주의를|카드|고맙다/.test(l.t)) continue;
-    const i0 = at(l.ts - 2.5), i1 = at(l.ts + 1.5);
+    const i0 = at(l.ts - (/수비 뒤로|의 패스가 정확|방향 전환|반대편/.test(l.t) ? 4.5 : 2.5)), i1 = at(l.ts + 1.5);
     for (let pi = 0; pi < P.length; pi++) {
       const nm = names[pi]; if (!nm || nm.length < 2 || !l.t.includes(nm) || P[pi].pos === "GK") continue;
       let dmin = 1e9; for (let i = i0; i <= i1; i++) { const f = F[i]; dmin = Math.min(dmin, hyp(f[4 + pi * 2] - f[1], f[5 + pi * 2] - f[2])); }

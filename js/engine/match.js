@@ -177,7 +177,7 @@ export function timingOf(c) {
 // 모두 우리 전력 − 상대 전력(D)에 따라 바뀜
 // 시험 도구(tools/dev)가 경기 끝마다 내용을 받아 볼 수 있게
 export const DEV = { onFinish: null };
-export const CAL = { brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 5.8, kcu: 5.8, kcun: 80, ct: 3.3, kct: 22, kctn: 13, ft: 0.2, meShot: 1.1, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.09, dfk: 1.45, mfk: 0.6 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비 기여 배수, mfk: 미드필더 선택 하나가 평점에 주는 몫 (선택이 많은 만큼)
+export const CAL = { brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 3.8, kcu: 5.8, kcun: 80, ct: 2.4, kct: 22, kctn: 13, ft: 0.2, meShot: 0.95, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.09, dfk: 1.45, mfk: 0.6 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비 기여 배수, mfk: 미드필더 선택 하나가 평점에 주는 몫 (선택이 많은 만큼)
 const sig = x => 1 / (1 + Math.exp(-x));
 
 // 상대 성향 → 경기장 움직임
@@ -416,7 +416,7 @@ function goalNote(m, team, min, ts) {
 const SP = (m, name, team) => (name ? m.sim.P.find(p => p.name === name && (!team || p.team === team)) : null) || null;
 const ownX = (team, x) => (team === "us" ? x : 105 - x);
 const PLAY_BY = Object.fromEntries(PLAYS.map(p => [p.id, p]));
-const FIN_KIND = { shot: "shot", head: "header", long: "long", fk: "fk", pk: "pk" };
+const FIN_KIND = { shot: "shot", head: "header", long: "long", fk: "fk", pk: "pk", chip: "chip" };
 const ambFor = (m, ev) => AMBIENT.filter(a => a.ev === ev && (!a.wx || a.wx.includes(m.weather || "clear")) && (m.tplUse?.[a.t] || 0) < 2
   && m.sim.t - (m.tplT?.[a.t] ?? -99) > 40);                     // 같은 경기에서 두 번까지, 그것도 한참 떨어져서
 // 문장 고르기: 같은 묶음에서 이번 경기에 덜 쓴 문장부터 (같은 문장이 되풀이되지 않게)
@@ -468,7 +468,23 @@ function narrate(state, m, e) {
         const sp = m.switchPend; m.switchPend = null;
         if (!quiet() && chance(0.65) && tac(m, "switch", 3, 15)) { add(fill(pick(SIM_LINES.switch), { a: sp.from, b: e.p }), e.me ? "me-auto" : kt(e.team)); break; }
       }
-      if (e.overlap && !quiet() && e.ax > 55) add(fill(pick(SIM_LINES.overlap), { a: e.p }), e.me ? "me-auto" : kt(e.team));
+      if (e.overlap && !quiet() && e.ax > 55) { add(fill(pick(SIM_LINES.overlap), { a: e.p }), e.me ? "me-auto" : kt(e.team)); break; }
+      // 수비 뒤로 빠져나가 받음 (상대 진영에서만, 너무 잦지 않게)
+      if (e.behind && ownX(e.team, e.x) > 60 && !quiet() && tac(m, "behind" + e.team, 6, 8)) {
+        const ch = e.chaser && chance(0.35) ? SP(m, e.chaser) : null;
+        if (ch && Math.hypot(ch.x - e.x, ch.y - e.y) < 6) add(fill(pick(SIM_LINES.chase), { d: e.chaser }), kt(e.team));
+        else add(fill(pick(SIM_LINES.behind), { a: e.from, b: e.p }), e.me ? "me-auto" : kt(e.team));
+      }
+      break;
+    case "gkOut":
+      if (!quiet() && tac(m, "gkOut", 8, 6)) add(fill(pick(SIM_LINES.gkOut), { gk: e.gk }), kt(e.team));
+      break;
+    case "roundGK":
+      if (e.me) { my.delta += 0.05; my.involved = (my.involved || 0) + 1; }
+      add(fill(pick(SIM_LINES.roundGK), { a: e.by }), e.me ? "me-auto" : kt(e.team));
+      break;
+    case "boxRun":
+      if (!quiet() && chance(0.6) && tac(m, "boxRun", 5, 10)) add(fill(pick(SIM_LINES.boxRun), { a: e.by, n: e.n }), e.me ? "me-auto" : kt(e.team));
       break;
     case "build":
       if (!quiet() && chance(0.55) && tac(m, "build" + e.team, 2, 30)) add(fill(pick(e.team === "us" ? SIM_LINES.buildUs : SIM_LINES.buildThem), { a: e.by }), kt(e.team));
@@ -1004,7 +1020,7 @@ export function next(state, m) {
     // 내 순간: 정해 둔 때가 되면 공이나 상황이 나에게 오기를 기다림 (그동안 동료들이 나를 더 찾음)
     const halfEnd = m.half === 1 ? HALF_T : 2 * HALF_T;
     const due = m.onPitch && !m.injured && !m.subbedOff && m.momentQ.length && m.minute >= m.momentQ[0] && S.t >= (m.nextOk || 0)
-      && S.t < halfEnd - 4;                                   // 휘슬 직전에는 새 장면을 시작하지 않음 (결과가 경기장에서 다 이어지도록)
+      && S.t < halfEnd - 7;                                   // 휘슬 직전(2분 20초)에는 새 장면을 시작하지 않음 (크로스·침투처럼 긴 결과도 경기장에서 다 이어지도록)
     if (due && !S.script.length && !S.scur) {
       if (!m.want) { const w = wantSituation(state, m); m.want = w ? { sit: w, cat: sitCat(w), t0: m.minute } : null; }
       S.bias = { me: 3, planPos: m.want && (m.want.sit.poss || "us") === "us" && m.want.sit.zone === "att" ? state.player.position : null,
