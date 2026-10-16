@@ -14973,8 +14973,8 @@ function fcCard(state, { big = false } = {}) {
       <span class="pc-side pc-back">
         <span class="pc-frame"></span>
         <span class="pc-bg2"></span>
-        <span class="pc-bhead"><span class="pc-bo"><b class="num">${o}</b><span>${code}</span></span>
-          <span class="pc-bn"><b>${esc(p.name)}</b><small>#${p.number} · ${GROWTH_TYPES[p.growthType].label}${role ? ` · ${role.label}` : ""}</small></span></span>
+        <span class="pc-bhead"><span class="pc-bo"><b class="num">${o}</b><span>${code}</span></span><b class="pc-bn">${esc(p.name)}</b></span>
+        <span class="pc-meta">#${p.number} · ${GROWTH_TYPES[p.growthType].label}${role ? ` · ${role.label}` : ""}</span>
         <span class="pc-rule"></span>
         <span class="pc-stats">${sixStats(p).map(([k, v]) => `<span class="pc-row"><span class="pc-k">${k}</span><span class="pc-bar"><i style="width:${Math.min(100, fl(v))}%"></i></span><b class="num">${fl(v)}</b></span>`).join("")}</span>
         <span class="pc-hint">한 번 더 누르면 앞면</span>

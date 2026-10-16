@@ -101,30 +101,31 @@ td.tn { white-space: nowrap; }
 .pc-bg2 { background: linear-gradient(180deg, #1A1E3D 0%, #0D122E 100%); }
 .pc-bg img { position: absolute; left: 6%; top: 1.6%; width: 100%; height: 71%; object-fit: cover; object-position: 50% 20%;
   -webkit-mask-image: linear-gradient(180deg, #000 72%, transparent 100%); mask-image: linear-gradient(180deg, #000 72%, transparent 100%); }
+/* 카드 안 글자·간격은 카드 너비(cqw)에 맞춰 줄어듦 (홈에서 작은 카드도 넘치지 않게) */
+.pcard { container-type: inline-size; }
 .pc-top { position: absolute; left: 9%; top: 8%; display: grid; justify-items: center; color: var(--acc); text-shadow: 0 2px 8px rgba(0, 0, 0, .6); }
-.pc-top b { font-family: var(--fc); font-weight: 800; font-size: 54px; line-height: .9; }
-.pc-top span { font-family: var(--fc); font-weight: 700; font-size: 18px; letter-spacing: .08em; }
-.pc-cap { position: absolute; right: 10%; top: 9%; width: 22px; height: 22px; border-radius: 50%; background: var(--acc); color: #1A1E3D;
-  font-family: var(--fc); font-weight: 800; font-size: 13px; display: grid; place-items: center; }
-.pc-name { position: absolute; left: 8%; right: 8%; top: 69%; display: grid; justify-items: center; gap: 6px; }
-.pc-name b { font-family: var(--display); font-weight: 800; font-size: 26px; letter-spacing: .02em; line-height: 1.1; color: #fff; }
-.pc-name i { display: block; width: 44px; height: 2px; background: var(--acc2); }
-.pc-name small { font-size: 12px; font-weight: 600; letter-spacing: .06em; color: var(--acc2); }
-.pc-bhead { position: absolute; left: 11%; right: 11%; top: 9%; display: flex; justify-content: space-between; align-items: center; }
-.pc-bo { display: flex; align-items: baseline; gap: 6px; color: var(--acc); }
-.pc-bo b { font-family: var(--fc); font-weight: 800; font-size: 40px; line-height: 1; }
-.pc-bo span { font-family: var(--fc); font-weight: 700; font-size: 15px; letter-spacing: .08em; }
-.pc-bn { display: grid; justify-items: end; gap: 1px; text-align: right; }
-.pc-bn b { font-family: var(--display); font-weight: 800; font-size: 16px; }
-.pc-bn small { font-size: 11px; color: var(--mute); }
-.pc-rule { position: absolute; left: 11%; right: 11%; top: 24%; height: 1px; background: color-mix(in srgb, var(--acc2) 45%, transparent); }
-.pc-stats { position: absolute; left: 11%; right: 11%; top: 28.5%; display: grid; gap: 11px; }
-.pc-row { display: grid; grid-template-columns: 46px minmax(0, 1fr) 26px; align-items: center; gap: 10px; }
-.pc-k { font-size: 12px; font-weight: 600; color: #C9CFDB; text-align: left; }
-.pc-bar { height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .08); overflow: hidden; display: block; }
+.pc-top b { font-family: var(--fc); font-weight: 800; font-size: 20cqw; line-height: .9; }
+.pc-top span { font-family: var(--fc); font-weight: 700; font-size: 6.8cqw; letter-spacing: .08em; }
+.pc-cap { position: absolute; right: 10%; top: 9%; width: 8.4cqw; height: 8.4cqw; border-radius: 50%; background: var(--acc); color: #1A1E3D;
+  font-family: var(--fc); font-weight: 800; font-size: 5cqw; display: grid; place-items: center; }
+.pc-name { position: absolute; left: 8%; right: 8%; top: 69%; display: grid; justify-items: center; gap: 2.2cqw; }
+.pc-name b { font-family: var(--display); font-weight: 800; font-size: 9.8cqw; letter-spacing: .02em; line-height: 1.1; color: #fff; }
+.pc-name i { display: block; width: 16cqw; height: 2px; background: var(--acc2); }
+.pc-name small { font-size: 4.5cqw; font-weight: 600; letter-spacing: .06em; color: var(--acc2); }
+.pc-bhead { position: absolute; left: 11%; right: 11%; top: 8.5%; display: flex; justify-content: space-between; align-items: baseline; gap: 3cqw; }
+.pc-bo { display: flex; align-items: baseline; gap: 2cqw; color: var(--acc); flex: none; }
+.pc-bo b { font-family: var(--fc); font-weight: 800; font-size: 15cqw; line-height: 1; }
+.pc-bo span { font-family: var(--fc); font-weight: 700; font-size: 5.6cqw; letter-spacing: .08em; }
+.pc-bn { font-family: var(--display); font-weight: 800; font-size: 6.2cqw; color: #fff; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pc-meta { position: absolute; left: 11%; right: 11%; top: 19.5%; font-size: 3.9cqw; color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+.pc-rule { position: absolute; left: 11%; right: 11%; top: 25%; height: 1px; background: color-mix(in srgb, var(--acc2) 45%, transparent); }
+.pc-stats { position: absolute; left: 11%; right: 11%; top: 28%; bottom: 22%; display: grid; grid-template-rows: repeat(6, minmax(0, 1fr)); align-items: center; }
+.pc-row { display: grid; grid-template-columns: 17cqw minmax(0, 1fr) 10cqw; align-items: center; gap: 3.6cqw; }
+.pc-k { font-size: 4.5cqw; font-weight: 600; color: #C9CFDB; text-align: left; white-space: nowrap; }
+.pc-bar { height: 1.9cqw; border-radius: 3px; background: rgba(255, 255, 255, .08); overflow: hidden; display: block; }
 .pc-bar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, color-mix(in srgb, var(--acc2) 55%, #000), var(--acc)); }
-.pc-row b { font-family: var(--fc); font-weight: 800; font-size: 18px; color: var(--acc); text-align: right; }
-.pc-hint { position: absolute; left: 0; right: 0; top: 83%; text-align: center; font-size: 11px; color: var(--mute); }
+.pc-row b { font-family: var(--fc); font-weight: 800; font-size: 6.8cqw; color: var(--acc); text-align: right; }
+.pc-hint { position: absolute; left: 0; right: 0; top: 80.5%; text-align: center; font-size: 3.6cqw; color: var(--mute); }
 @media (prefers-reduced-motion: reduce) { .pc-in { transition: none; } }
 
 /* ── 경기 화면 ── */
@@ -159,3 +160,10 @@ td.tn { white-space: nowrap; }
 @media (max-width: 640px) { .home .pcard { max-width: 228px; } }
 /* 타이틀: 영문 큰 글자는 원래대로 Barlow Condensed (h1 공통 글꼴을 덮지 않게) */
 .ft-name { font-family: var(--fc) !important; letter-spacing: -.01em; }
+
+/* 주황 바탕 위 글자는 흰색 (바탕 주황을 조금 진하게 해서 흰 글자가 또렷하게) */
+:root { --kit-solid: #EE5A0E; }
+.btn-kit, .btn-go { background: var(--kit-solid) !important; color: #fff !important; }
+.btn-kit:hover, .btn-go:hover { background: #F86A1E !important; }
+.nm-when, .board .clock { background: var(--kit-solid); color: #fff; }
+.chip.kit { background: var(--kit-solid); color: #fff; }
