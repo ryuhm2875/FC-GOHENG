@@ -201,7 +201,8 @@ function targets(S) {
       p.boxRun = false;
       if (hx > 76 && Math.abs(hy - 34) > 13 && H.pos !== "GK") {
         const nr = hy < 34 ? -1 : 1, far = (r => r === (nr < 0 ? "RCM" : "LCM"));
-        const slot = p.role === "ST1" ? [95.5, 34 + nr * 3.5] : p.role === "ST2" ? [96, 34 - nr * 6] : far(p.role) ? [88.5, 34 - nr * 1.5] : null;
+        const wingFar = p.tune[2] > 0 && ((p.role === "LM" && nr > 0) || (p.role === "RM" && nr < 0));   // 세부 포지션 윙어: 반대편 측면에서 공이 깊이 들어가면 먼 쪽 포스트로
+        const slot = p.role === "ST1" ? [95.5, 34 + nr * 3.5] : p.role === "ST2" ? [96, 34 - nr * 6] : far(p.role) ? [88.5, 34 - nr * 1.5] : wingFar ? [92, 34 - nr * 9] : null;
         if (slot && p !== H) { x = Math.min(slot[0], off - 0.3); y = slot[1]; p.boxRun = true; }
       }
     }

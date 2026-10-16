@@ -165,9 +165,11 @@ export const SCENES = {
   throw_in_trick: { at: [[44, 60], [1, 3]], from: "throw", press: 0, runs: [["mate", 3, 6, 6]] },
   // ── 세부 포지션 장면 ──
   // longIn: 뒤에서 수비수·골키퍼가 나를 보고 길게 차 주며 시작해도 됨 (타깃형)
+  // farSide: 반대편 측면의 동료가 공을 가졌을 때만 (윙어 먼 쪽 포스트)
   // overlap: 같은 쪽 측면 미드필더가 상대 진영에서 공을 잡았고 내가 그 뒤·바깥에 있을 때만. 장면이 열리면 내가 터치라인 쪽으로 달려 올라감
   wing_isolation: { side: 16, at: [[64, 88], [2, 20]], from: "pass", giver: "fb", press: 1, pressGap: 3 },
   fb_overlap: { side: 15, at: [[52, 84], [2, 22]], from: "carry", holder: "mate", overlap: true, press: 1, pressGap: 2.4 },
+  wing_far_post: { side: 17, at: [[86, 101], [3, 15]], from: "carry", holder: "mate", arrive: true, farSide: true, press: 1, pressGap: 2.2 },
   dm_screen: { at: [[20, 38], [16, 52]], tight: 3, from: "oppPass", src: [14, -9], meGap: 1.8 },
   target_hold: { air: true, longIn: true, at: [[60, 86], [14, 54]], from: "long", giver: "df", press: 1, pressGap: 1.1 },
 };

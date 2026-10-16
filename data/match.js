@@ -1234,6 +1234,17 @@ export const SITUATIONS = [
       { label: "골라인까지 파고들어 컷백", stats: { "tech.dribble": 0.5, "tech.pass": 0.5 }, diff: 5, win: "assist", lose: "turnover",
         winText: ["골라인 앞까지 파고들어 뒤로 깔아 줬다! {mate|이/가} 달려 들어온다!"], loseText: ["컷백이 {opp}의 발에 걸렸다."] },
     ] },
+  // 윙어: 반대편 측면에서 공이 깊이 들어가면 먼 쪽 포스트로 뛰어듦
+  { id: "wing_far_post", intro: false, detail: ["winger"], pos: ["MF"], zone: "att", weight: 3,
+    text: ["반대편 측면에서 {mate|이/가} 골라인 앞까지 파고들었다. 수비들의 눈이 모두 공에 가 있다. 먼 쪽 포스트가 비었다.", "{mate|이/가} 반대편 측면 끝에서 고개를 든다. 나는 먼 쪽에서 박스로 달려 들어간다."],
+    choices: [
+      { label: "먼 쪽 포스트로 뛰어들어 머리로", stats: { "phys.jump": 0.5, "phys.speed": 0.5 }, diff: 5, win: "head", lose: "miss", physical: true,
+        winText: ["아무도 따라오지 않았다. 넘어온 크로스가 정확히 내 머리로!"], loseText: ["한 발 늦었다. 수비가 먼저 머리로 걷어 낸다."] },
+      { label: "뒤로 깔아 줄 공을 기다려 그대로 때린다", stats: { "tech.shoot": 0.6, "mental.focus": 0.4 }, diff: 4, win: "shot", lose: "keep",
+        winText: ["뒤로 깔린 공이 정확히 내 앞에 온다!"], loseText: ["{mate}의 컷백이 수비 발에 걸렸다."] },
+      { label: "박스 앞에서 흘러나올 공을 기다린다", stats: { "mental.focus": 0.5, "tech.shoot": 0.5 }, diff: 6, win: "longShot", lose: "keep",
+        winText: ["걷혀 나온 공이 그대로 내 앞으로 굴러온다!"], loseText: ["공은 반대쪽으로 흘러갔다."] },
+    ] },
   // 풀백: 같은 쪽 윙어 바깥으로 오버래핑
   { id: "fb_overlap", intro: false, detail: ["fb"], pos: ["DF"], zone: "att", weight: 3,
     text: ["{mate|이/가} {side} 측면에서 공을 잡았다. 그 바깥으로 내가 달려 올라간다.", "{side} 측면, {mate|이/가} 수비와 마주 섰다. 내가 바깥으로 돌아 뛴다."],

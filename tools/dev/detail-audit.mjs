@@ -13,11 +13,11 @@ const KEYS = process.argv[3] ? process.argv[3].split(",") : Object.keys(DETAIL_P
 const issues = {}, samples = {};
 const bad = (kind, msg) => { issues[kind] = (issues[kind] || 0) + 1; (samples[kind] ||= []).length < SHOW && samples[kind].push(msg); };
 let __r = 99; const prand = () => ((__r = (__r * 1103515245 + 12345) % 2147483648) / 2147483648);
-const NEW = { wing_isolation: "winger", fb_overlap: "fb", dm_screen: "dm", target_hold: "target" };
+const NEW = { wing_isolation: "winger", wing_far_post: "winger", fb_overlap: "fb", dm_screen: "dm", target_hold: "target" };
 const table = [];
 for (const key of KEYS) {
   const d = DETAIL_POS[key], pos = d.pos;
-  let sx = 0, sy = 0, sn = 0, ax = 0, an = 0, dx = 0, dn = 0, games = 0, moments = 0;
+  let goals = 0, sx = 0, sy = 0, sn = 0, ax = 0, an = 0, dx = 0, dn = 0, games = 0, moments = 0;
   const seen = {}, out = {};
   for (let k = 0; k < N; k++) {
     const seed = 81000 + k * 7 + KEYS.indexOf(key) * 1000;
@@ -51,6 +51,7 @@ for (const key of KEYS) {
         }
         if (NEW[id]) {
           if (NEW[id] !== (d.group || key)) bad("다른 자리 장면이 나옴", `${tag} ${id}`);
+          if (id === "wing_far_post" && !(H && H.team === "us" && !H.me && (H.y < 34) !== (M.y < 34) && H.x > 82)) bad("먼 쪽 포스트 장면인데 반대편 측면 깊은 곳에 동료 공이 아님", `${tag} ${m.minute}'`);
           if (d.side && ((NEW[id] === "fb" ? H?.y : M.y) < 34) !== (d.side === "L")) bad("세부 포지션 쪽과 장면 쪽이 다름", `${tag} ${m.minute}' ${id} 나 y=${M.y.toFixed(1)}`);
           if (id === "fb_overlap" && !(H && H.team === "us" && H.pos === "MF" && !H.me && Math.abs(H.y - 34) > 14.9)) bad("오버래핑인데 측면 미드필더가 공을 갖고 있지 않음", `${tag} ${m.minute}' 공 ${H ? H.team + " " + H.pos : "없음"}`);
           if (id === "dm_screen" && !(H && H.team === "them" && S.ball.x < 44 && Math.hypot(H.x - M.x, H.y - M.y) < 14)) bad("수비 라인 앞 장면인데 상대가 우리 진영 앞에서 공을 갖지 않음", `${tag} ${m.minute}' 공(${S.ball.x.toFixed(0)},${S.ball.y.toFixed(0)}) 거리 ${H ? Math.hypot(H.x - M.x, H.y - M.y).toFixed(1) : "-"}`);
@@ -78,13 +79,14 @@ for (const key of KEYS) {
       }
       next(s, m);
     }
+    goals += m.my.goals;
   }
   const mx = sx / Math.max(1, sn), my = sy / Math.max(1, sn);
   if (d.side === "L" && my > 30) bad("왼쪽 자리인데 평균 y가 가운데·오른쪽", `${key} 평균 y ${my.toFixed(1)}`);
   if (d.side === "R" && my < 38) bad("오른쪽 자리인데 평균 y가 가운데·왼쪽", `${key} 평균 y ${my.toFixed(1)}`);
   const own = Object.keys(NEW).filter(x => NEW[x] === (d.group || key));
   for (const x of own) if (!seen[x]) bad("세부 포지션 장면이 한 번도 안 나옴", `${key} ${x} (${games}경기)`);
-  table.push(`${key.padEnd(9)} 경기 ${String(games).padStart(3)} 순간 ${(moments / Math.max(1, games)).toFixed(1)} 평균 자리 (${mx.toFixed(1)}, ${my.toFixed(1)}) 공격 x ${(ax / Math.max(1, an)).toFixed(1)} 수비 x ${(dx / Math.max(1, dn)).toFixed(1)} | ${own.map(x => `${x} ${seen[x] || 0}`).join(" ")} ${Object.entries(out).map(([a, b]) => `${a.split(":")[1]}${b}`).join(" ")}`);
+  table.push(`${key.padEnd(9)} 경기 ${String(games).padStart(3)} 골 ${(goals / Math.max(1, games)).toFixed(2)} 순간 ${(moments / Math.max(1, games)).toFixed(1)} 평균 자리 (${mx.toFixed(1)}, ${my.toFixed(1)}) 공격 x ${(ax / Math.max(1, an)).toFixed(1)} 수비 x ${(dx / Math.max(1, dn)).toFixed(1)} | ${own.map(x => `${x} ${seen[x] || 0}`).join(" ")} ${Object.entries(out).map(([a, b]) => `${a.split(":")[1]}${b}`).join(" ")}`);
 }
 console.log(table.join("\n"));
 const ks = Object.keys(issues);
