@@ -9,6 +9,7 @@ import { INJURIES } from "../engine/injury.js";
 import { sortTable, US, tierLabel, ensureSeason, stillScheduled } from "../engine/season.js";
 import { HIGH_SCHOOLS } from "../../data/world.js";
 import { ovr, depthChart, activeRoster, mateGrade } from "../engine/team.js";
+import { crest } from "./crest.js";
 import { efficiency, conditionOf } from "../engine/growth.js";
 import { SIGNATURE, SITUATIONS } from "../../data/match.js";
 import { STAT_LABEL, STAT_INFO } from "../../data/player.js";
@@ -37,35 +38,43 @@ export function sixStats(p) {
 }
 export function cardTier(o) { return o >= 75 ? "hero" : o >= 64 ? "gold" : o >= 50 ? "silver" : "bronze"; }
 
+// 카드 포지션 약자 (세부 포지션이 정해지면 그 자리)
+const POS_CODE = { poacher: "ST", target: "ST", second: "CF", winger_l: "LW", winger_r: "RW", am: "CAM", b2b: "CM", dm: "CDM", cb: "CB", bcb: "CB", fb_l: "LB", fb_r: "RB" };
+const BASE_CODE = { FW: "ST", MF: "CM", DF: "CB" };
+// 앞면: 얼굴·종합·포지션·이름 / 누르면 뒤로 돌아 대표 능력치 여섯 개 (main.js의 [data-flip])
 export function fcCard(state, { big = false } = {}) {
   const p = state.player;
   const o = fl(ovr(p));
   const role = ROLES.find(r => r.id === p.role);
-  return `<div class="fccard t-${cardTier(o)} ${big ? "big" : ""}" aria-label="선수 카드">
-    <div class="fc-shine" aria-hidden="true"></div>
-    <div class="fc-top">
-      <div class="fc-ovr num">${o}</div>
-      <div class="fc-pos">${p.position}</div>
-      <img class="fc-crest" src="assets/img/logo.png" alt="">
-      ${state.flags.captain ? `<div class="fc-cap" title="주장">C</div>` : ""}
-    </div>
-    <div class="fc-face">${img(faceOf(p, state.calendar.grade), `${p.name} 얼굴`)}</div>
-    <div class="fc-name">${esc(p.name)}${p.detailPos && DETAIL_POS[p.detailPos]?.pos === p.position ? `<span class="fc-detail">${esc(DETAIL_POS[p.detailPos].label)}</span>` : ""}</div>
-    <div class="fc-stats">${sixStats(p).map(([k, v]) => `<div><b class="num">${fl(v)}</b><span>${k}</span></div>`).join("")}</div>
-    <div class="fc-foot"><span class="num">#${p.number}</span><span>${GROWTH_TYPES[p.growthType].label}</span>${role ? `<span>${role.label}</span>` : ""}</div>
-  </div>`;
+  const det = p.detailPos && DETAIL_POS[p.detailPos]?.pos === p.position ? DETAIL_POS[p.detailPos] : null;
+  const code = det ? POS_CODE[p.detailPos] : BASE_CODE[p.position];
+  const sub = det ? det.label : POSITIONS[p.position].label;
+  return `<button type="button" class="pcard t-${cardTier(o)} ${big ? "big" : ""}" data-flip aria-pressed="false" aria-label="${esc(p.name)} 선수 카드. 누르면 능력치를 봅니다">
+    <span class="pc-in">
+      <span class="pc-side pc-front">
+        <span class="pc-frame"></span>
+        <span class="pc-bg">${img(faceOf(p, state.calendar.grade), "")}</span>
+        <span class="pc-top"><b class="num">${o}</b><span>${code}</span></span>
+        ${state.flags.captain ? `<span class="pc-cap" title="주장">C</span>` : ""}
+        <span class="pc-name"><b>${esc(p.name)}</b><i></i><small>${esc(sub)}</small></span>
+      </span>
+      <span class="pc-side pc-back">
+        <span class="pc-frame"></span>
+        <span class="pc-bg2"></span>
+        <span class="pc-bhead"><span class="pc-bo"><b class="num">${o}</b><span>${code}</span></span>
+          <span class="pc-bn"><b>${esc(p.name)}</b><small>#${p.number} · ${GROWTH_TYPES[p.growthType].label}${role ? ` · ${role.label}` : ""}</small></span></span>
+        <span class="pc-rule"></span>
+        <span class="pc-stats">${sixStats(p).map(([k, v]) => `<span class="pc-row"><span class="pc-k">${k}</span><span class="pc-bar"><i style="width:${Math.min(100, fl(v))}%"></i></span><b class="num">${fl(v)}</b></span>`).join("")}</span>
+        <span class="pc-hint">한 번 더 누르면 앞면</span>
+      </span>
+    </span>
+  </button>`;
 }
 export const jerseyCard = state => `<section class="cardwrap">${fcCard(state)}
   <div class="card-under"><span title="코치 평가">잠재력 ${stars(state.player.coachStars)}</span></div></section>`;
 
 // 다음 경기 타일
-function shield(name) {
-  const ch = / 대표$/.test(name) ? name.slice(0, 1) : name.replace(/^(서울|경기|부산|대구|인천|울산|강원|충북|제주|여수|순천|광양|목포|보성|해남|완도|광주|남해안)\s?/, "").slice(0, 1);
-  let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  const hue = h % 360;
-  return `<svg class="shield" viewBox="0 0 40 46" aria-hidden="true"><path d="M20 2 L37 8 V24 C37 35 29 41 20 44 C11 41 3 35 3 24 V8 Z" fill="hsl(${hue} 55% 38%)" stroke="hsl(${hue} 60% 70%)" stroke-width="1.5"/>
-    <text x="20" y="29" text-anchor="middle">${esc(ch)}</text></svg>`;
-}
+const shield = name => crest(name, { size: 54, cls: "shield" });
 function nextMatchTile(state) {
   let info = null, k = 0;
   for (let i = 0; i < 10; i++) {
@@ -226,7 +235,7 @@ export function leagueTable(state, compact = false) {
   if (!lg) return `<p class="mute">주말리그는 3월 2주차에 시작합니다.</p>`;
   const rows = sortTable(lg.table);
   return `<table class="tbl"><thead><tr><th>#</th><th>팀</th><th class="r">경기</th>${compact ? "" : `<th class="r">승</th><th class="r">무</th><th class="r">패</th><th class="r">득실</th>`}<th class="r">승점</th></tr></thead><tbody>
-    ${rows.map((r, i) => `<tr class="${r.id === US ? "us" : ""}"><td class="num">${i + 1}</td><td>${esc(r.name)}</td><td class="r num">${r.p}</td>
+    ${rows.map((r, i) => `<tr class="${r.id === US ? "us" : ""}"><td class="num">${i + 1}</td><td class="tn">${r.id === US ? `<img class="tcrest" src="assets/img/logo.png" alt="">` : crest(r.name, { size: 16, cls: "tcrest" })}${esc(r.name)}</td><td class="r num">${r.p}</td>
       ${compact ? "" : `<td class="r num">${r.w}</td><td class="r num">${r.d}</td><td class="r num">${r.l}</td><td class="r num">${r.gf - r.ga > 0 ? "+" : ""}${r.gf - r.ga}</td>`}
       <td class="r num pts">${r.pts}</td></tr>`).join("")}</tbody></table>`;
 }
@@ -237,7 +246,7 @@ function tourBlock(state) {
   const rows = sortTable(t.table);
   return `<p style="margin:0 0 8px"><b>${esc(t.name)}</b> <span class="chip ${t.champion ? "gold" : t.alive ? "turf" : ""}">${t.champion ? "우승" : t.alive ? (t.stage === "ko" ? (t.best.endsWith("진출") ? t.best : `${t.best} 진출`) : "조별리그 중") : t.best}</span></p>
     <table class="tbl"><thead><tr><th>#</th><th>조별리그</th><th class="r">경기</th><th class="r">득실</th><th class="r">승점</th></tr></thead><tbody>
-    ${rows.map((r, i) => `<tr class="${r.id === US ? "us" : ""}"><td class="num">${i + 1}</td><td>${esc(r.name)}</td><td class="r num">${r.p}</td><td class="r num">${r.gf - r.ga > 0 ? "+" : ""}${r.gf - r.ga}</td><td class="r num pts">${r.pts}</td></tr>`).join("")}
+    ${rows.map((r, i) => `<tr class="${r.id === US ? "us" : ""}"><td class="num">${i + 1}</td><td class="tn">${r.id === US ? `<img class="tcrest" src="assets/img/logo.png" alt="">` : crest(r.name, { size: 16, cls: "tcrest" })}${esc(r.name)}</td><td class="r num">${r.p}</td><td class="r num">${r.gf - r.ga > 0 ? "+" : ""}${r.gf - r.ga}</td><td class="r num pts">${r.pts}</td></tr>`).join("")}
     </tbody></table>
     ${t.log.length ? `<h3 style="font-size:13px;color:var(--mute);margin:14px 0 4px">경기 기록</h3>${t.log.map(l => `<div class="fixture"><span class="d">${esc(l.round)}</span><span>vs ${esc(l.opponent)} <b class="num">${l.gf}:${l.ga}</b>${l.shootoutWin != null ? ` (승부차기 ${l.shootoutWin ? "승" : "패"})` : ""}</span></div>`).join("")}` : ""}`;
 }

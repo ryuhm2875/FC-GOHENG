@@ -4,6 +4,7 @@ import { frameNow } from "../engine/sim.js";
 import { STAFF } from "../../data/roster.js";
 import { getPath } from "../rng.js";
 import { tierLabel, TEAM_NAME } from "../engine/season.js";
+import { crest } from "./crest.js";
 import { esc, img, faceOf, fillText } from "./util.js";
 import { conditionOf } from "../engine/growth.js";
 import { setScene, enter, buzz } from "./fx.js";
@@ -67,7 +68,7 @@ export function showMatch(app, m, onDone) {
       <div class="teams">
         <span class="tm home">${fx.jn ? `<i class="kit-dot jn-dot"></i>${esc(fx.usName)}` : `<img src="assets/img/logo.png" alt="">${TEAM_NAME}`}</span>
         <span class="sc num" id="sc">0 : 0</span>
-        <span class="tm away"><i class="kit-dot" style="background:${kitOf(fx.opponent).fill};border-color:${kitOf(fx.opponent).stroke}"></i>${esc(fx.opponent.name)}</span>
+        <span class="tm away">${crest(fx.opponent.name, { size: 26, cls: "bcrest" })}${esc(fx.opponent.name)}</span>
       </div>
       <div class="clock num" id="clock">경기 전</div>
     </header>

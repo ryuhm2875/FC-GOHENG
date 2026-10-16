@@ -11,12 +11,13 @@ import { bgLayer } from "./intro.js";
 import { setScene } from "./fx.js";
 import { bgm } from "./bgm.js";
 import { esc, img, faceOf, fillText } from "./util.js";
+import { crest as teamCrest } from "./crest.js";
 import { addHallCard, checkAchievements } from "./hall.js";
 
 // 학교 엠블럼 (그림 없이 이름 첫 글자로)
 export function crest(name, tier) {
-  const ch = name.replace(/^(서울|경기|광주|순천|보성|남해안)\s?/, "").slice(0, 1);
-  return `<span class="crest t-${tier}">${esc(ch)}</span>`;
+  if (tier === "general") return `<span class="crest t-general">${esc(name.replace(/^(순천)\s?/, "").slice(0, 1))}</span>`;   // 일반고는 축구부 엠블럼 대신 글자
+  return `<span class="crest crest-team">${teamCrest(name, { size: 46 })}</span>`;
 }
 
 // ── 진학 상담 ───────────────────────

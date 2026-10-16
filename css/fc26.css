@@ -1,0 +1,161 @@
+/* ─────────────────────────────────────────────────────────────
+   2026-10 화면 정리 (style·fc·polish 위에 덮어씀)
+   어두운 남색 바탕 하나 + 주황 강조 하나. 기울임·사선·색 번짐을 덜고, 숫자는 Barlow Condensed, 글은 Pretendard
+   ───────────────────────────────────────────────────────────── */
+:root {
+  --night: #0A0E17;
+  --panel: #111827;
+  --panel-2: #1A2234;
+  --line: rgba(255, 255, 255, .08);
+  --kit: #FF6B1A;
+  --kit-2: #FF9A5C;
+  --chalk: #F2F4F8;
+  --mute: #9AA3B5;
+  --dim: #677087;
+  --turf: #3DDC97;
+  --gold: #FFC24A;
+  --red: #FF5A66;
+  --body: "Pretendard Variable", Pretendard, "IBM Plex Sans KR", system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif;
+  --display: "Pretendard Variable", Pretendard, "IBM Plex Sans KR", sans-serif;
+  --fc: "Barlow Condensed", "Pretendard Variable", Pretendard, sans-serif;
+  --grad-kit: linear-gradient(90deg, #FF6B1A, #FF8A3D);
+  --r: 16px;
+}
+body {
+  font-family: var(--body);
+  background: radial-gradient(90% 40% at 50% -6%, rgba(255, 107, 26, .13), transparent 60%), #0A0E17;
+  background-attachment: fixed;
+}
+body::before { display: none; }
+
+/* 굵은 제목: 무거운 장식 글꼴 대신 Pretendard 굵게 */
+.disp, .topbar .when, .tabs-top button, .fc-name, .vn-title, .panel h2, .panel h3, .sheet h2 { font-family: var(--display); font-weight: 800; letter-spacing: -.01em; }
+.eyebrow { font-style: normal; font-weight: 700; letter-spacing: .16em; color: var(--kit-2); }
+.num { font-family: var(--fc); }
+
+/* 버튼 */
+.btn { border-radius: 12px; font-weight: 700; }
+.btn-kit { background: var(--kit); color: #160A02; box-shadow: 0 8px 20px rgba(255, 107, 26, .28); }
+.btn-kit:hover { background: #FF7E36; }
+.btn-go { border-radius: 14px !important; font-family: var(--display) !important; font-weight: 800 !important; letter-spacing: -.01em; clip-path: none !important; }
+.btn-go span::after { content: ""; display: inline-block; width: 18px; height: 18px; margin-left: 8px; vertical-align: -3px;
+  background: currentColor; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M13 6l6 6-6 6'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M13 6l6 6-6 6'/%3E%3C/svg%3E") center / contain no-repeat; }
+.btn-go::before { display: none !important; }
+
+/* 패널: 단색 바탕 + 얇은 테두리 */
+.panel, .tile { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); box-shadow: none; }
+.shell .panel, .shell .tile { backdrop-filter: none; -webkit-backdrop-filter: none; }
+.panel h2 { font-size: 16px; font-weight: 800; }
+.panel h2::before { width: 3px; height: 14px; border-radius: 2px; background: var(--kit); transform: none; }
+.chip { border-radius: 6px; font-weight: 600; }
+
+/* 위·아래 메뉴 */
+.topbar { background: rgba(10, 14, 23, .9); }
+.topbar .when { font-size: 17px; }
+.topbar .phase { font-style: normal; font-family: var(--body); font-weight: 600; font-size: 12px; color: var(--kit-2); letter-spacing: 0; }
+.tabs-top button { font-size: 15px; font-weight: 700; }
+.nav { background: rgba(13, 18, 29, .96); }
+.nav button[aria-current="page"] { color: var(--kit); }
+.nav button[aria-current="page"] .ico { stroke: var(--kit); filter: none; }
+.nav button[aria-current="page"]::before { left: 36%; right: 36%; height: 3px; border-radius: 0 0 3px 3px; background: var(--kit); }
+
+/* 다음 경기: 한 줄 띠 (엠블럼 두 개 + VS) */
+.tile.next { background: linear-gradient(90deg, rgba(255, 107, 26, .12), rgba(255, 255, 255, .02) 60%), var(--panel); padding: 14px 16px; gap: 10px; }
+.tile.next.cup { background: linear-gradient(90deg, rgba(255, 194, 74, .16), rgba(255, 255, 255, .02) 60%), var(--panel); }
+.tile.next::after { display: none; }
+.nm-when { font-style: normal; font-family: var(--body); font-weight: 700; font-size: 12px; background: var(--kit); color: #160A02; padding: 2px 8px; border-radius: 5px; }
+.nm-teams { gap: 4px; }
+.nm-team { gap: 6px; font-size: 14px; font-weight: 700; }
+.nm-team img, .nm-team .shield { width: 50px; height: 55px; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, .4)); }
+.nm-vs { font-family: var(--fc); font-style: normal !important; font-weight: 700; font-size: 22px; color: var(--dim); }
+.nm-comp { font-size: 13px; color: var(--mute); }
+
+/* 엠블럼 */
+.crest-svg { display: inline-block; flex: none; }
+.tcrest { display: inline-block; width: 16px; height: 18px; object-fit: contain; vertical-align: -4px; margin-right: 7px; }
+td.tn { white-space: nowrap; }
+.crest.crest-team { background: none; clip-path: none; width: auto; height: auto; }
+.crest.crest-team svg { width: 46px; height: 51px; }
+.adm-done .crest.crest-team svg { width: 72px; height: 80px; }
+.board .bcrest { margin-right: 6px; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .4)); }
+
+/* ── 선수 카드 (앞면 얼굴, 누르면 뒤로 돌아 능력치) ── */
+.cardwrap { gap: 10px; }
+.pcard { --frame: linear-gradient(160deg, #FBE3A6 0%, #D9A441 45%, #8C5A17 100%); --acc: #F6D58A; --acc2: #E7C27A;
+  position: relative; display: block; width: 100%; max-width: 268px; aspect-ratio: 264 / 364; padding: 0; border: 0; background: none; color: #fff;
+  font-family: var(--body); cursor: pointer; perspective: 1100px; -webkit-tap-highlight-color: transparent; }
+.pcard.big { max-width: 300px; }
+.pcard.t-bronze { --frame: linear-gradient(160deg, #F4C7A0 0%, #B97A48 45%, #6C3D1C 100%); --acc: #F0C29C; --acc2: #D9A27A; }
+.pcard.t-silver { --frame: linear-gradient(160deg, #FFFFFF 0%, #BFC8D8 45%, #6F7B92 100%); --acc: #E3E8F2; --acc2: #BCC6D8; }
+.pcard.t-hero   { --frame: linear-gradient(160deg, #FFD08A 0%, #FF7A2E 42%, #B33A06 100%); --acc: #FFC27A; --acc2: #FF9A5C; }
+.pcard:focus-visible { outline: none; }
+.pcard:focus-visible .pc-frame { box-shadow: inset 0 0 0 3px #fff; }
+.pc-in { position: absolute; inset: 0; display: block; transform-style: preserve-3d; transition: transform .7s cubic-bezier(.2, .7, .2, 1); }
+.pcard.flipped .pc-in { transform: rotateY(180deg); }
+.pc-side { position: absolute; inset: 0; display: block; backface-visibility: hidden; -webkit-backface-visibility: hidden; filter: drop-shadow(0 18px 30px rgba(0, 0, 0, .55)); }
+.pc-back { transform: rotateY(180deg); }
+.pc-frame, .pc-bg, .pc-bg2 { position: absolute; display: block; clip-path: polygon(50% 0, 100% 5%, 100% 86%, 50% 100%, 0 86%, 0 5%); }
+.pc-frame { inset: 0; background: var(--frame); }
+.pc-bg, .pc-bg2 { inset: 3px; background: linear-gradient(180deg, #0D122E 0%, #1A1E3D 58%, #121633 100%); overflow: hidden; }
+.pc-bg2 { background: linear-gradient(180deg, #1A1E3D 0%, #0D122E 100%); }
+.pc-bg img { position: absolute; left: 6%; top: 1.6%; width: 100%; height: 71%; object-fit: cover; object-position: 50% 20%;
+  -webkit-mask-image: linear-gradient(180deg, #000 72%, transparent 100%); mask-image: linear-gradient(180deg, #000 72%, transparent 100%); }
+.pc-top { position: absolute; left: 9%; top: 8%; display: grid; justify-items: center; color: var(--acc); text-shadow: 0 2px 8px rgba(0, 0, 0, .6); }
+.pc-top b { font-family: var(--fc); font-weight: 800; font-size: 54px; line-height: .9; }
+.pc-top span { font-family: var(--fc); font-weight: 700; font-size: 18px; letter-spacing: .08em; }
+.pc-cap { position: absolute; right: 10%; top: 9%; width: 22px; height: 22px; border-radius: 50%; background: var(--acc); color: #1A1E3D;
+  font-family: var(--fc); font-weight: 800; font-size: 13px; display: grid; place-items: center; }
+.pc-name { position: absolute; left: 8%; right: 8%; top: 69%; display: grid; justify-items: center; gap: 6px; }
+.pc-name b { font-family: var(--display); font-weight: 800; font-size: 26px; letter-spacing: .02em; line-height: 1.1; color: #fff; }
+.pc-name i { display: block; width: 44px; height: 2px; background: var(--acc2); }
+.pc-name small { font-size: 12px; font-weight: 600; letter-spacing: .06em; color: var(--acc2); }
+.pc-bhead { position: absolute; left: 11%; right: 11%; top: 9%; display: flex; justify-content: space-between; align-items: center; }
+.pc-bo { display: flex; align-items: baseline; gap: 6px; color: var(--acc); }
+.pc-bo b { font-family: var(--fc); font-weight: 800; font-size: 40px; line-height: 1; }
+.pc-bo span { font-family: var(--fc); font-weight: 700; font-size: 15px; letter-spacing: .08em; }
+.pc-bn { display: grid; justify-items: end; gap: 1px; text-align: right; }
+.pc-bn b { font-family: var(--display); font-weight: 800; font-size: 16px; }
+.pc-bn small { font-size: 11px; color: var(--mute); }
+.pc-rule { position: absolute; left: 11%; right: 11%; top: 24%; height: 1px; background: color-mix(in srgb, var(--acc2) 45%, transparent); }
+.pc-stats { position: absolute; left: 11%; right: 11%; top: 28.5%; display: grid; gap: 11px; }
+.pc-row { display: grid; grid-template-columns: 46px minmax(0, 1fr) 26px; align-items: center; gap: 10px; }
+.pc-k { font-size: 12px; font-weight: 600; color: #C9CFDB; text-align: left; }
+.pc-bar { height: 5px; border-radius: 3px; background: rgba(255, 255, 255, .08); overflow: hidden; display: block; }
+.pc-bar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, color-mix(in srgb, var(--acc2) 55%, #000), var(--acc)); }
+.pc-row b { font-family: var(--fc); font-weight: 800; font-size: 18px; color: var(--acc); text-align: right; }
+.pc-hint { position: absolute; left: 0; right: 0; top: 83%; text-align: center; font-size: 11px; color: var(--mute); }
+@media (prefers-reduced-motion: reduce) { .pc-in { transition: none; } }
+
+/* ── 경기 화면 ── */
+.board { background: rgba(10, 14, 23, .94) !important; }
+.board .comp { font-style: normal; font-family: var(--body); font-weight: 600; font-size: 13px; letter-spacing: 0; color: var(--kit-2); }
+.board .sc { background: #151C2B !important; border: 1px solid var(--line) !important; border-radius: 10px !important; clip-path: none !important; }
+.board .clock { font-style: normal; background: var(--kit); color: #160A02; border-radius: 6px; clip-path: none; }
+.board .tm { font-weight: 700; }
+.ctl { background: rgba(10, 14, 23, .96); }
+.mo-btn { clip-path: none; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); }
+.mo-btn:hover { background: #222C42; }
+.moment { border-top: 2px solid var(--kit); }
+
+/* ── 선수 화면 능력치 막대 ── */
+.track { border-radius: 4px; background: rgba(255, 255, 255, .07); }
+.track .fill { border-radius: 4px; }
+.tabs button[aria-selected="true"] { color: var(--chalk); }
+
+/* 휴대폰: 위 막대 한 줄, 다음 경기는 가로 한 줄 띠 (카드가 첫 화면에 더 들어오게) */
+.topbar .when { white-space: nowrap; }
+@media (max-width: 640px) {
+  .topbar .when { font-size: 16px; }
+  .tile.next { padding: 12px 14px; gap: 8px; }
+  .nm-teams { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+  .nm-team { display: flex; align-items: center; gap: 8px; font-size: 14px; text-align: left; min-width: 0; }
+  .nm-team:last-child { flex-direction: row-reverse; text-align: right; }
+  .nm-team b { min-width: 0; word-break: keep-all; line-height: 1.25; }
+  .nm-team img, .nm-team .shield { width: 38px; height: 42px; }
+  .nm-vs { font-size: 18px; }
+  .nm-comp { font-size: 12px; }
+}
+@media (max-width: 640px) { .home .pcard { max-width: 228px; } }
+/* 타이틀: 영문 큰 글자는 원래대로 Barlow Condensed (h1 공통 글꼴을 덮지 않게) */
+.ft-name { font-family: var(--fc) !important; letter-spacing: -.01em; }

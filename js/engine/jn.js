@@ -8,7 +8,7 @@ import { teamStrength } from "./team.js";
 export const JN_WEEK = { month: 5, week: 2 };
 export const JN_ROUNDS = ["1회전", "준결승", "결승"];
 export const JN_NAME = "전남 대표";
-const PROVINCES = [
+export const PROVINCES = [
   { name: "경기 대표", color: "#1E88E5", color2: "#FFFFFF" }, { name: "서울 대표", color: "#C62828", color2: "#FFFFFF" },
   { name: "경북 대표", color: "#2E7D32", color2: "#FFFFFF" }, { name: "부산 대표", color: "#212121", color2: "#29B6F6" },
   { name: "충남 대표", color: "#6A1B9A", color2: "#FFFFFF" }, { name: "경남 대표", color: "#00897B", color2: "#FFFFFF" },

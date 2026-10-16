@@ -263,6 +263,7 @@ function renderShell(app) {
   r.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => app.go(b.dataset.go)));
   r.querySelector("[data-savemenu]").addEventListener("click", () => saveModal(app));
   r.querySelectorAll("[data-slot]").forEach(b => b.addEventListener("click", () => actionPicker(app, b.dataset.slot)));
+  r.querySelectorAll("[data-flip]").forEach(b => b.addEventListener("click", () => { const on = !b.classList.contains("flipped"); b.classList.toggle("flipped", on); b.setAttribute("aria-pressed", String(on)); }));   // 선수 카드 뒤집기
   r.querySelector("[data-advance]")?.addEventListener("click", () => app.advance());
   r.querySelector("[data-repeat]")?.addEventListener("click", () => app.repeatPlan());
   r.querySelector("[data-mgtoggle]")?.addEventListener("click", () => {
