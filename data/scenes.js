@@ -103,7 +103,7 @@ export const SCENES = {
 
   // ── 수비수 ──
   df_1v1: { at: [[26, 36], [22, 46]], from: "oppCarry", src: [15, 0], v: 7.8, meGap: 3 },
-  df_cross: { at: [[8, 14], [28, 40]], from: "oppCross", meGap: 1, pack: "them" },
+  df_cross: { air: true, at: [[8, 14], [28, 40]], from: "oppCross", meGap: 1, pack: "them" },
   df_build: { at: [[10, 16], [18, 50]], from: "gk", press: 1, pressGap: 4, block: { them: "high" } },
   df_through: { at: [[34, 42], [24, 44]], from: "oppPass", src: [14, -6], runs: [["oppfw", -16, 2, 8.6]], mePress: false },
   df_corner: { at: [[94, 99], [28, 40]], from: "corner", pack: true },

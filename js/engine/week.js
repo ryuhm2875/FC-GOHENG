@@ -12,6 +12,7 @@ import { ensureOrder, judgeOrder } from "./orders.js";
 import { goalsWeekly } from "./goals.js";
 import { birthdayWeek } from "./birthday.js";
 import { careerMilestones, detailMeeting } from "./career.js";
+import { nemesisWeekly, nemesisSummary } from "./nemesis.js";
 import { STAT_LABEL, POSITIONS } from "../../data/player.js";
 import { getPath } from "../rng.js";
 import { ovr, ageRoster, activeRoster, mateGrade, roleFor, randomFreeNumber, freeNumbers, depthChart } from "./team.js";
@@ -83,7 +84,7 @@ export function beginWeek(state) {
   const before = snapshotStats(state);
   const coachBefore = state.relations.coach;
   const report = { info, title: label(info), actions: [], match: null, exam: null, injury: null,
-                   recovered: false, body: null, yearEnd: null, graduation: false, mails: [] };
+                   recovered: false, body: null, yearEnd: null, graduation: false, recap: null, mails: [] };
   const mailStart = state.inbox.length;
 
   // 1. 행동
@@ -196,6 +197,7 @@ export function endWeek(state, ctx, matchResult) {
   if (!next) {
     state.finished = true;
     report.graduation = true;
+    report.recap = seasonRecap(state, 3);           // 졸업식 전에 중3 시즌 결산
   } else {
     if (next.grade !== info.grade) report.yearEnd = yearTransition(state, info.grade);
     else if (next.index === GRAD_INDEX + 1) graduateSeniors(state, info.grade);   // 졸업식 다음 주: 3학년 선배들이 떠남
@@ -219,6 +221,7 @@ export function endWeek(state, ctx, matchResult) {
     goalsWeekly(state, next);
     rollEvent(state);
     detailMeeting(state, next);                    // 세부 포지션 면담 (다른 이야기가 없는 주에)
+    nemesisWeekly(state, next);                    // 다른 학교 맞수 (지역 → 전국)
     weeklyAdvice(state, report);
     const nfx = currentFixture(state);
     if (nfx) previewChat(state, nfx);              // 경기 분석은 경기 직전 미팅 장면에서
@@ -324,9 +327,34 @@ function graduateSeniors(state, g) {
   seniorsLeave(state, g);
 }
 
+// 시즌 결산 (학년이 끝날 때, 졸업 때): 출전·골·도움·평점 흐름·최고의 경기·능력치가 가장 많이 오른 셋
+export function seasonRecap(state, grade) {
+  const p = state.player, all = state.record.matches.filter(m => m.grade === grade);
+  const played = all.filter(m => m.minutes > 0), rated = played.filter(m => m.rating != null);
+  const best = rated.slice().sort((a, b) => b.rating - a.rating || (b.goals + b.assists) - (a.goals + a.assists))[0] || null;
+  const from = state.yearStart?.stats || p.stats;
+  const gains = [];
+  for (const g of STAT_GROUPS) if (g.id !== "student") for (const [k] of g.stats) gains.push({ label: STAT_LABEL[`${g.id}.${k}`], d: Math.floor(p.stats[g.id][k]) - Math.floor(from[g.id][k]) });
+  const fake = { ...p, stats: from };
+  return {
+    grade, apps: played.length, starts: played.filter(m => m.status === "start").length,
+    goals: all.reduce((a, m) => a + m.goals, 0), assists: all.reduce((a, m) => a + m.assists, 0), mom: played.filter(m => m.mom).length,
+    rating: rated.length ? Math.round(rated.reduce((a, m) => a + m.rating, 0) / rated.length * 100) / 100 : null,
+    ratings: rated.map(m => m.rating),
+    best: best && { opponent: best.opponent, gf: best.gf, ga: best.ga, rating: best.rating, goals: best.goals, assists: best.assists, comp: best.comp, result: best.result },
+    ovrFrom: Math.round(ovr(fake)), ovrTo: Math.round(ovr(p)),
+    top: gains.sort((a, b) => b.d - a.d).slice(0, 3).filter(x => x.d > 0),
+    leagues: state.record.leagues.filter(l => l.grade === grade).map(l => ({ half: l.half, rank: l.rank })),
+    tours: state.record.tournaments.filter(t => t.grade === grade).map(t => ({ name: t.name, best: t.best })),
+    nemesis: nemesisSummary(state, grade),
+    wins: all.filter(m => m.result === "승").length, draws: all.filter(m => m.result === "무").length, losses: all.filter(m => m.result === "패").length,
+  };
+}
+
 function yearTransition(state, oldGrade) {
   const p = state.player;
-  const summary = {
+  const recap = seasonRecap(state, oldGrade);
+  const summary = { recap,
     grade: oldGrade,
     ovrFrom: null, ovrTo: Math.round(ovr(p)),
     heightFrom: state.yearStart.height, heightTo: p.body.height,

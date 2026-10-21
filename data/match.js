@@ -1246,7 +1246,7 @@ export const SITUATIONS = [
         winText: ["걷혀 나온 공이 그대로 내 앞으로 굴러온다!"], loseText: ["공은 반대쪽으로 흘러갔다."] },
     ] },
   // 풀백: 같은 쪽 윙어 바깥으로 오버래핑
-  { id: "fb_overlap", intro: false, detail: ["fb"], pos: ["DF"], zone: "att", weight: 3,
+  { id: "fb_overlap", intro: false, detail: ["fb"], pos: ["DF"], zone: "att", weight: 4.5,
     text: ["{mate|이/가} {side} 측면에서 공을 잡았다. 그 바깥으로 내가 달려 올라간다.", "{side} 측면, {mate|이/가} 수비와 마주 섰다. 내가 바깥으로 돌아 뛴다."],
     choices: [
       { label: "바깥에서 받아 크로스", stats: { "phys.stamina": 0.4, "tech.cross": 0.6 }, diff: 4, win: "assist", lose: "turnover",

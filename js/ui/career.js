@@ -5,6 +5,7 @@ import { DETAIL_POS } from "../../data/player.js";
 import { turnInfo } from "../engine/calendar.js";
 const turnMonth = state => turnInfo(state)?.month;
 import { STAFF } from "../../data/roster.js";
+import { ovr } from "../engine/team.js";
 import { sfx } from "./sfx.js";
 import { openModal } from "./modals.js";
 import { bgLayer } from "./intro.js";
@@ -12,6 +13,7 @@ import { setScene } from "./fx.js";
 import { bgm } from "./bgm.js";
 import { esc, img, faceOf, fillText } from "./util.js";
 import { crest as teamCrest } from "./crest.js";
+import { nemesisSummary } from "../engine/nemesis.js";
 import { addHallCard, checkAchievements } from "./hall.js";
 
 // 학교 엠블럼 (그림 없이 이름 첫 글자로)
@@ -53,9 +55,9 @@ export function admissionModal(app, done) {
 // ── 세부 포지션 면담 (2학년 하계대회 뒤): 정 코치 기록 → 감독님 추천 → 내가 고름 (윙어·풀백은 왼쪽·오른쪽까지) ──
 export function detailModal(app, done) {
   const state = app.state, p = state.player;
-  const { list, rec, sideRec } = detailOptions(state);
+  const { list, rec, sideRec, others, suggest } = detailOptions(state);
   if (!list.length) { state.pending = null; done(); return; }
-  const top = list[0], second = list[1];
+  const top = list[0], second = list[1], nowOvr = ovr(p);
   const WHO = { assist: { name: STAFF.assistant, face: "npc_assistant" }, coach: { name: STAFF.coach, face: "npc_coach" } };
   const tj = (w, a, b) => fillText(`{w|${a}/${b}}`, { w });
   const recLine = !rec.games ? "아직 경기 기록이 많지 않습니다. 훈련 때 본 것으로 말씀드리겠습니다."
@@ -66,6 +68,7 @@ export function detailModal(app, done) {
     { who: "coach", t: `${state.calendar.grade === 2 ? "하계대회 보면서" : "요즘 경기 보면서"} 계속 생각했다. 이제 너도 네 자리를 정할 때가 됐다.` },
     { who: "coach", t: `${top.why} 그래서 나는 너를 ${tj(top.label, "으로", "로")} 쓰고 싶다.` },
     ...(second ? [{ who: "assist", t: `감독님 말씀도 맞는데, 나는 ${second.label}도 잘 어울린다고 본다. ${second.why}` }] : []),
+    ...(suggest ? [{ who: "coach", t: `하나 더 있다. 능력치만 놓고 보면 너는 ${tj(suggest.label, "으로", "로")} 뛰어도 잘 맞는다. 원하면 포지션을 바꿔도 된다.` }] : []),
     { who: "coach", t: "마지막엔 네가 정해라. 정하면 그 자리에 맞게 키운다." },
   ];
   const lineHtml = l => { const w = WHO[l.who];
@@ -92,7 +95,21 @@ export function detailModal(app, done) {
     };
     const pickRole = () => {
       box.innerHTML = lineHtml(lines.at(-1));
-      choices("어느 자리에서 뛸까?", list.map(o => ({ ...o, tag: o === top ? "감독님 추천" : o === second ? "코치님 추천" : "", sub: o.desc })), o => o.side ? pickSide(o) : finish(o.keys[0]));
+      const move = { label: "다른 포지션도 해 보고 싶다", tag: suggest ? "감독님 제안" : "", sub: `${others.map(o => `${o.label} 기준 종합 ${o.ovr}`).join(", ")} (지금 ${Math.round(nowOvr)})`, move: true };
+      choices("어느 자리에서 뛸까?", [...list.map(o => ({ ...o, tag: o === top ? "감독님 추천" : o === second ? "코치님 추천" : "", sub: o.desc })), move],
+        o => o.move ? pickPos() : o.side ? pickSide(o) : finish(o.keys[0]));
+    };
+    // 포지션 변경: 공격수 ↔ 미드필더 ↔ 수비수
+    const pickPos = () => {
+      box.innerHTML = lineHtml({ who: "assist", t: "포지션을 바꾸면 처음엔 주전 경쟁부터 다시 해야 한다. 종합 능력치도 새 포지션 기준으로 다시 계산된다. 그래도 해 보겠냐?" });
+      choices("어느 포지션으로 바꿀까?", [...others.map(o => ({ label: o.label, pos: o.pos, tag: o === suggest ? "감독님 제안" : "", sub: `새 포지션 기준 종합 ${o.ovr} (지금 ${Math.round(nowOvr)}, ${o.diff >= 0 ? "+" : ""}${o.diff})` })),
+        { label: "아니다, 지금 포지션에서 고르겠다", back: true }], o => o.back ? pickRole() : pickRoleIn(o.pos));
+    };
+    const pickRoleIn = pos => {
+      const L = detailOptions(state, pos).list;
+      box.innerHTML = lineHtml({ who: "coach", t: `좋다. ${L[0].label}부터 생각해 봤다. ${L[0].why}` });
+      choices("새 포지션에서 어느 자리에 설까?", [...L.map((o, i) => ({ ...o, tag: i === 0 ? "감독님 추천" : "", sub: o.desc })), { label: "다시 생각해 보겠다", back: true }],
+        o => o.back ? pickPos() : o.side ? pickSide(o) : finish(o.keys[0]));
     };
     const pickSide = o => {
       const footW = p.foot === "L" ? "왼발잡이" : "오른발잡이", sideW = sideRec === "L" ? "왼쪽" : "오른쪽", other = sideRec === "L" ? "오른쪽" : "왼쪽";
@@ -106,7 +123,7 @@ export function detailModal(app, done) {
       const r = chooseDetail(state, key);
       if (!r.ok) return;
       app.saveTo("auto");
-      box.innerHTML = lineHtml({ who: "coach", t: `좋다. 오늘부터 너는 ${tj(r.d.label, "이다", "다")}. 다음 경기부터 그 자리에 세운다.` });
+      box.innerHTML = lineHtml({ who: "coach", t: r.moved ? `좋다. 오늘부터 너는 ${tj(r.d.label, "이다", "다")}. 포지션을 바꾼 만큼 처음 몇 주는 힘들 거다. 버텨라.` : `좋다. 오늘부터 너는 ${tj(r.d.label, "이다", "다")}. 다음 경기부터 그 자리에 세운다.` });
       ctl.innerHTML = `<div class="evchips"><span class="evchip up">${esc(r.d.label)}</span></div><p class="mute dp-desc">${esc(r.d.desc)}</p>
         <button class="btn btn-kit btn-wide" data-close style="margin-top:12px">확인</button>`;
       ctl.querySelector("[data-close]").addEventListener("click", close);
@@ -160,6 +177,7 @@ export function showEnding(app) {
   setScene(null);
   bgm.play("ending");
   const { ending, c } = decideEnding(state);
+  const ns = nemesisSummary(state);
   markEnding(ending.id);
   try { addHallCard(state, ending, c); } catch (e) { console.warn(e); }   // 기록실에 선수 카드
   app.saveTo("auto");
@@ -169,6 +187,7 @@ export function showEnding(app) {
     ["진학", c.schoolName], ["최종 능력치", c.ovr], ["키", `${c.height.toFixed(1)}cm`],
     ["통산", `${c.apps}경기 ${c.goals}골 ${c.assists}도움`], ["등번호", p.numberHistory.map(h => h.number).join(" → ")],
     ["우승", c.titles.length ? c.titles.map(t => t.name).join(", ") : "없음"],
+    ...(ns && ns.games ? [["맞수", `${ns.name} (${ns.team}) ${ns.games}전 ${ns.W}승 ${ns.D}무 ${ns.L}패`]] : []),
   ];
   app.view = "ending";
   app.root.innerHTML = `<div class="ending">

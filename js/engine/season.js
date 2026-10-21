@@ -1,7 +1,7 @@
 // 시즌 운영: 주말리그 순위표, 전국대회 조별리그·토너먼트, 진학 연습경기 상대 정하기
 import { LEAGUE_OPPONENTS, NATIONAL_OPPONENTS, HIGH_SCHOOLS, HS_TIERS, ELEMENTARY_OPPONENTS } from "../../data/world.js";
 import { COMPS } from "../../data/calendar.js";
-import { rand, normal, shuffle, chance, weighted, pick } from "../rng.js";
+import { rand, normal, shuffle, chance, weighted, pick, int } from "../rng.js";
 import { ovr } from "./team.js";
 import { jnFixture, jnAfter } from "./jn.js";
 
@@ -61,6 +61,9 @@ export function ensureSeason(state, info) {
     if (state.tour?.key !== key) {
       const comp = COMPS[info.match.comp];
       const opps = shuffle(NATIONAL_OPPONENTS).map((o, i) => ({ id: `N${i}`, name: o.name, strength: 47 + o.strength + comp.bonus + normal(0, 1.2), color: o.color, color2: o.color2 }));
+      // 전국 맞수(군포FC)가 생겼으면 조별리그에서 만날 때가 많음
+      const ni = state.nemesis?.level === "national" ? opps.findIndex(o => o.name === state.nemesis.team) : -1;
+      if (ni > 2 && chance(0.4)) opps.splice(1 + int(0, 1), 0, ...opps.splice(ni, 1));
       const group = [{ id: US, name: TEAM_NAME, strength: null }, ...opps.slice(0, 3)];
       state.tour = {
         key, grade: info.grade, comp: info.match.comp, name: comp.name, label: comp.label,
@@ -100,7 +103,7 @@ export function matchFor(state, info) {
     if (!opp) {
       // 전국 최강 군포FC는 아직 안 만났다면 결승에서 기다리고 있을 때가 많음
       const gi = t.pool.findIndex(x => x.name === STRONGEST);
-      if (m.round === "결승" && gi > 0 && chance(0.5)) t.pool.unshift(...t.pool.splice(gi, 1));
+      if (m.round === "결승" && gi > 0 && chance(state.nemesis?.level === "national" ? 0.75 : 0.5)) t.pool.unshift(...t.pool.splice(gi, 1));   // 전국 맞수가 있으면 결승에서 더 자주
       const o = t.pool.length ? t.pool.shift() : { id: "Nx", ...pick(NATIONAL_OPPONENTS), strength: 54 };
       opp = state.rolls[key] = { ...o, strength: o.strength + (KO_BONUS[m.round] || 0) };
     }
@@ -257,6 +260,8 @@ const HS_TALK = {
     young: ["중3 때 다시 보자. 그때도 오늘처럼만 해라.", "아직 어린데 기특하다. 몇 년 뒤가 더 기대된다.", "이름 기억해 두마. 몇 년 뒤에 다시 만나자."],
   },
 };
+// 입학 제안을 받으려면 종합 능력치가 이만큼은 돼야 함 (진학 상담의 기준보다 5~6 낮음)
+const OFFER_MIN = { proYouth: 76, national: 69, regional: 58, footballHS: 44 };
 export function scoutAfter(state, fx, rating, my = null, gf = 0, ga = 0) {
   const s = fx.school;
   const sc = state.scouting[s.id] ||= { interest: 10, seen: 0, offered: false };
@@ -276,7 +281,8 @@ export function scoutAfter(state, fx, rating, my = null, gf = 0, ga = 0) {
   if (my?.n >= 3) parts.push(my.ok / my.n >= 0.6 ? pick(T.detail.sharp) : my.ok / my.n <= 0.34 ? pick(T.detail.shaky) : pick(T.detail[my.pos] || T.detail.MF));
   else if (my?.pos) parts.push(pick(T.detail[my.pos]));
   if (my) parts.push(my.phys > 0.05 ? pick(T.body.weak) : pick(T.body.fine));
-  if (band === "great" && !sc.offered && g3) { sc.offered = true; parts.push(pick(T.close.offer)); }   // 입학 제안은 중3에게만
+  const nearNeed = ovr(state.player) >= (OFFER_MIN[s.tier] ?? 0);                     // 한 경기 잘했다고 실력 차이가 큰 학교가 바로 제안하지는 않음
+  if (band === "great" && !sc.offered && g3 && nearNeed) { sc.offered = true; parts.push(pick(T.close.offer)); }   // 입학 제안은 중3에게만
   else if (!g3 && (band === "great" || band === "good")) parts.push(pick(T.close.young));
   else parts.push(pick(band === "low" ? T.close.cold : T.close.watch));
   if (band === "low" && rating < 5.8) return [`${s.name} 감독님은 짧게 한마디만 하고 돌아가셨다. "${parts[0]}"`];

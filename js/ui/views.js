@@ -10,6 +10,7 @@ import { sortTable, US, tierLabel, ensureSeason, stillScheduled } from "../engin
 import { HIGH_SCHOOLS } from "../../data/world.js";
 import { ovr, depthChart, activeRoster, mateGrade } from "../engine/team.js";
 import { crest } from "./crest.js";
+import { nemesisSummary } from "../engine/nemesis.js";
 import { efficiency, conditionOf } from "../engine/growth.js";
 import { SIGNATURE, SITUATIONS } from "../../data/match.js";
 import { STAT_LABEL, STAT_INFO } from "../../data/player.js";
@@ -404,7 +405,15 @@ export function teamView(state, tab = "league") {
           <div class="rel-bar"><div class="track"><div class="fill" style="width:${tv}%"></div></div><span class="num">${Math.round(tv)}</span><span class="mute">${word(tv)}</span></div>
           <p class="rel-desc">시험 성적, 수업 태도, 학교 행사에서의 선택에 따라 관계가 달라지고, 졸업식 날 받는 편지도 바뀝니다. 70 이상이면 학기마다 한 번 '류봉두의 축복'이 찾아옵니다${blessedThisTerm(state) ? " (이번 학기 받음 ✨)" : ""}.</p>
         </div></div>`;
-    body = `<h2>관계</h2><div class="rels">${teacherCard}${Object.entries(REL_ROLES).map(([k, r]) => {
+    const ns = nemesisSummary(state);
+    const nemCard = ns ? `<div class="rel nem">
+        <div class="rel-face nem-crest">${crest(ns.team, { size: 52 })}</div>
+        <div class="rel-main">
+          <div class="rel-head"><span class="rel-ic">⚔️</span><b>${esc(ns.name)}</b><span class="mute">${ns.level === "national" ? "전국" : "지역"} 맞수, ${esc(ns.team)} ${ns.pos}</span></div>
+          <div class="nem-rec"><span class="num">${ns.games}</span>전 <span class="num up">${ns.W}</span>승 <span class="num">${ns.D}</span>무 <span class="num down">${ns.L}</span>패</div>
+          <p class="rel-desc">${ns.level === "national" ? "전국 최강 군포FC의 동갑내기입니다. 전국대회 조별리그나 결승에서 자주 만납니다." : "같은 리그 동갑내기입니다. 리그에서 해마다 만납니다. 종합 능력치가 66을 넘으면(중2부터) 전국 무대의 맞수가 생깁니다."}</p>
+        </div></div>` : "";
+    body = `<h2>관계</h2><div class="rels">${nemCard}${teacherCard}${Object.entries(REL_ROLES).map(([k, r]) => {
       const x = P[k];
       if (!x) return `<div class="rel empty"><div class="rel-head"><span class="rel-ic">${r.icon}</span><b>${r.label}</b></div>
         <p class="mute">${k === "junior" ? "중2가 되면 후배가 생깁니다." : "지금은 없습니다."}</p></div>`;

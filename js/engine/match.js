@@ -13,6 +13,7 @@ import { matchMails, styleOf } from "./advice.js";
 import { isBirthdayWeek } from "./birthday.js";
 import { turnInfo } from "./calendar.js";
 import { oppLineup, noteOpp } from "./opponents.js";
+import { nemesisOf, nemesisAfter } from "./nemesis.js";
 import { SCENES } from "../../data/scenes.js";
 import { createSim, step as simStep, DT, RATE, HALF_T, kickoffSetup, setScript, stageStart, minuteOf, meOf, gkOf, setRestart, passTo } from "./sim.js";
 
@@ -179,7 +180,7 @@ export function timingOf(c) {
 // 모두 우리 전력 − 상대 전력(D)에 따라 바뀜
 // 시험 도구(tools/dev)가 경기 끝마다 내용을 받아 볼 수 있게
 export const DEV = { onFinish: null };
-export const CAL = { brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 3.8, kcu: 5.8, kcun: 80, ct: 2.4, kct: 22, kctn: 13, ft: 0.2, meShot: 0.95, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.09, dfk: 1.45, mfk: 0.6 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비 기여 배수, mfk: 미드필더 선택 하나가 평점에 주는 몫 (선택이 많은 만큼)
+export const CAL = { brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 3.8, kcu: 5.8, kcun: 80, ct: 2.4, kct: 22, kctn: 13, ft: 0.2, meShot: 0.95, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.09, dfk: 1.45, mfk: 0.6, rk: { FW: 0.82, MF: 1.08, DF: 1.1 }, dfCS: 0.45 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비 기여 배수, mfk: 미드필더 선택 하나가 평점에 주는 몫 (선택이 많은 만큼), rk: 포지션별 평점 배율, dfCS: 수비수 무실점 가산
 const sig = x => 1 / (1 + Math.exp(-x));
 
 // 상대 성향 → 경기장 움직임
@@ -275,7 +276,8 @@ export function prepareMatch(state, info, fx) {
   // 상대 필드 선수 10명 (DF 4, MF 4, FW 2). 경기장 위 번호와 중계 이름이 같은 사람
   const usedNames = new Set([p.name, ...roster.map(r => r.name), ...GOALKEEPERS.map(g => g.name)]);
   // 핵심 선수가 있는 팀은 그 판에서 고정된 선수단으로 (data/world.js의 OPPONENT_STARS)
-  const known = oppLineup(state, fx.opponent.name, info.turn);
+  const nem = nemesisOf(state, fx.opponent.name);
+  const known = oppLineup(state, fx.opponent.name, info.turn, nem?.name);
   let oppPlayers;
   if (known) {
     oppPlayers = known.lineup.map(x => ({ name: x.name, number: x.number, pos: x.pos, star: x.star }));
@@ -302,7 +304,7 @@ export function prepareMatch(state, info, fx) {
   const ours = cup ? cup.str * 0.6 + 50 * 0.4 + (onPitch ? (myOvr - teamAvg) * 0.12 + cond.match * 15 : 0)
     : teamStrength(state, onPitch) * 0.6 + 50 * 0.4 + (onPitch ? (myOvr - teamAvg) * 0.12 + cond.match * 15 : 0)
     + (keeperOf(state).strong ? 1.5 : 0);
-  const theirs = fx.opponent.strength + (oppAce ? 0.6 : known?.absent ? -1.5 : 0);   // 에이스가 뛰면 조금 더 강하고, 빠지면 약해짐
+  const theirs = fx.opponent.strength + (oppAce ? 0.6 : known?.absent ? -1.5 : 0) + (nem ? 1.2 : 0);   // 맞수가 있는 날은 그 팀이 더 독하게 나옴   // 에이스가 뛰면 조금 더 강하고, 빠지면 약해짐
 
   // 시간에 맞춰 일어나는 일 (분위기 문장, 교체 투입, 부상). 골과 공격은 경기장에서 실제로 일어남
   const timed = [];
@@ -352,7 +354,7 @@ export function prepareMatch(state, info, fx) {
       state.flags.bond = null; return b;
     })(),
     lineupStart: lineup.map(x => ({ ...x })),
-    ours, theirs, lineup, oppPlayers, oppAce, oppAceAbsent: known?.absent?.name || null, bench, talk: pickTalk(state, fx, status, star),
+    ours, theirs, lineup, oppPlayers, oppAce, oppAceAbsent: known?.absent?.name || null, bench, nemesisOn: nem && oppPlayers.some(x => x.name === nem.name) ? nem.name : null, talk: pickTalk(state, fx, status, star),
     gk: { us: cup ? cup.gk : ourKeeper(state), them: (() => { let n; do { n = randomName(); } while (usedNames.has(n)); usedNames.add(n); return n; })() }, myNumber: p.number,
     timed, momentQ, minute: 0, score: [0, 0],
     stats: { us: { shots: 0, on: 0, corners: 0, cards: 0 }, them: { shots: 0, on: 0, corners: 0, cards: 0 }, poss: 50 },
@@ -387,6 +389,7 @@ const mateName = (m, prefer = ["FW", "MF"]) => {
   return pick(pool.length ? pool : m.lineup)?.name || "동료";
 };
 const oppName = (m, prefer = ["FW", "MF"]) => {
+  if (m.nemesisOn && m.oppPlayers.some(x => x.name === m.nemesisOn && prefer.includes(x.pos)) && chance(0.4)) return m.nemesisOn;   // 맞수 이름이 자주 나옴
   if (m.oppAce && prefer.includes(m.oppAce.pos) && m.oppPlayers.some(x => x.name === m.oppAce.name) && chance(0.35)) return m.oppAce.name;
   const pool = m.oppPlayers.filter(x => prefer.includes(x.pos));
   return pick(pool.length ? pool : m.oppPlayers).name;
@@ -1035,6 +1038,11 @@ function kickoffLines(state, m) {
   if (m.bond && m.status === "start") L(m.bond.line, "me");   // 예전 선택이 돌아오는 순간
   if (m.status !== "start") L(m.status === "bench" || m.status === "sub" ? "벤치에서 경기를 지켜본다. 언제 부를지 모른다." : (m.reason || "관중석에서 경기를 지켜본다."));
   if (m.restNote) L(m.restNote, "coach");
+  if (m.nemesisOn && m.status !== "out") {                                           // 다른 학교 맞수와 만나는 날
+    const met = (state.nemesis?.log || []).filter(x => x.name === m.nemesisOn).length;
+    L(fill(met ? pick(["맞은편에 {n|이/가} 보인다. 눈이 마주쳤다. 서로 먼저 고개를 돌리지 않는다.", "{n}. 오늘도 상대 명단 맨 위에 그 이름이 있다.", "{n|이/가} 몸을 풀다 말고 이쪽을 본다. 이번이 {k}번째 맞대결이다."])
+      : "상대 명단에 {n|이/가} 있다. 얘기로만 듣던 그 동갑내기다.", { n: m.nemesisOn, k: met + 1 }), "me");
+  }
   if (m.detail && m.status === "start" && !state.flags.detailDebut) {               // 세부 포지션이 정해진 뒤 첫 선발
     state.flags.detailDebut = true;
     L(fill("{d|으로/로} 서는 첫 경기. 감독님이 정해 준 자리로 걸어가 섰다.", { d: m.detail.label }), "me");
@@ -1919,8 +1927,10 @@ export function finishMatch(state, m) {
   if (clutch) rec0(state).clutchGoals = (rec0(state).clutchGoals || 0) + clutch;
   let rating = null;
   if (minutes > 0) {
-    let r = 6.1 + m.my.delta * 0.66 + (gf > ga ? 0.3 : gf < ga ? -0.3 : 0) + normal(0, 0.2);
-    if (p.position === "DF" && ga === 0) r += 0.3;
+    // 포지션마다 평점이 고르게 (공격수는 골 하나에 평점이 크게 뛰어 최우수 선수를 거의 독차지했음 → 조금 줄이고, 수비수는 무실점·수비 기여를 더 쳐 줌)
+    let r = 6.1 + m.my.delta * 0.66 * (CAL.rk[p.position] ?? 1) + (gf > ga ? 0.3 : gf < ga ? -0.3 : 0) + normal(0, 0.2);
+    if (p.position === "DF" && ga === 0) r += CAL.dfCS;
+    if (p.position === "DF" && ga >= 3) r -= 0.2;
     if (minutes < 25) r = 6 + (r - 6) * 0.6;
     rating = Math.round(clamp(r, 4, 10) * 10) / 10;
   }
@@ -1985,6 +1995,7 @@ export function finishMatch(state, m) {
     injury: m.injured || null, subbedOff: !!m.subbedOff, clutch, elementary: !!fx.elementary, ko: !!fx.ko,
     decisions: m.my.decisions, successes: m.my.successes, detail: m.detailKey || null,
   };
+  if (nemesisAfter(state, fx, res, m)) res.nemesis = m.nemesisOn;                    // 맞수와의 맞대결 기록·메일
   DEV.onFinish?.(m, res);                          // 시험 도구가 경기 내용을 들여다볼 때만
   rec.matches.push(res);
   matchMails(state, m, res, notes);

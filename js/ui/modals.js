@@ -11,6 +11,7 @@ import { meetingScript, applyMeeting } from "../engine/advice.js";
 import { STAFF } from "../../data/roster.js";
 import { reduced, countUp } from "./fx.js";
 import { sfx } from "./sfx.js";
+import { crest } from "./crest.js";
 
 const root = () => document.getElementById("modal-root");
 
@@ -261,19 +262,46 @@ export function numberModal(app, done) {
 }
 
 // ── 학년 마무리 ─────────────────────
-export function yearModal(app, y, done) {
+// 시즌 결산: 학년이 끝날 때(y = yearTransition 요약, y.recap) / 졸업 때(final)
+export function yearModal(app, y, done, { final = false } = {}) {
   const p = app.state.player;
-  openModal(`<h2>중${y.grade} 시즌이 끝났습니다</h2>
-    <p class="sub">이제 중${y.grade + 1}입니다.</p>
-    <div style="display:grid;grid-template-columns:96px 1fr;gap:14px;align-items:center;margin-bottom:14px">
-      <div style="border-radius:10px;overflow:hidden">${img(faceOf(p, y.grade + 1), p.name)}</div>
-      <dl class="kv">
-        <dt>종합 능력치</dt><dd class="num">${y.ovrFrom} → ${y.ovrTo} <span class="up">▲${y.ovrTo - y.ovrFrom}</span></dd>
-        <dt>키</dt><dd class="num">${y.heightFrom.toFixed(1)} → ${y.heightTo.toFixed(1)}cm</dd>
-        <dt>출전</dt><dd class="num">${y.matches}경기, ${y.goals}골</dd>
-      </dl></div>
-    <p class="mute" style="font-size:14px">새 시즌 일정과 등번호, 팀 소식은 메시지함에서 확인하세요.</p>
-    <button class="btn btn-kit btn-wide" data-close>새 학년 시작</button>`, null, { onClose: done });
+  const r = y.recap || y;
+  const tile = (k, v, sub = "") => `<div class="rc-tile"><span class="rc-k">${k}</span><b class="num">${v}</b>${sub ? `<small>${sub}</small>` : ""}</div>`;
+  // 평점 흐름 (경기 순서대로). 7.0 기준선, 최고 경기 점 강조
+  const rs = r.ratings || [], W = 300, H = 92, lo = 5, hi = 9.5;
+  const X = i => rs.length > 1 ? 8 + (i / (rs.length - 1)) * (W - 16) : W / 2, Y = v => H - 8 - ((Math.min(hi, Math.max(lo, v)) - lo) / (hi - lo)) * (H - 16);
+  const bi = rs.length ? rs.indexOf(Math.max(...rs)) : -1;
+  const chart = rs.length >= 2 ? `<svg class="rc-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="경기별 평점 흐름, 평균 ${r.rating}">
+      <line x1="0" x2="${W}" y1="${Y(7)}" y2="${Y(7)}" class="rc-base"/><text x="${W - 2}" y="${Y(7) - 4}" text-anchor="end" class="rc-bt">7.0</text>
+      <polyline points="${rs.map((v, i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(" ")}" class="rc-line"/>
+      ${rs.map((v, i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="${i === bi ? 4.5 : 2.2}" class="${i === bi ? "rc-best" : v >= 7.5 ? "rc-hi" : v < 6.5 ? "rc-lo" : "rc-mid"}"/>`).join("")}
+    </svg>` : `<p class="mute" style="font-size:13px;margin:0">평점이 남은 경기가 많지 않습니다.</p>`;
+  const team = [...(r.leagues || []).map(l => `${l.half} 리그 ${l.rank}위`), ...(r.tours || []).map(t => `${t.name} ${t.best}`)];
+  const grow = r.ovrTo - r.ovrFrom;
+  openModal(`<div class="recap">
+    <span class="eyebrow">SEASON REVIEW</span>
+    <h2>중${r.grade} 시즌 결산</h2>
+    <p class="sub">${final ? "중학교 마지막 시즌이 끝났습니다." : `이제 중${r.grade + 1}입니다.`}</p>
+    <div class="rc-head">
+      <div class="rc-face">${img(faceOf(p, Math.min(3, r.grade + (final ? 0 : 1))), p.name)}</div>
+      <div class="rc-ovr"><span class="rc-k">종합 능력치</span><b class="num">${r.ovrFrom} <span aria-hidden="true">→</span> ${r.ovrTo}</b>
+        <small class="${grow > 0 ? "up" : "mute"}">${grow > 0 ? `▲${grow}` : "그대로"}</small></div>
+    </div>
+    <div class="rc-tiles">
+      ${tile("출전", r.apps, `선발 ${r.starts}`)}${tile("골", r.goals)}${tile("도움", r.assists)}
+      ${tile("평균 평점", r.rating != null ? r.rating.toFixed(2) : "–")}${tile("최우수 선수", r.mom, "번")}${tile("팀 전적", `${r.wins}-${r.draws}-${r.losses}`, "승-무-패")}
+    </div>
+    <h3 class="rc-h">평점 흐름</h3>
+    ${chart}
+    ${r.best ? `<h3 class="rc-h">올해 최고의 경기</h3>
+      <div class="rc-best-card">${crest(r.best.opponent, { size: 40 })}<div><b>vs ${esc(r.best.opponent)} <span class="num">${r.best.gf}:${r.best.ga}</span></b>
+        <small>${esc(r.best.comp)} · 평점 <span class="num">${r.best.rating.toFixed(1)}</span>${r.best.goals ? ` · ${r.best.goals}골` : ""}${r.best.assists ? ` · ${r.best.assists}도움` : ""}</small></div></div>` : ""}
+    ${r.top?.length ? `<h3 class="rc-h">가장 많이 오른 능력치</h3><div class="rc-gains">${r.top.map(g => `<span class="evchip up">${esc(g.label)} +${g.d}</span>`).join("")}</div>` : ""}
+    ${r.nemesis ? `<h3 class="rc-h">맞수</h3><div class="rc-best-card">${crest(r.nemesis.team, { size: 40 })}<div><b>${esc(r.nemesis.name)} <small>${esc(r.nemesis.team)}</small></b>
+      <small>${r.nemesis.games ? `올해 맞대결 ${r.nemesis.games}전 ${r.nemesis.W}승 ${r.nemesis.D}무 ${r.nemesis.L}패` : "올해는 맞대결이 없었습니다."}</small></div></div>` : ""}
+    ${team.length ? `<h3 class="rc-h">팀</h3><p class="rc-team">${team.map(esc).join(" · ")}</p>` : ""}
+    <button class="btn btn-kit btn-wide" data-close style="margin-top:16px">${final ? "졸업식으로" : "새 학년 시작"}</button>
+  </div>`, null, { onClose: done });
 }
 
 // ── 이벤트 ──────────────────────────

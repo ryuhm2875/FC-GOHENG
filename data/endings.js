@@ -24,7 +24,7 @@ export const ENDINGS = [
     later: c => `프로 2군 경기장. 관중석은 듬성듬성하지만 맨 앞줄 아저씨 목소리는 크다. 아빠다.\n\n아직 1군 명단에 오른 적은 없다. 대신 한 번도 훈련에 늦은 적이 없다.\n\n코치가 그 이야기를 감독에게 했다는 소문이 돈다.` },
 
   { id: "comeback", grade: "H", title: "역전의 아이콘", img: "ending_highschool",
-    cond: c => c.wasBenchInG1 && c.g3StartRatio >= 0.85 && c.g3Rating >= 7.6 && c.ovr >= 70,
+    cond: c => c.wasBenchInG1 && c.g3StartRatio >= 0.85 && c.g3Rating >= 7.8 && c.ovr >= 74,
     story: c => `중1 때는 벤치에서 물통을 날랐다. 경기 명단에 이름이 없는 날이 더 많았다.\n\n중3, ${c.nameEun} 팀에서 가장 먼저 이름이 불리는 선수가 됐다. 3학년 평균 평점 ${c.g3Rating.toFixed(2)}.\n\n늦게 핀 꽃이 가장 오래간다는 말, 이제는 조금 믿게 됐다. ${c.schoolName}에서도 그럴 것이다.`,
     later: c => `대학 축구부 주전 명단 맨 위에 ${c.name}의 이름이 있다.\n\n후배 하나가 벤치에서 고개를 숙이고 있길래 옆에 앉았다. "나도 중1 땐 물통만 날랐어."\n\n그 말을 믿지 않는 눈치였다. 그래서 그날 훈련은 그 후배랑 같이 남았다.` },
 
@@ -49,7 +49,7 @@ export const ENDINGS = [
     later: c => `대학 리그 결승전. 상대 팀 명단에 낯익은 이름이 보인다. ${c.rivalName ? `${c.rivalName}.` : "중학교 때 함께 뛰던 동기."}\n\n경기 전 악수를 하면서 둘 다 웃음을 참지 못했다. "아직도 오른쪽으로만 치고 가냐?"\n\n경기 결과는 중요하지 않았다. 아니, 사실 중요했다. 그래서 끝까지 뛰었다.` },
 
   { id: "regionalBest", grade: "A", title: "지역 최고의 선수", img: "ending_highschool",
-    cond: c => c.tier === "regional" && (c.g3Rating >= 7.1 || c.g3LeagueTitle),
+    cond: c => c.tier === "regional" && (c.g3Rating >= 7.4 || c.g3LeagueTitle),
     story: c => `전남 권역 주말리그에서 ${c.nameIrane} 이름을 모르는 지도자는 없었다.\n\n3년 통산 ${c.apps}경기 ${c.goals}골 ${c.assists}도움. ${c.schoolEun} 망설이지 않고 손을 내밀었다.\n\n더 큰 무대는 이제부터다.`,
     later: c => `전남 지역 실업팀 입단 테스트. 운동장에 들어서자 바닷바람이 분다. 고흥에서 맡던 냄새다.\n\n테스트가 끝나고 감독이 다가와 물었다. "고흥대서중 출신이라고? 그 팀 경기 몇 번 봤다."\n\n합격 통보는 사흘 뒤에 왔다.` },
 

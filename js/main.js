@@ -167,6 +167,7 @@ const app = {
       if (rep.yearEnd) chain.push(next => yearModal(this, rep.yearEnd, next));
       if (s.pending) chain.push(next => this.pendingFlow(next));
       if (s.pendingEvent) chain.push(next => this.eventChain(next));   // 한 주에 이야기가 두 개일 수도 있음
+      if (rep.graduation && rep.recap) chain.push(next => yearModal(this, rep.recap, next, { final: true }));   // 졸업식 전에 중3 시즌 결산
       if (rep.graduation) chain.push(() => showEnding(this));
       const run = () => { const f = chain.shift(); if (f) f(() => { this.saveTo("auto"); this.render(); run(); }); };
       this.render();

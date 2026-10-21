@@ -248,7 +248,7 @@ function captainVote(state, run, changes) {
   state.flags.captainVoted = true;
   const juniorVote = !!state.marks?.junior_cared && person(state, "junior");   // 예전에 챙겨 준 후배가 먼저 손을 듦
   const score = captainScore(state) + (rand() * 8 - 4) + (juniorVote ? 5 : 0);
-  const need = run ? 66 : 76;
+  const need = run ? 80 : 90;                        // 주장은 쉽게 되지 않게 (감독 신뢰·팀워크·생활태도·동료 관계가 고루 높아야)
   const win = score >= need;
   if (win) {
     state.flags.captain = true;

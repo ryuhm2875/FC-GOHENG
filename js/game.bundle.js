@@ -389,7 +389,7 @@ const {getPath, setPath, range, clamp, chance, normal} = __m["js/rng.js"];
 // 능력치 성장과 신체 성장
 
 
-const TUNE = { gain: 1.0 };   // 밸런스 조절용 전체 배율
+const TUNE = { gain: 0.85 };   // 밸런스 조절용 전체 배율 (2026-10-22: 1.0 → 0.85. 훈련을 반만 해도 거의 모두 능력치 72·전국 강호 진학이던 것을 고름)
 
 function hasTrait(p, id) { return p.traits.includes(id); }
 
@@ -1549,7 +1549,7 @@ return { JN_WEEK, JN_ROUNDS, JN_NAME, PROVINCES, startJnCup, jnFixture, jnAfter 
 __m["js/engine/season.js"] = (function () {
 const {LEAGUE_OPPONENTS, NATIONAL_OPPONENTS, HIGH_SCHOOLS, HS_TIERS, ELEMENTARY_OPPONENTS} = __m["data/world.js"];
 const {COMPS} = __m["data/calendar.js"];
-const {rand, normal, shuffle, chance, weighted, pick} = __m["js/rng.js"];
+const {rand, normal, shuffle, chance, weighted, pick, int} = __m["js/rng.js"];
 const {ovr} = __m["js/engine/team.js"];
 const {jnFixture, jnAfter} = __m["js/engine/jn.js"];
 // 시즌 운영: 주말리그 순위표, 전국대회 조별리그·토너먼트, 진학 연습경기 상대 정하기
@@ -1614,6 +1614,9 @@ function ensureSeason(state, info) {
     if (state.tour?.key !== key) {
       const comp = COMPS[info.match.comp];
       const opps = shuffle(NATIONAL_OPPONENTS).map((o, i) => ({ id: `N${i}`, name: o.name, strength: 47 + o.strength + comp.bonus + normal(0, 1.2), color: o.color, color2: o.color2 }));
+      // 전국 맞수(군포FC)가 생겼으면 조별리그에서 만날 때가 많음
+      const ni = state.nemesis?.level === "national" ? opps.findIndex(o => o.name === state.nemesis.team) : -1;
+      if (ni > 2 && chance(0.4)) opps.splice(1 + int(0, 1), 0, ...opps.splice(ni, 1));
       const group = [{ id: US, name: TEAM_NAME, strength: null }, ...opps.slice(0, 3)];
       state.tour = {
         key, grade: info.grade, comp: info.match.comp, name: comp.name, label: comp.label,
@@ -1653,7 +1656,7 @@ function matchFor(state, info) {
     if (!opp) {
       // 전국 최강 군포FC는 아직 안 만났다면 결승에서 기다리고 있을 때가 많음
       const gi = t.pool.findIndex(x => x.name === STRONGEST);
-      if (m.round === "결승" && gi > 0 && chance(0.5)) t.pool.unshift(...t.pool.splice(gi, 1));
+      if (m.round === "결승" && gi > 0 && chance(state.nemesis?.level === "national" ? 0.75 : 0.5)) t.pool.unshift(...t.pool.splice(gi, 1));   // 전국 맞수가 있으면 결승에서 더 자주
       const o = t.pool.length ? t.pool.shift() : { id: "Nx", ...pick(NATIONAL_OPPONENTS), strength: 54 };
       opp = state.rolls[key] = { ...o, strength: o.strength + (KO_BONUS[m.round] || 0) };
     }
@@ -1810,6 +1813,8 @@ const HS_TALK = {
     young: ["중3 때 다시 보자. 그때도 오늘처럼만 해라.", "아직 어린데 기특하다. 몇 년 뒤가 더 기대된다.", "이름 기억해 두마. 몇 년 뒤에 다시 만나자."],
   },
 };
+// 입학 제안을 받으려면 종합 능력치가 이만큼은 돼야 함 (진학 상담의 기준보다 5~6 낮음)
+const OFFER_MIN = { proYouth: 76, national: 69, regional: 58, footballHS: 44 };
 function scoutAfter(state, fx, rating, my = null, gf = 0, ga = 0) {
   const s = fx.school;
   const sc = state.scouting[s.id] ||= { interest: 10, seen: 0, offered: false };
@@ -1829,7 +1834,8 @@ function scoutAfter(state, fx, rating, my = null, gf = 0, ga = 0) {
   if (my?.n >= 3) parts.push(my.ok / my.n >= 0.6 ? pick(T.detail.sharp) : my.ok / my.n <= 0.34 ? pick(T.detail.shaky) : pick(T.detail[my.pos] || T.detail.MF));
   else if (my?.pos) parts.push(pick(T.detail[my.pos]));
   if (my) parts.push(my.phys > 0.05 ? pick(T.body.weak) : pick(T.body.fine));
-  if (band === "great" && !sc.offered && g3) { sc.offered = true; parts.push(pick(T.close.offer)); }   // 입학 제안은 중3에게만
+  const nearNeed = ovr(state.player) >= (OFFER_MIN[s.tier] ?? 0);                     // 한 경기 잘했다고 실력 차이가 큰 학교가 바로 제안하지는 않음
+  if (band === "great" && !sc.offered && g3 && nearNeed) { sc.offered = true; parts.push(pick(T.close.offer)); }   // 입학 제안은 중3에게만
   else if (!g3 && (band === "great" || band === "good")) parts.push(pick(T.close.young));
   else parts.push(pick(band === "low" ? T.close.cold : T.close.watch));
   if (band === "low" && rating < 5.8) return [`${s.name} 감독님은 짧게 한마디만 하고 돌아가셨다. "${parts[0]}"`];
@@ -3121,7 +3127,7 @@ const SITUATIONS = [
         winText: ["걷혀 나온 공이 그대로 내 앞으로 굴러온다!"], loseText: ["공은 반대쪽으로 흘러갔다."] },
     ] },
   // 풀백: 같은 쪽 윙어 바깥으로 오버래핑
-  { id: "fb_overlap", intro: false, detail: ["fb"], pos: ["DF"], zone: "att", weight: 3,
+  { id: "fb_overlap", intro: false, detail: ["fb"], pos: ["DF"], zone: "att", weight: 4.5,
     text: ["{mate|이/가} {side} 측면에서 공을 잡았다. 그 바깥으로 내가 달려 올라간다.", "{side} 측면, {mate|이/가} 수비와 마주 섰다. 내가 바깥으로 돌아 뛴다."],
     choices: [
       { label: "바깥에서 받아 크로스", stats: { "phys.stamina": 0.4, "tech.cross": 0.6 }, diff: 4, win: "assist", lose: "turnover",
@@ -4230,7 +4236,7 @@ function aceAbsent(state, team, turn = state.calendar.turn) {
 }
 
 // 경기에 나서는 필드 선수 10명. 핵심 선수 먼저, 그다음 학년 높은 순
-function oppLineup(state, team, turn) {
+function oppLineup(state, team, turn, must = null) {
   const act = activeOpp(state, team);
   if (!act) return null;
   const ace = aceOf(state, team);
@@ -4238,6 +4244,7 @@ function oppLineup(state, team, turn) {
   const lineup = [];
   for (const [pos, n] of Object.entries(NEED)) {
     act.filter(p => p.pos === pos && p.name !== out).sort((a, b) => (b.star != null) - (a.star != null) || b.grade - a.grade)
+      .sort((a, b) => (b.name === must) - (a.name === must))                    // 맞수는 꼭 나옴
       .slice(0, n).forEach(p => lineup.push({ name: p.name, number: p.number, pos, star: p.star != null, trait: p.trait || null, grade: p.grade }));
   }
   return { lineup, ace: ace && !out ? ace : null, absent: out ? ace : null };
@@ -4873,6 +4880,91 @@ return { drillFor, styleOf, meetingScript, applyMeeting, previewChat, matchMails
 })();
 (__fix["js/engine/advice.js"] || []).forEach(f => f());
 
+// ── js/engine/nemesis.js
+__m["js/engine/nemesis.js"] = (function () {
+const {OPPONENT_STARS, LEAGUE_OPPONENTS, NATIONAL_OPPONENTS} = __m["data/world.js"];
+const {mail} = __m["js/state.js"];
+const {ovr} = __m["js/engine/team.js"];
+const {pick} = __m["js/rng.js"];
+// 다른 학교 맞수: 같은 학년의 다른 팀 핵심 선수 (data/world.js OPPONENT_STARS의 "동기")
+// 처음엔 리그에서 만나는 지역 맞수, 내가 전국 수준(종합 66 이상, 중2부터)이 되면 전국 최강 군포FC의 동갑내기로 바뀜
+
+
+
+
+const NATIONAL_TEAM = "군포FC U-15";
+const NATIONAL_OVR = 66;
+const POS_KO = { FW: "공격수", MF: "미드필더", DF: "수비수" };
+const has = w => { const c = String(w).charCodeAt(String(w).length - 1); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 !== 0; };
+const j = (w, a, b) => w + (has(w) ? a : b);
+
+const sameYear = team => (OPPONENT_STARS[team] || []).filter(r => r[0] === "동기").map(r => ({ team, pos: r[1], name: r[2], trait: r[3] }))[0] || null;
+
+// 지역 맞수: 리그 팀의 동갑내기 중 나와 같은 포지션, 그중 강한 팀
+function regionalPick(state) {
+  const p = state.player;
+  const cands = LEAGUE_OPPONENTS.map(t => ({ t, s: sameYear(t.name) })).filter(x => x.s);
+  const same = cands.filter(x => x.s.pos === p.position).sort((a, b) => b.t.strength - a.t.strength);
+  const c = same[0] || cands.sort((a, b) => b.t.strength - a.t.strength)[0];
+  return c?.s || null;
+}
+
+// 매주 확인: 중1 4월부터 지역 맞수, 조건이 되면 전국 맞수로
+function nemesisWeekly(state, info) {
+  if (!info) return;
+  const p = state.player;
+  if (!state.nemesis && (info.grade > 1 || info.month >= 4 && info.month <= 12)) {
+    const s = regionalPick(state);
+    if (!s) return;
+    state.nemesis = { ...s, level: "region", since: state.calendar.turn, log: [] };
+    mail(state, "assist", "그 녀석 이름 기억해 둬라",
+      `${s.team}의 ${s.name}. 너랑 동갑이고 ${POS_KO[s.pos]}다. 장점은 ${s.trait}.\n\n${s.pos === p.position ? "같은 포지션이라 앞으로 계속 비교될 거다." : "포지션은 달라도 경기장에서 자주 부딪힐 거다."} 리그에서 1년에 몇 번씩 만난다. 그때마다 한 번은 이겨 봐라.`);
+    return;
+  }
+  const n = state.nemesis;
+  if (n && n.level === "region" && info.grade >= 2 && ovr(p) >= NATIONAL_OVR) {
+    const s = sameYear(NATIONAL_TEAM);
+    if (!s) return;
+    state.nemesis = { ...s, level: "national", since: state.calendar.turn, log: n.log, prev: { team: n.team, name: n.name } };
+    mail(state, "coach", "이제 전국을 봐라",
+      `요즘 네 경기를 보면 지역에서는 맞수가 없다. ${j(n.name, "이도", "도")} 이제 너를 따라오느라 바쁘다.\n\n${NATIONAL_TEAM}의 ${s.name}. 너랑 동갑이고 전국에서 제일 잘한다는 ${POS_KO[s.pos]}다. 장점은 ${s.trait}. 전국대회에 가면 결국 그 팀을 넘어야 한다.\n\n이름 외워 둬라.`);
+  }
+}
+
+const nemesisOf = (state, team) => state.nemesis && state.nemesis.team === team ? state.nemesis : null;
+
+// 맞대결이 끝난 뒤 기록과 짧은 메일
+function nemesisAfter(state, fx, res, m) {
+  const n = nemesisOf(state, fx.opponent?.name);
+  if (!n || !m.nemesisOn || !(res.minutes > 0)) return null;                     // 내가 뛴 경기만
+  const his = m.goalsLog.filter(g => g.team === "them" && g.name === n.name).length;
+  const rec = { turn: state.calendar.turn, grade: state.calendar.grade, comp: fx.compLabel, round: fx.round || null, team: n.team, name: n.name,
+    gf: res.gf, ga: res.ga, result: res.result, rating: res.rating, goals: res.goals, assists: res.assists, his };
+  n.log.push(rec);
+  const W = n.log.filter(x => x.name === n.name && x.result === "승").length, L = n.log.filter(x => x.name === n.name && x.result === "패").length;
+  const score = `${j(n.name, "과", "와")}의 맞대결 ${W}승 ${n.log.filter(x => x.name === n.name).length - W - L}무 ${L}패.`;
+  const line = res.result === "승"
+    ? pick([`${n.name}, 경기 끝나고 한참 동안 바닥만 보더라. 오늘은 네가 이겼다.`, `오늘은 우리가 웃었다. 근데 ${j(n.name, "이는", "는")} 다음엔 더 독하게 나올 거다.`])
+    : res.result === "패"
+      ? pick([`${n.name}, 오늘은 그쪽이 한 수 위였다. 인정할 건 인정하자.`, `졌다. ${his ? `${n.name}한테 ${his}골이나 먹었다. ` : ""}다음에 만날 때까지 뭘 고칠지 생각해 와라.`])
+      : pick([`${j(n.name, "이랑", "랑")} 비겼다. 둘 다 서로를 잘 아니까 쉽지 않았다.`, `무승부. ${n.name}도 너도 결정적인 한 방이 없었다.`]);
+  mail(state, "assist", `맞수 ${n.name}`, `${line}\n\n${score}`);
+  return rec;
+}
+
+// 시즌 결산·엔딩에 쓰는 맞대결 요약
+function nemesisSummary(state, grade = null) {
+  const n = state.nemesis;
+  if (!n) return null;
+  const log = n.log.filter(x => x.name === n.name && (grade == null || x.grade === grade));
+  const W = log.filter(x => x.result === "승").length, L = log.filter(x => x.result === "패").length;
+  return { name: n.name, team: n.team, level: n.level, pos: n.pos, games: log.length, W, D: log.length - W - L, L };
+}
+
+return { NATIONAL_TEAM, NATIONAL_OVR, nemesisWeekly, nemesisOf, nemesisAfter, nemesisSummary };
+})();
+(__fix["js/engine/nemesis.js"] || []).forEach(f => f());
+
 // ── data/scenes.js
 __m["data/scenes.js"] = (function () {
 
@@ -4981,7 +5073,7 @@ const SCENES = {
 
   // ── 수비수 ──
   df_1v1: { at: [[26, 36], [22, 46]], from: "oppCarry", src: [15, 0], v: 7.8, meGap: 3 },
-  df_cross: { at: [[8, 14], [28, 40]], from: "oppCross", meGap: 1, pack: "them" },
+  df_cross: { air: true, at: [[8, 14], [28, 40]], from: "oppCross", meGap: 1, pack: "them" },
   df_build: { at: [[10, 16], [18, 50]], from: "gk", press: 1, pressGap: 4, block: { them: "high" } },
   df_through: { at: [[34, 42], [24, 44]], from: "oppPass", src: [14, -6], runs: [["oppfw", -16, 2, 8.6]], mePress: false },
   df_corner: { at: [[94, 99], [28, 40]], from: "corner", pack: true },
@@ -6451,11 +6543,13 @@ const {matchMails, styleOf} = __m["js/engine/advice.js"];
 const {isBirthdayWeek} = __m["js/engine/birthday.js"];
 const {turnInfo} = __m["js/engine/calendar.js"];
 const {oppLineup, noteOpp} = __m["js/engine/opponents.js"];
+const {nemesisOf, nemesisAfter} = __m["js/engine/nemesis.js"];
 const {SCENES} = __m["data/scenes.js"];
 const {createSim, step: simStep, DT, RATE, HALF_T, kickoffSetup, setScript, stageStart, minuteOf, meOf, gkOf, setRestart, passTo} = __m["js/engine/sim.js"];
 // 경기 엔진: 경기장 시뮬레이션(sim.js)이 실제로 경기를 굴리고, 여기서는 그 사건을 중계 문장으로 받아 적습니다.
 // 공이나 상황이 실제로 나에게 오면 그때의 자리와 압박에 맞는 장면(SITUATIONS)을 골라 멈추고 선택을 받습니다.
 // 선택 결과는 다시 경기장에서 일어나게 합니다 (슛이면 실제로 차고, 뺏기면 상대 공으로 이어짐).
+
 
 
 
@@ -6633,7 +6727,7 @@ function timingOf(c) {
 // 모두 우리 전력 − 상대 전력(D)에 따라 바뀜
 // 시험 도구(tools/dev)가 경기 끝마다 내용을 받아 볼 수 있게
 const DEV = { onFinish: null };
-const CAL = { brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 3.8, kcu: 5.8, kcun: 80, ct: 2.4, kct: 22, kctn: 13, ft: 0.2, meShot: 0.95, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.09, dfk: 1.45, mfk: 0.6 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비 기여 배수, mfk: 미드필더 선택 하나가 평점에 주는 몫 (선택이 많은 만큼)
+const CAL = { brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 3.8, kcu: 5.8, kcun: 80, ct: 2.4, kct: 22, kctn: 13, ft: 0.2, meShot: 0.95, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.09, dfk: 1.45, mfk: 0.6, rk: { FW: 0.82, MF: 1.08, DF: 1.1 }, dfCS: 0.45 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비 기여 배수, mfk: 미드필더 선택 하나가 평점에 주는 몫 (선택이 많은 만큼), rk: 포지션별 평점 배율, dfCS: 수비수 무실점 가산
 const sig = x => 1 / (1 + Math.exp(-x));
 
 // 상대 성향 → 경기장 움직임
@@ -6729,7 +6823,8 @@ function prepareMatch(state, info, fx) {
   // 상대 필드 선수 10명 (DF 4, MF 4, FW 2). 경기장 위 번호와 중계 이름이 같은 사람
   const usedNames = new Set([p.name, ...roster.map(r => r.name), ...GOALKEEPERS.map(g => g.name)]);
   // 핵심 선수가 있는 팀은 그 판에서 고정된 선수단으로 (data/world.js의 OPPONENT_STARS)
-  const known = oppLineup(state, fx.opponent.name, info.turn);
+  const nem = nemesisOf(state, fx.opponent.name);
+  const known = oppLineup(state, fx.opponent.name, info.turn, nem?.name);
   let oppPlayers;
   if (known) {
     oppPlayers = known.lineup.map(x => ({ name: x.name, number: x.number, pos: x.pos, star: x.star }));
@@ -6756,7 +6851,7 @@ function prepareMatch(state, info, fx) {
   const ours = cup ? cup.str * 0.6 + 50 * 0.4 + (onPitch ? (myOvr - teamAvg) * 0.12 + cond.match * 15 : 0)
     : teamStrength(state, onPitch) * 0.6 + 50 * 0.4 + (onPitch ? (myOvr - teamAvg) * 0.12 + cond.match * 15 : 0)
     + (keeperOf(state).strong ? 1.5 : 0);
-  const theirs = fx.opponent.strength + (oppAce ? 0.6 : known?.absent ? -1.5 : 0);   // 에이스가 뛰면 조금 더 강하고, 빠지면 약해짐
+  const theirs = fx.opponent.strength + (oppAce ? 0.6 : known?.absent ? -1.5 : 0) + (nem ? 1.2 : 0);   // 맞수가 있는 날은 그 팀이 더 독하게 나옴   // 에이스가 뛰면 조금 더 강하고, 빠지면 약해짐
 
   // 시간에 맞춰 일어나는 일 (분위기 문장, 교체 투입, 부상). 골과 공격은 경기장에서 실제로 일어남
   const timed = [];
@@ -6806,7 +6901,7 @@ function prepareMatch(state, info, fx) {
       state.flags.bond = null; return b;
     })(),
     lineupStart: lineup.map(x => ({ ...x })),
-    ours, theirs, lineup, oppPlayers, oppAce, oppAceAbsent: known?.absent?.name || null, bench, talk: pickTalk(state, fx, status, star),
+    ours, theirs, lineup, oppPlayers, oppAce, oppAceAbsent: known?.absent?.name || null, bench, nemesisOn: nem && oppPlayers.some(x => x.name === nem.name) ? nem.name : null, talk: pickTalk(state, fx, status, star),
     gk: { us: cup ? cup.gk : ourKeeper(state), them: (() => { let n; do { n = randomName(); } while (usedNames.has(n)); usedNames.add(n); return n; })() }, myNumber: p.number,
     timed, momentQ, minute: 0, score: [0, 0],
     stats: { us: { shots: 0, on: 0, corners: 0, cards: 0 }, them: { shots: 0, on: 0, corners: 0, cards: 0 }, poss: 50 },
@@ -6841,6 +6936,7 @@ const mateName = (m, prefer = ["FW", "MF"]) => {
   return pick(pool.length ? pool : m.lineup)?.name || "동료";
 };
 const oppName = (m, prefer = ["FW", "MF"]) => {
+  if (m.nemesisOn && m.oppPlayers.some(x => x.name === m.nemesisOn && prefer.includes(x.pos)) && chance(0.4)) return m.nemesisOn;   // 맞수 이름이 자주 나옴
   if (m.oppAce && prefer.includes(m.oppAce.pos) && m.oppPlayers.some(x => x.name === m.oppAce.name) && chance(0.35)) return m.oppAce.name;
   const pool = m.oppPlayers.filter(x => prefer.includes(x.pos));
   return pick(pool.length ? pool : m.oppPlayers).name;
@@ -7489,6 +7585,11 @@ function kickoffLines(state, m) {
   if (m.bond && m.status === "start") L(m.bond.line, "me");   // 예전 선택이 돌아오는 순간
   if (m.status !== "start") L(m.status === "bench" || m.status === "sub" ? "벤치에서 경기를 지켜본다. 언제 부를지 모른다." : (m.reason || "관중석에서 경기를 지켜본다."));
   if (m.restNote) L(m.restNote, "coach");
+  if (m.nemesisOn && m.status !== "out") {                                           // 다른 학교 맞수와 만나는 날
+    const met = (state.nemesis?.log || []).filter(x => x.name === m.nemesisOn).length;
+    L(fill(met ? pick(["맞은편에 {n|이/가} 보인다. 눈이 마주쳤다. 서로 먼저 고개를 돌리지 않는다.", "{n}. 오늘도 상대 명단 맨 위에 그 이름이 있다.", "{n|이/가} 몸을 풀다 말고 이쪽을 본다. 이번이 {k}번째 맞대결이다."])
+      : "상대 명단에 {n|이/가} 있다. 얘기로만 듣던 그 동갑내기다.", { n: m.nemesisOn, k: met + 1 }), "me");
+  }
   if (m.detail && m.status === "start" && !state.flags.detailDebut) {               // 세부 포지션이 정해진 뒤 첫 선발
     state.flags.detailDebut = true;
     L(fill("{d|으로/로} 서는 첫 경기. 감독님이 정해 준 자리로 걸어가 섰다.", { d: m.detail.label }), "me");
@@ -8373,8 +8474,10 @@ function finishMatch(state, m) {
   if (clutch) rec0(state).clutchGoals = (rec0(state).clutchGoals || 0) + clutch;
   let rating = null;
   if (minutes > 0) {
-    let r = 6.1 + m.my.delta * 0.66 + (gf > ga ? 0.3 : gf < ga ? -0.3 : 0) + normal(0, 0.2);
-    if (p.position === "DF" && ga === 0) r += 0.3;
+    // 포지션마다 평점이 고르게 (공격수는 골 하나에 평점이 크게 뛰어 최우수 선수를 거의 독차지했음 → 조금 줄이고, 수비수는 무실점·수비 기여를 더 쳐 줌)
+    let r = 6.1 + m.my.delta * 0.66 * (CAL.rk[p.position] ?? 1) + (gf > ga ? 0.3 : gf < ga ? -0.3 : 0) + normal(0, 0.2);
+    if (p.position === "DF" && ga === 0) r += CAL.dfCS;
+    if (p.position === "DF" && ga >= 3) r -= 0.2;
     if (minutes < 25) r = 6 + (r - 6) * 0.6;
     rating = Math.round(clamp(r, 4, 10) * 10) / 10;
   }
@@ -8439,6 +8542,7 @@ function finishMatch(state, m) {
     injury: m.injured || null, subbedOff: !!m.subbedOff, clutch, elementary: !!fx.elementary, ko: !!fx.ko,
     decisions: m.my.decisions, successes: m.my.successes, detail: m.detailKey || null,
   };
+  if (nemesisAfter(state, fx, res, m)) res.nemesis = m.nemesisOn;                    // 맞수와의 맞대결 기록·메일
   DEV.onFinish?.(m, res);                          // 시험 도구가 경기 내용을 들여다볼 때만
   rec.matches.push(res);
   matchMails(state, m, res, notes);
@@ -10611,7 +10715,7 @@ function captainVote(state, run, changes) {
   state.flags.captainVoted = true;
   const juniorVote = !!state.marks?.junior_cared && person(state, "junior");   // 예전에 챙겨 준 후배가 먼저 손을 듦
   const score = captainScore(state) + (rand() * 8 - 4) + (juniorVote ? 5 : 0);
-  const need = run ? 66 : 76;
+  const need = run ? 80 : 90;                        // 주장은 쉽게 되지 않게 (감독 신뢰·팀워크·생활태도·동료 관계가 고루 높아야)
   const win = score >= need;
   if (win) {
     state.flags.captain = true;
@@ -10781,7 +10885,7 @@ const ENDINGS = [
     later: c => `프로 2군 경기장. 관중석은 듬성듬성하지만 맨 앞줄 아저씨 목소리는 크다. 아빠다.\n\n아직 1군 명단에 오른 적은 없다. 대신 한 번도 훈련에 늦은 적이 없다.\n\n코치가 그 이야기를 감독에게 했다는 소문이 돈다.` },
 
   { id: "comeback", grade: "H", title: "역전의 아이콘", img: "ending_highschool",
-    cond: c => c.wasBenchInG1 && c.g3StartRatio >= 0.85 && c.g3Rating >= 7.6 && c.ovr >= 70,
+    cond: c => c.wasBenchInG1 && c.g3StartRatio >= 0.85 && c.g3Rating >= 7.8 && c.ovr >= 74,
     story: c => `중1 때는 벤치에서 물통을 날랐다. 경기 명단에 이름이 없는 날이 더 많았다.\n\n중3, ${c.nameEun} 팀에서 가장 먼저 이름이 불리는 선수가 됐다. 3학년 평균 평점 ${c.g3Rating.toFixed(2)}.\n\n늦게 핀 꽃이 가장 오래간다는 말, 이제는 조금 믿게 됐다. ${c.schoolName}에서도 그럴 것이다.`,
     later: c => `대학 축구부 주전 명단 맨 위에 ${c.name}의 이름이 있다.\n\n후배 하나가 벤치에서 고개를 숙이고 있길래 옆에 앉았다. "나도 중1 땐 물통만 날랐어."\n\n그 말을 믿지 않는 눈치였다. 그래서 그날 훈련은 그 후배랑 같이 남았다.` },
 
@@ -10806,7 +10910,7 @@ const ENDINGS = [
     later: c => `대학 리그 결승전. 상대 팀 명단에 낯익은 이름이 보인다. ${c.rivalName ? `${c.rivalName}.` : "중학교 때 함께 뛰던 동기."}\n\n경기 전 악수를 하면서 둘 다 웃음을 참지 못했다. "아직도 오른쪽으로만 치고 가냐?"\n\n경기 결과는 중요하지 않았다. 아니, 사실 중요했다. 그래서 끝까지 뛰었다.` },
 
   { id: "regionalBest", grade: "A", title: "지역 최고의 선수", img: "ending_highschool",
-    cond: c => c.tier === "regional" && (c.g3Rating >= 7.1 || c.g3LeagueTitle),
+    cond: c => c.tier === "regional" && (c.g3Rating >= 7.4 || c.g3LeagueTitle),
     story: c => `전남 권역 주말리그에서 ${c.nameIrane} 이름을 모르는 지도자는 없었다.\n\n3년 통산 ${c.apps}경기 ${c.goals}골 ${c.assists}도움. ${c.schoolEun} 망설이지 않고 손을 내밀었다.\n\n더 큰 무대는 이제부터다.`,
     later: c => `전남 지역 실업팀 입단 테스트. 운동장에 들어서자 바닷바람이 분다. 고흥에서 맡던 냄새다.\n\n테스트가 끝나고 감독이 다가와 물었다. "고흥대서중 출신이라고? 그 팀 경기 몇 번 봤다."\n\n합격 통보는 사흘 뒤에 왔다.` },
 
@@ -10854,7 +10958,7 @@ return { ENDINGS, GRADE_INFO };
 __m["js/engine/career.js"] = (function () {
 const {HIGH_SCHOOLS, HS_TIERS} = __m["data/world.js"];
 const {ENDINGS} = __m["data/endings.js"];
-const {DETAIL_POS} = __m["data/player.js"];
+const {DETAIL_POS, POSITIONS} = __m["data/player.js"];
 const {STAFF} = __m["data/roster.js"];
 const {mail, mailFrom} = __m["js/state.js"];
 const {ovr} = __m["js/engine/team.js"];
@@ -10921,7 +11025,7 @@ const DETAIL_GROUPS = {
 const GROUP_LABEL = { winger: "윙어", fb: "풀백" };
 // 최근 경기 기록이 어울리는 자리 (골이 많으면 포처·타깃형, 도움이 많으면 패스하는 자리, 막아 낸 게 많으면 수비 쪽)
 const REC_FIT = { poacher: "goals", target: "goals", second: "assists", winger: "assists", am: "assists", b2b: "involved", dm: "stops", cb: "stops", bcb: "assists", fb: "assists" };
-function detailOptions(state) {
+function detailOptions(state, pos = state.player.position) {
   const p = state.player;
   const recent = state.record.matches.filter(x => x.minutes > 0).slice(-12);          // 최근 12경기
   const n = Math.max(1, recent.length), sum = k => recent.reduce((a, x) => a + (x[k] || 0), 0);
@@ -10929,7 +11033,7 @@ function detailOptions(state) {
     rating: recent.length ? Math.round(recent.reduce((a, x) => a + (x.rating || 6), 0) / recent.length * 100) / 100 : null };
   const per = { goals: rec.goals / n, assists: rec.assists / n, stops: rec.stops / n, involved: rec.involved / n };
   const scale = { goals: 12, assists: 14, stops: 2.5, involved: 1.2 };
-  const list = (DETAIL_GROUPS[p.position] || []).map(keys => {
+  const list = (DETAIL_GROUPS[pos] || []).map(keys => {
     const d = DETAIL_POS[keys[0]], g = d.group || keys[0];
     const fit = Object.entries(d.fit).reduce((a, [k, w]) => a + getPath(p.stats, k) * w, 0);
     const bonus = Math.min(4, per[REC_FIT[g]] * scale[REC_FIT[g]]);
@@ -10937,15 +11041,24 @@ function detailOptions(state) {
       score: Math.round((fit + bonus) * 10) / 10, side: keys.length > 1 };
   }).sort((a, b) => b.score - a.score);
   const sideRec = p.foot === "L" ? "L" : "R";                 // 왼발잡이는 왼쪽, 오른발잡이는 오른쪽에서 크로스 올리기 편함
-  return { list, rec, sideRec };
+  // 다른 큰 포지션: 그 포지션 기준 종합 능력치 (지금보다 2 넘게 높으면 감독님이 먼저 권함)
+  const now = ovr(p);
+  const others = ["FW", "MF", "DF"].filter(x => x !== pos).map(x => ({ pos: x, label: POSITIONS[x].label, ovr: Math.round(ovr(p, x)), diff: Math.round(ovr(p, x) - now) })).sort((a, b) => b.ovr - a.ovr);
+  return { list, rec, sideRec, others, suggest: others[0].diff >= 2 ? others[0] : null };
 }
 function chooseDetail(state, key) {
   const d = DETAIL_POS[key], p = state.player;
-  if (!d || d.pos !== p.position) return { ok: false };
+  if (!d) return { ok: false };
+  const moved = d.pos !== p.position ? { from: p.position, to: d.pos } : null;   // 포지션 변경 (공격수 ↔ 미드필더 ↔ 수비수)
+  if (moved) {
+    p.position = d.pos;
+    (state.flags.posChanges ||= []).push({ turn: state.calendar.turn, ...moved });
+    mail(state, "assist", "포지션 바꾼 첫 주", `${POSITIONS[moved.from].label}에서 ${POSITIONS[moved.to].label}로 옮겼으니, 한동안은 주전 경쟁부터 다시다.\n\n훈련은 새 포지션 기준으로 잡아라. 몸이 기억하는 습관은 금방 안 빠진다. 서두르지 말고.`);
+  }
   p.detailPos = key;
   state.pending = null;
   mail(state, "coach", `오늘부터 ${d.label}`, `오늘부터 너는 ${j(d.label, "이다", "다")}. 경기장에서 서는 자리도, 해야 할 일도 조금씩 달라진다.\n\n자리가 정해졌다고 다른 걸 놓으면 안 된다. 그 자리에서 제일 잘하는 선수가 돼라.`);
-  return { ok: true, d };
+  return { ok: true, d, moved };
 }
 const detailLabel = p => (p?.detailPos && DETAIL_POS[p.detailPos]?.pos === p.position ? DETAIL_POS[p.detailPos].label : null);
 
@@ -10980,6 +11093,8 @@ function schoolOptions(state) {
     if (p.stats.student.academic < 30) { need += 2; notes.push("학업 부족 +2"); }
     if (sc?.interest) { const d = Math.min(5, Math.floor(sc.interest / 15)); if (d) { need -= d; notes.push(`관심도 −${d}`); } }
     if ((s.tier === "national" || s.tier === "proYouth") && best >= 3) { need -= 2; notes.push("전국대회 8강 이상 −2"); }
+    const base = TIER_NEED[s.tier], cap = { proYouth: 6, national: 8 }[s.tier];       // 상위 학교는 가산을 다 모아도 이만큼까지만 낮아짐 (실력이 모자란데 서류로만 가지 않게)
+    if (cap != null && base - need > cap) { need = base - cap; notes.push(`가산 최대 −${cap}`); }
     const offered = !!sc?.offered;
     return { ...s, tierLabel: HS_TIERS[s.tier].label, need, ok: offered || o >= need, offered, notes, interest: sc?.interest || 0 };
   });
@@ -11156,6 +11271,7 @@ const {ensureOrder, judgeOrder} = __m["js/engine/orders.js"];
 const {goalsWeekly} = __m["js/engine/goals.js"];
 const {birthdayWeek} = __m["js/engine/birthday.js"];
 const {careerMilestones, detailMeeting} = __m["js/engine/career.js"];
+const {nemesisWeekly, nemesisSummary} = __m["js/engine/nemesis.js"];
 const {STAT_LABEL, POSITIONS} = __m["data/player.js"];
 const {getPath} = __m["js/rng.js"];
 const {ovr, ageRoster, activeRoster, mateGrade, roleFor, randomFreeNumber, freeNumbers, depthChart} = __m["js/engine/team.js"];
@@ -11165,6 +11281,7 @@ const {INJURIES, injure} = __m["js/engine/injury.js"];
 const {checkTraits} = __m["js/engine/traits.js"];
 const {normal, chance, clamp, int, weighted, range} = __m["js/rng.js"];
 // 한 주 진행: 행동 → 경기 → 시험 → 부상 → 학업 체크 → 다음 주
+
 
 
 
@@ -11248,7 +11365,7 @@ function beginWeek(state) {
   const before = snapshotStats(state);
   const coachBefore = state.relations.coach;
   const report = { info, title: label(info), actions: [], match: null, exam: null, injury: null,
-                   recovered: false, body: null, yearEnd: null, graduation: false, mails: [] };
+                   recovered: false, body: null, yearEnd: null, graduation: false, recap: null, mails: [] };
   const mailStart = state.inbox.length;
 
   // 1. 행동
@@ -11361,6 +11478,7 @@ function endWeek(state, ctx, matchResult) {
   if (!next) {
     state.finished = true;
     report.graduation = true;
+    report.recap = seasonRecap(state, 3);           // 졸업식 전에 중3 시즌 결산
   } else {
     if (next.grade !== info.grade) report.yearEnd = yearTransition(state, info.grade);
     else if (next.index === GRAD_INDEX + 1) graduateSeniors(state, info.grade);   // 졸업식 다음 주: 3학년 선배들이 떠남
@@ -11384,6 +11502,7 @@ function endWeek(state, ctx, matchResult) {
     goalsWeekly(state, next);
     rollEvent(state);
     detailMeeting(state, next);                    // 세부 포지션 면담 (다른 이야기가 없는 주에)
+    nemesisWeekly(state, next);                    // 다른 학교 맞수 (지역 → 전국)
     weeklyAdvice(state, report);
     const nfx = currentFixture(state);
     if (nfx) previewChat(state, nfx);              // 경기 분석은 경기 직전 미팅 장면에서
@@ -11489,9 +11608,34 @@ function graduateSeniors(state, g) {
   seniorsLeave(state, g);
 }
 
+// 시즌 결산 (학년이 끝날 때, 졸업 때): 출전·골·도움·평점 흐름·최고의 경기·능력치가 가장 많이 오른 셋
+function seasonRecap(state, grade) {
+  const p = state.player, all = state.record.matches.filter(m => m.grade === grade);
+  const played = all.filter(m => m.minutes > 0), rated = played.filter(m => m.rating != null);
+  const best = rated.slice().sort((a, b) => b.rating - a.rating || (b.goals + b.assists) - (a.goals + a.assists))[0] || null;
+  const from = state.yearStart?.stats || p.stats;
+  const gains = [];
+  for (const g of STAT_GROUPS) if (g.id !== "student") for (const [k] of g.stats) gains.push({ label: STAT_LABEL[`${g.id}.${k}`], d: Math.floor(p.stats[g.id][k]) - Math.floor(from[g.id][k]) });
+  const fake = { ...p, stats: from };
+  return {
+    grade, apps: played.length, starts: played.filter(m => m.status === "start").length,
+    goals: all.reduce((a, m) => a + m.goals, 0), assists: all.reduce((a, m) => a + m.assists, 0), mom: played.filter(m => m.mom).length,
+    rating: rated.length ? Math.round(rated.reduce((a, m) => a + m.rating, 0) / rated.length * 100) / 100 : null,
+    ratings: rated.map(m => m.rating),
+    best: best && { opponent: best.opponent, gf: best.gf, ga: best.ga, rating: best.rating, goals: best.goals, assists: best.assists, comp: best.comp, result: best.result },
+    ovrFrom: Math.round(ovr(fake)), ovrTo: Math.round(ovr(p)),
+    top: gains.sort((a, b) => b.d - a.d).slice(0, 3).filter(x => x.d > 0),
+    leagues: state.record.leagues.filter(l => l.grade === grade).map(l => ({ half: l.half, rank: l.rank })),
+    tours: state.record.tournaments.filter(t => t.grade === grade).map(t => ({ name: t.name, best: t.best })),
+    nemesis: nemesisSummary(state, grade),
+    wins: all.filter(m => m.result === "승").length, draws: all.filter(m => m.result === "무").length, losses: all.filter(m => m.result === "패").length,
+  };
+}
+
 function yearTransition(state, oldGrade) {
   const p = state.player;
-  const summary = {
+  const recap = seasonRecap(state, oldGrade);
+  const summary = { recap,
     grade: oldGrade,
     ovrFrom: null, ovrTo: Math.round(ovr(p)),
     heightFrom: state.yearStart.height, heightTo: p.body.height,
@@ -11596,7 +11740,7 @@ function diffStats(a, b) {
   return out.sort((x, y) => Math.abs(y.d) - Math.abs(x.d));
 }
 
-return { SLOTS, actionAllowed, currentFixture, weekOrder, slotLocked, planReady, runWeek, beginWeek, endWeek, POPULAR, numberChoices, chooseNumber };
+return { SLOTS, actionAllowed, currentFixture, weekOrder, slotLocked, planReady, runWeek, beginWeek, endWeek, seasonRecap, POPULAR, numberChoices, chooseNumber };
 })();
 (__fix["js/engine/week.js"] || []).forEach(f => f());
 
@@ -11860,6 +12004,83 @@ return { sfx };
 })();
 (__fix["js/ui/sfx.js"] || []).forEach(f => f());
 
+// ── js/ui/crest.js
+__m["js/ui/crest.js"] = (function () {
+const {LEAGUE_OPPONENTS, NATIONAL_OPPONENTS, ELEMENTARY_OPPONENTS, HIGH_SCHOOLS} = __m["data/world.js"];
+const {PROVINCES} = __m["js/engine/jn.js"];
+const {esc} = __m["js/ui/util.js"];
+// 상대 팀 엠블럼: 팀 색 두 가지(data/world.js) + 팀 이름에서 딴 그림 하나 + 모양(방패·원·육각, 이름으로 정함)
+
+
+
+const TEAMS = [...LEAGUE_OPPONENTS, ...NATIONAL_OPPONENTS, ...ELEMENTARY_OPPONENTS, ...HIGH_SCHOOLS, ...PROVINCES];
+const COLOR = Object.fromEntries(TEAMS.map(t => [t.name, [t.color, t.color2]]));
+
+// 모양 (viewBox 100×110)
+const SHAPE = [
+  (f, s) => `<path d="M50 3 L94 14 V56 C94 82 74 98 50 107 C26 98 6 82 6 56 V14 Z" fill="${f}" stroke="${s}" stroke-width="5"/>`,
+  (f, s) => `<circle cx="50" cy="55" r="45" fill="${f}" stroke="${s}" stroke-width="6"/><circle cx="50" cy="55" r="36" fill="none" stroke="${s}" stroke-width="2" opacity=".55"/>`,
+  (f, s) => `<path d="M50 4 L92 28 V80 L50 104 L8 80 V28 Z" fill="${f}" stroke="${s}" stroke-width="5"/>`,
+];
+const W = (c, w = 4) => `fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"`;
+// 그림 (가운데 50,55 근처). c = 그림 색, b = 바탕 색
+const MOTIF = {
+  gull: (c) => `<path d="M20 58 Q35 38 50 56 Q65 38 80 58 Q65 48 50 64 Q35 48 20 58 Z" fill="${c}"/><path d="M24 80 Q37 74 50 80 Q63 86 76 80" ${W(c)}/>`,
+  peak: (c, b) => `<path d="M24 74 L40 46 L48 56 L58 36 L76 74 Z" fill="${c}"/><path d="M54 44 L58 36 L62 44 Z" fill="${b}"/>`,
+  peaks: (c) => `<path d="M18 76 L38 40 L50 58 L62 34 L82 76 Z" fill="${c}"/><path d="M18 84 H82" ${W(c, 3)}/>`,
+  gear: (c, b) => `<circle cx="50" cy="55" r="20" fill="none" stroke="${c}" stroke-width="12" stroke-dasharray="8 7.7"/><circle cx="50" cy="55" r="15" fill="${c}"/><circle cx="50" cy="55" r="6" fill="${b}"/>`,
+  sun: (c) => `<circle cx="50" cy="58" r="13" fill="${c}"/><g ${W(c, 5)}><path d="M50 26V36"/><path d="M50 80V90"/><path d="M18 58H28"/><path d="M72 58H82"/><path d="M28 36L35 43"/><path d="M72 36L65 43"/><path d="M28 80L35 73"/><path d="M72 80L65 73"/></g>`,
+  starH: (c) => `<path d="M50 22 L56 40 L75 40 L60 51 L66 69 L50 58 L34 69 L40 51 L25 40 L44 40 Z" fill="${c}"/><path d="M22 80 Q50 66 78 80" ${W(c)}/>`,
+  star: (c) => `<path d="M50 24 L57.6 46 L81 46 L62 60 L69 82 L50 68.5 L31 82 L38 60 L19 46 L42.4 46 Z" fill="${c}"/>`,
+  compass: (c, b) => `<circle cx="50" cy="55" r="24" ${W(c, 3)}/><path d="M50 27 L57 55 L50 83 L43 55 Z" fill="${c}"/><path d="M50 55 L57 55 L50 83 L43 55 Z" fill="${b}" opacity=".45"/><circle cx="50" cy="55" r="3.5" fill="${b}"/>`,
+  tri: (c, b) => `<path d="M26 34 H74 L50 82 Z" fill="${c}"/><path d="M38 42 H62 L50 66 Z" fill="${b}"/>`,
+  fish: (c, b) => `<path d="M22 55 Q40 34 64 50 L78 40 L74 55 L78 70 L64 60 Q40 76 22 55 Z" fill="${c}"/><circle cx="34" cy="52" r="3" fill="${b}"/>`,
+  pineWave: (c) => `<path d="M50 22 L64 44 H57 L68 60 H32 L43 44 H36 Z" fill="${c}"/><path d="M24 74 Q31 68 37 74 Q44 80 50 74 Q57 68 63 74 Q70 80 76 74" ${W(c)}/>`,
+  pine: (c) => `<path d="M50 20 L64 42 H57 L70 62 H58 L72 80 H28 L42 62 H30 L43 42 H36 Z" fill="${c}"/><path d="M50 80 V88" ${W(c, 5)}/>`,
+  moon: (c) => `<path d="M60 30 A26 26 0 1 0 60 80 A20 20 0 1 1 60 30 Z" fill="${c}"/><circle cx="66" cy="42" r="3" fill="${c}"/><circle cx="72" cy="58" r="2" fill="${c}"/>`,
+  whale: (c) => `<path d="M50 82 C48 70 44 62 30 52 C40 52 46 56 50 62 C54 56 60 52 70 52 C56 62 52 70 50 82 Z" fill="${c}"/><path d="M40 30 Q44 36 42 42" ${W(c, 3)}/><path d="M60 30 Q56 36 58 42" ${W(c, 3)}/>`,
+  castle: (c, b) => `<path d="M26 78 V44 H32 V38 H38 V44 H44 V38 H56 V44 H62 V38 H68 V44 H74 V78 Z" fill="${c}"/><path d="M44 78 V64 A6 6 0 0 1 56 64 V78 Z" fill="${b}"/>`,
+  bridge: (c) => `<path d="M18 62 Q50 30 82 62" ${W(c, 5)}/><path d="M18 62 H82" ${W(c, 4)}/><path d="M34 50 V62 M50 44 V62 M66 50 V62" ${W(c, 3)}/><path d="M22 78 Q31 72 40 78 Q50 84 60 78 Q69 72 78 78" ${W(c)}/>`,
+  galaxy: (c) => `<ellipse cx="50" cy="56" rx="32" ry="11" transform="rotate(-20 50 56)" ${W(c, 3)}/><path d="M50 36 L54 51 L69 55 L54 59 L50 74 L46 59 L31 55 L46 51 Z" fill="${c}"/>`,
+  wave: (c) => `<path d="M20 70 C24 46 46 34 62 42 C72 47 70 60 60 60 C52 60 52 50 58 48" ${W(c, 6)}/><path d="M18 82 Q30 74 42 82 Q54 90 66 82 Q74 77 82 80" ${W(c)}/>`,
+  shell: (c, b) => `<path d="M50 30 C70 30 82 46 80 64 L50 82 L20 64 C18 46 30 30 50 30 Z" fill="${c}"/><g stroke="${b}" stroke-width="2.5" stroke-linecap="round"><path d="M50 34 V78"/><path d="M38 36 L44 78"/><path d="M62 36 L56 78"/><path d="M27 46 L38 76"/><path d="M73 46 L62 76"/></g>`,
+  tree: (c) => `<ellipse cx="50" cy="46" rx="13" ry="24" fill="${c}"/><path d="M50 66 V86" ${W(c, 5)}/><path d="M34 86 H66" ${W(c, 3)}/>`,
+  volcano: (c) => `<path d="M18 80 L40 42 H60 L82 80 Z" fill="${c}"/><circle cx="44" cy="32" r="4" fill="${c}"/><circle cx="54" cy="26" r="5" fill="${c}"/><circle cx="62" cy="34" r="3.5" fill="${c}"/>`,
+  lake: (c) => `<ellipse cx="50" cy="58" rx="28" ry="16" ${W(c, 4)}/><path d="M34 58 Q42 52 50 58 Q58 64 66 58" ${W(c, 3)}/><path d="M50 26 L56 38 H44 Z" fill="${c}"/>`,
+  crown: (c, b) => `<path d="M22 76 L18 40 L36 56 L50 30 L64 56 L82 40 L78 76 Z" fill="${c}"/><path d="M22 84 H78" ${W(c, 5)}/><circle cx="50" cy="62" r="5" fill="${b}"/>`,
+  globe: (c) => `<circle cx="50" cy="55" r="24" ${W(c, 4)}/><ellipse cx="50" cy="55" rx="10" ry="24" ${W(c, 3)}/><path d="M26 55 H74 M30 43 H70 M30 67 H70" ${W(c, 2.5)}/>`,
+  leaf: (c, b) => `<path d="M28 78 C26 50 44 30 76 30 C76 60 58 80 28 78 Z" fill="${c}"/><path d="M30 76 C44 62 56 50 68 38" fill="none" stroke="${b}" stroke-width="3" stroke-linecap="round"/>`,
+  sprout: (c) => `<path d="M50 86 V54" ${W(c, 5)}/><path d="M50 60 C36 60 26 50 26 36 C40 36 50 44 50 56 Z" fill="${c}"/><path d="M50 54 C50 40 60 30 76 30 C76 46 66 54 50 54 Z" fill="${c}"/>`,
+  ball: (c, b) => `<circle cx="50" cy="55" r="24" fill="${c}"/><path d="M50 44 L60 51 L56 63 L44 63 L40 51 Z" fill="${b}"/><path d="M50 44 V31 M60 51 L72 47 M56 63 L63 74 M44 63 L37 74 M40 51 L28 47" stroke="${b}" stroke-width="2.5"/>`,
+  unknown: (c) => `<text x="50" y="70" text-anchor="middle" font-size="44" font-weight="800" fill="${c}" font-family="Barlow Condensed, sans-serif">?</text>`,
+};
+// 팀 이름 속 낱말 → 그림 (위에서부터 먼저 맞는 것)
+const KEYS = [
+  ["갈매기", "gull"], ["유달", "peak"], ["쇠울", "gear"], ["빛고을", "sun"], ["무등빛", "sun"], ["새벽별", "starH"], ["정남진", "compass"], ["땅끝", "tri"],
+  ["칠산", "fish"], ["바다솔", "pineWave"], ["한강", "bridge"], ["은하", "galaxy"], ["파도", "wave"], ["달빛", "moon"], ["갯벌", "shell"], ["꼬막", "shell"],
+  ["고래", "whale"], ["설악", "peaks"], ["모악산", "peaks"], ["미루나무", "tree"], ["한라", "volcano"], ["한밭별", "star"], ["진주성", "castle"],
+  ["솔뫼", "pine"], ["새솔", "pine"], ["호수", "lake"], ["군포", "crown"], ["바닷바람", "wave"], ["남해안", "wave"], ["한누리", "globe"],
+  ["늘푸른", "leaf"], ["차밭", "leaf"], ["녹차잎", "leaf"], ["꿈나무", "sprout"], ["대표", "ball"],
+];
+const hash = s => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
+const light = hex => { const n = parseInt(hex.slice(1), 16); return ((n >> 16) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000 > 150; };
+
+// 엠블럼 SVG. size: 너비(px). 모르는 팀(상대 미정 등)은 회색 방패에 물음표
+function crest(name, { size = 40, cls = "" } = {}) {
+  const n = String(name || "");
+  const known = COLOR[n];
+  let [f, s] = known || [`hsl(${hash(n) % 360} 45% 34%)`, "#E8ECF6"];
+  if (!known && !/대표$/.test(n)) [f, s] = ["#2A3247", "#8E97AA"];
+  if (light(f) && !light(s)) [f, s] = [s, f];                 // 흰 바탕 팀은 진한 색을 바탕으로 (어두운 화면에서 덜 튐)
+  const key = (KEYS.find(([k]) => n.includes(k)) || [null, known || /대표$/.test(n) ? "ball" : "unknown"])[1];
+  const shape = known ? hash(n) % 3 : 0;
+  return `<svg class="crest-svg ${cls}" width="${size}" height="${Math.round(size * 1.1)}" viewBox="0 0 100 110" role="img" aria-label="${esc(n)} 엠블럼">${SHAPE[shape](f, s)}${MOTIF[key](s, f)}</svg>`;
+}
+
+return { crest };
+})();
+(__fix["js/ui/crest.js"] || []).forEach(f => f());
+
 // ── js/ui/modals.js
 __m["js/ui/modals.js"] = (function () {
 const {ACTIONS, CATEGORIES} = __m["data/actions.js"];
@@ -11874,7 +12095,9 @@ const {meetingScript, applyMeeting} = __m["js/engine/advice.js"];
 const {STAFF} = __m["data/roster.js"];
 const {reduced, countUp} = __m["js/ui/fx.js"];
 const {sfx} = __m["js/ui/sfx.js"];
+const {crest} = __m["js/ui/crest.js"];
 // 팝업: 행동 고르기, 주간 결과, 메시지, 저장, 등번호, 학년 마무리, 졸업
+
 
 
 
@@ -12136,19 +12359,46 @@ function numberModal(app, done) {
 }
 
 // ── 학년 마무리 ─────────────────────
-function yearModal(app, y, done) {
+// 시즌 결산: 학년이 끝날 때(y = yearTransition 요약, y.recap) / 졸업 때(final)
+function yearModal(app, y, done, { final = false } = {}) {
   const p = app.state.player;
-  openModal(`<h2>중${y.grade} 시즌이 끝났습니다</h2>
-    <p class="sub">이제 중${y.grade + 1}입니다.</p>
-    <div style="display:grid;grid-template-columns:96px 1fr;gap:14px;align-items:center;margin-bottom:14px">
-      <div style="border-radius:10px;overflow:hidden">${img(faceOf(p, y.grade + 1), p.name)}</div>
-      <dl class="kv">
-        <dt>종합 능력치</dt><dd class="num">${y.ovrFrom} → ${y.ovrTo} <span class="up">▲${y.ovrTo - y.ovrFrom}</span></dd>
-        <dt>키</dt><dd class="num">${y.heightFrom.toFixed(1)} → ${y.heightTo.toFixed(1)}cm</dd>
-        <dt>출전</dt><dd class="num">${y.matches}경기, ${y.goals}골</dd>
-      </dl></div>
-    <p class="mute" style="font-size:14px">새 시즌 일정과 등번호, 팀 소식은 메시지함에서 확인하세요.</p>
-    <button class="btn btn-kit btn-wide" data-close>새 학년 시작</button>`, null, { onClose: done });
+  const r = y.recap || y;
+  const tile = (k, v, sub = "") => `<div class="rc-tile"><span class="rc-k">${k}</span><b class="num">${v}</b>${sub ? `<small>${sub}</small>` : ""}</div>`;
+  // 평점 흐름 (경기 순서대로). 7.0 기준선, 최고 경기 점 강조
+  const rs = r.ratings || [], W = 300, H = 92, lo = 5, hi = 9.5;
+  const X = i => rs.length > 1 ? 8 + (i / (rs.length - 1)) * (W - 16) : W / 2, Y = v => H - 8 - ((Math.min(hi, Math.max(lo, v)) - lo) / (hi - lo)) * (H - 16);
+  const bi = rs.length ? rs.indexOf(Math.max(...rs)) : -1;
+  const chart = rs.length >= 2 ? `<svg class="rc-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="경기별 평점 흐름, 평균 ${r.rating}">
+      <line x1="0" x2="${W}" y1="${Y(7)}" y2="${Y(7)}" class="rc-base"/><text x="${W - 2}" y="${Y(7) - 4}" text-anchor="end" class="rc-bt">7.0</text>
+      <polyline points="${rs.map((v, i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(" ")}" class="rc-line"/>
+      ${rs.map((v, i) => `<circle cx="${X(i).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="${i === bi ? 4.5 : 2.2}" class="${i === bi ? "rc-best" : v >= 7.5 ? "rc-hi" : v < 6.5 ? "rc-lo" : "rc-mid"}"/>`).join("")}
+    </svg>` : `<p class="mute" style="font-size:13px;margin:0">평점이 남은 경기가 많지 않습니다.</p>`;
+  const team = [...(r.leagues || []).map(l => `${l.half} 리그 ${l.rank}위`), ...(r.tours || []).map(t => `${t.name} ${t.best}`)];
+  const grow = r.ovrTo - r.ovrFrom;
+  openModal(`<div class="recap">
+    <span class="eyebrow">SEASON REVIEW</span>
+    <h2>중${r.grade} 시즌 결산</h2>
+    <p class="sub">${final ? "중학교 마지막 시즌이 끝났습니다." : `이제 중${r.grade + 1}입니다.`}</p>
+    <div class="rc-head">
+      <div class="rc-face">${img(faceOf(p, Math.min(3, r.grade + (final ? 0 : 1))), p.name)}</div>
+      <div class="rc-ovr"><span class="rc-k">종합 능력치</span><b class="num">${r.ovrFrom} <span aria-hidden="true">→</span> ${r.ovrTo}</b>
+        <small class="${grow > 0 ? "up" : "mute"}">${grow > 0 ? `▲${grow}` : "그대로"}</small></div>
+    </div>
+    <div class="rc-tiles">
+      ${tile("출전", r.apps, `선발 ${r.starts}`)}${tile("골", r.goals)}${tile("도움", r.assists)}
+      ${tile("평균 평점", r.rating != null ? r.rating.toFixed(2) : "–")}${tile("최우수 선수", r.mom, "번")}${tile("팀 전적", `${r.wins}-${r.draws}-${r.losses}`, "승-무-패")}
+    </div>
+    <h3 class="rc-h">평점 흐름</h3>
+    ${chart}
+    ${r.best ? `<h3 class="rc-h">올해 최고의 경기</h3>
+      <div class="rc-best-card">${crest(r.best.opponent, { size: 40 })}<div><b>vs ${esc(r.best.opponent)} <span class="num">${r.best.gf}:${r.best.ga}</span></b>
+        <small>${esc(r.best.comp)} · 평점 <span class="num">${r.best.rating.toFixed(1)}</span>${r.best.goals ? ` · ${r.best.goals}골` : ""}${r.best.assists ? ` · ${r.best.assists}도움` : ""}</small></div></div>` : ""}
+    ${r.top?.length ? `<h3 class="rc-h">가장 많이 오른 능력치</h3><div class="rc-gains">${r.top.map(g => `<span class="evchip up">${esc(g.label)} +${g.d}</span>`).join("")}</div>` : ""}
+    ${r.nemesis ? `<h3 class="rc-h">맞수</h3><div class="rc-best-card">${crest(r.nemesis.team, { size: 40 })}<div><b>${esc(r.nemesis.name)} <small>${esc(r.nemesis.team)}</small></b>
+      <small>${r.nemesis.games ? `올해 맞대결 ${r.nemesis.games}전 ${r.nemesis.W}승 ${r.nemesis.D}무 ${r.nemesis.L}패` : "올해는 맞대결이 없었습니다."}</small></div></div>` : ""}
+    ${team.length ? `<h3 class="rc-h">팀</h3><p class="rc-team">${team.map(esc).join(" · ")}</p>` : ""}
+    <button class="btn btn-kit btn-wide" data-close style="margin-top:16px">${final ? "졸업식으로" : "새 학년 시작"}</button>
+  </div>`, null, { onClose: done });
 }
 
 // ── 이벤트 ──────────────────────────
@@ -13583,83 +13833,6 @@ return { GRADES, statFor, levelOf, playMinigame };
 })();
 (__fix["js/ui/minigames.js"] || []).forEach(f => f());
 
-// ── js/ui/crest.js
-__m["js/ui/crest.js"] = (function () {
-const {LEAGUE_OPPONENTS, NATIONAL_OPPONENTS, ELEMENTARY_OPPONENTS, HIGH_SCHOOLS} = __m["data/world.js"];
-const {PROVINCES} = __m["js/engine/jn.js"];
-const {esc} = __m["js/ui/util.js"];
-// 상대 팀 엠블럼: 팀 색 두 가지(data/world.js) + 팀 이름에서 딴 그림 하나 + 모양(방패·원·육각, 이름으로 정함)
-
-
-
-const TEAMS = [...LEAGUE_OPPONENTS, ...NATIONAL_OPPONENTS, ...ELEMENTARY_OPPONENTS, ...HIGH_SCHOOLS, ...PROVINCES];
-const COLOR = Object.fromEntries(TEAMS.map(t => [t.name, [t.color, t.color2]]));
-
-// 모양 (viewBox 100×110)
-const SHAPE = [
-  (f, s) => `<path d="M50 3 L94 14 V56 C94 82 74 98 50 107 C26 98 6 82 6 56 V14 Z" fill="${f}" stroke="${s}" stroke-width="5"/>`,
-  (f, s) => `<circle cx="50" cy="55" r="45" fill="${f}" stroke="${s}" stroke-width="6"/><circle cx="50" cy="55" r="36" fill="none" stroke="${s}" stroke-width="2" opacity=".55"/>`,
-  (f, s) => `<path d="M50 4 L92 28 V80 L50 104 L8 80 V28 Z" fill="${f}" stroke="${s}" stroke-width="5"/>`,
-];
-const W = (c, w = 4) => `fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"`;
-// 그림 (가운데 50,55 근처). c = 그림 색, b = 바탕 색
-const MOTIF = {
-  gull: (c) => `<path d="M20 58 Q35 38 50 56 Q65 38 80 58 Q65 48 50 64 Q35 48 20 58 Z" fill="${c}"/><path d="M24 80 Q37 74 50 80 Q63 86 76 80" ${W(c)}/>`,
-  peak: (c, b) => `<path d="M24 74 L40 46 L48 56 L58 36 L76 74 Z" fill="${c}"/><path d="M54 44 L58 36 L62 44 Z" fill="${b}"/>`,
-  peaks: (c) => `<path d="M18 76 L38 40 L50 58 L62 34 L82 76 Z" fill="${c}"/><path d="M18 84 H82" ${W(c, 3)}/>`,
-  gear: (c, b) => `<circle cx="50" cy="55" r="20" fill="none" stroke="${c}" stroke-width="12" stroke-dasharray="8 7.7"/><circle cx="50" cy="55" r="15" fill="${c}"/><circle cx="50" cy="55" r="6" fill="${b}"/>`,
-  sun: (c) => `<circle cx="50" cy="58" r="13" fill="${c}"/><g ${W(c, 5)}><path d="M50 26V36"/><path d="M50 80V90"/><path d="M18 58H28"/><path d="M72 58H82"/><path d="M28 36L35 43"/><path d="M72 36L65 43"/><path d="M28 80L35 73"/><path d="M72 80L65 73"/></g>`,
-  starH: (c) => `<path d="M50 22 L56 40 L75 40 L60 51 L66 69 L50 58 L34 69 L40 51 L25 40 L44 40 Z" fill="${c}"/><path d="M22 80 Q50 66 78 80" ${W(c)}/>`,
-  star: (c) => `<path d="M50 24 L57.6 46 L81 46 L62 60 L69 82 L50 68.5 L31 82 L38 60 L19 46 L42.4 46 Z" fill="${c}"/>`,
-  compass: (c, b) => `<circle cx="50" cy="55" r="24" ${W(c, 3)}/><path d="M50 27 L57 55 L50 83 L43 55 Z" fill="${c}"/><path d="M50 55 L57 55 L50 83 L43 55 Z" fill="${b}" opacity=".45"/><circle cx="50" cy="55" r="3.5" fill="${b}"/>`,
-  tri: (c, b) => `<path d="M26 34 H74 L50 82 Z" fill="${c}"/><path d="M38 42 H62 L50 66 Z" fill="${b}"/>`,
-  fish: (c, b) => `<path d="M22 55 Q40 34 64 50 L78 40 L74 55 L78 70 L64 60 Q40 76 22 55 Z" fill="${c}"/><circle cx="34" cy="52" r="3" fill="${b}"/>`,
-  pineWave: (c) => `<path d="M50 22 L64 44 H57 L68 60 H32 L43 44 H36 Z" fill="${c}"/><path d="M24 74 Q31 68 37 74 Q44 80 50 74 Q57 68 63 74 Q70 80 76 74" ${W(c)}/>`,
-  pine: (c) => `<path d="M50 20 L64 42 H57 L70 62 H58 L72 80 H28 L42 62 H30 L43 42 H36 Z" fill="${c}"/><path d="M50 80 V88" ${W(c, 5)}/>`,
-  moon: (c) => `<path d="M60 30 A26 26 0 1 0 60 80 A20 20 0 1 1 60 30 Z" fill="${c}"/><circle cx="66" cy="42" r="3" fill="${c}"/><circle cx="72" cy="58" r="2" fill="${c}"/>`,
-  whale: (c) => `<path d="M50 82 C48 70 44 62 30 52 C40 52 46 56 50 62 C54 56 60 52 70 52 C56 62 52 70 50 82 Z" fill="${c}"/><path d="M40 30 Q44 36 42 42" ${W(c, 3)}/><path d="M60 30 Q56 36 58 42" ${W(c, 3)}/>`,
-  castle: (c, b) => `<path d="M26 78 V44 H32 V38 H38 V44 H44 V38 H56 V44 H62 V38 H68 V44 H74 V78 Z" fill="${c}"/><path d="M44 78 V64 A6 6 0 0 1 56 64 V78 Z" fill="${b}"/>`,
-  bridge: (c) => `<path d="M18 62 Q50 30 82 62" ${W(c, 5)}/><path d="M18 62 H82" ${W(c, 4)}/><path d="M34 50 V62 M50 44 V62 M66 50 V62" ${W(c, 3)}/><path d="M22 78 Q31 72 40 78 Q50 84 60 78 Q69 72 78 78" ${W(c)}/>`,
-  galaxy: (c) => `<ellipse cx="50" cy="56" rx="32" ry="11" transform="rotate(-20 50 56)" ${W(c, 3)}/><path d="M50 36 L54 51 L69 55 L54 59 L50 74 L46 59 L31 55 L46 51 Z" fill="${c}"/>`,
-  wave: (c) => `<path d="M20 70 C24 46 46 34 62 42 C72 47 70 60 60 60 C52 60 52 50 58 48" ${W(c, 6)}/><path d="M18 82 Q30 74 42 82 Q54 90 66 82 Q74 77 82 80" ${W(c)}/>`,
-  shell: (c, b) => `<path d="M50 30 C70 30 82 46 80 64 L50 82 L20 64 C18 46 30 30 50 30 Z" fill="${c}"/><g stroke="${b}" stroke-width="2.5" stroke-linecap="round"><path d="M50 34 V78"/><path d="M38 36 L44 78"/><path d="M62 36 L56 78"/><path d="M27 46 L38 76"/><path d="M73 46 L62 76"/></g>`,
-  tree: (c) => `<ellipse cx="50" cy="46" rx="13" ry="24" fill="${c}"/><path d="M50 66 V86" ${W(c, 5)}/><path d="M34 86 H66" ${W(c, 3)}/>`,
-  volcano: (c) => `<path d="M18 80 L40 42 H60 L82 80 Z" fill="${c}"/><circle cx="44" cy="32" r="4" fill="${c}"/><circle cx="54" cy="26" r="5" fill="${c}"/><circle cx="62" cy="34" r="3.5" fill="${c}"/>`,
-  lake: (c) => `<ellipse cx="50" cy="58" rx="28" ry="16" ${W(c, 4)}/><path d="M34 58 Q42 52 50 58 Q58 64 66 58" ${W(c, 3)}/><path d="M50 26 L56 38 H44 Z" fill="${c}"/>`,
-  crown: (c, b) => `<path d="M22 76 L18 40 L36 56 L50 30 L64 56 L82 40 L78 76 Z" fill="${c}"/><path d="M22 84 H78" ${W(c, 5)}/><circle cx="50" cy="62" r="5" fill="${b}"/>`,
-  globe: (c) => `<circle cx="50" cy="55" r="24" ${W(c, 4)}/><ellipse cx="50" cy="55" rx="10" ry="24" ${W(c, 3)}/><path d="M26 55 H74 M30 43 H70 M30 67 H70" ${W(c, 2.5)}/>`,
-  leaf: (c, b) => `<path d="M28 78 C26 50 44 30 76 30 C76 60 58 80 28 78 Z" fill="${c}"/><path d="M30 76 C44 62 56 50 68 38" fill="none" stroke="${b}" stroke-width="3" stroke-linecap="round"/>`,
-  sprout: (c) => `<path d="M50 86 V54" ${W(c, 5)}/><path d="M50 60 C36 60 26 50 26 36 C40 36 50 44 50 56 Z" fill="${c}"/><path d="M50 54 C50 40 60 30 76 30 C76 46 66 54 50 54 Z" fill="${c}"/>`,
-  ball: (c, b) => `<circle cx="50" cy="55" r="24" fill="${c}"/><path d="M50 44 L60 51 L56 63 L44 63 L40 51 Z" fill="${b}"/><path d="M50 44 V31 M60 51 L72 47 M56 63 L63 74 M44 63 L37 74 M40 51 L28 47" stroke="${b}" stroke-width="2.5"/>`,
-  unknown: (c) => `<text x="50" y="70" text-anchor="middle" font-size="44" font-weight="800" fill="${c}" font-family="Barlow Condensed, sans-serif">?</text>`,
-};
-// 팀 이름 속 낱말 → 그림 (위에서부터 먼저 맞는 것)
-const KEYS = [
-  ["갈매기", "gull"], ["유달", "peak"], ["쇠울", "gear"], ["빛고을", "sun"], ["무등빛", "sun"], ["새벽별", "starH"], ["정남진", "compass"], ["땅끝", "tri"],
-  ["칠산", "fish"], ["바다솔", "pineWave"], ["한강", "bridge"], ["은하", "galaxy"], ["파도", "wave"], ["달빛", "moon"], ["갯벌", "shell"], ["꼬막", "shell"],
-  ["고래", "whale"], ["설악", "peaks"], ["모악산", "peaks"], ["미루나무", "tree"], ["한라", "volcano"], ["한밭별", "star"], ["진주성", "castle"],
-  ["솔뫼", "pine"], ["새솔", "pine"], ["호수", "lake"], ["군포", "crown"], ["바닷바람", "wave"], ["남해안", "wave"], ["한누리", "globe"],
-  ["늘푸른", "leaf"], ["차밭", "leaf"], ["녹차잎", "leaf"], ["꿈나무", "sprout"], ["대표", "ball"],
-];
-const hash = s => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
-const light = hex => { const n = parseInt(hex.slice(1), 16); return ((n >> 16) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000 > 150; };
-
-// 엠블럼 SVG. size: 너비(px). 모르는 팀(상대 미정 등)은 회색 방패에 물음표
-function crest(name, { size = 40, cls = "" } = {}) {
-  const n = String(name || "");
-  const known = COLOR[n];
-  let [f, s] = known || [`hsl(${hash(n) % 360} 45% 34%)`, "#E8ECF6"];
-  if (!known && !/대표$/.test(n)) [f, s] = ["#2A3247", "#8E97AA"];
-  if (light(f) && !light(s)) [f, s] = [s, f];                 // 흰 바탕 팀은 진한 색을 바탕으로 (어두운 화면에서 덜 튐)
-  const key = (KEYS.find(([k]) => n.includes(k)) || [null, known || /대표$/.test(n) ? "ball" : "unknown"])[1];
-  const shape = known ? hash(n) % 3 : 0;
-  return `<svg class="crest-svg ${cls}" width="${size}" height="${Math.round(size * 1.1)}" viewBox="0 0 100 110" role="img" aria-label="${esc(n)} 엠블럼">${SHAPE[shape](f, s)}${MOTIF[key](s, f)}</svg>`;
-}
-
-return { crest };
-})();
-(__fix["js/ui/crest.js"] || []).forEach(f => f());
-
 // ── data/audio.js
 __m["data/audio.js"] = (function () {
 
@@ -14901,6 +15074,7 @@ const {sortTable, US, tierLabel, ensureSeason, stillScheduled} = __m["js/engine/
 const {HIGH_SCHOOLS} = __m["data/world.js"];
 const {ovr, depthChart, activeRoster, mateGrade} = __m["js/engine/team.js"];
 const {crest} = __m["js/ui/crest.js"];
+const {nemesisSummary} = __m["js/engine/nemesis.js"];
 const {efficiency, conditionOf} = __m["js/engine/growth.js"];
 const {SIGNATURE, SITUATIONS} = __m["data/match.js"];
 const {STAT_LABEL, STAT_INFO} = __m["data/player.js"];
@@ -14912,6 +15086,7 @@ const {blessedThisTerm} = __m["js/engine/events.js"];
 const {goalProgress} = __m["js/engine/goals.js"];
 const {jnFixture, JN_WEEK} = __m["js/engine/jn.js"];
 // 게임 안 화면들: 홈, 선수, 팀, 일정, 메시지
+
 
 
 
@@ -15316,7 +15491,15 @@ function teamView(state, tab = "league") {
           <div class="rel-bar"><div class="track"><div class="fill" style="width:${tv}%"></div></div><span class="num">${Math.round(tv)}</span><span class="mute">${word(tv)}</span></div>
           <p class="rel-desc">시험 성적, 수업 태도, 학교 행사에서의 선택에 따라 관계가 달라지고, 졸업식 날 받는 편지도 바뀝니다. 70 이상이면 학기마다 한 번 '류봉두의 축복'이 찾아옵니다${blessedThisTerm(state) ? " (이번 학기 받음 ✨)" : ""}.</p>
         </div></div>`;
-    body = `<h2>관계</h2><div class="rels">${teacherCard}${Object.entries(REL_ROLES).map(([k, r]) => {
+    const ns = nemesisSummary(state);
+    const nemCard = ns ? `<div class="rel nem">
+        <div class="rel-face nem-crest">${crest(ns.team, { size: 52 })}</div>
+        <div class="rel-main">
+          <div class="rel-head"><span class="rel-ic">⚔️</span><b>${esc(ns.name)}</b><span class="mute">${ns.level === "national" ? "전국" : "지역"} 맞수, ${esc(ns.team)} ${ns.pos}</span></div>
+          <div class="nem-rec"><span class="num">${ns.games}</span>전 <span class="num up">${ns.W}</span>승 <span class="num">${ns.D}</span>무 <span class="num down">${ns.L}</span>패</div>
+          <p class="rel-desc">${ns.level === "national" ? "전국 최강 군포FC의 동갑내기입니다. 전국대회 조별리그나 결승에서 자주 만납니다." : "같은 리그 동갑내기입니다. 리그에서 해마다 만납니다. 종합 능력치가 66을 넘으면(중2부터) 전국 무대의 맞수가 생깁니다."}</p>
+        </div></div>` : "";
+    body = `<h2>관계</h2><div class="rels">${nemCard}${teacherCard}${Object.entries(REL_ROLES).map(([k, r]) => {
       const x = P[k];
       if (!x) return `<div class="rel empty"><div class="rel-head"><span class="rel-ic">${r.icon}</span><b>${r.label}</b></div>
         <p class="mute">${k === "junior" ? "중2가 되면 후배가 생깁니다." : "지금은 없습니다."}</p></div>`;
@@ -15579,6 +15762,7 @@ const {schoolOptions, chooseSchool, decideEnding, markEnding, seenEndings, teach
 const {DETAIL_POS} = __m["data/player.js"];
 const {turnInfo} = __m["js/engine/calendar.js"];
 const {STAFF} = __m["data/roster.js"];
+const {ovr} = __m["js/engine/team.js"];
 const {sfx} = __m["js/ui/sfx.js"];
 const {openModal} = __m["js/ui/modals.js"];
 const {bgLayer} = __m["js/ui/intro.js"];
@@ -15586,6 +15770,7 @@ const {setScene} = __m["js/ui/fx.js"];
 const {bgm} = __m["js/ui/bgm.js"];
 const {esc, img, faceOf, fillText} = __m["js/ui/util.js"];
 const {crest: teamCrest} = __m["js/ui/crest.js"];
+const {nemesisSummary} = __m["js/engine/nemesis.js"];
 const {addHallCard, checkAchievements} = __m["js/ui/hall.js"];
 // 진로 화면: 진학 상담, 국가대표 발표, 엔딩, 엔딩 도감
 
@@ -15593,6 +15778,8 @@ const {addHallCard, checkAchievements} = __m["js/ui/hall.js"];
 
 
 const turnMonth = state => turnInfo(state)?.month;
+
+
 
 
 
@@ -15641,9 +15828,9 @@ function admissionModal(app, done) {
 // ── 세부 포지션 면담 (2학년 하계대회 뒤): 정 코치 기록 → 감독님 추천 → 내가 고름 (윙어·풀백은 왼쪽·오른쪽까지) ──
 function detailModal(app, done) {
   const state = app.state, p = state.player;
-  const { list, rec, sideRec } = detailOptions(state);
+  const { list, rec, sideRec, others, suggest } = detailOptions(state);
   if (!list.length) { state.pending = null; done(); return; }
-  const top = list[0], second = list[1];
+  const top = list[0], second = list[1], nowOvr = ovr(p);
   const WHO = { assist: { name: STAFF.assistant, face: "npc_assistant" }, coach: { name: STAFF.coach, face: "npc_coach" } };
   const tj = (w, a, b) => fillText(`{w|${a}/${b}}`, { w });
   const recLine = !rec.games ? "아직 경기 기록이 많지 않습니다. 훈련 때 본 것으로 말씀드리겠습니다."
@@ -15654,6 +15841,7 @@ function detailModal(app, done) {
     { who: "coach", t: `${state.calendar.grade === 2 ? "하계대회 보면서" : "요즘 경기 보면서"} 계속 생각했다. 이제 너도 네 자리를 정할 때가 됐다.` },
     { who: "coach", t: `${top.why} 그래서 나는 너를 ${tj(top.label, "으로", "로")} 쓰고 싶다.` },
     ...(second ? [{ who: "assist", t: `감독님 말씀도 맞는데, 나는 ${second.label}도 잘 어울린다고 본다. ${second.why}` }] : []),
+    ...(suggest ? [{ who: "coach", t: `하나 더 있다. 능력치만 놓고 보면 너는 ${tj(suggest.label, "으로", "로")} 뛰어도 잘 맞는다. 원하면 포지션을 바꿔도 된다.` }] : []),
     { who: "coach", t: "마지막엔 네가 정해라. 정하면 그 자리에 맞게 키운다." },
   ];
   const lineHtml = l => { const w = WHO[l.who];
@@ -15680,7 +15868,21 @@ function detailModal(app, done) {
     };
     const pickRole = () => {
       box.innerHTML = lineHtml(lines.at(-1));
-      choices("어느 자리에서 뛸까?", list.map(o => ({ ...o, tag: o === top ? "감독님 추천" : o === second ? "코치님 추천" : "", sub: o.desc })), o => o.side ? pickSide(o) : finish(o.keys[0]));
+      const move = { label: "다른 포지션도 해 보고 싶다", tag: suggest ? "감독님 제안" : "", sub: `${others.map(o => `${o.label} 기준 종합 ${o.ovr}`).join(", ")} (지금 ${Math.round(nowOvr)})`, move: true };
+      choices("어느 자리에서 뛸까?", [...list.map(o => ({ ...o, tag: o === top ? "감독님 추천" : o === second ? "코치님 추천" : "", sub: o.desc })), move],
+        o => o.move ? pickPos() : o.side ? pickSide(o) : finish(o.keys[0]));
+    };
+    // 포지션 변경: 공격수 ↔ 미드필더 ↔ 수비수
+    const pickPos = () => {
+      box.innerHTML = lineHtml({ who: "assist", t: "포지션을 바꾸면 처음엔 주전 경쟁부터 다시 해야 한다. 종합 능력치도 새 포지션 기준으로 다시 계산된다. 그래도 해 보겠냐?" });
+      choices("어느 포지션으로 바꿀까?", [...others.map(o => ({ label: o.label, pos: o.pos, tag: o === suggest ? "감독님 제안" : "", sub: `새 포지션 기준 종합 ${o.ovr} (지금 ${Math.round(nowOvr)}, ${o.diff >= 0 ? "+" : ""}${o.diff})` })),
+        { label: "아니다, 지금 포지션에서 고르겠다", back: true }], o => o.back ? pickRole() : pickRoleIn(o.pos));
+    };
+    const pickRoleIn = pos => {
+      const L = detailOptions(state, pos).list;
+      box.innerHTML = lineHtml({ who: "coach", t: `좋다. ${L[0].label}부터 생각해 봤다. ${L[0].why}` });
+      choices("새 포지션에서 어느 자리에 설까?", [...L.map((o, i) => ({ ...o, tag: i === 0 ? "감독님 추천" : "", sub: o.desc })), { label: "다시 생각해 보겠다", back: true }],
+        o => o.back ? pickPos() : o.side ? pickSide(o) : finish(o.keys[0]));
     };
     const pickSide = o => {
       const footW = p.foot === "L" ? "왼발잡이" : "오른발잡이", sideW = sideRec === "L" ? "왼쪽" : "오른쪽", other = sideRec === "L" ? "오른쪽" : "왼쪽";
@@ -15694,7 +15896,7 @@ function detailModal(app, done) {
       const r = chooseDetail(state, key);
       if (!r.ok) return;
       app.saveTo("auto");
-      box.innerHTML = lineHtml({ who: "coach", t: `좋다. 오늘부터 너는 ${tj(r.d.label, "이다", "다")}. 다음 경기부터 그 자리에 세운다.` });
+      box.innerHTML = lineHtml({ who: "coach", t: r.moved ? `좋다. 오늘부터 너는 ${tj(r.d.label, "이다", "다")}. 포지션을 바꾼 만큼 처음 몇 주는 힘들 거다. 버텨라.` : `좋다. 오늘부터 너는 ${tj(r.d.label, "이다", "다")}. 다음 경기부터 그 자리에 세운다.` });
       ctl.innerHTML = `<div class="evchips"><span class="evchip up">${esc(r.d.label)}</span></div><p class="mute dp-desc">${esc(r.d.desc)}</p>
         <button class="btn btn-kit btn-wide" data-close style="margin-top:12px">확인</button>`;
       ctl.querySelector("[data-close]").addEventListener("click", close);
@@ -15748,6 +15950,7 @@ function showEnding(app) {
   setScene(null);
   bgm.play("ending");
   const { ending, c } = decideEnding(state);
+  const ns = nemesisSummary(state);
   markEnding(ending.id);
   try { addHallCard(state, ending, c); } catch (e) { console.warn(e); }   // 기록실에 선수 카드
   app.saveTo("auto");
@@ -15757,6 +15960,7 @@ function showEnding(app) {
     ["진학", c.schoolName], ["최종 능력치", c.ovr], ["키", `${c.height.toFixed(1)}cm`],
     ["통산", `${c.apps}경기 ${c.goals}골 ${c.assists}도움`], ["등번호", p.numberHistory.map(h => h.number).join(" → ")],
     ["우승", c.titles.length ? c.titles.map(t => t.name).join(", ") : "없음"],
+    ...(ns && ns.games ? [["맞수", `${ns.name} (${ns.team}) ${ns.games}전 ${ns.W}승 ${ns.D}무 ${ns.L}패`]] : []),
   ];
   app.view = "ending";
   app.root.innerHTML = `<div class="ending">
@@ -15997,6 +16201,7 @@ const app = {
       if (rep.yearEnd) chain.push(next => yearModal(this, rep.yearEnd, next));
       if (s.pending) chain.push(next => this.pendingFlow(next));
       if (s.pendingEvent) chain.push(next => this.eventChain(next));   // 한 주에 이야기가 두 개일 수도 있음
+      if (rep.graduation && rep.recap) chain.push(next => yearModal(this, rep.recap, next, { final: true }));   // 졸업식 전에 중3 시즌 결산
       if (rep.graduation) chain.push(() => showEnding(this));
       const run = () => { const f = chain.shift(); if (f) f(() => { this.saveTo("auto"); this.render(); run(); }); };
       this.render();

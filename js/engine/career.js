@@ -1,7 +1,7 @@
 // 진로: 진학 상담(중3 10월), 국가대표 선발(중3 12월), 엔딩 판정(졸업)
 import { HIGH_SCHOOLS, HS_TIERS } from "../../data/world.js";
 import { ENDINGS } from "../../data/endings.js";
-import { DETAIL_POS } from "../../data/player.js";
+import { DETAIL_POS, POSITIONS } from "../../data/player.js";
 import { STAFF } from "../../data/roster.js";
 import { mail, mailFrom } from "../state.js";
 import { ovr } from "./team.js";
@@ -60,7 +60,7 @@ export const DETAIL_GROUPS = {
 const GROUP_LABEL = { winger: "윙어", fb: "풀백" };
 // 최근 경기 기록이 어울리는 자리 (골이 많으면 포처·타깃형, 도움이 많으면 패스하는 자리, 막아 낸 게 많으면 수비 쪽)
 const REC_FIT = { poacher: "goals", target: "goals", second: "assists", winger: "assists", am: "assists", b2b: "involved", dm: "stops", cb: "stops", bcb: "assists", fb: "assists" };
-export function detailOptions(state) {
+export function detailOptions(state, pos = state.player.position) {
   const p = state.player;
   const recent = state.record.matches.filter(x => x.minutes > 0).slice(-12);          // 최근 12경기
   const n = Math.max(1, recent.length), sum = k => recent.reduce((a, x) => a + (x[k] || 0), 0);
@@ -68,7 +68,7 @@ export function detailOptions(state) {
     rating: recent.length ? Math.round(recent.reduce((a, x) => a + (x.rating || 6), 0) / recent.length * 100) / 100 : null };
   const per = { goals: rec.goals / n, assists: rec.assists / n, stops: rec.stops / n, involved: rec.involved / n };
   const scale = { goals: 12, assists: 14, stops: 2.5, involved: 1.2 };
-  const list = (DETAIL_GROUPS[p.position] || []).map(keys => {
+  const list = (DETAIL_GROUPS[pos] || []).map(keys => {
     const d = DETAIL_POS[keys[0]], g = d.group || keys[0];
     const fit = Object.entries(d.fit).reduce((a, [k, w]) => a + getPath(p.stats, k) * w, 0);
     const bonus = Math.min(4, per[REC_FIT[g]] * scale[REC_FIT[g]]);
@@ -76,15 +76,24 @@ export function detailOptions(state) {
       score: Math.round((fit + bonus) * 10) / 10, side: keys.length > 1 };
   }).sort((a, b) => b.score - a.score);
   const sideRec = p.foot === "L" ? "L" : "R";                 // 왼발잡이는 왼쪽, 오른발잡이는 오른쪽에서 크로스 올리기 편함
-  return { list, rec, sideRec };
+  // 다른 큰 포지션: 그 포지션 기준 종합 능력치 (지금보다 2 넘게 높으면 감독님이 먼저 권함)
+  const now = ovr(p);
+  const others = ["FW", "MF", "DF"].filter(x => x !== pos).map(x => ({ pos: x, label: POSITIONS[x].label, ovr: Math.round(ovr(p, x)), diff: Math.round(ovr(p, x) - now) })).sort((a, b) => b.ovr - a.ovr);
+  return { list, rec, sideRec, others, suggest: others[0].diff >= 2 ? others[0] : null };
 }
 export function chooseDetail(state, key) {
   const d = DETAIL_POS[key], p = state.player;
-  if (!d || d.pos !== p.position) return { ok: false };
+  if (!d) return { ok: false };
+  const moved = d.pos !== p.position ? { from: p.position, to: d.pos } : null;   // 포지션 변경 (공격수 ↔ 미드필더 ↔ 수비수)
+  if (moved) {
+    p.position = d.pos;
+    (state.flags.posChanges ||= []).push({ turn: state.calendar.turn, ...moved });
+    mail(state, "assist", "포지션 바꾼 첫 주", `${POSITIONS[moved.from].label}에서 ${POSITIONS[moved.to].label}로 옮겼으니, 한동안은 주전 경쟁부터 다시다.\n\n훈련은 새 포지션 기준으로 잡아라. 몸이 기억하는 습관은 금방 안 빠진다. 서두르지 말고.`);
+  }
   p.detailPos = key;
   state.pending = null;
   mail(state, "coach", `오늘부터 ${d.label}`, `오늘부터 너는 ${j(d.label, "이다", "다")}. 경기장에서 서는 자리도, 해야 할 일도 조금씩 달라진다.\n\n자리가 정해졌다고 다른 걸 놓으면 안 된다. 그 자리에서 제일 잘하는 선수가 돼라.`);
-  return { ok: true, d };
+  return { ok: true, d, moved };
 }
 export const detailLabel = p => (p?.detailPos && DETAIL_POS[p.detailPos]?.pos === p.position ? DETAIL_POS[p.detailPos].label : null);
 
@@ -119,6 +128,8 @@ export function schoolOptions(state) {
     if (p.stats.student.academic < 30) { need += 2; notes.push("학업 부족 +2"); }
     if (sc?.interest) { const d = Math.min(5, Math.floor(sc.interest / 15)); if (d) { need -= d; notes.push(`관심도 −${d}`); } }
     if ((s.tier === "national" || s.tier === "proYouth") && best >= 3) { need -= 2; notes.push("전국대회 8강 이상 −2"); }
+    const base = TIER_NEED[s.tier], cap = { proYouth: 6, national: 8 }[s.tier];       // 상위 학교는 가산을 다 모아도 이만큼까지만 낮아짐 (실력이 모자란데 서류로만 가지 않게)
+    if (cap != null && base - need > cap) { need = base - cap; notes.push(`가산 최대 −${cap}`); }
     const offered = !!sc?.offered;
     return { ...s, tierLabel: HS_TIERS[s.tier].label, need, ok: offered || o >= need, offered, notes, interest: sc?.interest || 0 };
   });

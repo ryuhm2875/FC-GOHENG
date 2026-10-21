@@ -79,7 +79,7 @@ export function aceAbsent(state, team, turn = state.calendar.turn) {
 }
 
 // 경기에 나서는 필드 선수 10명. 핵심 선수 먼저, 그다음 학년 높은 순
-export function oppLineup(state, team, turn) {
+export function oppLineup(state, team, turn, must = null) {
   const act = activeOpp(state, team);
   if (!act) return null;
   const ace = aceOf(state, team);
@@ -87,6 +87,7 @@ export function oppLineup(state, team, turn) {
   const lineup = [];
   for (const [pos, n] of Object.entries(NEED)) {
     act.filter(p => p.pos === pos && p.name !== out).sort((a, b) => (b.star != null) - (a.star != null) || b.grade - a.grade)
+      .sort((a, b) => (b.name === must) - (a.name === must))                    // 맞수는 꼭 나옴
       .slice(0, n).forEach(p => lineup.push({ name: p.name, number: p.number, pos, star: p.star != null, trait: p.trait || null, grade: p.grade }));
   }
   return { lineup, ace: ace && !out ? ace : null, absent: out ? ace : null };

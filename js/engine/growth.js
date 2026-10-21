@@ -2,7 +2,7 @@
 import { GROWTH_TYPES, POSITIONS } from "../../data/player.js";
 import { getPath, setPath, range, clamp, chance, normal } from "../rng.js";
 
-export const TUNE = { gain: 1.0 };   // 밸런스 조절용 전체 배율
+export const TUNE = { gain: 0.85 };   // 밸런스 조절용 전체 배율 (2026-10-22: 1.0 → 0.85. 훈련을 반만 해도 거의 모두 능력치 72·전국 강호 진학이던 것을 고름)
 
 export function hasTrait(p, id) { return p.traits.includes(id); }
 
