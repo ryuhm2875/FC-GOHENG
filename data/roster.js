@@ -21,13 +21,13 @@
 
 export const ROSTER = [
   // 3학년 선배
-  { name: "김태완", cohort: "3학년선배", position: "DF", number: 4,  ovr: 58, style: "철벽",   face: "mate_07" },
+  { name: "김채완", cohort: "3학년선배", position: "DF", number: 4,  ovr: 58, style: "철벽",   face: "mate_07" },
   { name: "유휘천", cohort: "3학년선배", position: "DF", number: 5,  ovr: 59, style: "철벽",   face: "mate_05" },
   { name: "연제호", cohort: "3학년선배", position: "DF", number: 3,  ovr: 66, style: "파이터", face: "mate_03" }, // 강자
-  { name: "박성연", cohort: "3학년선배", position: "DF", number: 15, ovr: 56, style: "파이터", face: "mate_08" },
+  { name: "김타균", cohort: "3학년선배", position: "DF", number: 15, ovr: 56, style: "파이터", face: "mate_08" },
   { name: "이부민", cohort: "3학년선배", position: "MF", number: 8,  ovr: 60, style: "패서",   face: "mate_04" }, // 중1 때 주장
   { name: "이구연", cohort: "3학년선배", position: "FW", number: 10, ovr: 60, style: "골잡이", face: "mate_06" },
-  { name: "김태현", cohort: "3학년선배", position: "FW", number: 9,  ovr: 66, style: "스피드", face: "mate_02" }, // 강자
+  { name: "김대헌", cohort: "3학년선배", position: "FW", number: 9,  ovr: 66, style: "스피드", face: "mate_02" }, // 강자
 
   // 2학년 선배
   { name: "정타석", cohort: "2학년선배", position: "MF", number: 6,  ovr: 50, style: "파이터", face: "mate_04" }, // 중2 때 주장
@@ -53,7 +53,7 @@ export const ROSTER = [
   { name: "이창현", cohort: "1년후배", position: "MF", number: 55, ovr: 34, style: "패서",   face: "mate_05" },
   { name: "박추원", cohort: "1년후배", position: "MF", number: 52, ovr: 35, style: "파이터", face: "mate_04" },
   { name: "이영만", cohort: "1년후배", position: "FW", number: 49, ovr: 36, style: "스피드", face: "mate_08" },
-  { name: "김하유", cohort: "1년후배", position: "DF", number: 45, ovr: 35, style: "철벽",   face: "mate_07" },
+  { name: "김윤하", cohort: "1년후배", position: "DF", number: 45, ovr: 35, style: "철벽",   face: "mate_07" },
   { name: "최인후", cohort: "1년후배", position: "MF", number: 54, ovr: 34, style: "테크닉", face: "mate_06" },
 
   // 2년 후배 (주인공이 중3 될 때 입학)

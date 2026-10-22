@@ -255,13 +255,13 @@ __m["data/roster.js"] = (function () {
 
 const ROSTER = [
   // 3학년 선배
-  { name: "김태완", cohort: "3학년선배", position: "DF", number: 4,  ovr: 58, style: "철벽",   face: "mate_07" },
+  { name: "김채완", cohort: "3학년선배", position: "DF", number: 4,  ovr: 58, style: "철벽",   face: "mate_07" },
   { name: "유휘천", cohort: "3학년선배", position: "DF", number: 5,  ovr: 59, style: "철벽",   face: "mate_05" },
   { name: "연제호", cohort: "3학년선배", position: "DF", number: 3,  ovr: 66, style: "파이터", face: "mate_03" }, // 강자
-  { name: "박성연", cohort: "3학년선배", position: "DF", number: 15, ovr: 56, style: "파이터", face: "mate_08" },
+  { name: "김타균", cohort: "3학년선배", position: "DF", number: 15, ovr: 56, style: "파이터", face: "mate_08" },
   { name: "이부민", cohort: "3학년선배", position: "MF", number: 8,  ovr: 60, style: "패서",   face: "mate_04" }, // 중1 때 주장
   { name: "이구연", cohort: "3학년선배", position: "FW", number: 10, ovr: 60, style: "골잡이", face: "mate_06" },
-  { name: "김태현", cohort: "3학년선배", position: "FW", number: 9,  ovr: 66, style: "스피드", face: "mate_02" }, // 강자
+  { name: "김대헌", cohort: "3학년선배", position: "FW", number: 9,  ovr: 66, style: "스피드", face: "mate_02" }, // 강자
 
   // 2학년 선배
   { name: "정타석", cohort: "2학년선배", position: "MF", number: 6,  ovr: 50, style: "파이터", face: "mate_04" }, // 중2 때 주장
@@ -287,7 +287,7 @@ const ROSTER = [
   { name: "이창현", cohort: "1년후배", position: "MF", number: 55, ovr: 34, style: "패서",   face: "mate_05" },
   { name: "박추원", cohort: "1년후배", position: "MF", number: 52, ovr: 35, style: "파이터", face: "mate_04" },
   { name: "이영만", cohort: "1년후배", position: "FW", number: 49, ovr: 36, style: "스피드", face: "mate_08" },
-  { name: "김하유", cohort: "1년후배", position: "DF", number: 45, ovr: 35, style: "철벽",   face: "mate_07" },
+  { name: "김윤하", cohort: "1년후배", position: "DF", number: 45, ovr: 35, style: "철벽",   face: "mate_07" },
   { name: "최인후", cohort: "1년후배", position: "MF", number: 54, ovr: 34, style: "테크닉", face: "mate_06" },
 
   // 2년 후배 (주인공이 중3 될 때 입학)
@@ -1087,11 +1087,21 @@ function readSlot(where) {
 
 function deleteSlot(where) { safeDel(where === "auto" ? KEY.auto : KEY.slot(where)); }
 
+// 바뀐 선수 이름: 진행 중인 저장 파일의 명단·관계에도 새 이름을 씁니다 (지난 메일 본문은 그대로)
+const RENAMED = { "김태완": "김채완", "박성연": "김타균", "김태현": "김대헌", "김하유": "김윤하" };
+function renameMates(o, depth = 0) {
+  if (!o || typeof o !== "object" || depth > 6) return;
+  if (Array.isArray(o)) { for (const x of o) renameMates(x, depth + 1); return; }
+  if (typeof o.name === "string" && RENAMED[o.name] && (o.cohort || o.id)) o.name = RENAMED[o.name];
+  for (const k in o) if (k !== "inbox" && k !== "mail" && k !== "log") renameMates(o[k], depth + 1);
+}
+
 // 옛 저장 파일을 새 형식으로 고치는 곳 (버전이 오를 때 여기에 추가)
 function migrate(data) {
   if (!data?.state) return null;
   // 1단계 저장(일정 40턴)은 일정이 바뀌어 이어갈 수 없습니다
   if (data.version !== SAVE_VERSION) return null;
+  renameMates(data.state);
   return data;
 }
 
@@ -1303,11 +1313,11 @@ const SURNAMES = [
 
 // 2012~2014년생 남자아이에게 흔한 이름
 const GIVEN_NAMES = [
-  "민준", "서준", "도윤", "예준", "시우", "하준", "주원", "지호", "지후", "준우",
-  "준서", "도현", "건우", "현우", "우진", "선우", "서진", "연우", "유준", "정우",
-  "승우", "승현", "시윤", "준혁", "은우", "지환", "승민", "지우", "유찬", "윤우",
-  "민성", "수호", "이준", "시후", "진우", "민재", "현준", "지원", "재윤", "태윤",
-  "한결", "지안", "은찬", "로운", "하율", "윤호", "태민", "재민", "민혁", "성민",
+  "민준", "서준", "예준", "시우", "하준", "주원", "지호", "지후", "준우", "준서",
+  "도현", "건우", "현우", "우진", "선우", "서진", "연우", "유준", "정우", "승우",
+  "승현", "준혁", "은우", "지환", "승민", "지우", "유찬", "민중", "수호", "이준",
+  "시후", "진우", "민찬", "현준", "지원", "재유", "태윤", "한결", "지안", "은찬",
+  "로운", "하율", "윤호", "태민", "재민", "민혁", "성민", "지황",
 ];
 
 // ── 상대 팀 핵심 선수 (모두 가상의 이름) ─────────────
@@ -1397,17 +1407,17 @@ const OPPONENT_STARS = {
     ["1년후배", "MF", "심로하", "킬패스"],
   ],
   "대구 달빛중": [
-    ["2학년선배", "MF", "류건우", "중거리 슛"],
+    ["2학년선배", "MF", "류휘경", "중거리 슛"],
     ["동기", "FW", "지한별", "드리블"],
     ["1년후배", "DF", "채도윤", "태클"],
   ],
   "인천 갯벌FC U-15": [
     ["2학년선배", "DF", "조은산", "커버 수비"],
     ["동기", "FW", "최하준", "침투"],
-    ["1년후배", "MF", "나윤석", "전방 압박"],
+    ["1년후배", "MF", "나윤식", "전방 압박"],
   ],
   "울산 고래중": [
-    ["2학년선배", "MF", "방재원", "롱패스"],
+    ["2학년선배", "MF", "방재율", "롱패스"],
     ["동기", "MF", "박지후", "탈압박"],
     ["1년후배", "FW", "권도하", "침투"],
   ],
@@ -1423,7 +1433,7 @@ const OPPONENT_STARS = {
   ],
   "제주 한라FC U-15": [
     ["2학년선배", "MF", "고산하", "바람을 읽는 롱볼"],
-    ["동기", "FW", "부지환", "스피드"],
+    ["동기", "FW", "봉지훈", "스피드"],
     ["1년후배", "DF", "양태솔", "투지"],
   ],
   "전북 모악산중": [

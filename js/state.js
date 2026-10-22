@@ -137,11 +137,21 @@ export function readSlot(where) {
 
 export function deleteSlot(where) { safeDel(where === "auto" ? KEY.auto : KEY.slot(where)); }
 
+// 바뀐 선수 이름: 진행 중인 저장 파일의 명단·관계에도 새 이름을 씁니다 (지난 메일 본문은 그대로)
+const RENAMED = { "김태완": "김채완", "박성연": "김타균", "김태현": "김대헌", "김하유": "김윤하" };
+function renameMates(o, depth = 0) {
+  if (!o || typeof o !== "object" || depth > 6) return;
+  if (Array.isArray(o)) { for (const x of o) renameMates(x, depth + 1); return; }
+  if (typeof o.name === "string" && RENAMED[o.name] && (o.cohort || o.id)) o.name = RENAMED[o.name];
+  for (const k in o) if (k !== "inbox" && k !== "mail" && k !== "log") renameMates(o[k], depth + 1);
+}
+
 // 옛 저장 파일을 새 형식으로 고치는 곳 (버전이 오를 때 여기에 추가)
 function migrate(data) {
   if (!data?.state) return null;
   // 1단계 저장(일정 40턴)은 일정이 바뀌어 이어갈 수 없습니다
   if (data.version !== SAVE_VERSION) return null;
+  renameMates(data.state);
   return data;
 }
 
