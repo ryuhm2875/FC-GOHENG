@@ -941,6 +941,19 @@ return { REL_ROLES, initRelations, person, nameOf, adjustRel, weeklyRelations, r
 })();
 (__fix["js/engine/relations.js"] || []).forEach(f => f());
 
+// ── js/userkey.js
+__m["js/userkey.js"] = (function () {
+
+// 한 기기를 여러 학생이 쓸 수 있어서, 저장·도감·기록실을 학번별로 나눠 둡니다.
+// 로그인 전(또는 선생님 계정)에는 예전과 같은 이름(gfc_auto 등)을 그대로 씁니다.
+let NS = "";
+function setUserNS(sid) { NS = sid ? `u${String(sid).replace(/[^\w-]/g, "")}_` : ""; }
+const ukey = k => NS ? k.replace(/^gfc_/, `gfc_${NS}`) : k;
+
+return { setUserNS, ukey };
+})();
+(__fix["js/userkey.js"] || []).forEach(f => f());
+
 // ── js/state.js
 __m["js/state.js"] = (function () {
 const {GROWTH_TYPES, POSITIONS, STAT_GROUPS, TRAITS} = __m["data/player.js"];
@@ -949,6 +962,7 @@ const {normal, range, clamp, chance, pick} = __m["js/rng.js"];
 const {weightFor} = __m["js/engine/growth.js"];
 const {randomFreeNumber} = __m["js/engine/team.js"];
 const {initRelations} = __m["js/engine/relations.js"];
+const {ukey} = __m["js/userkey.js"];
 // 게임 상태 만들기와 저장/불러오기
 
 
@@ -956,8 +970,9 @@ const {initRelations} = __m["js/engine/relations.js"];
 
 
 
+
 const SAVE_VERSION = 3;
-const KEY = { slot: n => `gfc_slot_${n}`, auto: "gfc_auto", settings: "gfc_settings", seen: "gfc_endings" };
+const KEY = { slot: n => ukey(`gfc_slot_${n}`), get auto() { return ukey("gfc_auto"); }, settings: "gfc_settings" };
 
 function rollPlayer({ name, face, position, foot, growthType }) {
   const type = GROWTH_TYPES[growthType];
@@ -1085,6 +1100,10 @@ function readSlot(where) {
   try { return migrate(JSON.parse(raw)); } catch { return null; }
 }
 
+// 클라우드 저장용: 자동 저장 원문 그대로 읽고 쓰기
+function rawAuto() { return safeGet(KEY.auto); }
+function putRawAuto(text) { return safeSet(KEY.auto, text); }
+
 function deleteSlot(where) { safeDel(where === "auto" ? KEY.auto : KEY.slot(where)); }
 
 // 바뀐 선수 이름: 진행 중인 저장 파일의 명단·관계에도 새 이름을 씁니다 (지난 메일 본문은 그대로)
@@ -1120,7 +1139,7 @@ function loadSettings() {
 }
 function saveSettings(s) { safeSet(KEY.settings, JSON.stringify(s)); }
 
-return { SAVE_VERSION, rollPlayer, newGame, snapshotStats, mail, mailFrom, summaryOf, saveTo, readSlot, deleteSlot, exportCode, importCode, loadSettings, saveSettings };
+return { SAVE_VERSION, rollPlayer, newGame, snapshotStats, mail, mailFrom, summaryOf, saveTo, readSlot, rawAuto, putRawAuto, deleteSlot, exportCode, importCode, loadSettings, saveSettings };
 })();
 (__fix["js/state.js"] || []).forEach(f => f());
 
@@ -7907,7 +7926,10 @@ function resolve(state, m, ci, timing = null) {
 
   const main = Object.entries(c.stats).sort((a, b) => b[1] - a[1])[0][0];
   m.my.decisions++; if (ok) m.my.successes++;
-  m.my.log.push({ sit: pd.sit.id, label: c.label, ok, out, stat: main, value: getPath(pl.stats, main), level: pd.choices[ci].level, minute: min, signature: !!c.signature });
+  m.my.log.push({ sit: pd.sit.id, label: c.label, ok, out, stat: main, value: getPath(pl.stats, main), level: pd.choices[ci].level, minute: min, signature: !!c.signature,
+    diff: c.diff ?? 0, sc: Math.sign(m.score[0] - m.score[1]), auto: !!(m.autoAll || m.autoNext),
+    nb: pd.list.filter(x => (x.diff ?? 0) >= 5).length, ns: pd.list.filter(x => (x.diff ?? 0) <= -4).length, no: pd.list.length });   // diff·sc·auto: 선택 성향 기록용
+  m.autoNext = false;
   m.my.delta += OUTCOMES[out].rating * (m.myPos === "MF" ? CAL.mfk : 1);      // 미드필더는 선택이 많은 만큼 하나하나의 몫을 조금 줄여 평점 수준을 맞춤
   if (pd.sit.id === "penalty" && out === "miss") { m.stats.us.shots++; m.stats.us.on++; }
   else if (out === "miss" && isShotChoice(c) && !CLEAR_FIRST.test(outTpl)) m.stats.us.shots++;   // 빗나간 슈팅도 슈팅 수에
@@ -8459,6 +8481,7 @@ function autoChoice(m) {
 
 function autoPlay(state, m) {
   let guard = 0;
+  m.autoAll = true;
   while (!m.done && guard++ < 5000) {
     if (m.pending) resolve(state, m, autoChoice(m));
     else next(state, m);
@@ -10998,7 +11021,9 @@ const {mail, mailFrom} = __m["js/state.js"];
 const {ovr} = __m["js/engine/team.js"];
 const {person} = __m["js/engine/relations.js"];
 const {clamp, getPath} = __m["js/rng.js"];
+const {ukey} = __m["js/userkey.js"];
 // 진로: 진학 상담(중3 10월), 국가대표 선발(중3 12월), 엔딩 판정(졸업)
+
 
 
 
@@ -11206,9 +11231,9 @@ function teacherLetter(state) {
 
 // 엔딩 도감 (이 기기에 저장)
 const KEY = "gfc_endings";
-function seenEndings() { try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { return []; } }
+function seenEndings() { try { return JSON.parse(localStorage.getItem(ukey(KEY)) || "[]"); } catch { return []; } }
 function markEnding(id) {
-  try { const s = new Set(seenEndings()); s.add(id); localStorage.setItem(KEY, JSON.stringify([...s])); } catch {}
+  try { const s = new Set(seenEndings()); s.add(id); localStorage.setItem(ukey(KEY), JSON.stringify([...s])); } catch {}
 }
 
 return { MILESTONES, careerMilestones, detailMeeting, DETAIL_GROUPS, detailOptions, chooseDetail, detailLabel, bestTournament, schoolOptions, chooseSchool, nationalSelection, summarize, decideEnding, teacherLetter, seenEndings, markEnding };
@@ -11845,6 +11870,461 @@ return { esc, img, faceOf, fl, stars, gauge, statLevel, signed, groupsOf, AVATAR
 })();
 (__fix["js/ui/util.js"] || []).forEach(f => f());
 
+// ── js/net/fb.js
+__m["js/net/fb.js"] = (function () {
+
+// Firebase 연결 (SDK 없이 REST로 직접). 로그인(Authentication)과 데이터베이스(Firestore)만 씁니다.
+// 이 값들은 공개되어도 괜찮습니다. 누가 무엇을 읽고 쓸 수 있는지는 firestore.rules(보안 규칙)가 막습니다.
+const FB = {
+  apiKey: "AIzaSyBtADZsLk0dYmm5ZNmnapoVMHIpj2vtRRA",
+  projectId: "fcgoheung",
+};
+// 관리자(선생님) 계정 이메일. 바꾸면 firestore.rules 의 같은 이메일도 바꿔야 합니다.
+const ADMIN_EMAIL = "ryubongdoo@gmail.com";
+// 학생 계정은 '학번.열쇠@fc.goheung' 모양의 가짜 이메일로 만듭니다 (학생은 학번만 입력)
+const STUDENT_DOMAIN = "fc.goheung";
+const studentEmail = (sid, key) => `${sid}.${key}@${STUDENT_DOMAIN}`;
+// 학생 비밀번호 앞에 붙이는 글자 (Firebase는 6자 이상만 받아서, 4자리 숫자도 쓸 수 있게)
+const studentPassword = pw => `fcg-${pw}`;
+
+// 시험용 가짜 서버 주소로 바꿀 수 있게 (tools/dev/fbmock.mjs)
+const base = () => globalThis.FCG_FB_BASE || {
+  auth: "https://identitytoolkit.googleapis.com/v1",
+  token: "https://securetoken.googleapis.com/v1",
+  store: "https://firestore.googleapis.com/v1",
+};
+const docsUrl = () => `${base().store}/projects/${FB.projectId}/databases/(default)/documents`;
+
+const FbError = class extends Error {
+  constructor(code, status) { super(code); this.code = code; this.status = status; }
+};
+
+async function call(url, opts = {}, timeout = 12000) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), timeout);
+  let res;
+  try { res = await fetch(url, { ...opts, signal: ctl.signal }); }
+  catch { throw new FbError("NETWORK", 0); }
+  finally { clearTimeout(t); }
+  let body = null;
+  try { body = await res.json(); } catch { /* 빈 응답 */ }
+  if (!res.ok) throw new FbError(String(body?.error?.message || body?.error?.status || res.status).split(" ")[0], res.status);
+  return body;
+}
+const post = (url, data) => call(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+
+// ── 로그인 ─────────────────────────────
+const authOut = r => ({ idToken: r.idToken, refreshToken: r.refreshToken, exp: Date.now() + (+r.expiresIn || 3600) * 1000 - 60000, uid: r.localId, email: r.email });
+async function signIn(email, password) {
+  return authOut(await post(`${base().auth}/accounts:signInWithPassword?key=${FB.apiKey}`, { email, password, returnSecureToken: true }));
+}
+// 새 계정 만들기 (관리자 페이지에서 학생 계정을 만들 때). 만든 계정으로 로그인되지는 않음
+async function signUp(email, password) {
+  return authOut(await post(`${base().auth}/accounts:signUp?key=${FB.apiKey}`, { email, password, returnSecureToken: true }));
+}
+async function refresh(sess) {
+  const r = await call(`${base().token}/token?key=${FB.apiKey}`, {
+    method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(sess.refreshToken)}`,
+  });
+  return { ...sess, idToken: r.id_token, refreshToken: r.refresh_token, exp: Date.now() + (+r.expires_in || 3600) * 1000 - 60000 };
+}
+// 로그인 오류를 사람 말로
+function authMessage(e) {
+  const c = e?.code || "";
+  if (c === "NETWORK") return "인터넷에 연결되어 있지 않습니다.";
+  if (/INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD|EMAIL_NOT_FOUND|INVALID_EMAIL/.test(c)) return "학번 또는 비밀번호가 맞지 않습니다.";
+  if (/TOO_MANY_ATTEMPTS/.test(c)) return "여러 번 틀려서 잠시 막혔습니다. 몇 분 뒤에 다시 해 보세요.";
+  if (/USER_DISABLED/.test(c)) return "사용이 중지된 계정입니다.";
+  if (/EMAIL_EXISTS/.test(c)) return "이미 있는 계정입니다.";
+  if (/WEAK_PASSWORD/.test(c)) return "비밀번호가 너무 짧습니다.";
+  if (/PERMISSION_DENIED|403/.test(c)) return "권한이 없습니다.";
+  return `서버 오류 (${c})`;
+}
+
+// ── 값 변환 (Firestore 형식 ↔ 보통 객체) ──
+function toFs(v) {
+  if (v === null || v === undefined) return { nullValue: null };
+  if (typeof v === "boolean") return { booleanValue: v };
+  if (typeof v === "number") return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  if (typeof v === "string") return { stringValue: v };
+  if (v instanceof Date) return { timestampValue: v.toISOString() };
+  if (Array.isArray(v)) return { arrayValue: { values: v.map(toFs) } };
+  return { mapValue: { fields: fieldsOf(v) } };
+}
+const fieldsOf = o => Object.fromEntries(Object.entries(o).filter(([, x]) => x !== undefined).map(([k, x]) => [k, toFs(x)]));
+function fromFs(v) {
+  if (!v) return null;
+  if ("nullValue" in v) return null;
+  if ("booleanValue" in v) return v.booleanValue;
+  if ("integerValue" in v) return Number(v.integerValue);
+  if ("doubleValue" in v) return v.doubleValue;
+  if ("stringValue" in v) return v.stringValue;
+  if ("timestampValue" in v) return v.timestampValue;
+  if ("arrayValue" in v) return (v.arrayValue.values || []).map(fromFs);
+  if ("mapValue" in v) return docData(v.mapValue);
+  return null;
+}
+const docData = d => Object.fromEntries(Object.entries(d?.fields || {}).map(([k, x]) => [k, fromFs(x)]));
+
+// ── 데이터베이스 ─────────────────────────
+const hdr = tok => tok ? { Authorization: `Bearer ${tok}` } : {};
+const idOf = name => name.split("/").pop();
+
+// 문서 하나 읽기. 없으면 null
+async function getDoc(path, tok = null) {
+  try { return docData(await call(`${docsUrl()}/${path}`, { headers: hdr(tok) })); }
+  catch (e) { if (e.status === 404 || e.code === "NOT_FOUND") return null; throw e; }
+}
+// 문서 쓰기. fields 를 주면 그 칸만 바꿈 (나머지 칸은 그대로)
+async function setDoc(path, data, tok, fields = null) {
+  const mask = (fields || []).map(f => `updateMask.fieldPaths=${encodeURIComponent(f)}`).join("&");
+  return call(`${docsUrl()}/${path}${mask ? `?${mask}` : ""}`, {
+    method: "PATCH", headers: { "Content-Type": "application/json", ...hdr(tok) },
+    body: JSON.stringify({ fields: fieldsOf(data) }),
+  });
+}
+async function delDoc(path, tok) {
+  return call(`${docsUrl()}/${path}`, { method: "DELETE", headers: hdr(tok) });
+}
+// 모음(컬렉션) 전체 읽기 → [{ id, ...data }]
+async function listDocs(coll, tok) {
+  const out = [];
+  let page = "";
+  for (let i = 0; i < 40; i++) {
+    const r = await call(`${docsUrl()}/${coll}?pageSize=300${page ? `&pageToken=${encodeURIComponent(page)}` : ""}`, { headers: hdr(tok) });
+    for (const d of r?.documents || []) out.push({ id: idOf(d.name), ...docData(d) });
+    if (!r?.nextPageToken) break;
+    page = r.nextPageToken;
+  }
+  return out;
+}
+
+// 무작위 열쇠 (학생 이메일에 들어감. 비밀번호를 바꿀 때마다 새로)
+function newKey() {
+  const a = new Uint8Array(6);
+  if (globalThis.crypto?.getRandomValues) crypto.getRandomValues(a);
+  else a.forEach((_, i) => { a[i] = Math.random() * 256; });
+  return [...a].map(x => (x % 36).toString(36)).join("");
+}
+
+// 저장 파일 압축 (gzip → base64). 지원하지 않는 브라우저는 그대로
+async function pack(text) {
+  if (typeof CompressionStream === "undefined") return { enc: "raw", data: text };
+  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream("gzip"));
+  const buf = new Uint8Array(await new Response(stream).arrayBuffer());
+  let s = "";
+  for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode(...buf.subarray(i, i + 0x8000));
+  return { enc: "gz64", data: btoa(s) };
+}
+async function unpack({ enc, data }) {
+  if (enc !== "gz64") return data;
+  const bin = Uint8Array.from(atob(data), c => c.charCodeAt(0));
+  const stream = new Blob([bin]).stream().pipeThrough(new DecompressionStream("gzip"));
+  return new Response(stream).text();
+}
+
+// 한국 시간으로 지금이 닫히는 시간대인지 (예: 22:00~07:00)
+function inQuiet(q, at = Date.now()) {
+  const toMin = s => { const [h, m] = String(s || "0:0").split(":").map(Number); return (h || 0) * 60 + (m || 0); };
+  const k = new Date(at + 9 * 3600 * 1000);
+  const t = k.getUTCHours() * 60 + k.getUTCMinutes();
+  const a = toMin(q.from), b = toMin(q.to);
+  if (a === b) return false;
+  return a < b ? t >= a && t < b : t >= a || t < b;
+}
+
+return { FB, ADMIN_EMAIL, STUDENT_DOMAIN, studentEmail, studentPassword, FbError, signIn, signUp, refresh, authMessage, toFs, fromFs, getDoc, setDoc, delDoc, listDocs, newKey, pack, unpack, inQuiet };
+})();
+(__fix["js/net/fb.js"] || []).forEach(f => f());
+
+// ── js/net/online.js
+__m["js/net/online.js"] = (function () {
+const {ADMIN_EMAIL, studentEmail, studentPassword, signIn, refresh, getDoc, setDoc, authMessage, pack, unpack, inQuiet} = __m["js/net/fb.js"];
+const {rawAuto, putRawAuto} = __m["js/state.js"];
+const {setUserNS} = __m["js/userkey.js"];
+const {turnInfo, label} = __m["js/engine/calendar.js"];
+const {ovr} = __m["js/engine/team.js"];
+const {nemesisSummary} = __m["js/engine/nemesis.js"];
+const {ACTION_MAP} = __m["data/actions.js"];
+const {DETAIL_POS} = __m["data/player.js"];
+const {ENDINGS} = __m["data/endings.js"];
+// 학번 로그인, 입장 확인(게임 열림·차단), 클라우드 저장, 플레이 기록
+// 서버 데이터 모양
+//   fcg_config/main      { open, message, quiet: { on, from, to, message } }   누구나 읽음, 관리자만 씀
+//   fcg_login/{학번}      { key, blocked }                                       누구나 읽음, 관리자만 씀
+//   fcg_students/{학번}   { name, created, ...관리자 칸 / play, now, lastSeen (학생이 씀) }
+//   fcg_saves/{학번}      { enc, data, at, summary }                             자기 것만
+
+
+
+
+
+
+
+
+
+const SESS_KEY = "gfc_session";
+const CHECK_EVERY = 3 * 60 * 1000;          // 게임 중 입장 확인 간격
+const SAVE_GAP = 60 * 1000;                 // 클라우드 저장 최소 간격
+const MAX_EVENTS = 500;
+
+let sess = null;            // { sid, key, admin, name, idToken, refreshToken, exp }
+let play = null;            // 서버에서 받아 온 플레이 기록 (받기 전에는 null → 덮어쓰지 않음)
+let now = null;             // 지금 판 요약
+let dirty = false, onLock = null, timers = [], watching = false;
+let lastSave = 0, saveTimer = null, saving = null, flushing = null;
+
+const readSess = () => { try { return JSON.parse(localStorage.getItem(SESS_KEY) || "null"); } catch { return null; } };
+const writeSess = s => { try { s ? localStorage.setItem(SESS_KEY, JSON.stringify(s)) : localStorage.removeItem(SESS_KEY); } catch { /* 저장 못 하면 이번만 */ } };
+
+const session = () => sess;
+const isStudent = () => !!sess?.sid;
+
+async function token() {
+  if (!sess) throw new Error("로그인 필요");
+  if (Date.now() > sess.exp) { sess = await refresh(sess); writeSess(sess); }
+  return sess.idToken;
+}
+
+// ── 로그인 ───────────────────────────
+// 학번(숫자) 또는 선생님 이메일
+async function login(id, pw) {
+  id = String(id || "").trim();
+  pw = String(pw || "");
+  if (!id || !pw) throw new Error("학번과 비밀번호를 입력해 주세요.");
+  try {
+    if (id.includes("@")) {
+      if (id.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) throw new Error("학번으로 로그인해 주세요.");
+      const a = await signIn(id, pw);
+      sess = { ...a, admin: true, sid: null, name: "선생님" };
+    } else {
+      const lg = await getDoc(`fcg_login/${encodeURIComponent(id)}`);
+      if (!lg?.key) throw new Error("등록되지 않은 학번입니다. 선생님께 확인해 주세요.");
+      if (lg.blocked) throw new Error("지금은 이 학번으로 들어갈 수 없습니다. 선생님께 문의해 주세요.");
+      const a = await signIn(studentEmail(id, lg.key), studentPassword(pw));
+      sess = { ...a, admin: false, sid: id, key: lg.key, name: "" };
+    }
+  } catch (e) {
+    if (e.code) throw new Error(authMessage(e));
+    throw e;
+  }
+  writeSess(sess);
+  await afterLogin();
+  return sess;
+}
+
+function logout() {
+  flush().catch(() => {});
+  sess = null; play = null; now = null; writeSess(null); setUserNS(null);
+}
+
+async function afterLogin() {
+  setUserNS(sess.sid);
+  if (!sess.sid) return;
+  const doc = await getDoc(`fcg_students/${sess.sid}`, await token()).catch(() => null);
+  if (doc) { play = normPlay(doc.play); sess.name = doc.name || ""; writeSess(sess); }
+  await pullSave().catch(() => false);
+}
+
+// ── 입장 확인 ─────────────────────────
+// → { ok } 또는 { ok:false, kind: "login"|"closed"|"blocked"|"relogin"|"offline", message }
+async function checkAccess() {
+  if (!sess) sess = readSess();
+  if (!sess) return { ok: false, kind: "login" };
+  let cfg, lg = null;
+  try {
+    [cfg, lg] = await Promise.all([getDoc("fcg_config/main"), sess.sid ? getDoc(`fcg_login/${encodeURIComponent(sess.sid)}`) : null]);
+  } catch (e) {
+    return { ok: false, kind: "offline", message: e.code === "NETWORK" ? "인터넷에 연결되어 있지 않습니다.\n연결한 뒤 다시 시도해 주세요." : `서버에 연결하지 못했습니다. (${e.code || e.message})` };
+  }
+  if (sess.admin) return { ok: true };                                         // 선생님은 언제나
+  if (!lg?.key) return { ok: false, kind: "relogin", message: "등록되지 않은 학번입니다. 선생님께 확인해 주세요." };
+  if (lg.key !== sess.key) return { ok: false, kind: "relogin", message: "비밀번호가 바뀌었습니다. 새 비밀번호로 다시 로그인해 주세요." };
+  if (lg.blocked) return { ok: false, kind: "blocked", message: "지금은 이 학번으로 게임을 할 수 없습니다.\n선생님께 문의해 주세요." };
+  if (cfg && cfg.open === false) return { ok: false, kind: "closed", message: cfg.message || "지금은 게임이 닫혀 있습니다." };
+  if (cfg?.quiet?.on && inQuiet(cfg.quiet)) return { ok: false, kind: "closed", message: cfg.quiet.message || `${cfg.quiet.from}부터 ${cfg.quiet.to}까지는 게임을 할 수 없습니다.` };
+  return { ok: true };
+}
+
+// 로그인이 살아 있으면 저장·기록 준비 (새로고침했을 때)
+async function resume() {
+  if (!sess) sess = readSess();
+  if (!sess) return false;
+  setUserNS(sess.sid);
+  if (sess.sid && !play) {
+    try {
+      const doc = await getDoc(`fcg_students/${sess.sid}`, await token());
+      play = normPlay(doc?.play); sess.name = doc?.name || sess.name;
+    } catch (e) {
+      if (e.status === 400 || e.status === 401) { logout(); return false; }   // 로그인 만료
+    }
+    await pullSave().catch(() => false);
+  }
+  return true;
+}
+
+// 게임 중에도 가끔 확인 (닫힘·차단·비밀번호 바뀜이면 잠금)
+function watch(lock) {
+  onLock = lock;
+  timers.forEach(clearInterval);
+  timers = [
+    setInterval(async () => {
+      if (document.visibilityState !== "visible" || !sess) return;
+      const r = await checkAccess();
+      if (!r.ok && r.kind !== "offline") { await flush().catch(() => {}); onLock?.(r); }
+    }, CHECK_EVERY),
+    setInterval(() => { if (play && document.visibilityState === "visible") { play.minutes++; dirty = true; } }, 60 * 1000),
+  ];
+  if (!watching) document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") { flush().catch(() => {}); pushSave(true).catch(() => {}); } });
+  watching = true;
+}
+
+// ── 클라우드 저장 ──────────────────────
+async function pullSave() {
+  if (!sess?.sid) return false;
+  const cloud = await getDoc(`fcg_saves/${sess.sid}`, await token());
+  if (!cloud?.data) return false;
+  let localAt = 0;
+  try { localAt = JSON.parse(rawAuto() || "null")?.savedAt || 0; } catch { /* 깨진 저장 */ }
+  if ((cloud.at || 0) <= localAt + 1000) return false;
+  const text = await unpack(cloud);
+  JSON.parse(text);                                               // 깨진 데이터면 여기서 멈춤
+  putRawAuto(text);
+  return true;
+}
+
+// 자동 저장을 서버에도 (1분에 한 번까지. force면 바로)
+async function pushSave(force = false) {
+  if (!sess?.sid) return;
+  const wait = SAVE_GAP - (Date.now() - lastSave);
+  if (!force && wait > 0) { clearTimeout(saveTimer); saveTimer = setTimeout(() => pushSave(true), wait); return; }
+  clearTimeout(saveTimer);
+  const text = rawAuto();
+  if (!text) return;
+  if (saving) return saving;
+  lastSave = Date.now();
+  saving = (async () => {
+    let at = 0, summary = "";
+    try { const j = JSON.parse(text); at = j.savedAt || 0; summary = j.summary || ""; } catch { return; }
+    const packed = await pack(text);
+    await setDoc(`fcg_saves/${sess.sid}`, { ...packed, at, summary }, await token());
+  })().catch(e => console.warn("클라우드 저장 실패", e)).finally(() => { saving = null; });
+  return saving;
+}
+
+// ── 플레이 기록 ────────────────────────
+const band = () => ({ safe: 0, mid: 0, bold: 0 });
+function normPlay(p) {
+  p = p || {};
+  const m = p.match || {};
+  return {
+    runs: p.runs || 0, run: p.run || 0, minutes: p.minutes || 0,
+    match: {
+      games: m.games || 0, n: m.n || 0, auto: m.auto || 0,
+      band: { ...band(), ...m.band }, ok: { ...band(), ...m.ok }, exp: { bold: 0, safe: 0, ...m.exp },
+      sc: { behind: { ...band(), ...m.sc?.behind }, level: { ...band(), ...m.sc?.level }, ahead: { ...band(), ...m.sc?.ahead } },
+      fam: { pass: 0, dribble: 0, shoot: 0, defense: 0, body: 0, mind: 0, ...m.fam },
+      timing: { perfect: 0, good: 0, miss: 0, ...m.timing },
+      goals: m.goals || 0, assists: m.assists || 0, ratingSum: m.ratingSum || 0, rated: m.rated || 0, wins: m.wins || 0, draws: m.draws || 0, losses: m.losses || 0,
+    },
+    plan: { weeks: p.plan?.weeks || 0, act: { ...p.plan?.act }, cat: { personal: 0, team: 0, school: 0, rest: 0, ...p.plan?.cat },
+      exam: { weeks: p.plan?.exam?.weeks || 0, cat: { personal: 0, team: 0, school: 0, rest: 0, ...p.plan?.exam?.cat } } },
+    events: Array.isArray(p.events) ? p.events : [],
+    endings: Array.isArray(p.endings) ? p.endings : [],
+  };
+}
+// 선택지 난이도 → 안정적(-4 이하) / 보통 / 도전적(5 이상)
+const bandOf = diff => diff <= -4 ? "safe" : diff >= 5 ? "bold" : "mid";
+const FAM = { "tech.pass": "pass", "tech.cross": "pass", "mental.teamwork": "pass", "tech.dribble": "dribble", "tech.firstTouch": "dribble", "phys.agility": "dribble",
+  "tech.shoot": "shoot", "tech.defense": "defense", "phys.speed": "body", "phys.strength": "body", "phys.jump": "body", "phys.stamina": "body" };
+const famOf = stat => FAM[stat] || "mind";
+const runOf = state => state?.meta?.run || play?.run || 0;
+
+function snapshot(state) {
+  const p = state.player, info = turnInfo(state), r = state.record;
+  const rt = (r.ratings || []).filter(x => typeof x === "number");
+  const ns = nemesisSummary(state);
+  const end = state.finished ? ENDINGS.find(e => e.id === state.career?.ending) : null;
+  return {
+    run: runOf(state), name: p.name, pos: p.position, detail: DETAIL_POS[p.detailPos]?.label || "", number: p.number || 0,
+    ovr: Math.round(ovr(p)), when: info ? label(info) : "졸업", grade: state.calendar.grade, turn: state.calendar.turn,
+    captain: !!state.flags?.captain, apps: r.apps || 0, goals: r.goals || 0, assists: r.assists || 0, mom: r.mom || 0,
+    rating: rt.length ? Math.round(rt.reduce((a, b) => a + b, 0) / rt.length * 100) / 100 : 0,
+    school: state.career?.school?.name || "", ending: end ? `${end.grade} ${end.title}` : "", finished: !!state.finished,
+    nemesis: ns ? `${ns.name} (${ns.team}) ${ns.W}승 ${ns.D}무 ${ns.L}패` : "",
+    morale: Math.round(p.condition?.morale || 0), coach: Math.round(state.relations?.coach || 0),
+  };
+}
+
+// 게임 쪽에서 부르는 곳: track("newGame"|"plan"|"match"|"event"|"ending"|"week", 자료)
+function track(kind, d) {
+  if (!play || !sess?.sid) return;
+  try {
+    const st = d.state;
+    if (kind === "newGame") { play.runs++; play.run = play.runs; st.meta.run = play.run; }
+    if (kind === "plan") {
+      const info = turnInfo(st);
+      play.plan.weeks++;
+      if (info?.exam) play.plan.exam.weeks++;
+      for (const id of Object.values(d.plan || {})) {
+        const a = ACTION_MAP[id];
+        if (!a) continue;
+        play.plan.act[id] = (play.plan.act[id] || 0) + 1;
+        play.plan.cat[a.cat] = (play.plan.cat[a.cat] || 0) + 1;
+        if (info?.exam) play.plan.exam.cat[a.cat] = (play.plan.exam.cat[a.cat] || 0) + 1;
+      }
+    }
+    if (kind === "match") {
+      const M = play.match, m = d.m, res = d.res || {};
+      for (const x of m.my?.log || []) {
+        M.n++;
+        if (x.auto) { M.auto++; continue; }                           // '알아서 하기'·'결과만 보기'는 성향에서 뺌
+        const b = bandOf(x.diff ?? 0);
+        M.band[b]++; if (x.ok) M.ok[b]++;
+        if (x.no) { M.exp.bold += x.nb / x.no; M.exp.safe += x.ns / x.no; }   // 고를 수 있었던 선택지 비율 (성향 지수의 기준)
+        M.sc[x.sc > 0 ? "ahead" : x.sc < 0 ? "behind" : "level"][b]++;
+        M.fam[famOf(x.stat)]++;
+      }
+      for (const t of m.my?.timing || []) if (t in M.timing) M.timing[t]++;
+      if (res.minutes > 0) {
+        M.games++; M.goals += res.goals || 0; M.assists += res.assists || 0;
+        if (typeof res.rating === "number") { M.ratingSum += res.rating; M.rated++; }
+        if (res.result === "승") M.wins++; else if (res.result === "무") M.draws++; else if (res.result === "패") M.losses++;
+      }
+    }
+    if (kind === "event") {
+      const info = turnInfo(st);
+      play.events.push({ r: runOf(st), w: info ? label(info) : "", at: new Date().toISOString(), id: d.id, t: String(d.text || "").slice(0, 70), c: String(d.label || "").slice(0, 60) });
+      if (play.events.length > MAX_EVENTS) play.events.splice(0, play.events.length - MAX_EVENTS);
+    }
+    if (kind === "ending") {
+      const e = ENDINGS.find(x => x.id === st.career?.ending);
+      if (e && !play.endings.some(x => x.r === runOf(st) && x.id === e.id)) play.endings.push({ r: runOf(st), id: e.id, title: `${e.grade} ${e.title}`, at: new Date().toISOString() });
+    }
+    now = snapshot(st);
+    dirty = true;
+  } catch (e) { console.warn("기록 실패", e); }
+}
+
+// 서버로 보내기 (한 주가 끝날 때, 화면을 떠날 때)
+async function flush() {
+  if (!play || !sess?.sid || !dirty) return;
+  if (flushing) return flushing;
+  dirty = false;
+  flushing = (async () => {
+    try {
+      const data = now ? { play, now, lastSeen: new Date() } : { play, lastSeen: new Date() };
+      await setDoc(`fcg_students/${sess.sid}`, data, await token(), Object.keys(data));
+    } catch (e) { dirty = true; console.warn("기록 전송 실패", e); }
+  })().finally(() => { flushing = null; });
+  return flushing;
+}
+
+return { session, isStudent, login, logout, checkAccess, resume, watch, pushSave, bandOf, track, flush };
+})();
+(__fix["js/net/online.js"] || []).forEach(f => f());
+
 // ── js/ui/fx.js
 __m["js/ui/fx.js"] = (function () {
 
@@ -12125,12 +12605,14 @@ const {ovr} = __m["js/engine/team.js"];
 const {readSlot, saveTo, deleteSlot, exportCode, importCode} = __m["js/state.js"];
 const {esc, fl, signed, img, faceOf, fillText} = __m["js/ui/util.js"];
 const {eventView, eventVars, chooseEvent, reqOk, reqText} = __m["js/engine/events.js"];
+const {track} = __m["js/net/online.js"];
 const {meetingScript, applyMeeting} = __m["js/engine/advice.js"];
 const {STAFF} = __m["data/roster.js"];
 const {reduced, countUp} = __m["js/ui/fx.js"];
 const {sfx} = __m["js/ui/sfx.js"];
 const {crest} = __m["js/ui/crest.js"];
 // 팝업: 행동 고르기, 주간 결과, 메시지, 저장, 등번호, 학년 마무리, 졸업
+
 
 
 
@@ -12456,7 +12938,9 @@ function eventModal(app, done) {
     }).join("")}</div>`;
   openModal(html, (el, close) => {
     el.querySelectorAll("[data-i]").forEach(b => b.addEventListener("click", () => {
-      const r = chooseEvent(state, +b.dataset.i);
+      const ci = +b.dataset.i, evId = v.ev.id;
+      const r = chooseEvent(state, ci);
+      track("event", { state, id: evId, text: fillText(v.text, vars), label: fillText(v.ev.choices[ci].label, vars) });
       app.saveTo("auto");
       let score = 0;
       const chips = r.changes.map((c, i) => {
@@ -14180,6 +14664,7 @@ return { createPitch };
 // ── js/ui/match.js
 __m["js/ui/match.js"] = (function () {
 const {next, resolve, autoChoice, autoPlay, finishMatch, applyHalftime, STATUS_LABEL, TAG_LABEL} = __m["js/engine/match.js"];
+const {track} = __m["js/net/online.js"];
 const {frameNow} = __m["js/engine/sim.js"];
 const {STAFF} = __m["data/roster.js"];
 const {getPath} = __m["js/rng.js"];
@@ -14192,6 +14677,7 @@ const {sfx} = __m["js/ui/sfx.js"];
 const {bgm} = __m["js/ui/bgm.js"];
 const {createPitch} = __m["js/ui/pitch.js"];
 // 경기 화면: 전광판 → 22명이 움직이는 경기장 → 문자 중계 → 내 장면 선택지
+
 
 
 
@@ -14519,7 +15005,7 @@ function showMatch(app, m, onDone) {
       timingGame(kind, i, res => pickIt(i, res));
     };
     ctl.querySelectorAll("[data-c]").forEach(b => b.addEventListener("click", () => choose(+b.dataset.c)));
-    ctl.querySelector("[data-autopick]").addEventListener("click", () => pickIt(autoChoice(m)));
+    ctl.querySelector("[data-autopick]").addEventListener("click", () => { m.autoNext = true; pickIt(autoChoice(m)); });
     ctl.querySelector("[data-c]").focus({ preventScroll: true });
   }
 
@@ -14607,6 +15093,7 @@ function showMatch(app, m, onDone) {
     finished = true;
     const before = m.feed.length;
     const res = finishMatch(state, m);
+    track("match", { state, m, res });
     m.feed.slice(before).forEach(addLine);
     shown = m.score.slice();
     updateBoard();
@@ -15697,6 +16184,7 @@ const {seenEndings} = __m["js/engine/career.js"];
 const {openModal} = __m["js/ui/modals.js"];
 const {esc, img, faceOf} = __m["js/ui/util.js"];
 const {sfx} = __m["js/ui/sfx.js"];
+const {ukey} = __m["js/userkey.js"];
 // 기록실: 끝낸 판의 선수 카드와 업적 (이 기기·브라우저에 남음)
 
 
@@ -15704,9 +16192,10 @@ const {sfx} = __m["js/ui/sfx.js"];
 
 
 
+
 const HALL = "gfc_hall", ACH = "gfc_ach";
-const read = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || "null") ?? d; } catch { return d; } };
-const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* 저장이 안 되면 이번 화면에서만 */ } };
+const read = (k, d) => { try { return JSON.parse(localStorage.getItem(ukey(k)) || "null") ?? d; } catch { return d; } };
+const write = (k, v) => { try { localStorage.setItem(ukey(k), JSON.stringify(v)); } catch { /* 저장이 안 되면 이번 화면에서만 */ } };
 const readHall = () => read(HALL, []);
 const readAch = () => read(ACH, {});
 
@@ -15792,6 +16281,7 @@ return { readHall, readAch, addHallCard, checkAchievements, hallModal };
 // ── js/ui/career.js
 __m["js/ui/career.js"] = (function () {
 const {ENDINGS, GRADE_INFO} = __m["data/endings.js"];
+const {track, flush, pushSave} = __m["js/net/online.js"];
 const {schoolOptions, chooseSchool, decideEnding, markEnding, seenEndings, teacherLetter, detailOptions, chooseDetail} = __m["js/engine/career.js"];
 const {DETAIL_POS} = __m["data/player.js"];
 const {turnInfo} = __m["js/engine/calendar.js"];
@@ -15807,6 +16297,7 @@ const {crest: teamCrest} = __m["js/ui/crest.js"];
 const {nemesisSummary} = __m["js/engine/nemesis.js"];
 const {addHallCard, checkAchievements} = __m["js/ui/hall.js"];
 // 진로 화면: 진학 상담, 국가대표 발표, 엔딩, 엔딩 도감
+
 
 
 
@@ -15988,6 +16479,7 @@ function showEnding(app) {
   markEnding(ending.id);
   try { addHallCard(state, ending, c); } catch (e) { console.warn(e); }   // 기록실에 선수 카드
   app.saveTo("auto");
+  track("ending", { state }); flush(); pushSave(true);
   const g = GRADE_INFO[ending.grade];
   const p = state.player;
   const recap = [
@@ -16044,6 +16536,66 @@ return { crest, admissionModal, detailModal, nationalModal, showEnding, galleryM
 })();
 (__fix["js/ui/career.js"] || []).forEach(f => f());
 
+// ── js/ui/login.js
+__m["js/ui/login.js"] = (function () {
+const {esc} = __m["js/ui/util.js"];
+// 학번 로그인 화면, 들어갈 수 없을 때 안내 화면
+
+const shell = inner => `<div class="gate">
+    <img class="gate-logo" src="assets/img/logo.png" alt="">
+    <span class="eyebrow">GOHEUNG FC · DREAM PROJECT</span>
+    ${inner}
+  </div>`;
+
+// onLogin(id, pw) → Promise. 실패하면 오류 메시지를 보여 줌
+function renderLogin(root, { onLogin, notice = "" }) {
+  root.innerHTML = shell(`
+    <h1>고흥FC 드림 프로젝트</h1>
+    <p class="mute">학번과 비밀번호로 들어가세요.</p>
+    <form class="gate-form" autocomplete="off">
+      <input class="gate-input gate-id" name="sid" type="text" inputmode="numeric" autocapitalize="off" spellcheck="false" aria-label="학번" placeholder="학번 (예: 20301)">
+      <input class="gate-input" name="pw" type="password" autocapitalize="off" aria-label="비밀번호" placeholder="비밀번호">
+      <button class="btn btn-kit btn-wide" type="submit">들어가기</button>
+    </form>
+    <p class="gate-msg" role="status" aria-live="polite">${esc(notice)}</p>
+    <p class="gate-note">로그인하면 게임 진행 기록이 서버에 저장되어, 다른 기기에서도 이어서 할 수 있습니다.<br>비밀번호를 잊었으면 선생님께 말씀드리세요.</p>`);
+  const form = root.querySelector(".gate-form"), msg = root.querySelector(".gate-msg"), btn = form.querySelector("button");
+  form.sid.focus();
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    btn.disabled = true; btn.textContent = "확인 중…"; msg.textContent = "";
+    try { await onLogin(form.sid.value, form.pw.value); }
+    catch (err) {
+      msg.textContent = err.message || "로그인하지 못했습니다.";
+      form.classList.remove("shake"); void form.offsetWidth; form.classList.add("shake");
+      form.pw.select();
+      btn.disabled = false; btn.textContent = "들어가기";
+    }
+  });
+}
+
+// 닫힘·차단·인터넷 없음
+function renderLock(root, r, { onRetry, onOther }) {
+  const title = { closed: "지금은 쉬는 시간", blocked: "들어갈 수 없습니다", offline: "연결이 끊겼습니다" }[r.kind] || "잠시만요";
+  root.innerHTML = shell(`
+    <h1>${esc(title)}</h1>
+    <p class="gate-lock">${esc(r.message || "")}</p>
+    <div class="gate-form">
+      <button class="btn btn-kit btn-wide" data-retry>다시 확인</button>
+      <button class="btn btn-ghost btn-wide" data-other>다른 학번으로 로그인</button>
+    </div>`);
+  root.querySelector("[data-retry]").addEventListener("click", onRetry);
+  root.querySelector("[data-other]").addEventListener("click", onOther);
+}
+
+function renderLoading(root, text = "확인 중…") {
+  root.innerHTML = shell(`<p class="mute" style="margin-top:12px">${esc(text)}</p>`);
+}
+
+return { renderLogin, renderLock, renderLoading };
+})();
+(__fix["js/ui/login.js"] || []).forEach(f => f());
+
 // ── js/main.js
 __m["js/main.js"] = (function () {
 const {newGame, saveTo, readSlot, summaryOf, loadSettings, saveSettings} = __m["js/state.js"];
@@ -16067,7 +16619,11 @@ const {hallModal, checkAchievements} = __m["js/ui/hall.js"];
 const {setScene, enter, preload, SCENES} = __m["js/ui/fx.js"];
 const {sfx} = __m["js/ui/sfx.js"];
 const {bgm} = __m["js/ui/bgm.js"];
+const {login, logout, checkAccess, resume, watch, track, flush, pushSave, session} = __m["js/net/online.js"];
+const {renderLogin, renderLock, renderLoading} = __m["js/ui/login.js"];
 // 진입점: 화면 전환, 저장, 한 주 진행
+
+
 
 
 
@@ -16117,7 +16673,9 @@ const app = {
     this.state = newGame(player);
     welcomeMails(this.state);
     birthdayWeek(this.state, turnInfo(this.state));      // 입단 첫 주가 생일 주간인 경우
+    track("newGame", { state: this.state });
     this.saveTo("auto");
+    flush(); pushSave(true);
     this.go("home");
     this.toast(`${player.name}, 등번호 ${this.state.player.number}번으로 입단했습니다`);
   },
@@ -16176,6 +16734,7 @@ const app = {
     if (s.pending) { this.pendingFlow(() => this.render()); return; }
     if (!planReady(s)) { this.toast("이번 주 빈 칸을 먼저 채워 주세요"); return; }
     s.lastPlan = { ...s.plan };
+    track("plan", { state: s, plan: s.plan });
     this.runMinigames().then(() => this.startWeek());
   },
 
@@ -16227,6 +16786,7 @@ const app = {
     const s = this.state;
     const rep = endWeek(s, ctx, result);
     this.saveTo("auto");
+    track("week", { state: s }); flush(); pushSave();
     try { checkAchievements(this); } catch (e) { console.warn(e); }   // 업적 (이 기기에 남음)
     this.render();
     window.scrollTo(0, 0);
@@ -16237,7 +16797,7 @@ const app = {
       if (s.pendingEvent) chain.push(next => this.eventChain(next));   // 한 주에 이야기가 두 개일 수도 있음
       if (rep.graduation && rep.recap) chain.push(next => yearModal(this, rep.recap, next, { final: true }));   // 졸업식 전에 중3 시즌 결산
       if (rep.graduation) chain.push(() => showEnding(this));
-      const run = () => { const f = chain.shift(); if (f) f(() => { this.saveTo("auto"); this.render(); run(); }); };
+      const run = () => { const f = chain.shift(); if (f) f(() => { this.saveTo("auto"); pushSave(); this.render(); run(); }); };
       this.render();
       run();
     });
@@ -16271,6 +16831,7 @@ function renderTitle(app) {
       <button class="ft-tile" data-gallery><span class="ft-t">엔딩 도감</span><span class="ft-s">지금까지 본 엔딩</span></button>
       <button class="ft-tile" data-hall><span class="ft-t">기록실</span><span class="ft-s">졸업생 카드와 업적</span></button>
     </nav>
+    ${session() ? `<p class="ft-user">${esc(session().sid ? `${session().sid}${session().name ? ` ${session().name}` : ""}` : "선생님")}<button data-logout>로그아웃</button></p>` : ""}
     <p class="ft-foot">made by 류봉두</p>
     <button class="snd-btn ft-snd" data-sound aria-label="효과음" aria-pressed="${app.settings.sound}">${soundIcon(app.settings.sound)}</button>
     <button class="snd-btn ft-mus" data-music aria-label="배경음악" aria-pressed="${!!app.settings.music}">${musicIcon(app.settings.music)}</button>
@@ -16291,6 +16852,11 @@ function renderTitle(app) {
   r.querySelector("[data-hall]").addEventListener("click", () => hallModal());
   r.querySelector("[data-sound]").addEventListener("click", e => { e.stopPropagation(); app.toggleSound(); });
   r.querySelector("[data-music]").addEventListener("click", e => { e.stopPropagation(); app.toggleMusic(); });
+  r.querySelector("[data-logout]")?.addEventListener("click", async e => {
+    e.stopPropagation();
+    if (!(await ask("로그아웃할까요?\n진행은 서버에 저장되어 있어 다시 로그인하면 이어서 할 수 있습니다.", "로그아웃"))) return;
+    await pushSave(true); logout(); boot();
+  });
 }
 
 function renderShell(app) {
@@ -16378,40 +16944,35 @@ function renderShell(app) {
 sfx.set(app.settings.sound);
 bgm.set(app.settings.music);
 
-// ── 개발 단계 입장 코드 ──
-// 코드 원문 대신 계산값만 적어 둠. 한 번 맞히면 이 기기·브라우저에서는 다시 묻지 않음.
-// 정식 공개 때는 GATE를 null로 바꾸면 바로 열림.
-const GATE = "2edu84", GATE_KEY = "gfc_gate";
-const gateHash = s => { let x = 5381; for (const c of s.trim().normalize("NFC")) x = ((x * 33) ^ c.codePointAt(0)) >>> 0; return x.toString(36); };
-const gateOpen = () => { try { return !GATE || localStorage.getItem(GATE_KEY) === GATE; } catch { return false; } };
-function showGate() {
-  const root = document.getElementById("app");
-  root.innerHTML = `<div class="gate">
-    <img class="gate-logo" src="assets/img/logo.png" alt="">
-    <span class="eyebrow">GOHEUNG FC · DREAM PROJECT</span>
-    <h1>개발 중인 게임입니다</h1>
-    <p class="mute">입장 코드를 입력해 주세요.</p>
-    <form class="gate-form" autocomplete="off">
-      <input class="gate-input" type="text" autocapitalize="off" spellcheck="false" aria-label="입장 코드" placeholder="입장 코드">
-      <button class="btn btn-kit btn-wide" type="submit">들어가기</button>
-    </form>
-    <p class="gate-msg" role="status" aria-live="polite"></p>
-  </div>`;
-  const form = root.querySelector(".gate-form"), input = root.querySelector(".gate-input"), msg = root.querySelector(".gate-msg");
-  input.focus();
-  form.addEventListener("submit", e => {
-    e.preventDefault();
-    if (gateHash(input.value) === GATE) {
-      try { localStorage.setItem(GATE_KEY, GATE); } catch { /* 저장이 안 되면 이번만 통과 */ }
-      app.render();
-    } else {
-      msg.textContent = "코드가 맞지 않습니다.";
-      form.classList.remove("shake"); void form.offsetWidth; form.classList.add("shake");
-      input.select();
-    }
-  });
+// ── 학번 로그인과 입장 확인 (js/net/online.js) ──
+// 게임이 닫혀 있거나(관리자 페이지 스위치) 차단된 학번이면 들어갈 수 없습니다. 인터넷이 없으면 들어갈 수 없습니다.
+async function boot(notice = "") {
+  // 개발용: 내 컴퓨터(localhost)에서 ?dev 를 붙여 열면 로그인 없이 (기록도 남지 않음)
+  if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).has("dev")) { app.render(); return; }
+  renderLoading(app.root);
+  const r = await checkAccess();
+  if (r.ok) {
+    await resume();
+    watch(lock);
+    app.state = null; app.view = "title"; app.render();
+    return;
+  }
+  if (r.kind === "login" || r.kind === "relogin") {
+    if (r.kind === "relogin") logout();
+    renderLogin(app.root, { notice: notice || r.message || "", onLogin: async (id, pw) => { await login(id, pw); boot(); } });
+    return;
+  }
+  lock(r);
 }
-if (gateOpen()) app.render(); else showGate();
+// 들어갈 수 없을 때 (게임 중에 닫혀도 여기로. 진행은 자동 저장되어 있음)
+function lock(r) {
+  if (r.kind === "relogin") { logout(); boot(r.message); return; }
+  document.getElementById("modal-root").innerHTML = "";
+  app.state = null; app.view = "title";
+  setScene(null); bgm.play("home");
+  renderLock(app.root, r, { onRetry: () => boot(), onOther: () => { logout(); boot(); } });
+}
+boot();
 window.gfc = app; // 개발 확인용
 
 return {  };

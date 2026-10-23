@@ -1349,7 +1349,10 @@ export function resolve(state, m, ci, timing = null) {
 
   const main = Object.entries(c.stats).sort((a, b) => b[1] - a[1])[0][0];
   m.my.decisions++; if (ok) m.my.successes++;
-  m.my.log.push({ sit: pd.sit.id, label: c.label, ok, out, stat: main, value: getPath(pl.stats, main), level: pd.choices[ci].level, minute: min, signature: !!c.signature });
+  m.my.log.push({ sit: pd.sit.id, label: c.label, ok, out, stat: main, value: getPath(pl.stats, main), level: pd.choices[ci].level, minute: min, signature: !!c.signature,
+    diff: c.diff ?? 0, sc: Math.sign(m.score[0] - m.score[1]), auto: !!(m.autoAll || m.autoNext),
+    nb: pd.list.filter(x => (x.diff ?? 0) >= 5).length, ns: pd.list.filter(x => (x.diff ?? 0) <= -4).length, no: pd.list.length });   // diff·sc·auto: 선택 성향 기록용
+  m.autoNext = false;
   m.my.delta += OUTCOMES[out].rating * (m.myPos === "MF" ? CAL.mfk : 1);      // 미드필더는 선택이 많은 만큼 하나하나의 몫을 조금 줄여 평점 수준을 맞춤
   if (pd.sit.id === "penalty" && out === "miss") { m.stats.us.shots++; m.stats.us.on++; }
   else if (out === "miss" && isShotChoice(c) && !CLEAR_FIRST.test(outTpl)) m.stats.us.shots++;   // 빗나간 슈팅도 슈팅 수에
@@ -1901,6 +1904,7 @@ export function autoChoice(m) {
 
 export function autoPlay(state, m) {
   let guard = 0;
+  m.autoAll = true;
   while (!m.done && guard++ < 5000) {
     if (m.pending) resolve(state, m, autoChoice(m));
     else next(state, m);

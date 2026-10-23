@@ -576,3 +576,11 @@ body:has(#modal-root .backdrop) .fs-btn { opacity: 0; pointer-events: none; }
 
 /* ── 경기장 움직임: 매 프레임 직접 그리므로 CSS 전환은 끔 (js/ui/pitch.js) ── */
 .match-screen .pitch .dot { transition: none !important; }
+
+/* 학번 로그인 */
+.gate-input.gate-id { -webkit-text-security: none; }
+.gate-note { max-width: 320px; margin: 6px 0 0; font-size: 12px; line-height: 1.6; color: rgba(255,255,255,.5); }
+.gate-lock { max-width: 320px; margin: 4px 0 8px; white-space: pre-line; line-height: 1.65; color: rgba(255,255,255,.82); }
+.ft-user { position: absolute; top: max(12px, env(safe-area-inset-top)); left: 14px; z-index: 3; display: flex; align-items: center; gap: 8px; font-size: 13px; color: rgba(255,255,255,.85);
+  background: rgba(8,12,24,.55); border: 1px solid rgba(255,255,255,.14); border-radius: 999px; padding: 5px 6px 5px 12px; backdrop-filter: blur(6px); }
+.ft-user button { font: inherit; font-size: 12px; color: #fff; background: rgba(255,255,255,.12); border: 0; border-radius: 999px; padding: 4px 10px; cursor: pointer; }

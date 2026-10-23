@@ -22,7 +22,7 @@ function visit(abs, stack = []) {
   }
   let body = src.replace(IMPORT, "");
   const exported = [];
-  body = body.replace(/^export\s+(const|function|let)\s+([A-Za-z_$][\w$]*)/gm, (_, kw, name) => { exported.push(name); return `${kw} ${name}`; });
+  body = body.replace(/^export\s+(async\s+function|const|function|let)\s+([A-Za-z_$][\w$]*)/gm, (_, kw, name) => { exported.push(name); return `${kw} ${name}`; });
   body = body.replace(/^export\s*\{([^}]*)\};?\s*$/gm, (_, list) => { list.split(",").map(s => s.trim()).filter(Boolean).forEach(n => exported.push(n)); return ""; });
   if (/^\s*(import|export)\s/m.test(body)) throw new Error("처리 못한 import/export: " + id);
   const head = deps.map(d => {

@@ -1,5 +1,6 @@
 // 경기 화면: 전광판 → 22명이 움직이는 경기장 → 문자 중계 → 내 장면 선택지
 import { next, resolve, autoChoice, autoPlay, finishMatch, applyHalftime, STATUS_LABEL, TAG_LABEL } from "../engine/match.js";
+import { track } from "../net/online.js";
 import { frameNow } from "../engine/sim.js";
 import { STAFF } from "../../data/roster.js";
 import { getPath } from "../rng.js";
@@ -327,7 +328,7 @@ export function showMatch(app, m, onDone) {
       timingGame(kind, i, res => pickIt(i, res));
     };
     ctl.querySelectorAll("[data-c]").forEach(b => b.addEventListener("click", () => choose(+b.dataset.c)));
-    ctl.querySelector("[data-autopick]").addEventListener("click", () => pickIt(autoChoice(m)));
+    ctl.querySelector("[data-autopick]").addEventListener("click", () => { m.autoNext = true; pickIt(autoChoice(m)); });
     ctl.querySelector("[data-c]").focus({ preventScroll: true });
   }
 
@@ -415,6 +416,7 @@ export function showMatch(app, m, onDone) {
     finished = true;
     const before = m.feed.length;
     const res = finishMatch(state, m);
+    track("match", { state, m, res });
     m.feed.slice(before).forEach(addLine);
     shown = m.score.slice();
     updateBoard();

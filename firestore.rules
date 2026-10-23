@@ -1,0 +1,41 @@
+rules_version = '2';
+// 고흥FC 드림 프로젝트 보안 규칙
+// Firebase 콘솔 → Firestore Database → 규칙 탭에 이 파일 내용을 통째로 붙여 넣고 '게시'를 누르세요.
+// 관리자 이메일을 바꾸면 아래 isAdmin() 안의 이메일도 같이 바꿔야 합니다 (js/net/fb.js 의 ADMIN_EMAIL 과 같게).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'ryubongdoo@gmail.com';
+    }
+    // 학생 본인인지: 로그인한 계정의 이메일이 '학번.열쇠@fc.goheung' 이고, 차단되지 않았을 때
+    function isMe(sid) {
+      let lg = get(/databases/$(database)/documents/fcg_login/$(sid)).data;
+      return request.auth != null
+        && request.auth.token.email == sid + '.' + lg.key + '@fc.goheung'
+        && lg.get('blocked', false) != true;
+    }
+
+    // 게임 스위치 (열림·닫힘, 시간 제한): 누구나 읽고, 관리자만 바꿈
+    match /fcg_config/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    // 학번 목록 (로그인할 때 확인): 누구나 읽고, 관리자만 바꿈
+    match /fcg_login/{sid} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    // 학생 기록: 본인과 관리자만 읽음. 학생은 기록 칸(play, now, lastSeen)만 바꿀 수 있음
+    match /fcg_students/{sid} {
+      allow read: if isAdmin() || isMe(sid);
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (isMe(sid) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['play', 'now', 'lastSeen']));
+    }
+    // 클라우드 저장: 본인과 관리자만
+    match /fcg_saves/{sid} {
+      allow read, write: if isAdmin() || isMe(sid);
+    }
+  }
+}

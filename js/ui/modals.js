@@ -7,6 +7,7 @@ import { ovr } from "../engine/team.js";
 import { readSlot, saveTo, deleteSlot, exportCode, importCode } from "../state.js";
 import { esc, fl, signed, img, faceOf, fillText } from "./util.js";
 import { eventView, eventVars, chooseEvent, reqOk, reqText } from "../engine/events.js";
+import { track } from "../net/online.js";
 import { meetingScript, applyMeeting } from "../engine/advice.js";
 import { STAFF } from "../../data/roster.js";
 import { reduced, countUp } from "./fx.js";
@@ -325,7 +326,9 @@ export function eventModal(app, done) {
     }).join("")}</div>`;
   openModal(html, (el, close) => {
     el.querySelectorAll("[data-i]").forEach(b => b.addEventListener("click", () => {
-      const r = chooseEvent(state, +b.dataset.i);
+      const ci = +b.dataset.i, evId = v.ev.id;
+      const r = chooseEvent(state, ci);
+      track("event", { state, id: evId, text: fillText(v.text, vars), label: fillText(v.ev.choices[ci].label, vars) });
       app.saveTo("auto");
       let score = 0;
       const chips = r.changes.map((c, i) => {

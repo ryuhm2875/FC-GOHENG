@@ -5,10 +5,11 @@ import { seenEndings } from "../engine/career.js";
 import { openModal } from "./modals.js";
 import { esc, img, faceOf } from "./util.js";
 import { sfx } from "./sfx.js";
+import { ukey } from "../userkey.js";
 
 const HALL = "gfc_hall", ACH = "gfc_ach";
-const read = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || "null") ?? d; } catch { return d; } };
-const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* 저장이 안 되면 이번 화면에서만 */ } };
+const read = (k, d) => { try { return JSON.parse(localStorage.getItem(ukey(k)) || "null") ?? d; } catch { return d; } };
+const write = (k, v) => { try { localStorage.setItem(ukey(k), JSON.stringify(v)); } catch { /* 저장이 안 되면 이번 화면에서만 */ } };
 export const readHall = () => read(HALL, []);
 export const readAch = () => read(ACH, {});
 

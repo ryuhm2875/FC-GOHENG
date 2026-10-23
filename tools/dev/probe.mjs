@@ -10,7 +10,7 @@ const ctx = await browser.newContext({ ...devices["iPhone 13"], serviceWorkers: 
 const page = await ctx.newPage(); const errs = [];
 page.on("pageerror", e => errs.push(e.message)); page.on("console", m => { if (/NANDBG/.test(m.text())) errs.push(m.text().replace(/\n/g, " ")); });
 await page.addInitScript(() => { localStorage.setItem("gfc_gate", "2edu84"); window.__plog = []; });
-await page.goto(base + "/index.html");
+await page.goto(base + "/index.html?dev");
 await page.waitForFunction(() => window.gfc);
 await page.evaluate(async (pos) => { const { rollPlayer } = await import("/js/state.js");
   gfc.settings.minigame = false; gfc.settings.timing = false;

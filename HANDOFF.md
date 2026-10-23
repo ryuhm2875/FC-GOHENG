@@ -22,7 +22,7 @@
 6. **고칠 때마다 `node tools/bundle.mjs` 실행.** (js/game.bundle.js, offline-files.js, sw.js의 BUILD 값이 갱신됨)
 7. **깃허브 업로드는 사용자가 직접** 합니다. 웹에서 드래그로 올리며 한 번에 100개까지. 그래서 작업이 끝나면 **바뀐 파일만 폴더 구조 그대로 zip**으로 묶어 보내 주세요. (예: `고흥FC_엔진2안_N개.zip`)
 8. 실제 학생 사진은 쓰지 않음. 저장소가 공개이므로 개인정보 금지.
-9. 입장 코드 '류봉두'는 해시 `"2edu84"`로만 저장 (js/main.js의 GATE, localStorage 키 `gfc_gate`). 원문을 코드에 넣지 말 것.
+9. 입장 코드는 없어지고 학번 로그인(Firebase)으로 바뀜 (24절). 학생 비밀번호·관리자 비밀번호를 코드나 문서에 적지 말 것.
 10. "오류가 안 생기게." 고친 뒤엔 시뮬레이션과 브라우저로 꼭 확인하고 결과를 보고.
 
 ## 2. 구조
@@ -155,7 +155,7 @@
 
 ## 6. 테스트 도구 (tools/dev/)
 
-Playwright는 `createRequire("/usr/lib/node_modules/")`로 불러옵니다. 브라우저 테스트 전에 저장소 폴더에서 `python3 -m http.server 8765`를 띄워 두세요. 입장 코드는 localStorage `gfc_gate = "2edu84"`로 넘깁니다 (도구에 이미 들어 있음).
+Playwright는 `createRequire("/usr/lib/node_modules/")`로 불러옵니다. 브라우저 테스트 전에 저장소 폴더에서 `python3 -m http.server 8765`를 띄워 두세요. 로그인을 건너뛰려면 `index.html?dev`로 엽니다 (localhost에서만 됨, 도구에 이미 들어 있음).
 
 | 도구 | 쓰는 법 | 하는 일 |
 |---|---|---|
@@ -515,3 +515,19 @@ FW 7.83 · 1.69골 · MOM 47.6% / MF 7.07 · 도움 0.83 · MOM 18.7% / DF 6.99 
 - 머리로 걷어 내는 코너킥 결과가 대본 시간 초과 → 공이 떨어지면 끝. 풀백 오버래핑은 측면(가운데에서 16.5m+)일 때만, 크로스 장면 `df_cross`는 공이 날아올 때만
 - 안전한 선택(diff가 음수: 짧은 패스·자리 지키기·거리 두기)은 실력이 모자라도 웬만하면 됨: 성공률 하한 0.62 + 0.03×|diff| (최대 0.88), 그리고 |diff|×0.01 가산. 예) diff −8 짧은 패스 0.73 → 0.86
 - 확인: moment-audit(수비수 150경기) 공 붙음 12 → 1, 시간 초과 11 → 0. uiplay DF 엔딩까지 오류 0. 기준선 120판: 득점 2.23 / 실점 1.11, 승 62%, FW 7.50·MOM 36.8% / MF 7.20·21.2% / DF 7.17·24.1%
+
+## 24. 학번 로그인·관리자 페이지·플레이 기록 (2026-10-23, 사용자: "학생들에게 배포. 학번·비밀번호, 내가 설정하는 관리자 페이지. 어떤 이벤트에서 무엇을 골랐는지, 경기 중 도전적·안정적 성향 통계. 게임을 막을 수도 있게")
+
+Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부름 (`js/net/fb.js`). 관리자 이메일 ryubongdoo@gmail.com (`ADMIN_EMAIL`, `firestore.rules`의 isAdmin 두 곳을 같이 바꿔야 함).
+
+- **학생 계정**: Firebase Auth 이메일/비밀번호. 이메일은 `학번.열쇠@fc.goheung`, 비밀번호는 `fcg-` + 학생 비밀번호 (Firebase 6자 제한 때문에 4자리도 되게). 열쇠는 무작위 6자로 `fcg_login/{학번}.key`에 있음. 무료 요금제에선 남의 비밀번호를 못 바꾸므로, 비밀번호 바꾸기 = 새 열쇠로 계정을 새로 만들고 key를 바꿈 (옛 계정은 규칙에서 막힘). 기록은 학번에 묶여 있어 그대로.
+- **데이터**: `fcg_config/main` {open, message, quiet{on,from,to,message}} · `fcg_login/{학번}` {key, blocked} (누구나 읽음) · `fcg_students/{학번}` {name, created / play, now, lastSeen} · `fcg_saves/{학번}` {enc:"gz64", data, at, summary}. 권한은 `firestore.rules`.
+- **게임 쪽** (`js/net/online.js`): boot() → checkAccess() (닫힘·시간 제한·차단·열쇠 바뀜·인터넷 없음이면 `js/ui/login.js`의 잠금 화면). 게임 중 3분마다 다시 확인. 선생님 계정은 언제나 통과.
+  - 저장 키를 학번별로 나눔 (`js/userkey.js` ukey: `gfc_auto` → `gfc_u20301_auto`, 기록실·업적·엔딩 도감도). 선생님·로그인 전은 예전 키 그대로.
+  - 클라우드 저장: 자동 저장을 gzip+base64로 1분에 한 번까지 올림 (화면을 떠날 때·엔딩 때는 바로). 로그인할 때 서버 것이 더 새것이면 기기 저장을 덮음.
+  - 기록 `track(kind)`: newGame(판 번호 state.meta.run) · plan(활동·분류, 시험 주간 따로) · match(m.my.log 의 diff로 안정 ≤-4 / 도전 ≥5, 점수 상황 sc, 쓰인 능력 계열, 타이밍, 고를 수 있었던 비율 nb/ns/no) · event(id, 앞 70자, 고른 선택 문구, 최대 500개) · ending. 한 주 끝에 flush.
+  - '알아서 하기'(m.autoNext)와 '결과만 보기'(autoPlay의 m.autoAll)로 넘긴 선택은 auto로만 세고 성향에서 뺌.
+  - 성향 지수(관리자 페이지) = ((도전 고름 − 도전 기댓값) − (안정 고름 − 안정 기댓값)) / 고른 수. ±0.12 넘으면 도전형·안정형, 15번 미만은 기록 부족.
+- **관리자 페이지**: `admin.html` + `js/admin/admin.js` (번들 안 함, 모듈로 바로). 학생 등록·일괄 등록·차단·비밀번호·삭제·CSV, 학생 상세 창, 반 통계, 게임 스위치.
+- **시험**: `node tools/dev/fbmock.mjs 8790` (가짜 Firebase, 규칙도 흉내) 띄우고 브라우저에서 `globalThis.FCG_FB_BASE = { auth: "http://localhost:8790/auth", token: "http://localhost:8790/token", store: "http://localhost:8790/store" }`를 먼저 넣으면 그쪽으로 붙음. 이 작업 환경은 구글 서버에 직접 못 붙으므로 실제 연결 확인은 사용자 몫.
+- 번들러가 `export async function`도 받게 고침.

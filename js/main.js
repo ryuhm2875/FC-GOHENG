@@ -20,6 +20,8 @@ import { hallModal, checkAchievements } from "./ui/hall.js";
 import { setScene, enter, preload, SCENES } from "./ui/fx.js";
 import { sfx } from "./ui/sfx.js";
 import { bgm } from "./ui/bgm.js";
+import { login, logout, checkAccess, resume, watch, track, flush, pushSave, session } from "./net/online.js";
+import { renderLogin, renderLock, renderLoading } from "./ui/login.js";
 
 // 메뉴 아이콘 (선으로 그린 SVG)
 const ICONS = {
@@ -49,7 +51,9 @@ const app = {
     this.state = newGame(player);
     welcomeMails(this.state);
     birthdayWeek(this.state, turnInfo(this.state));      // 입단 첫 주가 생일 주간인 경우
+    track("newGame", { state: this.state });
     this.saveTo("auto");
+    flush(); pushSave(true);
     this.go("home");
     this.toast(`${player.name}, 등번호 ${this.state.player.number}번으로 입단했습니다`);
   },
@@ -108,6 +112,7 @@ const app = {
     if (s.pending) { this.pendingFlow(() => this.render()); return; }
     if (!planReady(s)) { this.toast("이번 주 빈 칸을 먼저 채워 주세요"); return; }
     s.lastPlan = { ...s.plan };
+    track("plan", { state: s, plan: s.plan });
     this.runMinigames().then(() => this.startWeek());
   },
 
@@ -159,6 +164,7 @@ const app = {
     const s = this.state;
     const rep = endWeek(s, ctx, result);
     this.saveTo("auto");
+    track("week", { state: s }); flush(); pushSave();
     try { checkAchievements(this); } catch (e) { console.warn(e); }   // 업적 (이 기기에 남음)
     this.render();
     window.scrollTo(0, 0);
@@ -169,7 +175,7 @@ const app = {
       if (s.pendingEvent) chain.push(next => this.eventChain(next));   // 한 주에 이야기가 두 개일 수도 있음
       if (rep.graduation && rep.recap) chain.push(next => yearModal(this, rep.recap, next, { final: true }));   // 졸업식 전에 중3 시즌 결산
       if (rep.graduation) chain.push(() => showEnding(this));
-      const run = () => { const f = chain.shift(); if (f) f(() => { this.saveTo("auto"); this.render(); run(); }); };
+      const run = () => { const f = chain.shift(); if (f) f(() => { this.saveTo("auto"); pushSave(); this.render(); run(); }); };
       this.render();
       run();
     });
@@ -203,6 +209,7 @@ function renderTitle(app) {
       <button class="ft-tile" data-gallery><span class="ft-t">엔딩 도감</span><span class="ft-s">지금까지 본 엔딩</span></button>
       <button class="ft-tile" data-hall><span class="ft-t">기록실</span><span class="ft-s">졸업생 카드와 업적</span></button>
     </nav>
+    ${session() ? `<p class="ft-user">${esc(session().sid ? `${session().sid}${session().name ? ` ${session().name}` : ""}` : "선생님")}<button data-logout>로그아웃</button></p>` : ""}
     <p class="ft-foot">made by 류봉두</p>
     <button class="snd-btn ft-snd" data-sound aria-label="효과음" aria-pressed="${app.settings.sound}">${soundIcon(app.settings.sound)}</button>
     <button class="snd-btn ft-mus" data-music aria-label="배경음악" aria-pressed="${!!app.settings.music}">${musicIcon(app.settings.music)}</button>
@@ -223,6 +230,11 @@ function renderTitle(app) {
   r.querySelector("[data-hall]").addEventListener("click", () => hallModal());
   r.querySelector("[data-sound]").addEventListener("click", e => { e.stopPropagation(); app.toggleSound(); });
   r.querySelector("[data-music]").addEventListener("click", e => { e.stopPropagation(); app.toggleMusic(); });
+  r.querySelector("[data-logout]")?.addEventListener("click", async e => {
+    e.stopPropagation();
+    if (!(await ask("로그아웃할까요?\n진행은 서버에 저장되어 있어 다시 로그인하면 이어서 할 수 있습니다.", "로그아웃"))) return;
+    await pushSave(true); logout(); boot();
+  });
 }
 
 function renderShell(app) {
@@ -310,38 +322,33 @@ function renderShell(app) {
 sfx.set(app.settings.sound);
 bgm.set(app.settings.music);
 
-// ── 개발 단계 입장 코드 ──
-// 코드 원문 대신 계산값만 적어 둠. 한 번 맞히면 이 기기·브라우저에서는 다시 묻지 않음.
-// 정식 공개 때는 GATE를 null로 바꾸면 바로 열림.
-const GATE = "2edu84", GATE_KEY = "gfc_gate";
-const gateHash = s => { let x = 5381; for (const c of s.trim().normalize("NFC")) x = ((x * 33) ^ c.codePointAt(0)) >>> 0; return x.toString(36); };
-const gateOpen = () => { try { return !GATE || localStorage.getItem(GATE_KEY) === GATE; } catch { return false; } };
-function showGate() {
-  const root = document.getElementById("app");
-  root.innerHTML = `<div class="gate">
-    <img class="gate-logo" src="assets/img/logo.png" alt="">
-    <span class="eyebrow">GOHEUNG FC · DREAM PROJECT</span>
-    <h1>개발 중인 게임입니다</h1>
-    <p class="mute">입장 코드를 입력해 주세요.</p>
-    <form class="gate-form" autocomplete="off">
-      <input class="gate-input" type="text" autocapitalize="off" spellcheck="false" aria-label="입장 코드" placeholder="입장 코드">
-      <button class="btn btn-kit btn-wide" type="submit">들어가기</button>
-    </form>
-    <p class="gate-msg" role="status" aria-live="polite"></p>
-  </div>`;
-  const form = root.querySelector(".gate-form"), input = root.querySelector(".gate-input"), msg = root.querySelector(".gate-msg");
-  input.focus();
-  form.addEventListener("submit", e => {
-    e.preventDefault();
-    if (gateHash(input.value) === GATE) {
-      try { localStorage.setItem(GATE_KEY, GATE); } catch { /* 저장이 안 되면 이번만 통과 */ }
-      app.render();
-    } else {
-      msg.textContent = "코드가 맞지 않습니다.";
-      form.classList.remove("shake"); void form.offsetWidth; form.classList.add("shake");
-      input.select();
-    }
-  });
+// ── 학번 로그인과 입장 확인 (js/net/online.js) ──
+// 게임이 닫혀 있거나(관리자 페이지 스위치) 차단된 학번이면 들어갈 수 없습니다. 인터넷이 없으면 들어갈 수 없습니다.
+async function boot(notice = "") {
+  // 개발용: 내 컴퓨터(localhost)에서 ?dev 를 붙여 열면 로그인 없이 (기록도 남지 않음)
+  if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).has("dev")) { app.render(); return; }
+  renderLoading(app.root);
+  const r = await checkAccess();
+  if (r.ok) {
+    await resume();
+    watch(lock);
+    app.state = null; app.view = "title"; app.render();
+    return;
+  }
+  if (r.kind === "login" || r.kind === "relogin") {
+    if (r.kind === "relogin") logout();
+    renderLogin(app.root, { notice: notice || r.message || "", onLogin: async (id, pw) => { await login(id, pw); boot(); } });
+    return;
+  }
+  lock(r);
 }
-if (gateOpen()) app.render(); else showGate();
+// 들어갈 수 없을 때 (게임 중에 닫혀도 여기로. 진행은 자동 저장되어 있음)
+function lock(r) {
+  if (r.kind === "relogin") { logout(); boot(r.message); return; }
+  document.getElementById("modal-root").innerHTML = "";
+  app.state = null; app.view = "title";
+  setScene(null); bgm.play("home");
+  renderLock(app.root, r, { onRetry: () => boot(), onOther: () => { logout(); boot(); } });
+}
+boot();
 window.gfc = app; // 개발 확인용

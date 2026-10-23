@@ -5,9 +5,10 @@ import { normal, range, clamp, chance, pick } from "./rng.js";
 import { weightFor } from "./engine/growth.js";
 import { randomFreeNumber } from "./engine/team.js";
 import { initRelations } from "./engine/relations.js";
+import { ukey } from "./userkey.js";
 
 export const SAVE_VERSION = 3;
-const KEY = { slot: n => `gfc_slot_${n}`, auto: "gfc_auto", settings: "gfc_settings", seen: "gfc_endings" };
+const KEY = { slot: n => ukey(`gfc_slot_${n}`), get auto() { return ukey("gfc_auto"); }, settings: "gfc_settings" };
 
 export function rollPlayer({ name, face, position, foot, growthType }) {
   const type = GROWTH_TYPES[growthType];
@@ -134,6 +135,10 @@ export function readSlot(where) {
   if (!raw) return null;
   try { return migrate(JSON.parse(raw)); } catch { return null; }
 }
+
+// 클라우드 저장용: 자동 저장 원문 그대로 읽고 쓰기
+export function rawAuto() { return safeGet(KEY.auto); }
+export function putRawAuto(text) { return safeSet(KEY.auto, text); }
 
 export function deleteSlot(where) { safeDel(where === "auto" ? KEY.auto : KEY.slot(where)); }
 

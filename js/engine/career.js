@@ -7,6 +7,7 @@ import { mail, mailFrom } from "../state.js";
 import { ovr } from "./team.js";
 import { person } from "./relations.js";
 import { clamp, getPath } from "../rng.js";
+import { ukey } from "../userkey.js";
 
 export const MILESTONES = {
   guide:     { grade: 3, month: 9,  week: 1 },
@@ -207,7 +208,7 @@ export function teacherLetter(state) {
 
 // 엔딩 도감 (이 기기에 저장)
 const KEY = "gfc_endings";
-export function seenEndings() { try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { return []; } }
+export function seenEndings() { try { return JSON.parse(localStorage.getItem(ukey(KEY)) || "[]"); } catch { return []; } }
 export function markEnding(id) {
-  try { const s = new Set(seenEndings()); s.add(id); localStorage.setItem(KEY, JSON.stringify([...s])); } catch {}
+  try { const s = new Set(seenEndings()); s.add(id); localStorage.setItem(ukey(KEY), JSON.stringify([...s])); } catch {}
 }

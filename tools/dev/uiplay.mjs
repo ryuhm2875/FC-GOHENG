@@ -11,7 +11,7 @@ const page = await ctx.newPage(); const errs = [];
 page.on("pageerror", e => errs.push("pageerror: " + e.message + " @" + e.stack?.split("\n")[1]));
 page.on("console", m => { if (m.type() === "error" && !/TUNNEL|Failed to load/.test(m.text())) errs.push("console: " + m.text()); });
 await page.addInitScript(() => localStorage.setItem("gfc_gate", "2edu84"));
-await page.goto("http://localhost:8765/index.html");
+await page.goto("http://localhost:8765/index.html?dev");
 await page.waitForFunction(() => window.gfc);
 await page.evaluate(async ([pos, nm]) => {
   const { rollPlayer } = await import("/js/state.js");
