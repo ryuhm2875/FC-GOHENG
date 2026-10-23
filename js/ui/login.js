@@ -18,9 +18,21 @@ export function renderLogin(root, { onLogin, notice = "" }) {
       <button class="btn btn-kit btn-wide" type="submit">들어가기</button>
     </form>
     <p class="gate-msg" role="status" aria-live="polite">${esc(notice)}</p>
+    <button class="linkbtn gate-teacher" type="button" data-teacher>선생님 로그인 (이메일)</button>
     <p class="gate-note">로그인하면 게임 진행 기록이 서버에 저장되어, 다른 기기에서도 이어서 할 수 있습니다.<br>비밀번호를 잊었으면 선생님께 말씀드리세요.</p>`);
   const form = root.querySelector(".gate-form"), msg = root.querySelector(".gate-msg"), btn = form.querySelector("button");
   form.sid.focus();
+  // 학번 칸은 숫자 키패드라 이메일을 칠 수 없음 → 선생님은 이메일 칸으로 바꿔서
+  root.querySelector("[data-teacher]").addEventListener("click", e => {
+    const t = form.sid.type !== "email";
+    form.sid.type = t ? "email" : "text";
+    form.sid.inputMode = t ? "email" : "numeric";
+    form.sid.placeholder = t ? "선생님 이메일" : "학번 (예: 20301)";
+    form.sid.setAttribute("aria-label", t ? "이메일" : "학번");
+    form.sid.value = "";
+    e.target.textContent = t ? "학생 로그인 (학번)" : "선생님 로그인 (이메일)";
+    form.sid.focus();
+  });
   form.addEventListener("submit", async e => {
     e.preventDefault();
     btn.disabled = true; btn.textContent = "확인 중…"; msg.textContent = "";
