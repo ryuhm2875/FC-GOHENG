@@ -42,7 +42,7 @@ for (let k = 0; k < N; k++) {
     // 1) 선택지가 뜰 때 공 가진 선수
     const H = S.holder, me = S.P.find(p => p.me);
     if (!cat.includes(":")) {
-      const want = poss === "them" ? "them" : (sc.holder === "mate" || sc.holder === "df") ? "mate" : "me";
+      const want = sc.race === "channel" ? "없음" : poss === "them" ? "them" : (sc.holder === "mate" || sc.holder === "df") ? "mate" : "me";   // 골라인 쪽으로 굴러가는 공 장면은 아무도 공을 안 가짐
       const got = !H ? "없음" : H.me ? "me" : H.team === "us" ? "mate" : "them";
       if (want !== got) bad("선택할 때 공 가진 선수가 장면과 다름", `${tag} 장면은 ${want}, 실제 ${got}${H ? `(${H.name})` : ""}: ${pd.text.slice(0, 36)}`);
       if (want === "them" && H && me && Math.hypot(H.x - me.x, H.y - me.y) > 18) bad("상대 장면인데 내가 상대와 멂", `${tag} ${Math.hypot(H.x - me.x, H.y - me.y).toFixed(0)}m: ${pd.text.slice(0, 36)}`);
@@ -89,7 +89,7 @@ for (let k = 0; k < N; k++) {
     const endT = (trace.find(e => e.k === "end")?.t ?? S.t) + 0.6;
     const newLines = m.feed.slice(feed0).filter(l => l.ts == null || l.ts <= endT);   // 대본이 끝난 뒤 경기 흐름의 줄은 빼고
     const goalLine = newLines.some(l => l.k?.startsWith("goal"));
-    if (shots.length > 1) bad("슈팅이 두 번 나옴", `${tag} ${r.outcome}`);
+    if (shots.length > 1 && !(sc.screen && /쳐 낼/.test(pd.choices?.[pick]?.label || ""))) bad("슈팅이 두 번 나옴", `${tag} ${r.outcome}`);   // 골키퍼가 쳐 낸 공을 다시 때리는 장면은 두 번이 맞음
     for (const e of shots) {
       const end = ends.find(x => x.t >= e.t);
       if (!end) { bad("슈팅 결과가 경기장에서 안 끝남", `${tag} ${r.outcome}`); continue; }

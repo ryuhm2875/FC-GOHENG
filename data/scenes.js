@@ -172,4 +172,30 @@ export const SCENES = {
   wing_far_post: { side: 17, at: [[86, 101], [3, 15]], from: "carry", holder: "mate", arrive: true, farSide: true, press: 1, pressGap: 2.2 },
   dm_screen: { at: [[20, 38], [16, 52]], tight: 3, from: "oppPass", src: [14, -9], meGap: 1.8 },
   target_hold: { air: true, longIn: true, at: [[60, 86], [14, 54]], from: "long", giver: "df", press: 1, pressGap: 1.1 },
+  // ── 현대 축구 장면 (2026-10-23). 아래 표시는 장면을 고르는 경기장 조건 (js/engine/match.js newSceneOk)과 연출 ──
+  // even: 공 가진 상대보다 우리 골문 쪽에 우리 선수가 나 포함 둘뿐, 상대 공격수가 한 명 더 뜀 (2 대 2 역습)
+  // byline: 상대가 우리 진영 측면에서 공을 가짐. 연출로 골라인 앞까지 몰고 들어오고, 다른 상대가 페널티 지점으로 뜀 (컷백)
+  // race: "channel": 상대가 찔러 준 공이 우리 골라인 구석으로 굴러가 멈춤. 내가 먼저 닿고 상대 공격수가 등 뒤에
+  // invert: 우리 진영 동료가 공을 가졌을 때, 풀백인 내가 안쪽(미드필더 자리)으로 좁혀 들어가며 받음
+  // scan: 옆·뒤에 흘려 보낼 동료가 있을 때 / tri: 가까이에 동료 둘 (측면 삼각형)
+  // runner: 내 옆을 지나 박스로 뛰어드는 상대가 있을 때 (연출로 그 선수가 박스 쪽으로 달림)
+  // cbOut: 우리 센터백이 공 가진 상대에게 붙어 올라왔고, 그 뒤로 빠질 상대 공격수가 있을 때
+  // underlap: 측면 동료가 상대 진영에서 공을 가졌고 나는 그 안쪽·뒤 / dummy: 측면 깊은 곳 동료, 나는 니어포스트, 뒤에서 뛰어드는 동료
+  // screen: 박스 앞 동료가 공을 가졌고 나는 골키퍼 앞 / lowIn: 동료의 땅볼 크로스가 먼저 나에게 옴
+  // open: 이만큼(m) 안에 상대가 없을 때만 (앞이 빈 장면)
+  // patience: 이 장면을 기다리다 다른 장면으로 넘어가기까지의 시간(분). 경기장 모양이 드물게 생기는 장면은 길게
+  df_carry_out: { open: 7, at: [[20, 46], [10, 58]], from: "pass", giver: "df", press: 0, clear: true },
+  df_counter_2v2: { counter: true, even: true, patience: 5, at: [[34, 68], [8, 60]], from: "oppCarry", meGap: 5 },
+  df_cutback_guard: { byline: true, patience: 5, at: [[3, 30], [2, 24]], from: "oppCarry", mePress: false },
+  df_shield_out: { race: "channel", at: [[2, 40], [2, 66]], from: "oppPass", mePress: false },
+  fb_inverted: { invert: true, at: [[30, 60], [4, 64]], from: "pass", giver: "df", press: 1, pressGap: 4 },
+  mf_scan_turn: { scan: true, at: [[42, 64], [14, 54]], from: "pass", giver: "df", press: 1, pressGap: 1.7 },
+  mf_wing_triangle: { tri: true, patience: 2, side: 16.5, at: [[50, 86], [2, 17]], from: "pass", giver: "fb", press: 2, pressGap: 3.5 },
+  mf_track_runner: { runner: true, patience: 1.5, at: [[22, 55], [8, 60]], from: "oppCarry", mePress: false },
+  mf_underlap: { underlap: true, patience: 2, holder: "mate", side: 16.5, at: [[55, 88], [2, 20]], from: "carry", press: 1, pressGap: 2.6 },
+  mf_cover_cb: { cbOut: true, patience: 2.5, at: [[24, 52], [10, 58]], from: "oppPass", mePress: false },
+  fw_dummy: { dummy: true, patience: 5, lowIn: true, holder: "mate", at: [[82, 101], [2, 23]], from: "carry", press: 1, pressGap: 2 },
+  fw_box_turn: { tight: 1, patience: 4, at: [[89.5, 97], [23, 45]], from: "pass", giver: "mf", press: 1, pressGap: 1.2 },
+  fw_flick_on: { air: true, patience: 4, longIn: true, at: [[58, 88], [10, 58]], from: "long", giver: "df", press: 1, pressGap: 1.1 },
+  fw_screen: { screen: true, patience: 5, holder: "mate", at: [[76, 87], [20, 48]], from: "pass", press: 1, pressGap: 3 },
 };

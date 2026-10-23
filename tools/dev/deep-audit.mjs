@@ -63,7 +63,7 @@ for (let k = 0; k < N; k++) {
       if (/역습/.test(txt)) rule(sit.id, "역습이라는데 공 주인이 최근에 안 바뀜", recent(12).some(e => ["win", "tackle", "intercept", "claim", "header"].includes(e.type)) || recent(12).some(e => e.type === "steal"), `${tag} ${snap}: ${txt.slice(0, 40)}`);
       if (/스로인/.test(txt) && !/스로인을 얻/.test(txt)) rule(sit.id, "스로인이라는데 스로인 상황 아님", cat.includes("throw") || !!S.restart && S.restart.kind === "throw", `${tag} ${snap}: ${txt.slice(0, 40)}`);
       if (/반칙을 얻었|프리킥을 얻었/.test(txt)) rule(sit.id, "반칙·프리킥이라는데 반칙 없음", cat.includes("fk") || recent(8).some(e => e.type === "foul"), `${tag} ${snap}: ${txt.slice(0, 40)}`);
-      if (/페널티 지점|페널티킥/.test(txt)) rule(sit.id, "페널티라는데 페널티 상황 아님", cat === "set:pk" || recent(8).some(e => e.type === "foul" && e.pen), `${tag} ${snap}: ${txt.slice(0, 40)}`);
+      if (/페널티킥|페널티 지점을 가리/.test(txt)) rule(sit.id, "페널티라는데 페널티 상황 아님", cat === "set:pk" || recent(8).some(e => e.type === "foul" && e.pen), `${tag} ${snap}: ${txt.slice(0, 40)}`);
       if (/크로스가 올라온다|공을 띄운다|크로스가 수비 머리|크로스를 깔아|컷백\. 공이|땅볼 크로스|롱패스가 수비 뒤로|대각선 패스가 내 쪽/.test(txt)) {
         const into = recent(5).filter(e => e.type === "pass" && (e.toMe || (poss === "them")));
         const air = into.some(e => ["cross", "air", "long", "through"].includes(e.kind)) || cat === "air" || cat === "defair";
