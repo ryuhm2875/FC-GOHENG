@@ -18,16 +18,17 @@ const friendly = e => e?.code ? authMessage(e) : e?.message || String(e);
 
 // ── 로그인 ───────────────────────────
 function renderLogin(msg = "") {
-  app.innerHTML = `<div class="login card">
-    <img src="assets/img/logo.png" alt="">
-    <h2 style="margin:8px 0 0">FC 고흥 관리자</h2>
-    <p class="mute small">선생님 계정으로 로그인하세요.</p>
-    <form>
-      <input type="email" name="email" placeholder="이메일" value="${esc(ADMIN_EMAIL)}" autocomplete="username">
-      <input type="password" name="pw" placeholder="비밀번호" autocomplete="current-password">
-      <button class="btn kit" type="submit">로그인</button>
+  app.innerHTML = `<div class="login">
+    <img class="lg-logo" src="assets/img/logo.png" alt="고흥FC 엠블럼">
+    <span class="eb">GOHEUNG FC U-15 · ADMIN</span>
+    <h1 class="dp big">DREAM<br>PROJECT</h1>
+    <p class="lg-sub">드림 프로젝트 관리자</p>
+    <form class="card">
+      <label class="fl"><span>이메일</span><input type="email" name="email" value="${esc(ADMIN_EMAIL)}" autocomplete="username"></label>
+      <label class="fl"><span>비밀번호</span><input type="password" name="pw" autocomplete="current-password"></label>
+      <button class="btn kit wide" type="submit">로그인</button>
+      <p class="msg err">${esc(msg)}</p>
     </form>
-    <p class="msg err">${esc(msg)}</p>
   </div>`;
   const f = $("form", app);
   f.pw.focus();
@@ -86,12 +87,13 @@ const FAM_LABEL = { pass: "패스", dribble: "드리블·볼 키핑", shoot: "�
 // ── 화면 틀 ───────────────────────────
 function render() {
   app.innerHTML = `<header class="top">
-      <img src="assets/img/logo.png" alt=""><h1>FC 고흥 관리자</h1>
+      <div class="brand"><img src="assets/img/logo.png" alt=""><div><span class="eb">GOHEUNG FC · ADMIN</span><b class="dp">DREAM PROJECT</b></div></div>
       <nav class="tabs">${[["students", "학생"], ["stats", "반 통계"], ["switch", "게임 스위치"]].map(([k, l]) => `<button data-tab="${k}" ${tab === k ? "aria-current=page" : ""}>${l}</button>`).join("")}</nav>
-      <span class="sp"></span>
-      <span class="tag ${gameOpen() ? "on" : "off"}">${gameOpen() ? "게임 열림" : "게임 닫힘"}</span>
-      <button class="btn sm" data-reload>새로고침</button>
-      <button class="btn sm" data-logout>로그아웃</button>
+      <div class="hd-right">
+        <span class="state ${gameOpen() ? "on" : "off"}"><i></i>${gameOpen() ? "게임 열림" : "게임 닫힘"}</span>
+        <button class="btn ghost sm" data-reload>새로고침</button>
+        <button class="btn ghost sm" data-logout>로그아웃</button>
+      </div>
     </header>
     <div class="wrap" id="main"></div>`;
   app.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => { tab = b.dataset.tab; render(); }));
@@ -232,7 +234,7 @@ function downloadCsv(rows) {
   const blob = new Blob(["﻿" + [head.map(q).join(","), ...lines].join("\r\n")], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = `FC고흥_학생기록_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = `드림프로젝트_학생기록_${new Date().toISOString().slice(0, 10)}.csv`;
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
