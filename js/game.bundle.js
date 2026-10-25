@@ -17367,7 +17367,7 @@ function renderTitle(app) {
       <button class="ft-tile" data-gallery><span class="ft-t">엔딩 도감</span><span class="ft-s">지금까지 본 엔딩</span></button>
       <button class="ft-tile" data-hall><span class="ft-t">기록실</span><span class="ft-s">졸업생 카드와 업적</span></button>
     </nav>
-    ${session() ? `<p class="ft-user">${esc(session().sid ? `${session().sid}${session().name ? ` ${session().name}` : ""}` : "선생님")}<button data-logout>로그아웃</button></p>` : ""}
+    ${session() ? `<p class="ft-user">${esc(session().sid ? `${session().sid}${session().name ? ` ${session().name}` : ""}` : "선생님")}${session().admin ? `<a class="ft-admin" href="admin.html" data-admin>관리자</a>` : ""}<button data-logout>로그아웃</button></p>` : ""}
     <p class="ft-foot">made by 류봉두</p>
     <button class="snd-btn ft-snd" data-sound aria-label="효과음" aria-pressed="${app.settings.sound}">${soundIcon(app.settings.sound)}</button>
     <button class="snd-btn ft-mus" data-music aria-label="배경음악" aria-pressed="${!!app.settings.music}">${musicIcon(app.settings.music)}</button>
@@ -17388,6 +17388,7 @@ function renderTitle(app) {
   r.querySelector("[data-hall]").addEventListener("click", () => hallModal());
   r.querySelector("[data-sound]").addEventListener("click", e => { e.stopPropagation(); app.toggleSound(); });
   r.querySelector("[data-music]").addEventListener("click", e => { e.stopPropagation(); app.toggleMusic(); });
+  r.querySelector("[data-admin]")?.addEventListener("click", e => e.stopPropagation());   // 선생님 계정: 관리자 페이지로 (같은 로그인으로 바로)
   r.querySelector("[data-logout]")?.addEventListener("click", async e => {
     e.stopPropagation();
     if (!(await ask("로그아웃할까요?\n진행은 서버에 저장되어 있어 다시 로그인하면 이어서 할 수 있습니다.", "로그아웃"))) return;

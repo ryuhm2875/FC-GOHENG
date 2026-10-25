@@ -8,7 +8,15 @@ const app = $("#app"), dlg = $("#dlg");
 const SK = "gfc_admin_sess";
 let sess = null, students = [], cfg = null, tab = "students", sortBy = { k: "sid", dir: 1 };
 
-const readSess = () => { try { return JSON.parse(sessionStorage.getItem(SK) || "null"); } catch { return null; } };
+// 관리자 로그인: 이 창에서 로그인한 것, 없으면 게임에서 선생님 계정으로 로그인해 둔 것을 그대로 씀 (게임 제목 화면의 [관리자] 버튼)
+const readSess = () => {
+  try {
+    const own = JSON.parse(sessionStorage.getItem(SK) || "null");
+    if (own) return own;
+    const game = JSON.parse(localStorage.getItem("gfc_session") || "null");
+    return game?.admin && String(game.email || "").toLowerCase() === ADMIN_EMAIL.toLowerCase() ? game : null;
+  } catch { return null; }
+};
 const writeSess = s => { try { s ? sessionStorage.setItem(SK, JSON.stringify(s)) : sessionStorage.removeItem(SK); } catch { /* 이번만 */ } };
 async function tok() {
   if (Date.now() > sess.exp) { sess = await refresh(sess); writeSess(sess); }
@@ -92,13 +100,18 @@ function render() {
       <div class="hd-right">
         <span class="state ${gameOpen() ? "on" : "off"}"><i></i>${gameOpen() ? "게임 열림" : "게임 닫힘"}</span>
         <button class="btn ghost sm" data-reload>새로고침</button>
+        <a class="btn ghost sm" href="index.html" style="text-decoration:none">게임으로</a>
         <button class="btn ghost sm" data-logout>로그아웃</button>
       </div>
     </header>
     <div class="wrap" id="main"></div>`;
   app.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => { tab = b.dataset.tab; render(); }));
   $("[data-reload]", app).addEventListener("click", async e => { e.target.disabled = true; try { await loadAll(); } catch (err) { alert(friendly(err)); } render(); });
-  $("[data-logout]", app).addEventListener("click", () => { writeSess(null); sess = null; renderLogin(); });
+  $("[data-logout]", app).addEventListener("click", () => {
+    writeSess(null); sess = null;
+    try { const g = JSON.parse(localStorage.getItem("gfc_session") || "null"); if (g?.admin) localStorage.removeItem("gfc_session"); } catch { /* 없음 */ }   // 게임의 선생님 로그인도 함께
+    renderLogin();
+  });
   const main = $("#main", app);
   if (tab === "students") studentsTab(main);
   if (tab === "stats") statsTab(main);
