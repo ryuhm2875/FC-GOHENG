@@ -8,7 +8,7 @@ const shell = inner => `<div class="gate">
   </div>`;
 
 // onLogin(id, pw) → Promise. 실패하면 오류 메시지를 보여 줌
-export function renderLogin(root, { onLogin, notice = "" }) {
+export function renderLogin(root, { onLogin, onSignupView = null, notice = "" }) {
   root.innerHTML = shell(`
     <h1>고흥FC 드림 프로젝트</h1>
     <p class="mute">학번과 비밀번호로 들어가세요.</p>
@@ -18,10 +18,12 @@ export function renderLogin(root, { onLogin, notice = "" }) {
       <button class="btn btn-kit btn-wide" type="submit">들어가기</button>
     </form>
     <p class="gate-msg" role="status" aria-live="polite">${esc(notice)}</p>
+    ${onSignupView ? `<button class="btn btn-ghost btn-wide gate-join" type="button" data-join>처음이에요 · 가입하기</button>` : ""}
     <button class="linkbtn gate-teacher" type="button" data-teacher>선생님 로그인 (이메일)</button>
     <p class="gate-note">로그인하면 게임 진행 기록이 서버에 저장되어, 다른 기기에서도 이어서 할 수 있습니다.<br>비밀번호를 잊었으면 선생님께 말씀드리세요.</p>`);
   const form = root.querySelector(".gate-form"), msg = root.querySelector(".gate-msg"), btn = form.querySelector("button");
   form.sid.focus();
+  root.querySelector("[data-join]")?.addEventListener("click", () => onSignupView());
   // 학번 칸은 숫자 키패드라 이메일을 칠 수 없음 → 선생님은 이메일 칸으로 바꿔서
   root.querySelector("[data-teacher]").addEventListener("click", e => {
     const t = form.sid.type !== "email";
@@ -42,6 +44,36 @@ export function renderLogin(root, { onLogin, notice = "" }) {
       form.classList.remove("shake"); void form.offsetWidth; form.classList.add("shake");
       form.pw.select();
       btn.disabled = false; btn.textContent = "들어가기";
+    }
+  });
+}
+
+// 학생 가입: 학번·이름·비밀번호. onSignup(sid, name, pw, pw2) → Promise
+export function renderSignup(root, { onSignup, onBack }) {
+  root.innerHTML = shell(`
+    <h1>가입하기</h1>
+    <p class="mute">학번과 이름을 정확히 적어 주세요.</p>
+    <form class="gate-form" autocomplete="off">
+      <input class="gate-input gate-id" name="sid" type="text" inputmode="numeric" autocapitalize="off" spellcheck="false" aria-label="학번" placeholder="학번 (예: 20301)">
+      <input class="gate-input gate-id" name="nm" type="text" autocapitalize="off" spellcheck="false" maxlength="20" aria-label="이름" placeholder="이름">
+      <input class="gate-input" name="pw" type="password" autocapitalize="off" aria-label="비밀번호" placeholder="비밀번호 (4자 이상)">
+      <input class="gate-input" name="pw2" type="password" autocapitalize="off" aria-label="비밀번호 확인" placeholder="비밀번호 확인">
+      <button class="btn btn-kit btn-wide" type="submit">가입하고 시작하기</button>
+    </form>
+    <p class="gate-msg" role="status" aria-live="polite"></p>
+    <button class="linkbtn gate-teacher" type="button" data-back>이미 가입했어요 · 로그인</button>
+    <p class="gate-note">가입하면 게임 진행 기록이 서버에 저장되어, 다른 기기에서도 이어서 할 수 있습니다.<br>비밀번호는 잊지 않게 적어 두세요. 잊으면 선생님께 말씀드리세요.</p>`);
+  const form = root.querySelector(".gate-form"), msg = root.querySelector(".gate-msg"), btn = form.querySelector("button");
+  form.sid.focus();
+  root.querySelector("[data-back]").addEventListener("click", () => onBack());
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    btn.disabled = true; btn.textContent = "가입하는 중…"; msg.textContent = "";
+    try { await onSignup(form.sid.value, form.nm.value, form.pw.value, form.pw2.value); }
+    catch (err) {
+      msg.textContent = err.message || "가입하지 못했습니다.";
+      form.classList.remove("shake"); void form.offsetWidth; form.classList.add("shake");
+      btn.disabled = false; btn.textContent = "가입하고 시작하기";
     }
   });
 }

@@ -567,3 +567,10 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
 - 새 대본 동작(actOf): `dummy`, `shieldOut`, `oppPassCut`. 새 경기장 단계(sim.js): `shield`, 슈팅 `parryTo`, `kickLoose`, 장면 연출 `hint.moves`(그 자리까지 오면 선택지)
 - 함께 고친 것: '라인 밖으로' 문장이 터치라인이면 골라인 대신 터치라인으로, 골키퍼에게 돌린 공이 끊기면 실제로 골키퍼에게 주던 공이 끊김, 빈 공간 장면의 길목 비우기 폭 7 → 8.5m
 - 점검 도구 `tools/dev/new-scenes-audit.mjs [경기 수] [FW|MF|DF]`: 새 장면을 자주 나오게 해 두고 선택지가 뜰 때의 경기장(누가 어디에, 박스 안, 등 뒤, 2 대 2…)과 결과 뒤 사건(우리 골킥, 내가 끊음, {wing}이 때림, {opp2}가 때림, 오프사이드 프리킥…)을 맞대 봄. deep-audit '페널티' 규칙은 "페널티 지점 쪽"(자리 말)을 빼고 페널티킥만
+
+## 26. 학생 직접 가입 (2026-10-26, 사용자: "누구나 가입하는 방식으로, 내가 계정을 관리할 수 있게")
+- 로그인 화면 [처음이에요 · 가입하기] → 학번·이름·비밀번호(4자+)·확인 (`js/ui/login.js renderSignup`, `js/net/online.js signup`). 순서: 학번이 비었는지 확인 → 새 열쇠로 계정 만들기 → 그 계정으로 `fcg_login/{학번}` 만들기(이미 있으면 실패 `currentDocument.exists=false`) → `fcg_students/{학번}` {name, created, self: true}
+- 보안 규칙: 학생은 자기 이메일과 맞는 열쇠로, 가입이 열려 있을 때(`fcg_config/main.signup`, 없으면 열림)만 새 학번을 만들 수 있음. 이미 있는 학번은 못 덮음. 기록 칸 만들기는 name·created·self만, 이름 1~20자
+- 관리자: 학생 목록에 '가입' 표시, [이름] 고치기 버튼, 게임 스위치 탭에 '학생이 직접 가입할 수 있게' 켜고 끄기(끄면 가입 버튼이 사라짐)
+- 가입하다 끊겨 기록 칸이 없으면 로그인할 때 만들어 둠(이름은 학번)
+- **규칙이 바뀌었으므로 Firebase 콘솔 규칙 탭에 새 firestore.rules를 다시 게시해야 가입이 됨**

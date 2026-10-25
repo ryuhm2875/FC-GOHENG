@@ -20,8 +20,8 @@ import { hallModal, checkAchievements } from "./ui/hall.js";
 import { setScene, enter, preload, SCENES } from "./ui/fx.js";
 import { sfx } from "./ui/sfx.js";
 import { bgm } from "./ui/bgm.js";
-import { login, logout, checkAccess, resume, watch, track, flush, pushSave, session } from "./net/online.js";
-import { renderLogin, renderLock, renderLoading } from "./ui/login.js";
+import { login, logout, checkAccess, resume, watch, track, flush, pushSave, session, signup, signupOpen } from "./net/online.js";
+import { renderLogin, renderSignup, renderLock, renderLoading } from "./ui/login.js";
 
 // 메뉴 아이콘 (선으로 그린 SVG)
 const ICONS = {
@@ -337,7 +337,10 @@ async function boot(notice = "") {
   }
   if (r.kind === "login" || r.kind === "relogin") {
     if (r.kind === "relogin") logout();
-    renderLogin(app.root, { notice: notice || r.message || "", onLogin: async (id, pw) => { await login(id, pw); boot(); } });
+    const canJoin = await signupOpen();                    // 관리자 페이지에서 가입을 열어 두었으면 가입 버튼
+    const showLogin = () => renderLogin(app.root, { notice: notice || r.message || "", onLogin: async (id, pw) => { await login(id, pw); boot(); },
+      onSignupView: canJoin ? () => renderSignup(app.root, { onSignup: async (sid, nm, pw, pw2) => { await signup(sid, nm, pw, pw2); boot(); }, onBack: showLogin }) : null });
+    showLogin();
     return;
   }
   lock(r);

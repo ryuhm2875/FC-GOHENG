@@ -12392,7 +12392,8 @@ function authMessage(e) {
   if (/INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD|EMAIL_NOT_FOUND|INVALID_EMAIL/.test(c)) return "학번 또는 비밀번호가 맞지 않습니다.";
   if (/TOO_MANY_ATTEMPTS/.test(c)) return "여러 번 틀려서 잠시 막혔습니다. 몇 분 뒤에 다시 해 보세요.";
   if (/USER_DISABLED/.test(c)) return "사용이 중지된 계정입니다.";
-  if (/EMAIL_EXISTS/.test(c)) return "이미 있는 계정입니다.";
+  if (/EMAIL_EXISTS|ALREADY_EXISTS/.test(c)) return "이미 가입된 학번입니다.";
+  if (/FAILED_PRECONDITION/.test(c)) return "이미 가입된 학번입니다.";
   if (/WEAK_PASSWORD/.test(c)) return "비밀번호가 너무 짧습니다.";
   if (/PERMISSION_DENIED|403/.test(c)) return "권한이 없습니다.";
   return `서버 오류 (${c})`;
@@ -12433,8 +12434,10 @@ async function getDoc(path, tok = null) {
   catch (e) { if (e.status === 404 || e.code === "NOT_FOUND") return null; throw e; }
 }
 // 문서 쓰기. fields 를 주면 그 칸만 바꿈 (나머지 칸은 그대로)
-async function setDoc(path, data, tok, fields = null) {
-  const mask = (fields || []).map(f => `updateMask.fieldPaths=${encodeURIComponent(f)}`).join("&");
+async function setDoc(path, data, tok, fields = null, { mustNotExist = false } = {}) {
+  const q = (fields || []).map(f => `updateMask.fieldPaths=${encodeURIComponent(f)}`);
+  if (mustNotExist) q.push("currentDocument.exists=false");          // 새로 만들 때만 (이미 있으면 실패)
+  const mask = q.join("&");
   return call(`${docsUrl()}/${path}${mask ? `?${mask}` : ""}`, {
     method: "PATCH", headers: { "Content-Type": "application/json", ...hdr(tok) },
     body: JSON.stringify({ fields: fieldsOf(data) }),
@@ -12496,7 +12499,7 @@ return { FB, ADMIN_EMAIL, STUDENT_DOMAIN, studentEmail, studentPassword, FbError
 
 // ── js/net/online.js
 __m["js/net/online.js"] = (function () {
-const {ADMIN_EMAIL, studentEmail, studentPassword, signIn, refresh, getDoc, setDoc, authMessage, pack, unpack, inQuiet} = __m["js/net/fb.js"];
+const {ADMIN_EMAIL, studentEmail, studentPassword, signIn, signUp, refresh, getDoc, setDoc, authMessage, pack, unpack, inQuiet, newKey} = __m["js/net/fb.js"];
 const {rawAuto, putRawAuto} = __m["js/state.js"];
 const {setUserNS} = __m["js/userkey.js"];
 const {turnInfo, label} = __m["js/engine/calendar.js"];
@@ -12570,6 +12573,34 @@ async function login(id, pw) {
   return sess;
 }
 
+// 학생이 직접 가입 (관리자 페이지에서 가입을 열어 두었을 때). 만든 계정은 관리자 페이지 학생 목록에 그대로 들어감
+const SID_RE = /^[0-9A-Za-z-]{1,20}$/;
+async function signupOpen() {
+  try { const c = await getDoc("fcg_config/main"); return c?.signup !== false; } catch { return true; }
+}
+async function signup(sid, name, pw, pw2) {
+  sid = String(sid || "").trim(); name = String(name || "").trim(); pw = String(pw || "");
+  if (!SID_RE.test(sid)) throw new Error("학번은 숫자로 적어 주세요. (예: 20301)");
+  if (!name || name.length > 20) throw new Error("이름을 적어 주세요.");
+  if (pw.length < 4) throw new Error("비밀번호는 4자 이상이어야 합니다.");
+  if (pw !== pw2) throw new Error("비밀번호 확인이 맞지 않습니다.");
+  try {
+    if (!(await signupOpen())) throw new Error("지금은 가입을 받지 않습니다. 선생님께 문의해 주세요.");
+    if (await getDoc(`fcg_login/${sid}`)) throw new Error("이미 가입된 학번입니다. 내 학번이 맞다면 선생님께 말씀드리세요.");
+    const key = newKey();
+    const a = await signUp(studentEmail(sid, key), studentPassword(pw));
+    await setDoc(`fcg_login/${sid}`, { key, blocked: false }, a.idToken, null, { mustNotExist: true });
+    await setDoc(`fcg_students/${sid}`, { name, created: new Date(), self: true }, a.idToken, null, { mustNotExist: true });
+    sess = { ...a, admin: false, sid, key, name };
+  } catch (e) {
+    if (e.code) throw new Error(authMessage(e));
+    throw e;
+  }
+  writeSess(sess);
+  await afterLogin();
+  return sess;
+}
+
 function logout() {
   flush().catch(() => {});
   sess = null; play = null; now = null; writeSess(null); setUserNS(null);
@@ -12578,7 +12609,11 @@ function logout() {
 async function afterLogin() {
   setUserNS(sess.sid);
   if (!sess.sid) return;
-  const doc = await getDoc(`fcg_students/${sess.sid}`, await token()).catch(() => null);
+  let doc = await getDoc(`fcg_students/${sess.sid}`, await token()).catch(() => undefined);
+  if (doc === null) {                                     // 가입하다 끊겨 기록 칸이 없으면 지금 만듦 (이름은 학번으로, 선생님이 고칠 수 있음)
+    await setDoc(`fcg_students/${sess.sid}`, { name: sess.name || sess.sid, created: new Date(), self: true }, await token(), null, { mustNotExist: true }).catch(() => {});
+    doc = { name: sess.name || sess.sid };
+  }
   if (doc) { play = normPlay(doc.play); sess.name = doc.name || ""; writeSess(sess); }
   await pullSave().catch(() => false);
 }
@@ -12611,6 +12646,7 @@ async function resume() {
   if (sess.sid && !play) {
     try {
       const doc = await getDoc(`fcg_students/${sess.sid}`, await token());
+      if (!doc) await setDoc(`fcg_students/${sess.sid}`, { name: sess.name || sess.sid, created: new Date(), self: true }, await token(), null, { mustNotExist: true }).catch(() => {});
       play = normPlay(doc?.play); sess.name = doc?.name || sess.name;
     } catch (e) {
       if (e.status === 400 || e.status === 401) { logout(); return false; }   // 로그인 만료
@@ -12777,7 +12813,7 @@ async function flush() {
   return flushing;
 }
 
-return { session, isStudent, login, logout, checkAccess, resume, watch, pushSave, bandOf, track, flush };
+return { session, isStudent, login, SID_RE, signupOpen, signup, logout, checkAccess, resume, watch, pushSave, bandOf, track, flush };
 })();
 (__fix["js/net/online.js"] || []).forEach(f => f());
 
@@ -17004,7 +17040,7 @@ const shell = inner => `<div class="gate">
   </div>`;
 
 // onLogin(id, pw) → Promise. 실패하면 오류 메시지를 보여 줌
-function renderLogin(root, { onLogin, notice = "" }) {
+function renderLogin(root, { onLogin, onSignupView = null, notice = "" }) {
   root.innerHTML = shell(`
     <h1>고흥FC 드림 프로젝트</h1>
     <p class="mute">학번과 비밀번호로 들어가세요.</p>
@@ -17014,10 +17050,12 @@ function renderLogin(root, { onLogin, notice = "" }) {
       <button class="btn btn-kit btn-wide" type="submit">들어가기</button>
     </form>
     <p class="gate-msg" role="status" aria-live="polite">${esc(notice)}</p>
+    ${onSignupView ? `<button class="btn btn-ghost btn-wide gate-join" type="button" data-join>처음이에요 · 가입하기</button>` : ""}
     <button class="linkbtn gate-teacher" type="button" data-teacher>선생님 로그인 (이메일)</button>
     <p class="gate-note">로그인하면 게임 진행 기록이 서버에 저장되어, 다른 기기에서도 이어서 할 수 있습니다.<br>비밀번호를 잊었으면 선생님께 말씀드리세요.</p>`);
   const form = root.querySelector(".gate-form"), msg = root.querySelector(".gate-msg"), btn = form.querySelector("button");
   form.sid.focus();
+  root.querySelector("[data-join]")?.addEventListener("click", () => onSignupView());
   // 학번 칸은 숫자 키패드라 이메일을 칠 수 없음 → 선생님은 이메일 칸으로 바꿔서
   root.querySelector("[data-teacher]").addEventListener("click", e => {
     const t = form.sid.type !== "email";
@@ -17042,6 +17080,36 @@ function renderLogin(root, { onLogin, notice = "" }) {
   });
 }
 
+// 학생 가입: 학번·이름·비밀번호. onSignup(sid, name, pw, pw2) → Promise
+function renderSignup(root, { onSignup, onBack }) {
+  root.innerHTML = shell(`
+    <h1>가입하기</h1>
+    <p class="mute">학번과 이름을 정확히 적어 주세요.</p>
+    <form class="gate-form" autocomplete="off">
+      <input class="gate-input gate-id" name="sid" type="text" inputmode="numeric" autocapitalize="off" spellcheck="false" aria-label="학번" placeholder="학번 (예: 20301)">
+      <input class="gate-input gate-id" name="nm" type="text" autocapitalize="off" spellcheck="false" maxlength="20" aria-label="이름" placeholder="이름">
+      <input class="gate-input" name="pw" type="password" autocapitalize="off" aria-label="비밀번호" placeholder="비밀번호 (4자 이상)">
+      <input class="gate-input" name="pw2" type="password" autocapitalize="off" aria-label="비밀번호 확인" placeholder="비밀번호 확인">
+      <button class="btn btn-kit btn-wide" type="submit">가입하고 시작하기</button>
+    </form>
+    <p class="gate-msg" role="status" aria-live="polite"></p>
+    <button class="linkbtn gate-teacher" type="button" data-back>이미 가입했어요 · 로그인</button>
+    <p class="gate-note">가입하면 게임 진행 기록이 서버에 저장되어, 다른 기기에서도 이어서 할 수 있습니다.<br>비밀번호는 잊지 않게 적어 두세요. 잊으면 선생님께 말씀드리세요.</p>`);
+  const form = root.querySelector(".gate-form"), msg = root.querySelector(".gate-msg"), btn = form.querySelector("button");
+  form.sid.focus();
+  root.querySelector("[data-back]").addEventListener("click", () => onBack());
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    btn.disabled = true; btn.textContent = "가입하는 중…"; msg.textContent = "";
+    try { await onSignup(form.sid.value, form.nm.value, form.pw.value, form.pw2.value); }
+    catch (err) {
+      msg.textContent = err.message || "가입하지 못했습니다.";
+      form.classList.remove("shake"); void form.offsetWidth; form.classList.add("shake");
+      btn.disabled = false; btn.textContent = "가입하고 시작하기";
+    }
+  });
+}
+
 // 닫힘·차단·인터넷 없음
 function renderLock(root, r, { onRetry, onOther }) {
   const title = { closed: "지금은 쉬는 시간", blocked: "들어갈 수 없습니다", offline: "연결이 끊겼습니다" }[r.kind] || "잠시만요";
@@ -17060,7 +17128,7 @@ function renderLoading(root, text = "확인 중…") {
   root.innerHTML = shell(`<p class="mute" style="margin-top:12px">${esc(text)}</p>`);
 }
 
-return { renderLogin, renderLock, renderLoading };
+return { renderLogin, renderSignup, renderLock, renderLoading };
 })();
 (__fix["js/ui/login.js"] || []).forEach(f => f());
 
@@ -17087,8 +17155,8 @@ const {hallModal, checkAchievements} = __m["js/ui/hall.js"];
 const {setScene, enter, preload, SCENES} = __m["js/ui/fx.js"];
 const {sfx} = __m["js/ui/sfx.js"];
 const {bgm} = __m["js/ui/bgm.js"];
-const {login, logout, checkAccess, resume, watch, track, flush, pushSave, session} = __m["js/net/online.js"];
-const {renderLogin, renderLock, renderLoading} = __m["js/ui/login.js"];
+const {login, logout, checkAccess, resume, watch, track, flush, pushSave, session, signup, signupOpen} = __m["js/net/online.js"];
+const {renderLogin, renderSignup, renderLock, renderLoading} = __m["js/ui/login.js"];
 // 진입점: 화면 전환, 저장, 한 주 진행
 
 
@@ -17427,7 +17495,10 @@ async function boot(notice = "") {
   }
   if (r.kind === "login" || r.kind === "relogin") {
     if (r.kind === "relogin") logout();
-    renderLogin(app.root, { notice: notice || r.message || "", onLogin: async (id, pw) => { await login(id, pw); boot(); } });
+    const canJoin = await signupOpen();                    // 관리자 페이지에서 가입을 열어 두었으면 가입 버튼
+    const showLogin = () => renderLogin(app.root, { notice: notice || r.message || "", onLogin: async (id, pw) => { await login(id, pw); boot(); },
+      onSignupView: canJoin ? () => renderSignup(app.root, { onSignup: async (sid, nm, pw, pw2) => { await signup(sid, nm, pw, pw2); boot(); }, onBack: showLogin }) : null });
+    showLogin();
     return;
   }
   lock(r);

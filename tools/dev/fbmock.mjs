@@ -28,11 +28,20 @@ const val = v => v == null ? null : "stringValue" in v ? v.stringValue : "boolea
 function allowed(op, coll, id, email, before, after) {
   const isAdmin = email === ADMIN;
   const isMe = () => { const lg = docs.get(`fcg_login/${id}`); if (!lg || !email) return false; const key = val(lg.fields.key); const blk = val(lg.fields.blocked); return email === `${id}.${key}@fc.goheung` && blk !== true; };
-  if (coll === "fcg_config" || coll === "fcg_login") return op === "read" || op === "list" ? true : isAdmin;
+  if (coll === "fcg_config") return op === "read" || op === "list" ? true : isAdmin;
+  if (coll === "fcg_login") {
+    if (op === "read" || op === "list") return true;
+    if (op === "create" && !isAdmin) {            // 학생 직접 가입
+      const cfg = docs.get("fcg_config/main"), open = !cfg || val(cfg.fields.signup) !== false;
+      return !!email && open && /^[0-9A-Za-z-]{1,20}$/.test(id) && Object.keys(after || {}).every(k => ["key", "blocked"].includes(k)) && after?.blocked === false && email === `${id}.${after.key}@fc.goheung`;
+    }
+    return isAdmin;
+  }
   if (coll === "fcg_students") {
     if (op === "list") return isAdmin;
     if (op === "read") return isAdmin || isMe();
-    if (op === "create" || op === "delete") return isAdmin;
+    if (op === "create") return isAdmin || (isMe() && Object.keys(after || {}).every(k => ["name", "created", "self"].includes(k)) && typeof after?.name === "string" && after.name.length >= 1 && after.name.length <= 20);
+    if (op === "delete") return isAdmin;
     if (op === "update") {
       if (isAdmin) return true;
       if (!isMe()) return false;
@@ -98,6 +107,7 @@ const server = http.createServer(async (req, res) => {
       if (req.method === "PATCH") {
         const body = JSON.parse(raw || "{}");
         const mask = url.searchParams.getAll("updateMask.fieldPaths");
+        if (url.searchParams.get("currentDocument.exists") === "false" && cur) return err(res, 400, "FAILED_PRECONDITION");
         const fields = mask.length ? { ...(cur?.fields || {}) } : {};
         if (mask.length) for (const f of mask) { if (body.fields?.[f] !== undefined) fields[f] = body.fields[f]; else delete fields[f]; }
         else Object.assign(fields, body.fields || {});

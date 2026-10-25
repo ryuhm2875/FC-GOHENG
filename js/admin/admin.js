@@ -49,7 +49,7 @@ async function loadAll() {
   const [logins, docs, c] = await Promise.all([listDocs("fcg_login"), listDocs("fcg_students", t), getDoc("fcg_config/main")]);
   const byId = new Map(docs.map(d => [d.id, d]));
   students = logins.map(l => ({ sid: l.id, key: l.key, blocked: !!l.blocked, ...(byId.get(l.id) || {}) }));
-  cfg = c || { open: true, message: "", quiet: { on: false, from: "22:00", to: "07:00", message: "" } };
+  cfg = c || { open: true, signup: true, message: "", quiet: { on: false, from: "22:00", to: "07:00", message: "" } };
 }
 
 // ── 계산 ─────────────────────────────
@@ -134,7 +134,7 @@ function studentsTab(main) {
       ${students.length ? `<div class="scroll"><table>
         <thead><tr>${th("sid", "학번")}${th("name", "이름")}${th("status", "상태")}${th("when", "진행")}${th("ovr", "종합", "num")}${th("tend", "경기 성향")}${th("minutes", "플레이", "num")}${th("seen", "마지막 접속")}<th></th></tr></thead>
         <tbody>${rows.map(s => `<tr class="${s.blocked ? "blocked" : ""}">
-          <td>${esc(s.sid)}</td><td>${esc(s.name || "")}</td>
+          <td>${esc(s.sid)}</td><td>${esc(s.name || "")}${s.self ? ` <span class="tag" title="학생이 직접 가입">가입</span>` : ""}</td>
           <td>${s.blocked ? `<span class="tag off">차단</span>` : `<span class="tag on">사용</span>`}</td>
           <td>${s.now ? `${esc(s.now.when)}${s.now.ending ? ` · <b>${esc(s.now.ending)}</b>` : ""}<br><small class="mute">${esc(s.now.pos)}${s.now.detail ? ` ${esc(s.now.detail)}` : ""} · ${s.play?.run || 1}번째 판</small>` : `<span class="mute">아직 시작 전</span>`}</td>
           <td class="num">${s.now?.ovr ?? "–"}</td>
@@ -144,6 +144,7 @@ function studentsTab(main) {
           <td><div class="row" style="flex-wrap:nowrap">
             <button class="btn sm" data-detail="${esc(s.sid)}">상세</button>
             <button class="btn sm" data-block="${esc(s.sid)}">${s.blocked ? "해제" : "차단"}</button>
+            <button class="btn sm" data-name="${esc(s.sid)}">이름</button>
             <button class="btn sm" data-pw="${esc(s.sid)}">비밀번호</button>
             <button class="btn sm danger" data-del="${esc(s.sid)}">삭제</button></div></td>
         </tr>`).join("")}</tbody></table></div>` : `<p class="empty">등록된 학생이 없습니다. 위에서 학생을 등록하세요.</p>`}
@@ -180,6 +181,13 @@ function studentsTab(main) {
     b.disabled = true;
     try { await setDoc(`fcg_login/${s.sid}`, { key: s.key, blocked: !s.blocked }, await tok()); s.blocked = !s.blocked; render(); }
     catch (err) { alert(friendly(err)); b.disabled = false; }
+  }));
+  main.querySelectorAll("[data-name]").forEach(b => b.addEventListener("click", async () => {
+    const s = students.find(x => x.sid === b.dataset.name);
+    const nm = prompt(`${s.sid} 학생의 이름`, s.name || "");
+    if (nm == null || !nm.trim()) return;
+    try { await setDoc(`fcg_students/${s.sid}`, { name: nm.trim().slice(0, 20) }, await tok(), ["name"]); s.name = nm.trim().slice(0, 20); render(); }
+    catch (err) { alert(friendly(err)); }
   }));
   main.querySelectorAll("[data-pw]").forEach(b => b.addEventListener("click", async () => {
     const s = students.find(x => x.sid === b.dataset.pw);
@@ -376,6 +384,10 @@ function switchTab(main) {
       </div>
       <p class="note">닫으면 학생 화면은 3분 안에 안내 화면으로 바뀝니다. 진행은 자동 저장되어 있어 다시 열면 이어서 할 수 있습니다. 선생님 계정은 닫혀 있어도 들어갈 수 있습니다.</p>
     </div>
+    <div class="card"><h2>학생 가입</h2>
+      <label class="row"><input type="checkbox" id="su-on" ${cfg.signup !== false ? "checked" : ""}> <span>학생이 로그인 화면에서 직접 가입할 수 있게</span></label>
+      <p class="note">끄면 가입 버튼이 사라지고, 이미 가입한 학생과 선생님이 등록한 학생만 들어올 수 있습니다. 직접 가입한 학생도 '학생' 탭에서 이름 고치기·차단·비밀번호·삭제를 할 수 있습니다.</p>
+    </div>
     <div class="card"><h2>시간 제한</h2>
       <label class="row"><input type="checkbox" id="q-on" ${q.on ? "checked" : ""}> <span>정해진 시간에는 자동으로 닫기</span></label>
       <div class="formgrid" style="margin-top:12px">
@@ -389,6 +401,7 @@ function switchTab(main) {
     e.target.disabled = true;
     const next = {
       open: $("input[name=open]:checked", main).value === "1",
+      signup: $("#su-on", main).checked,
       message: $("#s-msg", main).value.trim(),
       quiet: { on: $("#q-on", main).checked, from: $("#q-from", main).value || "22:00", to: $("#q-to", main).value || "07:00", message: $("#q-msg", main).value.trim() },
     };

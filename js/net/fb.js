@@ -61,7 +61,8 @@ export function authMessage(e) {
   if (/INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD|EMAIL_NOT_FOUND|INVALID_EMAIL/.test(c)) return "학번 또는 비밀번호가 맞지 않습니다.";
   if (/TOO_MANY_ATTEMPTS/.test(c)) return "여러 번 틀려서 잠시 막혔습니다. 몇 분 뒤에 다시 해 보세요.";
   if (/USER_DISABLED/.test(c)) return "사용이 중지된 계정입니다.";
-  if (/EMAIL_EXISTS/.test(c)) return "이미 있는 계정입니다.";
+  if (/EMAIL_EXISTS|ALREADY_EXISTS/.test(c)) return "이미 가입된 학번입니다.";
+  if (/FAILED_PRECONDITION/.test(c)) return "이미 가입된 학번입니다.";
   if (/WEAK_PASSWORD/.test(c)) return "비밀번호가 너무 짧습니다.";
   if (/PERMISSION_DENIED|403/.test(c)) return "권한이 없습니다.";
   return `서버 오류 (${c})`;
@@ -102,8 +103,10 @@ export async function getDoc(path, tok = null) {
   catch (e) { if (e.status === 404 || e.code === "NOT_FOUND") return null; throw e; }
 }
 // 문서 쓰기. fields 를 주면 그 칸만 바꿈 (나머지 칸은 그대로)
-export async function setDoc(path, data, tok, fields = null) {
-  const mask = (fields || []).map(f => `updateMask.fieldPaths=${encodeURIComponent(f)}`).join("&");
+export async function setDoc(path, data, tok, fields = null, { mustNotExist = false } = {}) {
+  const q = (fields || []).map(f => `updateMask.fieldPaths=${encodeURIComponent(f)}`);
+  if (mustNotExist) q.push("currentDocument.exists=false");          // 새로 만들 때만 (이미 있으면 실패)
+  const mask = q.join("&");
   return call(`${docsUrl()}/${path}${mask ? `?${mask}` : ""}`, {
     method: "PATCH", headers: { "Content-Type": "application/json", ...hdr(tok) },
     body: JSON.stringify({ fields: fieldsOf(data) }),

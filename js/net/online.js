@@ -4,7 +4,7 @@
 //   fcg_login/{학번}      { key, blocked }                                       누구나 읽음, 관리자만 씀
 //   fcg_students/{학번}   { name, created, ...관리자 칸 / play, now, lastSeen (학생이 씀) }
 //   fcg_saves/{학번}      { enc, data, at, summary }                             자기 것만
-import { ADMIN_EMAIL, studentEmail, studentPassword, signIn, refresh, getDoc, setDoc, authMessage, pack, unpack, inQuiet } from "./fb.js";
+import { ADMIN_EMAIL, studentEmail, studentPassword, signIn, signUp, refresh, getDoc, setDoc, authMessage, pack, unpack, inQuiet, newKey } from "./fb.js";
 import { rawAuto, putRawAuto } from "../state.js";
 import { setUserNS } from "../userkey.js";
 import { turnInfo, label } from "../engine/calendar.js";
@@ -64,6 +64,34 @@ export async function login(id, pw) {
   return sess;
 }
 
+// 학생이 직접 가입 (관리자 페이지에서 가입을 열어 두었을 때). 만든 계정은 관리자 페이지 학생 목록에 그대로 들어감
+export const SID_RE = /^[0-9A-Za-z-]{1,20}$/;
+export async function signupOpen() {
+  try { const c = await getDoc("fcg_config/main"); return c?.signup !== false; } catch { return true; }
+}
+export async function signup(sid, name, pw, pw2) {
+  sid = String(sid || "").trim(); name = String(name || "").trim(); pw = String(pw || "");
+  if (!SID_RE.test(sid)) throw new Error("학번은 숫자로 적어 주세요. (예: 20301)");
+  if (!name || name.length > 20) throw new Error("이름을 적어 주세요.");
+  if (pw.length < 4) throw new Error("비밀번호는 4자 이상이어야 합니다.");
+  if (pw !== pw2) throw new Error("비밀번호 확인이 맞지 않습니다.");
+  try {
+    if (!(await signupOpen())) throw new Error("지금은 가입을 받지 않습니다. 선생님께 문의해 주세요.");
+    if (await getDoc(`fcg_login/${sid}`)) throw new Error("이미 가입된 학번입니다. 내 학번이 맞다면 선생님께 말씀드리세요.");
+    const key = newKey();
+    const a = await signUp(studentEmail(sid, key), studentPassword(pw));
+    await setDoc(`fcg_login/${sid}`, { key, blocked: false }, a.idToken, null, { mustNotExist: true });
+    await setDoc(`fcg_students/${sid}`, { name, created: new Date(), self: true }, a.idToken, null, { mustNotExist: true });
+    sess = { ...a, admin: false, sid, key, name };
+  } catch (e) {
+    if (e.code) throw new Error(authMessage(e));
+    throw e;
+  }
+  writeSess(sess);
+  await afterLogin();
+  return sess;
+}
+
 export function logout() {
   flush().catch(() => {});
   sess = null; play = null; now = null; writeSess(null); setUserNS(null);
@@ -72,7 +100,11 @@ export function logout() {
 async function afterLogin() {
   setUserNS(sess.sid);
   if (!sess.sid) return;
-  const doc = await getDoc(`fcg_students/${sess.sid}`, await token()).catch(() => null);
+  let doc = await getDoc(`fcg_students/${sess.sid}`, await token()).catch(() => undefined);
+  if (doc === null) {                                     // 가입하다 끊겨 기록 칸이 없으면 지금 만듦 (이름은 학번으로, 선생님이 고칠 수 있음)
+    await setDoc(`fcg_students/${sess.sid}`, { name: sess.name || sess.sid, created: new Date(), self: true }, await token(), null, { mustNotExist: true }).catch(() => {});
+    doc = { name: sess.name || sess.sid };
+  }
   if (doc) { play = normPlay(doc.play); sess.name = doc.name || ""; writeSess(sess); }
   await pullSave().catch(() => false);
 }
@@ -105,6 +137,7 @@ export async function resume() {
   if (sess.sid && !play) {
     try {
       const doc = await getDoc(`fcg_students/${sess.sid}`, await token());
+      if (!doc) await setDoc(`fcg_students/${sess.sid}`, { name: sess.name || sess.sid, created: new Date(), self: true }, await token(), null, { mustNotExist: true }).catch(() => {});
       play = normPlay(doc?.play); sess.name = doc?.name || sess.name;
     } catch (e) {
       if (e.status === 400 || e.status === 401) { logout(); return false; }   // 로그인 만료
