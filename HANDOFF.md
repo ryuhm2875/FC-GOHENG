@@ -168,6 +168,7 @@ Playwright는 `createRequire("/usr/lib/node_modules/")`로 불러옵니다. 브�
 | `moments.mjs` | `node tools/dev/moments.mjs all 60` | 내 장면이 포지션별로 몇 번, 어디서 나오는지. 한 번도 안 나오는 장면 |
 | `deep-audit.mjs` | `PICK=random node tools/dev/deep-audit.mjs 600` (PICK=auto, SEED, SHOW) | **장면 문장과 바둑판**: 장면 문장이 말하는 상황(코너킥 뒤, 역습, 박스 안, 측면, 마지막 수비수, 골키퍼가 나옴…)을 경기장과 맞대 장면별 불일치율, 결과 줄 속 {mate}·{opp}가 실제로 움직인 선수인지, 원투 문장과 실제 패스, 득점 기록과 실제 득점자, 코너킥·슈팅 통계, 한 틱 순간이동 |
 | `restart-audit.mjs` | `node tools/dev/restart-audit.mjs 300` | **재개·선방**: 공이 라인 안에 있는데 스로인·코너킥 선언, 반칙한 수비와 반칙당한 선수 거리, 선방 문장(잡음/쳐 냄)과 골키퍼 동작, 코너킥 원인 문장, 중거리 거리 |
+| `shape-audit.mjs` | `node tools/dev/shape-audit.mjs 120` (SEED, SHOW, PICK) | **팀 모양·재시작 배치**: 공격·수비 팀 길이·폭·라인 간격(공 깊이별), 공 근처 뭉침, 역습 때 복귀 속도, 공 없는 선수 서 있는 비율, 골키퍼 자리, 득점 뒤 킥오프(걸린 시간·제 진영 밖·센터서클 안)·프리킥 9.15m·벽 인원·골킥 박스·스로인 지원·페널티킥 배치 |
 | `scene-test.html` + `scene-shots.mjs` | `node tools/dev/scene-shots.mjs fw_cross,df_build` (인자 없으면 전체) | 장면을 하나씩 띄워 `/tmp/scene-shots/`에 저장 |
 
 주의: `pkill -f 패턴`이 자기 셸까지 죽인 적이 있음. 서버는 PID로 끄세요.

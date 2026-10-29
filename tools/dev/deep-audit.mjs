@@ -93,7 +93,8 @@ for (let k = 0; k < N; k++) {
       if (/막을 사람은 나 하나/.test(txt)) { const behind = ours.filter(p => !p.me && p.x < bx).length; rule(sit.id, "막을 사람이 나 하나라는데 동료가 더 있음", behind <= 1, `${tag} 공보다 뒤 동료 ${behind}명: ${txt.slice(0, 30)}`); }
       if (/상대 둘이 달려오는데/.test(txt)) { const run = opp.filter(p => hyp(p.x - bx, p.y - by) < 18).length; rule(sit.id, "상대 둘이 달려온다는데 공 근처 상대가 한 명", run >= 2, `${tag} 공 18m 안 상대 ${run}명: ${txt.slice(0, 30)}`); }
       // 자리 말
-      const side = Math.abs(by - 34);
+      const crossSc = sc.from === "cross" || sc.from === "lowcross";   // 크로스 장면: "측면"은 공을 받은 내 자리가 아니라 크로스가 올라온 자리
+      const side = crossSc && pd.ctx?.fy != null ? Math.abs(pd.ctx.fy - 34) : Math.abs(by - 34);
       if (/측면에서 공을|터치라인 근처|터치라인에 붙|터치라인을 따라|측면 끝|엔드라인|측면을 타고|빈 측면|코너 플래그|측면을 파고/.test(txt)) rule(sit.id, "측면이라는데 공이 가운데", side > 16, `${tag} 공 y${by.toFixed(0)} (가운데에서 ${side.toFixed(0)}m): ${txt.slice(0, 40)}`);
       const atkX = poss === "us" ? bx : bx;
       if (!cat.includes(":") && /박스 안|문전|골문 앞|골라인 앞|박스 안으로 떨어/.test(txt) && !/박스 안으로 들어온다|박스 쪽으로|박스로 들어온다|박스 한가운데로|박스 안으로 파고/.test(txt)) {
@@ -112,6 +113,7 @@ for (let k = 0; k < N; k++) {
       // 장면 문장 속 이름이 공과 얼마나 먼지 (상대 이름: 공 가진 상대/나를 막는 상대)
       for (const [role, nm] of [["opp", pd.vars.opp], ["mate", pd.vars.mate]]) {
         if (!nm || !txt.includes(nm)) continue;
+        if (crossSc && role === "mate") continue;            // 크로스를 올린 동료는 공(받은 나)에서 먼 게 맞음
         const P = S.P.find(p => p.name === nm); if (!P) { bad("장면 이름이 경기장에 없는 선수", `${tag} ${role} ${nm}`); continue; }
         const d = hyp(P.x - bx, P.y - by);
         cnt("장면 이름 " + role);
@@ -132,7 +134,7 @@ for (let k = 0; k < N; k++) {
       // 결과 문장 속 이름이 실제로 움직인 선수인지
       const firstMyPass = evs.find(e => e.type === "pass" && e.from === m.me);
       const myPassTo = firstMyPass?.to;
-      if (vars.mate && outText.includes(vars.mate) && /에게|패스|내줬|연결|찔러|벌렸|떨궜|밀어 줬|넘겼|건넸/.test(outText) && !/거치지 않고/.test(outText) && poss === "us" && !/돌려준다|돌아서지 못하고|컷백이|건넸다\. "네가|양보|의 패스를 받아|\{wing\}의 패스|의 패스가 /.test(outText) && !(vars.wing && outText.includes(vars.wing + "의 패스"))) {
+      if (vars.mate && outText.includes(vars.mate) && /에게|패스|내줬|연결|찔러|벌렸|떨궜|밀어 줬|넘겼|건넸/.test(outText) && !/거치지 않고/.test(outText) && poss === "us" && !/돌려준다|돌려준 공|의 백패스|돌아서지 못하고|컷백이|건넸다\. "네가|양보|의 패스를 받아|\{wing\}의 패스|의 패스가 /.test(outText) && !(vars.wing && outText.includes(vars.wing + "의 패스"))) {
         cnt("결과 문장 동료에게 패스");
         const ok = myPassTo === vars.mate || evs.some(e => e.type === "pass" && e.from === m.me && e.to === vars.mate);
         if (!ok) bad("결과 문장의 '{mate}에게 패스'인데 경기장에서는 다른 선수에게 감", `${tag} ${r.outcome}/${r.act ?? "-"} 문장 ${vars.mate}, 실제 ${myPassTo ?? "내 패스 없음"}: ${outText.slice(0, 40)}`);
@@ -167,7 +169,7 @@ for (let k = 0; k < N; k++) {
       if (se && se.result === "save") {
         const after = S.ev.slice(S.ev.indexOf(se) + 1, S.ev.indexOf(se) + 4);
         const corner = after.some(e => e.type === "out" && e.kind === "corner");
-        const resLine = newLines.filter(l => l.ts != null && l.ts <= se.t + 0.6 && l.ts >= se.t - 3 && !l.fast && !/^▶/.test(l.t)).map(l => l.t).join(" ");
+        const resLine = newLines.filter(l => l.ts != null && l.ts <= se.t + 0.6 && l.ts >= se.t - 3 && !l.fast && l.k !== "stat" && !/^▶/.test(l.t)).map(l => l.t).join(" ");
         cnt("선택 슈팅 선방");
         if (/품|안았|잡아 낸|잡는다|잡았|안긴/.test(resLine) && corner) bad("결과 문장은 '골키퍼가 잡았다'인데 경기장은 쳐 내서 코너킥", `${tag}: ${resLine.slice(0, 60)}`);
         if (/코너킥/.test(resLine) && !corner) bad("결과 문장은 코너킥인데 경기장은 코너킥 아님", `${tag}: ${resLine.slice(0, 60)}`);

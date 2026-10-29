@@ -70,7 +70,8 @@ export function createSim(cfg) {
 }
 export const meOf = S => S.P.find(p => p.me) || null;
 export const gkOf = (S, team) => S.P.find(p => p.team === team && p.pos === "GK");
-export const minuteOf = S => Math.min(70, Math.floor(S.t * RATE / 60));
+export const playT = S => S.t - (S.clockOff || 0);        // 추가시간을 뺀 경기 시계
+export const minuteOf = S => Math.min(70, Math.floor(playT(S) * RATE / 60));
 
 function emit(S, type, o = {}) { S.ev.push({ type, t: S.t, minute: minuteOf(S), ...o }); }
 
@@ -140,8 +141,9 @@ function shape(S, team) {
     const B = BLOCK[S.block[team]] || BLOCK.mid;
     line = clamp(bx - B[0], B[1], Math.min(B[2], Math.max(B[1], bx - 4)));
     W = S.dw; cy = clamp(34 + (by - 34) * 0.55, 19, 49);
+    if (bx > 62 && S.block[team] !== "low") line = Math.max(line, Math.min(bx - 37, B[2] + 9));   // 높은 곳에서 압박할 때는 수비 라인도 따라 올라가 팀을 짧게 (앞뒤 40m 안쪽)
   }
-  const stretch = att ? 1.05 : S.block[team] === "high" && bx > 70 ? 1.5 : 0.95;
+  const stretch = att ? 1.05 : S.block[team] === "high" && bx > 70 ? 1.3 : 0.95;
   const F = att ? FA : FD;
   for (let i = 1; i < 11; i++) { out[i * 2] = line + F[i][0] * stretch; out[i * 2 + 1] = cy + F[i][1] * W; }
   if (att && bx > 78) {                     // 공이 상대 박스 근처면 문전과 박스 앞을 채움
@@ -219,6 +221,10 @@ function targets(S) {
     x += a * (1.6 * Math.sin(c * 0.33 + f[0]) + 0.7 * Math.sin(c * 0.87 + f[1]));
     y += a * (1.3 * Math.sin(c * 0.29 + f[2]) + 0.6 * Math.sin(c * 0.71 + f[3]));
     p.tx = clamp(x, 1.5, 103.5); p.ty = clamp(y, 1.5, 66.5); p.v = p.boxRun ? RUN + 0.8 : p.runUntil > c || p.overlap ? RUN : JOG; p.press = false;
+    if (!A && p.ri) {                                     // 수비 전환: 공보다 앞(상대 골 쪽)에 남은 선수는 뛰어서, 막 뺏긴 직후엔 전력으로 돌아옴
+      const ahead = ox(def, p.x) - ox(def, S.ball.x), far = hyp(p.tx - p.x, p.ty - p.y);
+      if (ahead > 3 || far > 12) p.v = S.wonAt != null && c - S.wonAt < 5 ? SPRINT : RUN;
+    }
   }
   // 공 가진 선수 주변의 지원: 가까운 동료 둘이 받을 자리로
   if (H && H.ri && !S.stage) {
@@ -592,13 +598,13 @@ function arrive(S, r, from, kind, offside, space = null) {
     if (gk && inBox && hyp(gk.x - b.x, gk.y - b.y) < 3.2 && ox(r.team, b.x) > 94 && rand() < 0.55) { emit(S, "claim", { by: gk.name, team: def }); return give(S, gk); }   // 골키퍼가 손 닿는 거리일 때만 (멀리서 공이 미끄러져 붙지 않게)
     const ds = S.P.filter(p => p.team === def && p.pos !== "GK" && hyp(p.x - b.x, p.y - b.y) < 3.2);
     const rd = hyp(r.x - b.x, r.y - b.y);
-    if (space != null && rd < 3.4) { give(S, r); emit(S, "recv", { p: r.name, team: r.team, from: from.name, kind, me: r.me, x: b.x, y: b.y, air: true, behind: true, chaser: space || null }); planRecv(S, r); return; }
+    if (space != null && rd < 3.4) { give(S, r); emit(S, "recv", { p: r.name, team: r.team, from: from.name, fx: from.x, fy: from.y, kind, me: r.me, x: b.x, y: b.y, air: true, behind: true, chaser: space || null }); planRecv(S, r); return; }
     if (rd > 3.4 && !ds.length) { if (S.dbg) S.dbg["missA_" + kind] = (S.dbg["missA_" + kind] || 0) + 1; return landLoose(S); }
     let pAtt = rd > 3.4 ? 0 : ds.length ? clamp(0.5 + (r.st.jump - Math.max(...ds.map(d => d.st.jump))) / 70 - (ds.length - 1) * 0.12, 0.12, 0.85) : 0.92;
     if (S.dbg) S.dbg["duelA_" + kind] = (S.dbg["duelA_" + kind] || 0) + 1;
     if (rand() < pAtt) {
       if (inBox && ox(r.team, b.x) > 90 && kind !== "long" && !(r.me && S.bias?.me)) { planRecv(S, r, true); return shoot(S, r, { kind: "head", assist: from }); }   // 내 장면을 기다릴 때는 내가 받고 멈춤
-      give(S, r); emit(S, "recv", { p: r.name, team: r.team, from: from.name, kind, me: r.me, x: b.x, y: b.y, air: true, behind: space != null, chaser: space || null }); planRecv(S, r);
+      give(S, r); emit(S, "recv", { p: r.name, team: r.team, from: from.name, fx: from.x, fy: from.y, kind, me: r.me, x: b.x, y: b.y, air: true, behind: space != null, chaser: space || null }); planRecv(S, r);
       return;
     }
     const d = ds.sort((a, b2) => hyp(a.x - b.x, a.y - b.y) - hyp(b2.x - b.x, b2.y - b.y))[0];
@@ -611,7 +617,7 @@ function arrive(S, r, from, kind, offside, space = null) {
     launch(S, clamp(b.x + g * range(12, 24), 2, 103), clamp(b.y + range(-14, 14), 1, 67), { air: true, h: 5, kind: "clear", then: S2 => landLoose(S2) });
     return;
   }
-  if (hyp(r.x - b.x, r.y - b.y) < 2.6) { give(S, r); emit(S, "recv", { p: r.name, team: r.team, from: from.name, kind, me: r.me, x: b.x, y: b.y, overlap: !!r.overlap, ax: ox(r.team, b.x), behind: space != null, chaser: space || null }); planRecv(S, r); }
+  if (hyp(r.x - b.x, r.y - b.y) < 2.6) { give(S, r); emit(S, "recv", { p: r.name, team: r.team, from: from.name, fx: from.x, fy: from.y, kind, me: r.me, x: b.x, y: b.y, overlap: !!r.overlap, ax: ox(r.team, b.x), behind: space != null, chaser: space || null }); planRecv(S, r); }
   else { if (S.dbg) S.dbg["miss_" + kind] = (S.dbg["miss_" + kind] || 0) + 1; landLoose(S); }
 }
 // 장면 연출용: from이 찬 땅볼이 (x, y)에 멈춤 (받는 선수 없음, 마지막 터치는 from)
@@ -703,8 +709,9 @@ function shotEnd(S) {
   if (result === "goal") {
     S.ball.x = team === "us" ? 104.6 : 0.4;
     emit(S, "goal", { team, by: by.name, me: by.me, assist: sh.assist?.name || null, assistMe: !!sh.assist?.me, forced: sh.forced, kind: sh.kind });
-    S.phase = "dead"; S.restart = { kind: "kickoff", team: def, at: S.t + 99, celebrate: S.t + 1.4 };
+    S.phase = "dead"; S.restart = { kind: "kickoff", team: def, at: S.t + 99, celebrate: S.t + CELEBRATE, goalAt: S.t };
     S.holder = null;
+    celebrate(S, team, by);
     return;
   }
   // 공을 골라인 밖으로 실제로 보냄 (코너킥은 공이 라인을 넘은 뒤 outCheck가 선언)
@@ -998,23 +1005,55 @@ function prepRestart(S) {
   if (d > 0.5) launch(S, spot[0], spot[1], { air: d > 8, T: 0.35 + d / 24, h: Math.min(5, 0.8 + d * 0.12), kind: "reset" });   // 공이 그 자리로 날아감 (그동안 기다림)
   taker.ov = OV(spot[0] - g * 1.0, spot[1] + (R.kind === "throw" ? (spot[1] < 34 ? -0.6 : 0.6) : 0), 11, "keep");
   if (R.kind === "corner") packBox(S, team, taker);
-  if (R.kind === "pk") {
-    for (const p of S.P) {
-      if (p === taker) continue;
-      if (p.pos === "GK") { p.ov = p.team !== team ? OV(team === "us" ? 104.4 : 0.6, 34, 9, "keep") : null; continue; }
-      const inBox = team === "us" ? p.x > 86 : p.x < 19;
-      if (inBox || hyp(p.x - spot[0], p.y - 34) < 10) p.ov = OV(team === "us" ? 84.5 : 20.5, clamp(p.y, 16, 52), 10, "keep");   // 차고 나면 풀림
-    }
+  if (R.kind === "pk") { const gk = S.P.find(p => p.team !== team && p.pos === "GK"); if (gk) gk.ov = OV(team === "us" ? 104.4 : 0.6, 34, 9, "keep"); }   // 나머지는 zoneFix가 박스·아크 밖으로
+  if (R.kind === "throw") {                               // 스로인: 가까운 동료 둘이 받으러 다가옴 (짧게 앞으로 / 안쪽으로)
+    const inF = a => clamp(spot[1] < 34 ? spot[1] + a : spot[1] - a, 3, 65);
+    const sup = [[clamp(spot[0] + g * 9, 3, 102), inF(6)], [clamp(spot[0] - g * 4, 3, 102), inF(13)]];
+    const mates = S.P.filter(p => p.team === team && p !== taker && p.pos !== "GK" && !p.ov).sort((a, b) => hyp(a.x - spot[0], a.y - spot[1]) - hyp(b.x - spot[0], b.y - spot[1]));
+    const used = new Set();
+    for (const pt of sup) { const c = mates.filter(p => !used.has(p)).sort((a, b) => hyp(a.x - pt[0], a.y - pt[1]) - hyp(b.x - pt[0], b.y - pt[1]))[0]; if (!c) break; used.add(c); if (hyp(c.x - spot[0], c.y - spot[1]) > 12) c.ov = OV(pt[0] + range(-1.5, 1.5), pt[1] + range(-1.5, 1.5), RUN, "keep"); }
   }
   if (R.kind === "fk" && ox(team, spot[0]) > 70) {        // 프리킥 벽
     const goalX = team === "us" ? 105 : 0, dd = hyp(goalX - spot[0], 34 - spot[1]), ux = (goalX - spot[0]) / dd, uy = (34 - spot[1]) / dd;
-    const wall = S.P.filter(p => p.team !== team && p.pos !== "GK").sort((a, b) => hyp(a.x - spot[0], a.y - spot[1]) - hyp(b.x - spot[0], b.y - spot[1])).slice(0, 4);
-    wall.forEach((p, i) => { p.ov = OV(spot[0] + ux * 9.2 - uy * (i - 1.5) * 1.1, spot[1] + uy * 9.2 + ux * (i - 1.5) * 1.1, 10, "keep"); });   // 벽: 프리킥을 차면 풀림 (예전엔 안 풀려서 벽 선 선수들이 그 자리에 묶여 있었음)
+    const wide = Math.abs(spot[1] - 34) > 18, nW = Math.min(wide ? 2 : 5, dd < 20 ? 5 : dd < 25 ? 4 : dd < 31 ? 3 : 2);   // 벽 인원: 가까울수록 많이, 측면이면 둘
+    const wall = S.P.filter(p => p.team !== team && p.pos !== "GK").sort((a, b) => hyp(a.x - spot[0], a.y - spot[1]) - hyp(b.x - spot[0], b.y - spot[1])).slice(0, nW);
+    R.wall = wall;
+    wall.forEach((p, i) => { const o = i - (nW - 1) / 2; p.ov = OV(spot[0] + ux * 9.4 - uy * o * 1.1, spot[1] + uy * 9.4 + ux * o * 1.1, 10, "keep"); });   // 벽: 프리킥을 차면 풀림 (예전엔 안 풀려서 벽 선 선수들이 그 자리에 묶여 있었음)
     if (ox(team, spot[0]) > 75) packBox(S, team, taker, true);
   }
   else if (R.kind === "fk" && R.pack) packBox(S, team, taker, true);
   R.ready = true;
   R.setupAt = { team, taker, spot };                      // "공을 내려놓는다" 같은 문장은 차는 선수가 그 자리에 왔을 때
+}
+// 재시작 때 상대가 들어가면 안 되는 곳 (프리킥·코너 9.15m, 스로인 2m, 골킥 상대는 박스 밖, 페널티킥은 키커·골키퍼 말고 모두 박스·아크 밖)
+// 들어가 있으면 그 밖으로 보내고, 모두 나가 있으면 true
+function zoneFix(S) {
+  const R = S.restart, team = R.team, sp = R.spot; if (!sp) return true;
+  const g = dirOf(team);
+  const push = (p, x, y) => {                               // (x, y)가 금지 구역이면 밀어낼 자리, 아니면 null
+    if (R.kind === "pk") {
+      if (p.pos === "GK" && p.team !== team) return null;
+      const inBox = ox(team, x) > 87.8 && Math.abs(y - 34) < 20.6, near = hyp(x - sp[0], y - sp[1]) < 9.4;
+      return inBox || near ? [ox(team, 84), clamp(y, 14, 54)] : null;
+    }
+    if (p.team === team || p.pos === "GK" && R.kind !== "goalkick") return null;
+    if (R.kind === "goalkick") { if (p.pos === "GK") return null; return ox(team, x) < 17 && Math.abs(y - 34) < 20.6 ? [ox(team, 18.5), y] : null; }
+    const r = R.kind === "throw" ? 2.2 : 9.15, d = hyp(x - sp[0], y - sp[1]);
+    if (d >= r) return null;
+    if (R.wall?.includes(p) && d > 8.8) return null;
+    const ux = d > 0.3 ? (x - sp[0]) / d : -g, uy = d > 0.3 ? (y - sp[1]) / d : 0;
+    const q = [clamp(sp[0] + ux * (r + 0.6), 0.5, 104.5), clamp(sp[1] + uy * (r + 0.6), 0.5, 67.5)];
+    return hyp(q[0] - sp[0], q[1] - sp[1]) < r ? null : q;    // 터치라인에 막혀 못 나가면 그냥 둠
+  };
+  let ok = true;
+  for (const p of S.P) {
+    if (p === R.taker) continue;
+    if (push(p, p.x, p.y)) ok = false;
+    const tgt = p.ov?.keep ? [p.ov.x, p.ov.y] : [p.tx ?? p.x, p.ty ?? p.y];
+    const q = push(p, tgt[0], tgt[1]);
+    if (q) p.ov = OV(q[0], q[1], p.ov?.keep ? Math.max(p.ov.v, RUN) : RUN, "keep");
+  }
+  return ok;
 }
 function announceSetup(S) {
   const R = S.restart, a = R.setupAt; if (!a) return;
@@ -1064,21 +1103,45 @@ function takeRestart(S) {
   const r = mates.sort((a, b) => hyp(a.x - T.x, a.y - T.y) - hyp(b.x - T.x, b.y - T.y))[0];
   passTo(S, T, r, [r.x, r.y], { air: R.kind === "throw", force: true, kind: R.kind === "throw" ? "throw" : "ground" });
 }
-export function kickoffSetup(S, team, instant, script = false) {
+// 골 세리머니: 득점자는 가까운 터치라인 쪽으로 달려가고, 가까이 있던 동료들이 몰려가 감쌈.
+// 실점 팀은 고개 숙이고 천천히 제자리로 걸어감. 득점 팀 뒷선은 그 자리에서 천천히 돌아섬
+const CELEBRATE = 1.6;                       // 세리머니 시간 (시뮬레이션 초)
+function celebrate(S, team, by) {
+  const g = dirOf(team);
+  const cx = clamp(by.x - g * 1, 8, 97), cy = by.y < 34 ? 12 : 56;        // 득점자가 달려갈 곳: 박스 모서리 바깥, 관중석 쪽
+  by.ov = OV(cx, cy, RUN, "keep");
+  const near = S.P.filter(p => p.team === team && p !== by && p.pos !== "GK" && hyp(p.x - by.x, p.y - by.y) < 38)
+    .sort((a, b) => hyp(a.x - by.x, a.y - by.y) - hyp(b.x - by.x, b.y - by.y)).slice(0, 5);
+  near.forEach((p, i) => { const a = (i / 5) * Math.PI * 2; p.ov = OV(cx + Math.cos(a) * 1.6 - g * 1.2, cy + Math.sin(a) * 1.6 * (cy < 34 ? 1 : -1) * 0.6 + (cy < 34 ? 1.2 : -1.2), RUN, "keep"); });
+  for (const p of S.P) {
+    if (p === by || near.includes(p)) continue;
+    const pt = kickoffPoint(S, p, other(team));
+    if (p.team !== team) p.ov = OV(pt[0], pt[1], p.pos === "GK" ? 2 : 3.2, "keep");        // 실점 팀: 천천히 걸어서
+    else p.ov = OV(p.x + (pt[0] - p.x) * 0.3, p.y + (pt[1] - p.y) * 0.3, 2.6, "keep");     // 득점 팀 나머지: 박수 치며 조금씩
+  }
+}
+// 킥오프 자리 (공을 차는 팀 kickTeam 기준). 받는 팀은 센터서클(9.15m) 밖
+function kickoffPoint(S, p, kickTeam) {
+  const f = FORM[p.role];
+  let pt = p.pos === "GK" ? [4, 34] : [KICKOFF_X[p.pos], 34 + (f ? f.d[1] : 0) * 21];
+  if (p.team === kickTeam && p.role === "ST1") pt = [51.6, 34];
+  else if (p.team === kickTeam && p.role === "ST2") pt = [49.5, 27.5];
+  else if (p.team !== kickTeam) { const dx = 52.5 - pt[0], dy = pt[1] - 34; if (hyp(dx, dy) < 10) pt = [pt[0], 34 + (dy < 0 ? -1 : 1) * Math.sqrt(100 - dx * dx)]; }   // 받는 팀 공격수는 서클 가장자리 양옆에
+  return [ox(p.team, pt[0]), oy(p.team, pt[1])];
+}
+export function kickoffSetup(S, team, instant, script = false, goalAt = null) {
   S.phase = "dead"; S.holder = null; S.ball.roll = null; S.shot = null; S.chain = []; S.poss = team; endPlan(S);
   for (const p of S.P) {
-    const f = FORM[p.role];
-    let pt = p.pos === "GK" ? [4, 34] : [KICKOFF_X[p.pos], 34 + (f ? f.d[1] : 0) * 21];
-    if (p.team === team && p.role === "ST1") pt = [51.6, 34];
-    if (p.team === team && p.role === "ST2") pt = [49.5, 27.5];
-    const x = ox(p.team, pt[0]), y = oy(p.team, pt[1]);
+    const [x, y] = kickoffPoint(S, p, team);
     if (instant) { p.x = x; p.y = y; p.tx = x; p.ty = y; p.vx = 0; p.vy = 0; p.ov = null; }
-    else p.ov = OV(x, y, 10.5, "keep");
+    else p.ov = OV(x, y, p.team === team ? JOG : SPRINT, "keep");       // 득점 팀은 서둘러 돌아오고, 실점 팀은 이미 걸어오던 중
   }
   if (instant) { S.ball.fl = null; S.ball.x = 52.5; S.ball.y = 34; S.ball.z = 0; }
-  else { const d = hyp(52.5 - S.ball.x, 34 - S.ball.y); if (d > 0.5) launch(S, 52.5, 34, { air: true, T: 0.4 + d / 24, h: 5, kind: "reset" }); }
-  S.restart = { kind: "kickoff", team, at: S.t + (instant ? 0.6 : 2.4), ready: true, script };
+  else { const d = hyp(52.5 - S.ball.x, 34 - S.ball.y); if (d > 0.5) launch(S, 52.5, 34, { air: true, T: 0.6 + d / 20, h: 2.5, kind: "reset" }); }   // 실점 팀이 공을 꺼내 낮게 차서 가운데로
+  S.restart = { kind: "kickoff", team, at: S.t + (instant ? 0.6 : 1.4), ready: true, script, settle: instant ? null : S.t + 7.5, goalAt };
 }
+// 킥오프 규칙대로 섰나: 모두 자기 진영 안, 받는 팀은 센터서클(9.15m) 밖
+const settled = S => { const k = S.restart.team; return S.P.every(p => ox(p.team, p.x) <= 52.8 && (p.team === k || hyp(p.x - 52.5, p.y - 34) >= 9.15)); };
 
 // ── 한 틱 ──
 export function step(S) {
@@ -1088,11 +1151,22 @@ export function step(S) {
   if (S.script.length || S.scur) runScript(S);
   if (S.phase === "dead" && S.restart) {
     const R = S.restart;
-    if (R.kind === "kickoff" && R.celebrate != null && S.t >= R.celebrate) kickoffSetup(S, R.team, false, R.script);
+    if (R.kind === "kickoff" && R.celebrate != null && S.t >= R.celebrate) kickoffSetup(S, R.team, false, R.script, R.goalAt);
     else if (R.kind !== "kickoff") { prepRestart(S); announceSetup(S); }
     // 차는 선수가 공 자리에 올 때까지 기다림 (멀리 있던 선수에게 공이 순간이동하지 않게). 너무 오래 걸리면 그냥 진행
     const T = S.restart.taker, sp = S.restart.spot, far = T && sp && R.kind !== "kickoff" && hyp(T.x - sp[0], T.y - sp[1]) > 2.5 && S.t < S.restart.at + 4;
-    if (S.t >= S.restart.at && !S.ball.fl && !S.restart.hold && !far && !S.restart.setupAt) takeRestart(S);
+    const wait = S.restart.settle && S.t < S.restart.settle && !settled(S);   // 킥오프: 규칙대로 설 때까지 (최대 7.5초)
+    let rule = false;                                     // 다른 재시작: 상대가 거리를 지키고, 스로인은 받을 동료가 올 때까지 (최대 2.5초, 기다린 만큼 추가시간)
+    if (R.kind !== "kickoff" && S.restart.ready) {
+      const zOk = zoneFix(S), sp2 = S.restart.spot;
+      const sup = R.kind !== "throw" || !sp2 || S.P.filter(p => p.team === R.team && p !== T && p.pos !== "GK" && hyp(p.x - sp2[0], p.y - sp2[1]) < 20).length >= 2;
+      rule = !(zOk && sup) && S.t < S.restart.at + 2.5;
+    }
+    if (S.t >= S.restart.at && !S.ball.fl && !S.restart.hold && !far && !S.restart.setupAt && !wait && rule) S.clockOff += DT;
+    if (S.t >= S.restart.at && !S.ball.fl && !S.restart.hold && !far && !S.restart.setupAt && !wait && !rule) {
+      if (S.restart.goalAt != null) S.clockOff += Math.max(0, S.t - S.restart.goalAt - 4);   // 예전(4초)보다 길어진 만큼은 추가시간: 경기 시간·밸런스 그대로
+      takeRestart(S);
+    }
   } else if (S.phase === "play" && !S.stage) {
     if (S.holder && S.t >= S.decideAt && !S.scur) {
       decide(S);
