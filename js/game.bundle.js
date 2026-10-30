@@ -7105,7 +7105,7 @@ function timingOf(c) {
 // 모두 우리 전력 − 상대 전력(D)에 따라 바뀜
 // 시험 도구(tools/dev)가 경기 끝마다 내용을 받아 볼 수 있게
 const DEV = { onFinish: null };
-const CAL = { brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 4.6, kcu: 5.8, kcun: 80, ct: 2.65, kct: 22, kctn: 13, ft: 0.2, meShot: 1.03, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.09, dfk: 1.45, mfk: 0.6, rk: { FW: 0.82, MF: 1.08, DF: 1.1 }, dfCS: 0.45 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비 기여 배수, mfk: 미드필더 선택 하나가 평점에 주는 몫 (선택이 많은 만큼), rk: 포지션별 평점 배율, dfCS: 수비수 무실점 가산
+const CAL = { brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 4.7, kcu: 5.8, kcun: 80, ct: 2.65, kct: 22, kctn: 13, ft: 0.2, meShot: 1.07, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.1, dfk: 1.45, mfk: 0.6, rk: { FW: 0.82, MF: 1.08, DF: 1.1 }, dfCS: 0.45 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비 기여 배수, mfk: 미드필더 선택 하나가 평점에 주는 몫 (선택이 많은 만큼), rk: 포지션별 평점 배율, dfCS: 수비수 무실점 가산
 const sig = x => 1 / (1 + Math.exp(-x));
 
 // 상대 성향 → 경기장 움직임
