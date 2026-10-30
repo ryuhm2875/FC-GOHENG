@@ -3702,7 +3702,7 @@ const SIGNATURE = {
 const ME_IN_PLAY = {
   build: ["{me|이/가} 공을 받아 앞을 본다. 상대가 두 명 붙는다.", "{me}에게 공이 모인다."],
   pass:  ["{me}의 정확한 패스!", "{me|이/가} 원터치로 방향을 바꿔 준다."],
-  shot:  ["{me}의 슈팅!", "{me|이/가} 지체 없이 때린다!"],
+  shot:  ["{me}의 슈팅!", "{me|이/가} 지체 없이 때린다!", "{me|이/가} 틈이 보이자 바로 발을 갖다 댄다!", "{me|이/가} 골문 구석을 노리고 찬다!", "{me|이/가} 한 박자 빠르게 슈팅!"],
   head:  ["{me}의 헤더!", "{me|이/가} 수비 머리 위로 솟구친다!", "{me|이/가} 공 떨어지는 곳을 먼저 잡고 머리를 갖다 댄다!"],
   fk:    ["{me|이/가} 프리킥 키커로 나섰다. 숨을 고르고… 찼다!"],
   pk:    ["{me|이/가} 페널티킥 키커로 나선다. 심장이 쿵쾅거린다…"],
@@ -7105,7 +7105,7 @@ function timingOf(c) {
 // 모두 우리 전력 − 상대 전력(D)에 따라 바뀜
 // 시험 도구(tools/dev)가 경기 끝마다 내용을 받아 볼 수 있게
 const DEV = { onFinish: null };
-const CAL = { brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 3.8, kcu: 5.8, kcun: 80, ct: 2.4, kct: 22, kctn: 13, ft: 0.2, meShot: 0.95, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.09, dfk: 1.45, mfk: 0.6, rk: { FW: 0.82, MF: 1.08, DF: 1.1 }, dfCS: 0.45 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비 기여 배수, mfk: 미드필더 선택 하나가 평점에 주는 몫 (선택이 많은 만큼), rk: 포지션별 평점 배율, dfCS: 수비수 무실점 가산
+const CAL = { brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 4.6, kcu: 5.8, kcun: 80, ct: 2.65, kct: 22, kctn: 13, ft: 0.2, meShot: 1.03, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.09, dfk: 1.45, mfk: 0.6, rk: { FW: 0.82, MF: 1.08, DF: 1.1 }, dfCS: 0.45 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비 기여 배수, mfk: 미드필더 선택 하나가 평점에 주는 몫 (선택이 많은 만큼), rk: 포지션별 평점 배율, dfCS: 수비수 무실점 가산
 const sig = x => 1 / (1 + Math.exp(-x));
 
 // 상대 성향 → 경기장 움직임
@@ -8242,7 +8242,7 @@ function next(state, m) {
       if (S.t - m.chainSit.t > 9 || !m.onPitch || S.phase !== "play") m.chainSit = null;
       else if (Mc && S.holder === Mc && !S.ball.fl) {
         const sit = SITUATIONS.find(x => x.id === m.chainSit.id); m.chainSit = null;
-        if (sit && playT(S) < (m.half === 1 ? HALF_T : 2 * HALF_T) - 7) { m.momentQ.unshift(m.minute); startMoment(state, m, sit, { cat: "turn", poss: "us", holder: Mc }, lines, S.t); continue; }
+        if (sit && playT(S) < (m.half === 1 ? HALF_T : 2 * HALF_T) - 7 && sceneDist(m, sit) <= 15) { m.momentQ.unshift(m.minute); startMoment(state, m, sit, { cat: "turn", poss: "us", holder: Mc }, lines, S.t); continue; }   // 이어지는 장면도 그 장면 자리(15m 안)에서만
       }
     }
     // 내 순간: 정해 둔 때가 되면 공이나 상황이 나에게 오기를 기다림 (그동안 동료들이 나를 더 찾음)
@@ -9023,7 +9023,10 @@ function scriptSteps(state, m, pd, c, out, R, tail, outTpl) {
       case "oppForward": case "oppSide": case "oppBack": {
         if (!H || H.team !== "them") { steps.push({ do: "wait", t: 0.6, main: true }); break; }
         const dir = act === "oppForward" ? -12 : act === "oppBack" ? 12 : 0;        // 상대는 -x로 공격
-        const tgt = nearestP(S, "them", { x: H.x + dir, y: act === "oppSide" ? 68 - H.y : H.y }, p => p !== H && p.ri && p.pos !== "GK" && (act === "oppBack" ? p.x > H.x + 2 : act === "oppForward" ? p.x < H.x - 2 : true));
+        const tgt = act === "oppSide"                                                // "안쪽 동료에게": 가운데 쪽 가까운 동료 (예전엔 반대편 측면 끝으로 30m)
+          ? nearestP(S, "them", { x: H.x - 2, y: H.y + (34 - H.y) * 0.7 }, p => p !== H && p.ri && p.pos !== "GK" && Math.abs(p.y - 34) < Math.abs(H.y - 34) + 2 && Math.hypot(p.x - H.x, p.y - H.y) < 24)
+            || nearestP(S, "them", H, p => p !== H && p.ri && p.pos !== "GK")
+          : nearestP(S, "them", { x: H.x + dir, y: H.y }, p => p !== H && p.ri && p.pos !== "GK" && (act === "oppBack" ? p.x > H.x + 2 : p.x < H.x - 2));
         if (tgt) { steps.push({ do: "pass", from: H, to: tgt, lead: 0, main: true }); holder = tgt; }
         break;
       }
