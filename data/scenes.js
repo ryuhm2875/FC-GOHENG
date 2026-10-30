@@ -24,6 +24,7 @@
 // tight  : 장면 자리에서 이만큼(m) 안일 때만 ("박스 안"처럼 자리가 분명한 장면) / after: 직전 슈팅이 막힌 뒤만 ("us" 우리 슈팅, "them" 상대 슈팅)
 // air    : 공이 실제로 날아왔을 때만 / mateCard: 이 경기에서 경고 받은 동료가 있을 때만 ({mate}가 그 동료)
 // hold   : 장면이 다 준비된 뒤 선택지가 뜨기 전 잠깐 멈추는 시간(초)
+// down   : 방금 공을 뺏긴 가까운 상대({opp})가 그 자리에 쓰러져 있음 (7m 안에 상대가 있을 때만)
 
 export const SCENES = {
   // ── 공격수 ──
@@ -137,7 +138,7 @@ export const SCENES = {
   df_ace_mark: { at: [[28, 38], [22, 46]], from: "oppCarry", src: [9, 0], v: 5, meGap: 3.4 },
   df_storm_hold: { from: "oppCross", pack: "them", meGap: 1 },
   df_launch_counter: { at: [[24, 32], [24, 44]], from: "pass", giver: "df", src: [-4, 9], runs: [["fw", 38, -6, 8.6], ["fw", 36, 8, 8.6]], press: 0 },
-  df_player_down: { at: [[24, 32], [24, 44]], from: "turn", pre: [["opp", 2, 2.5]], press: 0 },
+  df_player_down: { at: [[24, 32], [24, 44]], from: "turn", pre: [["opp", 2, 2.5]], press: 0, down: true },
   df_gk_triangle: { at: [[10, 16], [18, 26]], from: "gk", press: 1, pressGap: 5, block: { them: "high" } },
   df_high_line_cover: { at: [[24, 32], [24, 44]], line: 20, from: "oppLong", src: [48, 0], pre: [["me", 20, 2], ["opp", 19, -2]], runs: [["me", 0.5, 1.4, 8.3]], mePress: false, block: { us: "high" } },
   mf_late_arrive: { at: [[86, 101], [3, 15]], from: "carry", holder: "mate", arrive: true, press: 1, pressGap: 2.2 },
