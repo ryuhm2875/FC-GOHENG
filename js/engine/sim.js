@@ -1140,6 +1140,70 @@ export function kickoffSetup(S, team, instant, script = false, goalAt = null) {
   else { const d = hyp(52.5 - S.ball.x, 34 - S.ball.y); if (d > 0.5) launch(S, 52.5, 34, { air: true, T: 0.6 + d / 20, h: 2.5, kind: "reset" }); }   // 실점 팀이 공을 꺼내 낮게 차서 가운데로
   S.restart = { kind: "kickoff", team, at: S.t + (instant ? 0.6 : 1.4), ready: true, script, settle: instant ? null : S.t + 7.5, goalAt };
 }
+// ── 승부차기 (오른쪽 골문 하나에서 번갈아 참) ──
+// 양 팀은 센터서클 안에 한 줄로, 차는 팀의 상대 골키퍼가 골라인에, 다른 골키퍼는 박스 선과 골라인이 만나는 곳에서 기다림
+// 엔진(match.js)이 soKick으로 한 번씩 넣어 줌 { kicker, keeper, result: "goal"|"save"|"miss"|null(내 선택을 기다림), dir: -1|0|1, high }
+const SO_SPOT = [94, 34], SO_LINE = 104.3, SO_WAIT = [SO_LINE, 12.6], SO_DECK = [84.5, 37.5];
+const soHome = (S, p) => {                                  // 센터서클 안: 팀마다 두 줄 (점이 겹치지 않게)
+  const L = S.P.filter(q => q.team === p.team && q.pos !== "GK"), i = Math.max(0, L.indexOf(p));
+  return [(p.team === "us" ? 45.6 : 55.6) + (i % 2) * 3.6, 25.4 + Math.floor(i / 2) * 4.3];
+};
+export function soSetup(S) {
+  S.phase = "dead"; S.restart = null; S.holder = null; S.shot = null; S.ball.roll = null; endPlan(S); setScript(S, []);
+  S.so = { cur: null, nxt: null };
+  for (const p of S.P) {                                   // 종료 뒤 쉬는 동안 모두 자리를 잡음 (화면은 하프타임처럼 넘어감)
+    const h = p.pos === "GK" ? SO_WAIT : soHome(S, p);
+    p.x = h[0]; p.y = h[1] + (p.pos === "GK" && p.team === "them" ? -1.5 : 0); p.tx = p.x; p.ty = p.y; p.vx = 0; p.vy = 0; p.stun = 0;
+    p.ov = OV(p.x, p.y, 5.5, "keep");
+  }
+  S.ball.fl = null; S.ball.x = SO_SPOT[0]; S.ball.y = SO_SPOT[1]; S.ball.z = 0;
+}
+export function soKick(S, k) {                              // 다음 키커 (앞 키커가 차고 나면 걸어 나옴)
+  const c = { ...k, phase: "walk", t0: S.t };
+  if (!S.so.cur) S.so.cur = c; else S.so.nxt = c;
+}
+export const soReady = S => S.so?.cur?.phase === "ready" && S.so.cur.result == null;   // 내 차례: 공 앞에 서서 선택을 기다림
+export function soCancelNext(S) { const n = S.so?.nxt; if (n) { const h = soHome(S, n.kicker); n.kicker.ov = OV(h[0], h[1], 6, "keep"); S.so.nxt = null; } }   // 승부가 났으면 나오던 키커는 돌아감
+export function soSetResult(S, result, dir, high) { const c = S.so.cur; c.result = result; c.dir = dir; c.high = !!high; c.tR = S.t; }
+function soTick(S) {
+  const so = S.so, c = so.cur; if (!c) return;
+  const K = c.kicker, G = c.keeper, b = S.ball;
+  const other = S.P.find(p => p.pos === "GK" && p !== G);
+  if (so.nxt) so.nxt.kicker.ov = OV(SO_DECK[0], SO_DECK[1], 6.5, "keep");   // 다음 키커는 앞 키커가 차는 동안 아크 근처까지 걸어 나와 기다림
+  if (c.phase === "walk") {
+    K.ov = OV(SO_SPOT[0] - 1.8, SO_SPOT[1] + 0.7, 6.5, "keep");
+    G.ov = OV(SO_LINE, 34, 8.5, "keep");
+    if (other && other.ov?.x !== SO_WAIT[0]) other.ov = OV(SO_WAIT[0], SO_WAIT[1] + (other.team === "them" ? -1.5 : 0), 6, "keep");
+    if (!b.fl && hyp(b.x - SO_SPOT[0], b.y - SO_SPOT[1]) > 0.6) launch(S, SO_SPOT[0], SO_SPOT[1], { T: 0.5, kind: "reset" });
+    const there = hyp(K.x - K.ov.x, K.y - K.ov.y) < 0.5 && hyp(G.x - SO_LINE, G.y - 34) < 0.8 && !b.fl;
+    if (there || S.t > c.t0 + 10) { c.phase = "ready"; c.tR = c.result != null ? S.t : null; emit(S, "soSet", { team: K.team, by: K.name, me: K.me }); }
+    return;
+  }
+  if (c.phase === "ready") { if (c.result != null && S.t >= (c.tR ?? S.t) + 0.6) { c.phase = "run"; c.tRun = S.t; K.ov = OV(SO_SPOT[0] - 0.6, SO_SPOT[1] + 0.2, 4.5, "keep"); } return; }
+  if (c.phase === "run" && S.t >= c.tRun + 0.45) {
+    c.phase = "shot"; c.tShot = S.t;
+    const side = c.dir || 0, ty = 34 + side * 2.7 + range(-0.4, 0.4);
+    const rs = () => (rand() < 0.5 ? -1 : 1);
+    const gs = c.result === "save" ? side : c.result === "goal" ? (side === 0 ? rs() : rand() < 0.7 ? -side : side) : rs();   // 막을 땐 같은 쪽(가운데면 버팀), 들어갈 땐 대개 반대쪽
+    G.ov = OV(SO_LINE + 0.2, 34 + gs * 2.5, 11.5, "keep");
+    if (c.result === "goal") launch(S, 105.6, ty, { air: true, T: 0.42, h: c.high ? 2.2 : 0.7, kind: "reset", then: S2 => soShot(S2, c) });
+    else if (c.result === "save") launch(S, SO_LINE - 0.3, 34 + side * 2.2, { air: true, T: 0.4, h: c.high ? 1.8 : 0.8, kind: "reset", then: S2 => { soShot(S2, c); launch(S2, 99.5, clamp(34 + side * 7 + range(-2, 2), 20, 48), { air: true, T: 0.6, h: 1.4, kind: "reset" }); } });
+    else { const wy = c.high ? ty : 34 + (side || (rand() < 0.5 ? -1 : 1)) * range(4.2, 5.4); launch(S, 106.5, wy, { air: true, T: 0.5, h: c.high ? 4.6 : 1.2, kind: "reset", then: S2 => soShot(S2, c) }); }
+    return;
+  }
+  if (c.phase === "done" && so.nxt && S.t >= c.tEnd + 0.15) {     // 공이 끝나면 골키퍼가 바로 바뀌기 시작
+    const nk = so.nxt.keeper; if (nk !== G) { nk.ov = OV(SO_LINE, 34, 8.5, "keep"); G.ov = OV(SO_WAIT[0], SO_WAIT[1] + (G.team === "them" ? -1.5 : 0), 7, "keep"); }
+  }
+  if (c.phase === "done" && S.t >= c.tEnd + 1.0) {          // 키커는 동료들에게 돌아가고, 다음 키커가 나옴
+    const h = soHome(S, K); K.ov = OV(h[0], h[1], 6, "keep");
+    so.cur = so.nxt; so.nxt = null; if (so.cur) so.cur.t0 = S.t;
+    emit(S, "soDone", { team: K.team });
+  }
+}
+function soShot(S, c) {
+  c.phase = "done"; c.tEnd = S.t;
+  emit(S, "soShot", { team: c.kicker.team, by: c.kicker.name, me: c.kicker.me, keeper: c.keeper.name, result: c.result, dir: c.dir, high: c.high });
+}
 // 킥오프 규칙대로 섰나: 모두 자기 진영 안, 받는 팀은 센터서클(9.15m) 밖
 const settled = S => { const k = S.restart.team; return S.P.every(p => ox(p.team, p.x) <= 52.8 && (p.team === k || hyp(p.x - 52.5, p.y - 34) >= 9.15)); };
 
@@ -1180,6 +1244,7 @@ export function step(S) {
     pickup(S);
   }
   if (S.stage) stageTick(S);
+  if (S.so) soTick(S);                                     // 승부차기
   targets(S);
   movePlayers(S);
   moveBall(S);

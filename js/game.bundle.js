@@ -6505,6 +6505,70 @@ function kickoffSetup(S, team, instant, script = false, goalAt = null) {
   else { const d = hyp(52.5 - S.ball.x, 34 - S.ball.y); if (d > 0.5) launch(S, 52.5, 34, { air: true, T: 0.6 + d / 20, h: 2.5, kind: "reset" }); }   // 실점 팀이 공을 꺼내 낮게 차서 가운데로
   S.restart = { kind: "kickoff", team, at: S.t + (instant ? 0.6 : 1.4), ready: true, script, settle: instant ? null : S.t + 7.5, goalAt };
 }
+// ── 승부차기 (오른쪽 골문 하나에서 번갈아 참) ──
+// 양 팀은 센터서클 안에 한 줄로, 차는 팀의 상대 골키퍼가 골라인에, 다른 골키퍼는 박스 선과 골라인이 만나는 곳에서 기다림
+// 엔진(match.js)이 soKick으로 한 번씩 넣어 줌 { kicker, keeper, result: "goal"|"save"|"miss"|null(내 선택을 기다림), dir: -1|0|1, high }
+const SO_SPOT = [94, 34], SO_LINE = 104.3, SO_WAIT = [SO_LINE, 12.6], SO_DECK = [84.5, 37.5];
+const soHome = (S, p) => {                                  // 센터서클 안: 팀마다 두 줄 (점이 겹치지 않게)
+  const L = S.P.filter(q => q.team === p.team && q.pos !== "GK"), i = Math.max(0, L.indexOf(p));
+  return [(p.team === "us" ? 45.6 : 55.6) + (i % 2) * 3.6, 25.4 + Math.floor(i / 2) * 4.3];
+};
+function soSetup(S) {
+  S.phase = "dead"; S.restart = null; S.holder = null; S.shot = null; S.ball.roll = null; endPlan(S); setScript(S, []);
+  S.so = { cur: null, nxt: null };
+  for (const p of S.P) {                                   // 종료 뒤 쉬는 동안 모두 자리를 잡음 (화면은 하프타임처럼 넘어감)
+    const h = p.pos === "GK" ? SO_WAIT : soHome(S, p);
+    p.x = h[0]; p.y = h[1] + (p.pos === "GK" && p.team === "them" ? -1.5 : 0); p.tx = p.x; p.ty = p.y; p.vx = 0; p.vy = 0; p.stun = 0;
+    p.ov = OV(p.x, p.y, 5.5, "keep");
+  }
+  S.ball.fl = null; S.ball.x = SO_SPOT[0]; S.ball.y = SO_SPOT[1]; S.ball.z = 0;
+}
+function soKick(S, k) {                              // 다음 키커 (앞 키커가 차고 나면 걸어 나옴)
+  const c = { ...k, phase: "walk", t0: S.t };
+  if (!S.so.cur) S.so.cur = c; else S.so.nxt = c;
+}
+const soReady = S => S.so?.cur?.phase === "ready" && S.so.cur.result == null;   // 내 차례: 공 앞에 서서 선택을 기다림
+function soCancelNext(S) { const n = S.so?.nxt; if (n) { const h = soHome(S, n.kicker); n.kicker.ov = OV(h[0], h[1], 6, "keep"); S.so.nxt = null; } }   // 승부가 났으면 나오던 키커는 돌아감
+function soSetResult(S, result, dir, high) { const c = S.so.cur; c.result = result; c.dir = dir; c.high = !!high; c.tR = S.t; }
+function soTick(S) {
+  const so = S.so, c = so.cur; if (!c) return;
+  const K = c.kicker, G = c.keeper, b = S.ball;
+  const other = S.P.find(p => p.pos === "GK" && p !== G);
+  if (so.nxt) so.nxt.kicker.ov = OV(SO_DECK[0], SO_DECK[1], 6.5, "keep");   // 다음 키커는 앞 키커가 차는 동안 아크 근처까지 걸어 나와 기다림
+  if (c.phase === "walk") {
+    K.ov = OV(SO_SPOT[0] - 1.8, SO_SPOT[1] + 0.7, 6.5, "keep");
+    G.ov = OV(SO_LINE, 34, 8.5, "keep");
+    if (other && other.ov?.x !== SO_WAIT[0]) other.ov = OV(SO_WAIT[0], SO_WAIT[1] + (other.team === "them" ? -1.5 : 0), 6, "keep");
+    if (!b.fl && hyp(b.x - SO_SPOT[0], b.y - SO_SPOT[1]) > 0.6) launch(S, SO_SPOT[0], SO_SPOT[1], { T: 0.5, kind: "reset" });
+    const there = hyp(K.x - K.ov.x, K.y - K.ov.y) < 0.5 && hyp(G.x - SO_LINE, G.y - 34) < 0.8 && !b.fl;
+    if (there || S.t > c.t0 + 10) { c.phase = "ready"; c.tR = c.result != null ? S.t : null; emit(S, "soSet", { team: K.team, by: K.name, me: K.me }); }
+    return;
+  }
+  if (c.phase === "ready") { if (c.result != null && S.t >= (c.tR ?? S.t) + 0.6) { c.phase = "run"; c.tRun = S.t; K.ov = OV(SO_SPOT[0] - 0.6, SO_SPOT[1] + 0.2, 4.5, "keep"); } return; }
+  if (c.phase === "run" && S.t >= c.tRun + 0.45) {
+    c.phase = "shot"; c.tShot = S.t;
+    const side = c.dir || 0, ty = 34 + side * 2.7 + range(-0.4, 0.4);
+    const rs = () => (rand() < 0.5 ? -1 : 1);
+    const gs = c.result === "save" ? side : c.result === "goal" ? (side === 0 ? rs() : rand() < 0.7 ? -side : side) : rs();   // 막을 땐 같은 쪽(가운데면 버팀), 들어갈 땐 대개 반대쪽
+    G.ov = OV(SO_LINE + 0.2, 34 + gs * 2.5, 11.5, "keep");
+    if (c.result === "goal") launch(S, 105.6, ty, { air: true, T: 0.42, h: c.high ? 2.2 : 0.7, kind: "reset", then: S2 => soShot(S2, c) });
+    else if (c.result === "save") launch(S, SO_LINE - 0.3, 34 + side * 2.2, { air: true, T: 0.4, h: c.high ? 1.8 : 0.8, kind: "reset", then: S2 => { soShot(S2, c); launch(S2, 99.5, clamp(34 + side * 7 + range(-2, 2), 20, 48), { air: true, T: 0.6, h: 1.4, kind: "reset" }); } });
+    else { const wy = c.high ? ty : 34 + (side || (rand() < 0.5 ? -1 : 1)) * range(4.2, 5.4); launch(S, 106.5, wy, { air: true, T: 0.5, h: c.high ? 4.6 : 1.2, kind: "reset", then: S2 => soShot(S2, c) }); }
+    return;
+  }
+  if (c.phase === "done" && so.nxt && S.t >= c.tEnd + 0.15) {     // 공이 끝나면 골키퍼가 바로 바뀌기 시작
+    const nk = so.nxt.keeper; if (nk !== G) { nk.ov = OV(SO_LINE, 34, 8.5, "keep"); G.ov = OV(SO_WAIT[0], SO_WAIT[1] + (G.team === "them" ? -1.5 : 0), 7, "keep"); }
+  }
+  if (c.phase === "done" && S.t >= c.tEnd + 1.0) {          // 키커는 동료들에게 돌아가고, 다음 키커가 나옴
+    const h = soHome(S, K); K.ov = OV(h[0], h[1], 6, "keep");
+    so.cur = so.nxt; so.nxt = null; if (so.cur) so.cur.t0 = S.t;
+    emit(S, "soDone", { team: K.team });
+  }
+}
+function soShot(S, c) {
+  c.phase = "done"; c.tEnd = S.t;
+  emit(S, "soShot", { team: c.kicker.team, by: c.kicker.name, me: c.kicker.me, keeper: c.keeper.name, result: c.result, dir: c.dir, high: c.high });
+}
 // 킥오프 규칙대로 섰나: 모두 자기 진영 안, 받는 팀은 센터서클(9.15m) 밖
 const settled = S => { const k = S.restart.team; return S.P.every(p => ox(p.team, p.x) <= 52.8 && (p.team === k || hyp(p.x - 52.5, p.y - 34) >= 9.15)); };
 
@@ -6545,6 +6609,7 @@ function step(S) {
     pickup(S);
   }
   if (S.stage) stageTick(S);
+  if (S.so) soTick(S);                                     // 승부차기
   targets(S);
   movePlayers(S);
   moveBall(S);
@@ -6838,7 +6903,7 @@ function startStep(S, st) {
 const scriptDone = S => !S.script.length && !S.scur;
 const isDead = S => S.phase === "dead";
 
-return { DT, RATE, HALF_T, xgAt, createSim, meOf, gkOf, playT, minuteOf, passTo, kickLoose, shoot, setRestart, kickoffSetup, step, frameNow, stageStart, stageDone, setScript, scriptDone, isDead };
+return { DT, RATE, HALF_T, xgAt, createSim, meOf, gkOf, playT, minuteOf, passTo, kickLoose, shoot, setRestart, kickoffSetup, soSetup, soKick, soReady, soCancelNext, soSetResult, step, frameNow, stageStart, stageDone, setScript, scriptDone, isDead };
 })();
 (__fix["js/engine/sim.js"] || []).forEach(f => f());
 
@@ -6858,7 +6923,7 @@ const {turnInfo} = __m["js/engine/calendar.js"];
 const {oppLineup, noteOpp} = __m["js/engine/opponents.js"];
 const {nemesisOf, nemesisAfter} = __m["js/engine/nemesis.js"];
 const {SCENES} = __m["data/scenes.js"];
-const {createSim, step: simStep, DT, RATE, HALF_T, playT, kickoffSetup, setScript, stageStart, minuteOf, meOf, gkOf, setRestart, passTo, kickLoose} = __m["js/engine/sim.js"];
+const {createSim, step: simStep, DT, RATE, HALF_T, playT, kickoffSetup, soSetup, soKick, soReady, soSetResult, soCancelNext, setScript, stageStart, minuteOf, meOf, gkOf, setRestart, passTo, kickLoose} = __m["js/engine/sim.js"];
 // 경기 엔진: 경기장 시뮬레이션(sim.js)이 실제로 경기를 굴리고, 여기서는 그 사건을 중계 문장으로 받아 적습니다.
 // 공이나 상황이 실제로 나에게 오면 그때의 자리와 압박에 맞는 장면(SITUATIONS)을 골라 멈추고 선택을 받습니다.
 // 선택 결과는 다시 경기장에서 일어나게 합니다 (슛이면 실제로 차고, 뺏기면 상대 공으로 이어짐).
@@ -8122,6 +8187,7 @@ function kickoffLines(state, m) {
 const CHUNK = 5;                                   // 한 번에 굴리는 시뮬레이션 시간(초)
 function next(state, m) {
   if (m.pending || m.done) return { kind: m.done ? "ft" : "moment", lines: [], frames: [] };
+  if (m.so) return soNext(state, m);                 // 승부차기
   const S = m.sim;
   S.flow = m.flow || 0;
   if (m.record) S.rec = [];
@@ -8237,7 +8303,8 @@ function next(state, m) {
     m.minute = LENGTH;
     L(say(LINES.fulltime, {}), "whistle", { poss: null });
     L(statLine(m), "stat");
-    m.done = true;
+    if (m.fx.ko && m.score[0] === m.score[1]) { soStart(state, m, L); kind = "line"; }   // 토너먼트 무승부: 경기장에서 승부차기
+    else m.done = true;
   }
   m.feed.push(...lines);
   const frames = m.record ? S.rec : [];
@@ -8371,6 +8438,7 @@ function shotResOf(t, fallback) {
   return fallback;
 }
 function resolve(state, m, ci, timing = null) {
+  if (m.pending?.so) return soResolve(state, m, ci, timing);
   const pick = arr => fresh(m, arr);                 // 같은 경기에서 같은 결과 문장이 되풀이되지 않게
   const pd = m.pending;
   const c = pd.list[ci];
@@ -9039,10 +9107,158 @@ function applyHalftime(state, m, idx) {
   return { reply: c.reply, changes };
 }
 
+// ── 승부차기 ─────────────────────────
+// 이길 확률은 예전 주사위(0.5 + 전력 차/80 + 내 슈팅)와 같게: 우리·상대 키커 성공률을 그 확률에 맞춰 정함. 내 차례만 내 선택과 능력치로
+// 차는 순서: 슈팅이 좋은 선수부터 1·5·2·4·3번 (나는 슈팅 + 감독 신뢰 + 자신감으로 줄을 섬). 다섯 명 뒤로는 서든데스
+const SO_CHOICES = [
+  { label: "골키퍼 반대쪽 구석으로 낮게 깔아 찬다", stats: { "tech.shoot": 2, "mental.focus": 1 }, base: 0.72, aim: "corner", lose: ["save", "save", "miss"] },
+  { label: "가운데 위로 있는 힘껏 찬다", stats: { "phys.strength": 1, "tech.shoot": 1, "mental.confidence": 1 }, base: 0.68, aim: "center", lose: ["miss", "miss", "save"] },
+  { label: "골키퍼가 먼저 움직일 때까지 기다렸다 찬다", stats: { "mental.focus": 2, "mental.confidence": 1 }, base: 0.66, aim: "wait", lose: ["save", "save", "miss"] },
+];
+const SO_BASE = 0.76;
+function soWinP(pu, pt) {                              // 다섯 번씩 + 서든데스에서 우리가 이길 확률
+  const C = [1, 5, 10, 10, 5, 1], bin = p => C.map((c, k) => c * p ** k * (1 - p) ** (5 - k));
+  const A = bin(pu), B = bin(pt);
+  let win = 0, tie = 0;
+  for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) { if (i > j) win += A[i] * B[j]; else if (i === j) tie += A[i] * B[j]; }
+  const a = pu * (1 - pt), b = pt * (1 - pu);
+  return win + tie * (a + b > 0 ? a / (a + b) : 0.5);
+}
+function soOrder(state, m, team) {
+  const S = m.sim, pl = state.player;
+  const val = p => p.st.shoot + (p.me ? (state.relations.coach - 55) * 0.35 + (pl.stats.mental.confidence - 50) * 0.15 : 0) + rand() * 2;   // 나: 슈팅 + 감독 신뢰 + 자신감
+  const r = S.P.filter(p => p.team === team && p.pos !== "GK").map(p => [p, val(p)]).sort((a, b) => b[1] - a[1]).map(x => x[0]);
+  const top = [r[0], r[2], r[4], r[3], r[1]].filter(Boolean);           // 가장 잘 차는 선수가 1번, 두 번째가 5번
+  return [...top, ...r.slice(5), ...S.P.filter(p => p.team === team && p.pos === "GK")];
+}
+function soDecided(so) {
+  const a = so.us.filter(Boolean).length, b = so.them.filter(Boolean).length, nu = so.us.length, nt = so.them.length;
+  if (nu <= 5 && nt <= 5) {
+    if (a > b + (5 - nt)) return "us";
+    if (b > a + (5 - nu)) return "them";
+    return null;
+  }
+  return nu === nt && a !== b ? (a > b ? "us" : "them") : null;
+}
+function soStart(state, m, L) {
+  const S = m.sim, pl = state.player;
+  const pw = clamp(0.5 + (m.ours - m.theirs) / 80 + (m.onPitch ? (pl.stats.tech.shoot - 50) / 400 : 0), 0.2, 0.8);
+  let lo = -0.3, hi = 0.3;
+  for (let i = 0; i < 30; i++) { const d = (lo + hi) / 2; if (soWinP(clamp(SO_BASE + d, 0.3, 0.97), clamp(SO_BASE - d, 0.3, 0.97)) < pw) lo = d; else hi = d; }
+  const d = (lo + hi) / 2;
+  const first = rand() < 0.5 ? "us" : "them";
+  m.so = { us: [], them: [], first, seq: 0, pu: clamp(SO_BASE + d, 0.3, 0.97), pt: clamp(SO_BASE - d, 0.3, 0.97), order: { us: soOrder(state, m, "us"), them: soOrder(state, m, "them") }, done: false, win: null, end: null };
+  soSetup(S);
+  const me = m.so.order.us.findIndex(p => p.me);
+  L(`${m.score[0]} : ${m.score[1]}. 승부는 승부차기로 간다.`, "whistle", { soStart: true, so: { us: [], them: [] } });
+  L(fill("동전을 던졌다. {t|이/가} 먼저 찬다.", { t: first === "us" ? (m.fx.usName || TEAM_NAME) : m.fx.opponent.name }), "info");
+  if (me >= 0 && me < 5) L(`${STAFF.coach}: "${pl.name.length === 3 ? pl.name.slice(1) : pl.name}, 너는 ${nth(me + 1)}다. ${me === 0 ? "처음부터 분위기 가져와." : me === 4 ? "마지막은 너한테 맡긴다." : "하던 대로만 차."}"`, "coach");
+  else if (me >= 5) L(`다섯 명 안에 내 이름은 없다. 서든데스까지 가면 ${nth(me + 1)}로 나간다.`, "me");
+  else L("벤치에서 동료들의 어깨를 바라본다. 할 수 있는 건 손을 모으는 것뿐이다.", "me");
+  m.soCut = true;                                        // 화면: 승부차기 자리로 넘어감
+  soQueue(state, m); soQueue(state, m);                  // 첫 키커와, 그 뒤에 걸어 나올 다음 키커
+}
+function soQueue(state, m) {                           // 다음 키커를 경기장에 넣음 (내 차례면 결과는 선택 뒤에)
+  const so = m.so, S = m.sim;
+  const i = so.seq++, team = i % 2 === 0 ? so.first : so.first === "us" ? "them" : "us";
+  const n = Math.floor(i / 2), list = so.order[team], kicker = list[n % list.length];
+  const keeper = S.P.find(p => p.team !== team && p.pos === "GK");
+  const k = { kicker, keeper, team, no: n + 1, result: null, dir: 0, high: false };
+  if (!kicker.me) {
+    const avg = list.reduce((a, p) => a + p.st.shoot, 0) / list.length;
+    const p = clamp((team === "us" ? so.pu : so.pt) + (kicker.st.shoot - avg) / 250 - (kicker.pos === "GK" ? 0.12 : 0), 0.25, 0.97);
+    k.result = rand() < p ? "goal" : rand() < 0.65 ? "save" : "miss";
+    k.dir = weighted([[-1, 0.42], [0, 0.16], [1, 0.42]]); k.high = k.dir === 0 && rand() < 0.5;
+  }
+  (so.queued ||= {})[kicker.name] = k;
+  soKick(S, k);
+}
+const ORD = ["첫", "두", "세", "네", "다섯", "여섯", "일곱", "여덟", "아홉", "열", "열한", "열두"];
+const nth = n => `${ORD[n - 1] || n} 번째`;
+const soMarks = so => ({ us: so.us.slice(), them: so.them.slice() });
+const soTally = so => `${so.us.filter(Boolean).length} : ${so.them.filter(Boolean).length}`;
+function soNext(state, m) {
+  const S = m.sim, so = m.so;
+  if (m.record) S.rec = [];
+  const lines = [], t0 = S.t;
+  const L = (t, k = "info", extra = {}) => lines.push({ t, k, minute: LENGTH, ts: S.t, ...extra });
+  let kind = "line";
+  for (let g = 0; g < 3000; g++) {
+    const n0 = S.ev.length;
+    simStep(S);
+    for (let i = n0; i < S.ev.length; i++) {
+      const e = S.ev[i];
+      if (e.type === "soSet") {
+        const k = so.queued?.[e.by];
+        if (!e.me) L(`${e.team === "us" ? "우리" : "상대"} ${k?.no ? nth(k.no) + " " : ""}키커 ${e.by}. 공을 내려놓고 뒤로 물러선다.`, e.team === "us" ? "us" : "them");
+      }
+      if (e.type === "soDone" && !so.done) soQueue(state, m);   // 앞 키커가 공 앞으로 가면 그다음 키커가 걸어 나오기 시작 (승부가 나면 돌려보냄)
+      if (e.type === "soShot") {
+        const ok = e.result === "goal", t = e.team;
+        so[t].push(ok);
+        const sideW = e.dir < 0 ? "왼쪽" : e.dir > 0 ? "오른쪽" : "가운데";
+        const kv = { k: e.keeper, w: sideW };
+        const txt = fill(e.me
+          ? (ok ? pick(["골망이 출렁인다! 들어갔다!", "{k|이/가} 반대로 몸을 날렸다. 들어갔다!"])
+            : e.result === "save" ? "{k}의 손에 걸렸다… 막혔다." : e.high ? "공이 크로스바 위로 날아간다…" : "골대 옆으로 빗나간다…")
+          : ok ? (e.dir === 0 ? (e.high ? "가운데 위로 꽂았다. 들어갔다." : "가운데로 낮게. 골키퍼는 이미 몸을 날렸다. 들어갔다.") : "{w} 구석. 들어갔다.") : e.result === "save" ? "{k|이/가} 막아 냈다!" : e.high ? "크로스바를 넘어간다!" : "골대를 벗어났다!", kv);
+        L(`${txt} (${soTally(so)})`, e.me ? (ok ? "me-good" : "me-bad") : t, { so: soMarks(so) });
+        if (e.me) { m.my.so = ok; }
+        const w = soDecided(so);
+        if (w) { so.done = true; so.win = w; so.end = S.t + 1.6; soCancelNext(S); }
+      }
+    }
+    if (so.end != null && S.t >= so.end) {
+      const a = so.us.filter(Boolean).length, b = so.them.filter(Boolean).length;
+      L(`승부차기 ${a} : ${b}. ${so.win === "us" ? "이겼다! 다 같이 골문 쪽으로 달려간다!" : "졌다… 상대 선수들이 골문 쪽으로 뛰어간다."}`, "whistle", { so: soMarks(so), soEnd: so.win });
+      for (const p of S.P) if (p.team === so.win && p.pos !== "GK") p.ov = { x: 93 + rand() * 4, y: 30 + rand() * 8, v: 7.4, recv: false, carry: false, plan: false, keep: true, stage: false };   // 이긴 팀은 마지막 키커·골키퍼 쪽으로 달려가 모임
+      m.so = so; m.done = true; kind = "ft";
+      for (let i = 0; i < 20; i++) simStep(S);              // 달려가는 모습 조금 더
+      break;
+    }
+    if (!m.done && soReady(S) && S.so.cur.kicker.me) { soPending(state, m); kind = "moment"; break; }
+    if (S.t - t0 >= CHUNK) break;
+  }
+  m.feed.push(...lines);
+  const frames = m.record ? S.rec : [];
+  if (m.record) S.rec = [];
+  const cut = !!m.soCut; m.soCut = false;
+  return { kind, lines, frames, cut };
+}
+function soPending(state, m) {
+  const so = m.so, pl = state.player, S = m.sim;
+  const no = so.us.length + 1, a = so.us.filter(Boolean).length, b = so.them.filter(Boolean).length;
+  const usLeft = Math.max(0, 5 - so.us.length), themLeft = Math.max(0, 5 - so.them.length);
+  const sudden = so.us.length >= 5;
+  const mustScore = sudden ? b > a : b > a + usLeft - 1 && so.them.length >= so.us.length;   // 못 넣으면 끝
+  const winIt = sudden ? so.them.length > so.us.length && a === b : a + 1 > b + themLeft;     // 넣으면 끝
+  const pres = (mustScore ? -0.04 : 0) + (sudden ? -0.02 : 0);
+  const p0 = c => { let s = 0, w = 0; for (const [path, k] of Object.entries(c.stats)) { s += getPath(pl.stats, path) * k; w += k; } s /= w;
+    return clamp(c.base + (s - 50) / 120 + (pl.stats.mental.confidence - 50) / 500 + conditionOf(pl).match * 0.5 + pres, 0.42, 0.94); };
+  const keeper = S.so.cur.keeper.name;
+  const text = fill(`${nth(no)} 키커, 나다. ${soTally(so)}. ${mustScore ? "못 넣으면 끝이다. " : winIt ? "넣으면 이긴다. " : ""}공을 내려놓는다. {k|이/가} 골라인 위에서 양팔을 벌린다.`, { k: keeper });
+  const list = SO_CHOICES.map(c => ({ ...c, win: "goal", lose: "miss" }));
+  const choices = list.map(c => { const p = p0(c); return { label: c.label, p, signature: false, level: p >= 0.65 ? "높음" : p >= 0.4 ? "보통" : "낮음", timing: null, follow: false }; });
+  m.pending = { so: true, sit: { id: "shootout", poss: "us", text: [text], choices: list }, list, vars: {}, text, choices, ball: [S.ball.x, S.ball.y], ctx: { cat: "set:so", poss: "us" } };
+}
+function soResolve(state, m, ci, timing) {
+  const pd = m.pending, c = pd.list[ci], S = m.sim;
+  const ok = rand() < pd.choices[ci].p;
+  const result = ok ? "goal" : pick(c.lose);
+  const dir = c.aim === "center" ? 0 : rand() < 0.5 ? -1 : 1;
+  soSetResult(S, result, dir, c.aim === "center");
+  m.pending = null;
+  if (m.autoNext) m.autoNext = false;                  // 승부차기 선택은 평점·선택 기록에 넣지 않음 (밸런스 그대로)
+  const lines = [{ t: pd.text, k: "me", minute: LENGTH, ts: S.t, fast: true }, { t: `▶ ${c.label}`, k: "me", minute: LENGTH, ts: S.t }];
+  m.feed.push(...lines);
+  return { lines, ok, outcome: ok ? "goal" : "miss", act: "so" };
+}
+
 const VALUE = { goal: 1, chip: 0.45, shot: 0.35, head: 0.3, assist: 0.45, killPass: 0.55, keyPass: 0.3, win: 0.3, keep: 0.1, miss: 0, turnover: -0.12, danger: -0.38,
   tapIn: 0.6, pk: 1, matePk: 0.6, setPiece: 0.2, offside: -0.05, pkAgainst: -0.75, longShot: 0.2, acro: 0.35, card: -0.15, decoy: 0.25 };
 function autoChoice(m) {
   const pd = m.pending;
+  if (pd.so) return pd.choices.reduce((bi, c, i, a) => (c.p > a[bi].p ? i : bi), 0);   // 승부차기: 가장 자신 있는 쪽
   let best = 0, bestV = -9;
   pd.list.forEach((c, i) => {
     const p = pd.choices[i].p;
@@ -9052,10 +9268,11 @@ function autoChoice(m) {
   return best;
 }
 
-function autoPlay(state, m) {
+function autoPlay(state, m, { untilShootout = false } = {}) {
   let guard = 0;
   m.autoAll = true;
   while (!m.done && guard++ < 5000) {
+    if (untilShootout && m.so) { m.autoAll = false; return; }   // '결과만 보기'도 승부차기는 건너뛰지 않음
     if (m.pending) resolve(state, m, autoChoice(m));
     else next(state, m);
   }
@@ -9082,7 +9299,8 @@ function finishMatch(state, m) {
   m.stats.poss = possShare(m);
   const [gf, ga] = m.score;
   let shootout = null;
-  if (fx.ko && gf === ga) {
+  if (fx.ko && gf === ga && m.so?.done) shootout = { win: m.so.win === "us", us: m.so.us.filter(Boolean).length, them: m.so.them.filter(Boolean).length };   // 경기장에서 찬 승부차기
+  else if (fx.ko && gf === ga) {
     const pw = 0.5 + (m.ours - m.theirs) / 80 + (m.onPitch ? (p.stats.tech.shoot - 50) / 400 : 0);
     const win = chance(clamp(pw, 0.2, 0.8));
     const k = int(3, 5);
@@ -15348,6 +15566,7 @@ function showMatch(app, m, onDone) {
   const p = state.player;
   const fx = m.fx;
   let speed = "normal", paused = false, pend = [], after = null, waiting = false, lastShown = 0, holdUntil = 0, finished = false;
+  let soOn = false;                                      // 승부차기 중 (건너뛰기 없음)
   const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const players = buildPlayers(m);
 
@@ -15442,8 +15661,17 @@ function showMatch(app, m, onDone) {
     const sc = root.querySelector("#sc"), now = `${shown[0]} : ${shown[1]}`;
     sc.textContent = now;
     if (now !== lastScore) { lastScore = now; sc.classList.remove("bump"); void sc.offsetWidth; sc.classList.add("bump"); }
-    root.querySelector("#clock").textContent = m.done ? "종료" : `${shownMin ?? m.minute}'`;
+    root.querySelector("#clock").textContent = m.done ? "종료" : soOn ? "승부차기" : `${shownMin ?? m.minute}'`;
   };
+  // 승부차기: 경기장 위 ○✕ 기록판 (중계 줄이 그 킥에 도착할 때 바뀜)
+  function soBoard(so) {
+    const wrap = root.querySelector("#pitch");
+    let el = wrap.querySelector(".so-board");
+    if (!el) { wrap.insertAdjacentHTML("beforeend", `<div class="so-board" role="status" aria-label="승부차기 기록"></div>`); el = wrap.querySelector(".so-board"); }
+    const n = Math.max(5, so.us.length, so.them.length);
+    const row = (name, arr) => `<div class="so-row"><span class="so-name">${esc(name)}</span>${Array.from({ length: n }, (_, i) => `<i class="${arr[i] === true ? "ok" : arr[i] === false ? "no" : ""}">${arr[i] === true ? "○" : arr[i] === false ? "✕" : ""}</i>`).join("")}<b class="num">${arr.filter(Boolean).length}</b></div>`;
+    el.innerHTML = row(fx.usName || TEAM_NAME, so.us) + row(fx.opponent.name, so.them);
+  }
   // 해설 칸 크기가 바뀔 때(선택 창, 타이밍, 하프타임) 맨 아래를 보고 있었으면 계속 맨 아래로
   let stick = true;
   feed.addEventListener("scroll", () => { stick = feed.scrollTop + feed.clientHeight >= feed.scrollHeight - 6; }, { passive: true });
@@ -15504,6 +15732,14 @@ function showMatch(app, m, onDone) {
     if (l.minute != null) shownMin = l.minute;
     if (l.half2 || (l.minute != null && l.minute > HALF_MIN)) setHalf(true);   // 후반 킥오프 문장부터 진영 교체
     if (l.k?.startsWith("goal")) goalFlash(l.k);
+    if (l.soStart) { soOn = true; controls(); }        // 승부차기는 건너뛸 수 없음 (결과만 보기 숨김)
+    if (l.so) soBoard(l.so);
+    if (l.soEnd) {
+      flash.textContent = l.soEnd === "us" ? "승리!" : "탈락";
+      flash.className = `goal-flash ${l.soEnd === "us" ? "" : "against"}`; flash.hidden = false;
+      clearTimeout(flash._t); flash._t = setTimeout(() => { flash.hidden = true; }, 1800);
+      if (l.soEnd === "us") { sfx.play("goal"); buzz([60, 40, 120]); } else { sfx.play("concede"); buzz(40); }
+    }
     updateBoard();
   }
   // 경기장 시계에 맞춰 중계 줄을 내보내고, 기록이 끝나면 다음을 이어 감
@@ -15575,7 +15811,7 @@ function showMatch(app, m, onDone) {
     ctl.innerHTML = `<div class="ctl-row">
       <button class="btn btn-ghost" data-pause>일시정지</button>
       <button class="btn btn-ghost" data-speed>${speed === "fast" ? "보통 속도" : "빠르게"}</button>
-      <button class="btn" data-skip>결과만 보기</button></div>`;
+      ${soOn ? "" : `<button class="btn" data-skip>결과만 보기</button>`}</div>`;
     ctl.querySelector("[data-pause]").addEventListener("click", e => {
       paused = !paused; e.target.textContent = paused ? "계속" : "일시정지";
       pitch.pause(paused);
@@ -15585,14 +15821,14 @@ function showMatch(app, m, onDone) {
       speed = speed === "normal" ? "fast" : "normal"; e.target.textContent = speed === "fast" ? "보통 속도" : "빠르게";
       pitch.setSpeed(speed);
     });
-    ctl.querySelector("[data-skip]").addEventListener("click", skipAll);
+    ctl.querySelector("[data-skip]")?.addEventListener("click", skipAll);
   }
 
   function showMoment() {
     const pd = m.pending;
     shownMin = m.minute; updateBoard();
     ctl.innerHTML = `<div class="moment" role="group" aria-label="선택">
-      <p class="mo-text"><span class="num">${m.minute}'</span> ${esc(pd.text)}</p>
+      <p class="mo-text"><span class="num">${pd.so ? "PK" : `${m.minute}'`}</span> ${esc(pd.text)}</p>
       <div class="mo-choices">${pd.choices.map((c, i) => `<button class="mo-btn" data-c="${i}">
         <span>${c.signature ? `<b class="sigb">★ 특기</b> ` : ""}${esc(c.label)}${c.follow ? ` <b class="follow">지시</b>` : ""}${c.timing ? ` <b class="tmark" title="타이밍 버튼">⏱</b>` : ""}</span><span class="lv ${c.level === "높음" ? "hi" : c.level === "보통" ? "mid" : "lo"}">${c.level}</span></button>`).join("")}</div>
       <button class="linkbtn" data-autopick>알아서 하기</button>
@@ -15693,10 +15929,21 @@ function showMatch(app, m, onDone) {
     pend.forEach(addLine); pend = [];
     m.record = false;
     const before = m.feed.length;
-    autoPlay(state, m);
-    m.feed.slice(before).forEach(addLine);
-    pitch.jump(frameNow(m.sim));
+    autoPlay(state, m, { untilShootout: true });
+    const L2 = m.feed.slice(before);
     shown = m.score.slice();
+    if (m.so && !m.done) {                              // 승부차기는 건너뛰지 않음: 그 앞까지만 넘기고 경기장에서 이어 봄
+      const i = L2.findIndex(l => l.soStart);
+      L2.slice(0, Math.max(0, i)).forEach(addLine);
+      m.record = true; finished = false; paused = false;
+      pitch.jump(frameNow(m.sim)); pitch.pause(false);
+      pend.push(...L2.slice(Math.max(0, i)));
+      controls(); updateBoard();
+      after = "line";
+      return;
+    }
+    L2.forEach(addLine);
+    pitch.jump(frameNow(m.sim));
     end();
   }
 

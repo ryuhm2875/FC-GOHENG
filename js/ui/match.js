@@ -60,6 +60,7 @@ export function showMatch(app, m, onDone) {
   const p = state.player;
   const fx = m.fx;
   let speed = "normal", paused = false, pend = [], after = null, waiting = false, lastShown = 0, holdUntil = 0, finished = false;
+  let soOn = false;                                      // 승부차기 중 (건너뛰기 없음)
   const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const players = buildPlayers(m);
 
@@ -154,8 +155,17 @@ export function showMatch(app, m, onDone) {
     const sc = root.querySelector("#sc"), now = `${shown[0]} : ${shown[1]}`;
     sc.textContent = now;
     if (now !== lastScore) { lastScore = now; sc.classList.remove("bump"); void sc.offsetWidth; sc.classList.add("bump"); }
-    root.querySelector("#clock").textContent = m.done ? "종료" : `${shownMin ?? m.minute}'`;
+    root.querySelector("#clock").textContent = m.done ? "종료" : soOn ? "승부차기" : `${shownMin ?? m.minute}'`;
   };
+  // 승부차기: 경기장 위 ○✕ 기록판 (중계 줄이 그 킥에 도착할 때 바뀜)
+  function soBoard(so) {
+    const wrap = root.querySelector("#pitch");
+    let el = wrap.querySelector(".so-board");
+    if (!el) { wrap.insertAdjacentHTML("beforeend", `<div class="so-board" role="status" aria-label="승부차기 기록"></div>`); el = wrap.querySelector(".so-board"); }
+    const n = Math.max(5, so.us.length, so.them.length);
+    const row = (name, arr) => `<div class="so-row"><span class="so-name">${esc(name)}</span>${Array.from({ length: n }, (_, i) => `<i class="${arr[i] === true ? "ok" : arr[i] === false ? "no" : ""}">${arr[i] === true ? "○" : arr[i] === false ? "✕" : ""}</i>`).join("")}<b class="num">${arr.filter(Boolean).length}</b></div>`;
+    el.innerHTML = row(fx.usName || TEAM_NAME, so.us) + row(fx.opponent.name, so.them);
+  }
   // 해설 칸 크기가 바뀔 때(선택 창, 타이밍, 하프타임) 맨 아래를 보고 있었으면 계속 맨 아래로
   let stick = true;
   feed.addEventListener("scroll", () => { stick = feed.scrollTop + feed.clientHeight >= feed.scrollHeight - 6; }, { passive: true });
@@ -216,6 +226,14 @@ export function showMatch(app, m, onDone) {
     if (l.minute != null) shownMin = l.minute;
     if (l.half2 || (l.minute != null && l.minute > HALF_MIN)) setHalf(true);   // 후반 킥오프 문장부터 진영 교체
     if (l.k?.startsWith("goal")) goalFlash(l.k);
+    if (l.soStart) { soOn = true; controls(); }        // 승부차기는 건너뛸 수 없음 (결과만 보기 숨김)
+    if (l.so) soBoard(l.so);
+    if (l.soEnd) {
+      flash.textContent = l.soEnd === "us" ? "승리!" : "탈락";
+      flash.className = `goal-flash ${l.soEnd === "us" ? "" : "against"}`; flash.hidden = false;
+      clearTimeout(flash._t); flash._t = setTimeout(() => { flash.hidden = true; }, 1800);
+      if (l.soEnd === "us") { sfx.play("goal"); buzz([60, 40, 120]); } else { sfx.play("concede"); buzz(40); }
+    }
     updateBoard();
   }
   // 경기장 시계에 맞춰 중계 줄을 내보내고, 기록이 끝나면 다음을 이어 감
@@ -287,7 +305,7 @@ export function showMatch(app, m, onDone) {
     ctl.innerHTML = `<div class="ctl-row">
       <button class="btn btn-ghost" data-pause>일시정지</button>
       <button class="btn btn-ghost" data-speed>${speed === "fast" ? "보통 속도" : "빠르게"}</button>
-      <button class="btn" data-skip>결과만 보기</button></div>`;
+      ${soOn ? "" : `<button class="btn" data-skip>결과만 보기</button>`}</div>`;
     ctl.querySelector("[data-pause]").addEventListener("click", e => {
       paused = !paused; e.target.textContent = paused ? "계속" : "일시정지";
       pitch.pause(paused);
@@ -297,14 +315,14 @@ export function showMatch(app, m, onDone) {
       speed = speed === "normal" ? "fast" : "normal"; e.target.textContent = speed === "fast" ? "보통 속도" : "빠르게";
       pitch.setSpeed(speed);
     });
-    ctl.querySelector("[data-skip]").addEventListener("click", skipAll);
+    ctl.querySelector("[data-skip]")?.addEventListener("click", skipAll);
   }
 
   function showMoment() {
     const pd = m.pending;
     shownMin = m.minute; updateBoard();
     ctl.innerHTML = `<div class="moment" role="group" aria-label="선택">
-      <p class="mo-text"><span class="num">${m.minute}'</span> ${esc(pd.text)}</p>
+      <p class="mo-text"><span class="num">${pd.so ? "PK" : `${m.minute}'`}</span> ${esc(pd.text)}</p>
       <div class="mo-choices">${pd.choices.map((c, i) => `<button class="mo-btn" data-c="${i}">
         <span>${c.signature ? `<b class="sigb">★ 특기</b> ` : ""}${esc(c.label)}${c.follow ? ` <b class="follow">지시</b>` : ""}${c.timing ? ` <b class="tmark" title="타이밍 버튼">⏱</b>` : ""}</span><span class="lv ${c.level === "높음" ? "hi" : c.level === "보통" ? "mid" : "lo"}">${c.level}</span></button>`).join("")}</div>
       <button class="linkbtn" data-autopick>알아서 하기</button>
@@ -405,10 +423,21 @@ export function showMatch(app, m, onDone) {
     pend.forEach(addLine); pend = [];
     m.record = false;
     const before = m.feed.length;
-    autoPlay(state, m);
-    m.feed.slice(before).forEach(addLine);
-    pitch.jump(frameNow(m.sim));
+    autoPlay(state, m, { untilShootout: true });
+    const L2 = m.feed.slice(before);
     shown = m.score.slice();
+    if (m.so && !m.done) {                              // 승부차기는 건너뛰지 않음: 그 앞까지만 넘기고 경기장에서 이어 봄
+      const i = L2.findIndex(l => l.soStart);
+      L2.slice(0, Math.max(0, i)).forEach(addLine);
+      m.record = true; finished = false; paused = false;
+      pitch.jump(frameNow(m.sim)); pitch.pause(false);
+      pend.push(...L2.slice(Math.max(0, i)));
+      controls(); updateBoard();
+      after = "line";
+      return;
+    }
+    L2.forEach(addLine);
+    pitch.jump(frameNow(m.sim));
     end();
   }
 

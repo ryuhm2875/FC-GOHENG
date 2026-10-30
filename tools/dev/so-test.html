@@ -1,0 +1,27 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- 승부차기 화면 시험: 토너먼트 무승부가 나는 시드를 찾아 경기 화면을 띄움. ?pos=FW&coach=90&stat=70 (tools/dev/so-shots.mjs가 씀) -->
+<link rel="stylesheet" href="../../css/style.css"><link rel="stylesheet" href="../../css/fc.css"><link rel="stylesheet" href="../../css/polish.css"><link rel="stylesheet" href="../../css/fc26.css">
+</head><body><div id="app"></div>
+<script type="module">
+import { setSeed } from "../../js/rng.js";
+import { rollPlayer, newGame } from "../../js/state.js";
+import { beginWeek, endWeek } from "../../js/engine/week.js";
+import { prepareMatch, autoPlay } from "../../js/engine/match.js";
+import { showMatch } from "../../js/ui/match.js";
+const q = new URLSearchParams(location.search), pos = q.get("pos") || "FW", coach = +(q.get("coach") || 90), stat = +(q.get("stat") || 72);
+const build = seed => {
+  setSeed(seed);
+  const s = newGame(rollPlayer({ name: "테스트", face: "face_01", position: pos, foot: "R", growthType: "steady" }));
+  for (const g of ["tech", "phys", "mental"]) for (const k in s.player.stats[g]) s.player.stats[g][k] = stat;
+  s.relations.coach = coach;
+  let ctx; for (let i = 0; i < 60; i++) { ctx = beginWeek(s); if (ctx.fx) break; endWeek(s, ctx, null); }
+  ctx.fx.ko = true;
+  return { s, m: prepareMatch(s, ctx.info, ctx.fx) };
+};
+let seed = +(q.get("seed") || 40000);
+for (; seed < 40400; seed++) { const { s, m } = build(seed); if (m.status !== "start") continue; autoPlay(s, m, { untilShootout: true }); if (m.so && m.so.order.us.slice(0, 5).some(p => p.me)) break; }
+const { s, m } = build(seed);
+window.soSeed = seed; window.soM = m;
+showMatch({ state: s, root: document.getElementById("app"), settings: { timing: true } }, m, res => { window.soDone = res; });
+window.ready = true;
+</script></body></html>
