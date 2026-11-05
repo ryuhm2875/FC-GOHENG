@@ -1,6 +1,7 @@
 import { CAPTAINS } from "./roster.js";
 import { EVENTS_MORE } from "./events2.js";
 import { EVENTS_STORY } from "./events3.js";
+import { EVENTS_ORIGIN } from "./events4.js";
 import { turnInfo } from "../js/engine/calendar.js";
 import { pick } from "../js/rng.js";
 // 이번 주(이벤트가 보이는 주)에 경기가 있는지 / 다음 주에 정기시험이 있는지
@@ -21,6 +22,7 @@ const lastMatch = s => { const m = s.record.matches.at(-1); return m && s.calend
 // bg    : 배경 그림 이름 (assets/img/). 있으면 글 상자 뒤에 그림이 깔립니다
 // urgent: true면 조건이 맞을 때 무작위 이벤트보다 먼저 찾아옴 (경기 뒤 면담 등)
 // weight: 뽑힐 확률 비중 (기본 1) / once: true면 한 번만
+// priority: 날짜·상황(trigger) 이벤트끼리 같은 주에 겹치면 큰 쪽이 먼저 (기본 0, 출신 이야기 1)
 // text  : 상황. {name} 나, {friend} {rival} {mentor} {junior} 각 인물, {coach} {assistant} {teacher}
 // choices: label 선택지, fx 효과, result 결과 문장
 //   fx: s 능력치 {"tech.shoot": 1}, fatigue 피로, morale 사기, coach 감독 신뢰, rel 관계 {friend: 5}
@@ -576,6 +578,7 @@ export const EVENTS = [
   // ── 추가 이벤트 86개 (data/events2.js) ──
   ...EVENTS_MORE,
   ...EVENTS_STORY,
+  ...EVENTS_ORIGIN,
 ];
 
 // 주장 선거 (중3 3월 2주차에 반드시 일어남). 결과는 엔진이 계산합니다.
