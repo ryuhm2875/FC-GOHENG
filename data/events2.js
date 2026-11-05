@@ -19,7 +19,7 @@ const mainLabel = s => GOALS[goalsOf(s).main]?.label || "목표";
 export const EVENTS_MORE = [
   // ── 학교생활 ─────────────────────────────────
   { id: "a_fight", bg: "ev_fight", school: true, who: "narr",
-    text: "쉬는 시간, 복도에서 옆 반 두 명이 서로 멱살을 잡고 있다. 둘러선 아이들은 휴대폰만 들고 구경한다.",
+    text: "쉬는 시간, 복도에서 다른 학년 아이 둘이 서로 멱살을 잡고 있다. 둘러선 아이들은 휴대폰만 들고 구경한다.",
     choices: [
       { label: "사이에 끼어들어 말린다", fx: { s: { "student.attitude": 1.5, "mental.teamwork": 0.5 }, teacher: 2, fatigue: 2 },
         result: "덩치 큰 쪽 팔을 붙잡고 끝까지 버텼다. 선생님이 오시기 전에 둘이 떨어졌다. 나중에 {teacher}께서 어깨를 두드려 주셨다." },
@@ -121,7 +121,7 @@ export const EVENTS_MORE = [
         result: "엄마 차를 타고 겨우 도착했다. '오늘 저녁에 바퀴 때우고 와' 하는 말이 뒤따라왔다." },
     ] },
   { id: "a_umbrella", school: true, who: "narr", when: { months: [6, 7, 9] },
-    text: "하굣길, 비가 쏟아진다. 옆 반 아이가 현관 앞에서 하늘만 올려다보고 있다.",
+    text: "하굣길, 비가 쏟아진다. 다른 학년 아이 하나가 현관 앞에서 하늘만 올려다보고 있다. 얼굴은 알지만 말은 거의 안 해 본 아이다.",
     choices: [
       { mark: "umbrella", label: "우산을 같이 쓰고 간다", fx: { s: { "mental.teamwork": 0.5 }, morale: 2 },
         result: "어깨 한쪽이 다 젖었다. 그래도 가는 내내 이야기가 끊기지 않았다." },
@@ -179,16 +179,16 @@ export const EVENTS_MORE = [
         result: "스매시 세 개 중 하나는 들어갔다. 나머지 둘은 체육관 천장으로 날아갔다." },
     ] },
   { id: "a_jokgu", school: true, who: "narr",
-    text: "체육 시간, 반 대항 족구 대회. 반 아이들이 \"축구부니까 공격 맡아!\" 하며 나를 앞으로 민다.",
+    text: s => s.player.growthType === "jokgu" ? "체육 시간 족구. 편을 나누기도 전에 다들 \"족구부 출신은 무조건 공격!\" 하며 나를 네트 앞으로 민다." : "체육 시간 족구. 편을 나누자마자 다들 \"축구부니까 공격 맡아!\" 하며 나를 네트 앞으로 민다.",
     choices: [
       { label: "공격을 맡는다", fx: { morale: 3, s: { "phys.jump": 0.3, "mental.confidence": 0.3 } },
-        result: "높이 뜬 공을 발등으로 내리꽂았다. 상대 반이 '반칙 아니냐'며 웃었다." },
+        result: "높이 뜬 공을 발등으로 내리꽂았다. 상대편이 '반칙 아니냐'며 웃었다." },
       { label: "수비에서 받쳐 준다", fx: { s: { "mental.teamwork": 1 } },
         result: "뒤에서 공을 띄워 줬다. 공격을 맡은 친구가 득점할 때마다 내가 더 신났다." },
       { label: "공격은 다른 친구에게 양보한다", fx: { s: { "student.attitude": 1 } },
         result: "양보받은 친구가 첫 득점을 하고 날뛰었다. 그 표정을 보니 양보하길 잘했다." },
       { label: "발등 트래핑 후 상대 코트 구석에 찔러 넣는다", req: { "tech.firstTouch": 62 }, fx: { s: { "tech.firstTouch": 0.4 }, morale: 3 },
-        result: "높게 뜬 공을 발등에 죽여 놓고 구석으로 툭. 상대 반 아이들이 멍하니 공을 바라봤다." },
+        result: "높게 뜬 공을 발등에 죽여 놓고 구석으로 툭. 상대편 아이들이 멍하니 공을 바라봤다." },
     ] },
   { id: "a_club", date: [[3, 3]], school: true, who: "narr", when: { months: [3, 4] }, once: true,
     text: "동아리 신청서를 받았다. 도서부, 요리조리, 방송댄스, 요가와 명상반 가운데 하나를 골라야 한다.",
@@ -333,7 +333,7 @@ export const EVENTS_MORE = [
         result: "운동장에서 사진을 받았다. 다들 웃고 있는데 내 자리만 비어 있었다." },
     ] },
   { id: "a_window", bg: "ev_classroom", school: true, who: "narr",
-    text: "점심시간에 교실 창문이 깨졌다. 축구공 때문이었다. 반 아이들이 일제히 축구부를 쳐다본다. 공을 찬 건 다른 반 아이였다.",
+    text: "점심시간에 교실 창문이 깨졌다. 축구공 때문이었다. 반 아이들이 일제히 축구부를 쳐다본다. 공을 찬 건 다른 학년 아이였다.",
     choices: [
       { label: "본 대로 차분히 말씀드린다", fx: { s: { "student.attitude": 1 }, teacher: 1 },
         result: "선생님은 끝까지 들으시더니 고개를 끄덕이셨다. 공을 찬 아이가 스스로 교무실을 찾아왔다." },

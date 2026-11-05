@@ -36,12 +36,12 @@ export const EVENTS = [
       { label: "미안, 네가 좀 해 줘", fx: { s: { "student.attitude": -1.5 }, rel: { friend: -8 } }, result: "{friend|이/가} 혼자 다 했다. 발표 날 눈을 안 마주친다." },
     ] },
   { id: "sports_day", date: [[10, 2]], bg: "ev_sportsday", who: "teacher", school: true, when: { months: [10] }, once: true,
-    text: "2학기 학급 대항 줄다리기 날. {teacher}께서 부르신다. \"{given|아/야}, 반 아이들이 맨 앞자리를 너한테 맡기자는데?\"",
+    text: "2학기 학년 대항 줄다리기 날. {teacher}께서 부르신다. \"{given|아/야}, 반 아이들이 맨 앞자리를 너한테 맡기자는데?\"",
     choices: [
       { label: "맡겠습니다", fx: { s: { "student.attitude": 1.5, "phys.strength": 0.5 }, fatigue: 6, morale: 6 }, result: "구령에 맞춰 버텼다. 마지막 한 뼘에서 우리 반이 끌려가지 않았다. 반 아이들이 한꺼번에 달려들었다." },
       { label: "다치면 안 돼서요…", fx: { s: { "student.attitude": -0.5 }, fatigue: -3 }, result: "선생님은 웃으며 괜찮다고 하셨지만, 반 단톡방은 조용했다." },
       { label: "허리를 낮추고 줄을 어깨에 감는다", req: { "phys.strength": 60 }, fx: { s: { "phys.strength": 0.5, "mental.teamwork": 0.5 }, morale: 3, teacher: 1 },
-        result: "웨이트로 다진 허리가 버텼다. 첫 당김에 상대 반이 한 걸음 끌려왔다. 반 아이들이 내 이름을 연호한다." },
+        result: "웨이트로 다진 허리가 버텼다. 첫 당김에 상대편이 한 걸음 끌려왔다. 반 아이들이 내 이름을 연호한다." },
     ] },
   { id: "phone_confiscated", school: true, who: "teacher", cond: s => s.player.stats.student.attitude < 60,
     text: "수업 중에 하이라이트 영상을 보다가 {teacher}께 걸렸다. \"휴대폰은 종례 때 찾아가.\"",
@@ -71,7 +71,7 @@ export const EVENTS = [
     text: "도서관에 새로 들어온 축구 선수 자서전 있던데, 읽어 볼래? 독후감 쓰면 수행평가에도 들어가.",
     choices: [
       { label: "빌려서 읽는다", fx: { s: { "mental.focus": 1, "student.academic": 1.5, "mental.confidence": 0.5 }, fatigue: -2 }, result: "\"남들이 쉴 때 한 번 더 찼다\"는 문장에 밑줄을 그었다." },
-      { label: "시간 없어서 패스", fx: {}, result: "책은 다른 반 친구가 빌려 갔다." },
+      { label: "시간 없어서 패스", fx: {}, result: "책은 결국 옆자리 친구가 빌려 갔다." },
     ] },
   { id: "exam_night", school: true, who: "friend", needs: "friend", cond: s => s.player.stats.student.academic < 60 && examNextWeek(s),
     text: "다음 주 시험인데 나 수학 하나도 모르겠다… 같이 공부할래? 대신 내가 떡볶이 쏜다.",
@@ -295,10 +295,10 @@ export const EVENTS = [
 
   // ── 소소한 학교생활 ──────────────────────────
   { id: "s_rain_pe", school: true, who: "narr", when: { months: [6, 7, 9] },
-    text: "체육 시간에 비가 온다. 체육관에서 반 대항 피구를 한단다. 반 아이들이 축구부인 나를 쳐다본다.",
+    text: "체육 시간에 비가 온다. 체육관에서 피구를 한단다. 편을 가르자 같은 편 아이들이 축구부인 나를 쳐다본다.",
     choices: [
       { label: "에이스처럼 공을 던진다", fx: { morale: 5, rel: { friend: 3 } }, result: "세 명을 연달아 맞혔다. 축구부는 피구도 잘한다는 소문이 났다." },
-      { label: "친구들이 던지게 양보한다", fx: { s: { "mental.teamwork": 1 }, teacher: 1 }, result: "공을 넘겨줬더니 평소 조용하던 친구가 마지막 한 명을 맞혔다. 반이 이겼다." },
+      { label: "친구들이 던지게 양보한다", fx: { s: { "mental.teamwork": 1 }, teacher: 1 }, result: "공을 넘겨줬더니 평소 조용하던 친구가 마지막 한 명을 맞혔다. 우리 편이 이겼다." },
       { label: "날아오는 공을 다 피해 끝까지 살아남는다", req: { "phys.agility": 60 }, fx: { s: { "phys.agility": 0.4 }, morale: 3 },
         result: "왼쪽, 오른쪽, 점프. 마지막 한 명이 될 때까지 아무도 나를 못 맞혔다. 반 아이들이 \"민첩성 실화냐\"며 웃었다." },
     ] },
@@ -373,12 +373,12 @@ export const EVENTS = [
       { label: "멀리서 구경한다", fx: { fatigue: -8 }, result: "그늘에 앉아 쉬었다. 습하고 더운 공기 속에서 남의 축구를 보는 것도 나쁘지 않았다." },
     ] },
   { id: "sportsday", bg: "ev_sportsday", fixed: true, who: "teacher",
-    text: "고흥 연합 체육대회 날. 다른 학교 축구부 애들도 보인다. {teacher}께서 부르신다. \"{given|아/야}, 반 대항 계주 마지막 주자 해 볼래?\"",
+    text: "고흥 연합 체육대회 날. 다른 학교 축구부 애들도 보인다. {teacher}께서 부르신다. \"{given|아/야}, 학교 대항 계주 마지막 주자 해 볼래?\"",
     choices: [
       { label: "마지막 주자를 맡는다", fx: { s: { "phys.speed": 0.8, "student.attitude": 1 }, morale: 7, fatigue: 6, teacher: 3 },
         hurt: { p: 0.05, type: "hamstring", cause: "체육대회 계주 마지막 코너에서 허벅지 뒤가 당겼다.", result: "마지막 코너에서 허벅지가 뚝 하고 당겼다. 1등은 했는데, 결승선을 지나 주저앉았다." },
-        result: "마지막 코너에서 다른 학교 축구부를 제쳤다. 반 아이들이 운동장으로 뛰어나왔다." },
-      { label: "응원단장을 한다", fx: { s: { "mental.teamwork": 1.5 }, morale: 5, teacher: 2, rel: { friend: 4 } }, result: "목이 쉬도록 소리를 질렀다. 반이 2등을 했다." },
+        result: "마지막 코너에서 다른 학교 축구부를 제쳤다. 우리 학교 아이들이 다 같이 운동장으로 뛰어나왔다." },
+      { label: "응원단장을 한다", fx: { s: { "mental.teamwork": 1.5 }, morale: 5, teacher: 2, rel: { friend: 4 } }, result: "목이 쉬도록 소리를 질렀다. 우리 학교가 계주 2등을 했다." },
       { label: "다칠까 봐 빠진다", fx: { fatigue: -5, teacher: -2 }, result: "다칠까 봐 빠졌다. 반 단톡방이 조용했다." },
     ] },
   { id: "harmony_camp", bg: "ev_dorm_night", fixed: true, who: "teacher",
@@ -424,10 +424,10 @@ export const EVENTS = [
     text: s => s.calendar.grade === 3 ? "봉두예술제. 축구부 장기자랑 무대가 잡혔다. 후배들이 나를 쳐다본다. \"형이 센터 해 주세요.\""
       : "봉두예술제. 축구부 장기자랑 무대가 잡혔다. 선배가 나를 가리킨다. \"센터는 너다.\"",
     choices: [
-      { label: "춤을 맡는다", fx: { morale: 9, s: { "mental.confidence": 1.5, "mental.teamwork": 1 }, fatigue: 4 }, result: "연습 일주일, 무대 3분. 강당이 떠나가라 함성이 터졌다. 영상이 학교 전체에 돌았다." },
+      { label: "춤을 맡는다", fx: { morale: 9, s: { "mental.confidence": 1.5, "mental.teamwork": 1 }, fatigue: 4 }, result: "연습 일주일, 무대 3분. 전교생이 마흔 명 남짓인데 강당이 떠나가라 함성이 터졌다. 그날 밤 영상이 학부모 단톡방까지 돌았다." },
       { label: "뒤에서 소품을 맡는다", fx: { s: { "student.attitude": 1.5, "mental.teamwork": 1 }, teacher: 2 },
         result: s => `조명과 소품을 맡았다. 무대가 끝나고 ${s.calendar.grade === 3 ? "후배들이" : "선배가"} 제일 먼저 나를 찾았다.` },
-      { label: "객석에서 본다", fx: { fatigue: -5 }, result: "다른 반 공연을 보며, 한 해가 끝나 간다는 걸 실감했다." },
+      { label: "객석에서 본다", fx: { fatigue: -5 }, result: "다른 학년 공연을 보며, 한 해가 끝나 간다는 걸 실감했다." },
     ] },
   { id: "graduation", bg: "ev_graduation", fixed: true, who: "narr",
     text: s => {

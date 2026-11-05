@@ -95,10 +95,12 @@ const GROWTH_TYPES = {
     adj: { tech: 10, phys: 7, "mental.confidence": 6 }, mult: [1.0, 0.9, 0.8], techMult: 1, physMult: 1,
     potential: [71, 85], heightBonus: 0, startHeight: 3, coach: 60,
     heightShare: [0.3, 0.25, 0.17, 0.1, 0.06] },
-  track: {
-    label: "육상부 출신", desc: "달리기와 체력은 학교에서 손꼽힙니다. 공 다루는 건 이제부터입니다.",
-    adj: { tech: -4, phys: 4, "phys.speed": 7, "phys.stamina": 5 }, mult: [1.0, 1.0, 1.0], techMult: 1.05, physMult: 1.1,
-    potential: [70, 86], heightBonus: 2, startHeight: 1,
+  jokgu: {
+    label: "초등 족구부 출신", desc: "발등 감각과 점프는 남다릅니다. 땅으로 굴러오는 공과 몸싸움은 이제부터입니다.",
+    adj: { tech: -3, "tech.firstTouch": 8, "tech.shoot": 4, "tech.dribble": -2, "tech.defense": -2,
+      "phys.jump": 7, "phys.agility": 4, "phys.strength": -3, "phys.stamina": 2, "mental.teamwork": 3 },
+    mult: [1.0, 1.0, 1.0], techMult: 1.07, physMult: 1.05,
+    potential: [70, 86], heightBonus: 1, startHeight: 1,
     heightShare: [0.2, 0.19, 0.18, 0.17, 0.16] },
   club: {
     label: "클럽에서 떨어지고 온 아이", desc: "유소년 클럽에서 배운 기본기가 탄탄합니다. 테스트에서 떨어진 상처가 남아 있습니다.",
@@ -107,7 +109,7 @@ const GROWTH_TYPES = {
     heightShare: [0.19, 0.19, 0.18, 0.17, 0.16] },
 };
 // 예전 성장 유형 → 출신 (예전 저장 파일·점검 도구). 대기만성형은 클럽 출신 + 숨은 재능 '늦게 피는 꽃'
-const GROWTH_ALIAS = { early: "ace", steady: "rookie", late: "club", physical: "track", technical: "club" };
+const GROWTH_ALIAS = { early: "ace", steady: "rookie", late: "club", physical: "jokgu", technical: "club", track: "jokgu" };   // track: 육상부 출신(11월 5일 하루)
 const growthTypeOf = k => GROWTH_TYPES[k] || GROWTH_TYPES[GROWTH_ALIAS[k]] || GROWTH_TYPES.rookie;
 // 숨은 재능 '늦게 피는 꽃': 선수를 만들 때 이 확률로 몰래 붙고, 중3 3월 신체 측정에서 드러남
 const BLOOM = { chance: 0.1, mult: [0.88, 0.97, 1.3], potential: 3, heightBonus: 3, startHeight: -2,
@@ -3891,7 +3893,7 @@ const LIFE = [
   { id: "fr_homework", from: "friend", school: true, title: "수학 숙제 몇 쪽까지야", body: "나 진짜 몰라서 묻는 거임. 62쪽까지? 64쪽까지? 빨리 답 좀 ㅠ" },
   { id: "fr_goal", from: "friend", cond: s => last(s)?.goals > 0, title: "야 미쳤다", body: "오늘 골 영상 단톡에 돌던데 ㅋㅋㅋ 반 애들 다 봄. 내일 학교 오면 사인해 줘라" },
   { id: "fr_bench", from: "friend", cond: s => last(s)?.status === "bench", title: "괜찮냐", body: "오늘 못 뛰어서 속상하지? 다음엔 뛰겠지. 떡볶이 먹으러 가자. 내가 산다." },
-  { id: "fr_crush", from: "friend", school: true, title: "비밀인데", body: "옆 반 걔가 너 축구하는 거 보러 운동장 왔었대. 진짜임. 나한테 들었다고 하지 마라 ㅋㅋ" },
+  { id: "fr_crush", from: "friend", school: true, title: "비밀인데", body: "도서부 걔 있잖아. 걔가 너 축구하는 거 보러 운동장 왔었대. 진짜임. 나한테 들었다고 하지 마라 ㅋㅋ" },
   { id: "fr_cafe", from: "friend", when: { months: [7, 8] }, title: "덥다", body: "더워 죽겠다. 훈련 끝나고 편의점 앞에서 아이스크림 먹자. 바닷바람 맞으면서." },
   // ── 라이벌 ──
   { id: "rv_challenge", from: "rival", title: "내일 일찍 나와", body: "내일 아침 7시 운동장. 슈팅 100개 누가 더 넣나 내기. 지는 사람 음료수." },
@@ -3983,10 +3985,10 @@ const LIFE = [
     body: "마트에서 초등학교 감독님 만났다. 중학교 가서 고생한다고 했더니 웃으시면서 '걔는 원래 늦게 웃는다' 하시더라.\n\n무슨 뜻인지는 모르겠는데, 아빠는 좀 좋더라." },
   { id: "o_ace_junior", from: "junior", when: { grades: [2, 3] }, cond: s => s.player.growthType === "ace", title: "형 진짜예요?",
     body: "형 초등학교 때 득점왕이었다는 거 진짜예요? 저희 초등학교 복도에 아직 형 사진 붙어 있어요 ㅋㅋ 다음에 슈팅 좀 알려 주세요!" },
-  { id: "o_tr_friend", from: "friend", school: true, cond: s => s.player.growthType === "track", title: "육상부 애들이",
-    body: "육상부 애들이 너 아직도 아깝대 ㅋㅋ 너 있었으면 100m 군 대회 1등이었다고. 축구부 가서 맨날 달리기만 하냐고 물어보던데?" },
-  { id: "o_tr_mom", from: "mom", when: { grades: [1] }, cond: s => s.player.growthType === "track", title: "육상화",
-    body: "신발장에 육상화가 그대로 있더라. 버릴까 하다가 그냥 뒀어. 혹시 모르니까.\n\n축구화는 이번 주말에 새로 보러 가자." },
+  { id: "o_jg_friend", from: "friend", school: true, cond: s => s.player.growthType === "jokgu", title: "점심때 한 판?",
+    body: "체육 쌤이 너 족구하는 거 보고 \"쟤는 축구부가 아니라 족구부\"라고 하시던데 ㅋㅋ 점심때 한 판 ㄱ? 네트 내가 쳐 놓음" },
+  { id: "o_jg_mom", from: "mom", when: { grades: [1] }, cond: s => s.player.growthType === "jokgu", title: "거실 사진",
+    body: "거실에 걸린 족구부 단체 사진 있지. 그 옆에 자리 하나 비워 놨어.\n\n축구부 사진 나오면 꼭 한 장 받아 와." },
   { id: "o_cl_dad", from: "dad", when: { grades: [1] }, cond: s => s.player.growthType === "club", title: "광주 갈 일",
     body: "다음 달에 아빠 광주 갈 일 있는데 같이 갈래? 싫으면 안 가도 된다. 그냥 물어본 거다." },
   { id: "o_cl_mentor", from: "mentor", cond: s => s.player.growthType === "club", title: "첫 터치",
@@ -9639,7 +9641,7 @@ const mainLabel = s => GOALS[goalsOf(s).main]?.label || "목표";
 const EVENTS_MORE = [
   // ── 학교생활 ─────────────────────────────────
   { id: "a_fight", bg: "ev_fight", school: true, who: "narr",
-    text: "쉬는 시간, 복도에서 옆 반 두 명이 서로 멱살을 잡고 있다. 둘러선 아이들은 휴대폰만 들고 구경한다.",
+    text: "쉬는 시간, 복도에서 다른 학년 아이 둘이 서로 멱살을 잡고 있다. 둘러선 아이들은 휴대폰만 들고 구경한다.",
     choices: [
       { label: "사이에 끼어들어 말린다", fx: { s: { "student.attitude": 1.5, "mental.teamwork": 0.5 }, teacher: 2, fatigue: 2 },
         result: "덩치 큰 쪽 팔을 붙잡고 끝까지 버텼다. 선생님이 오시기 전에 둘이 떨어졌다. 나중에 {teacher}께서 어깨를 두드려 주셨다." },
@@ -9741,7 +9743,7 @@ const EVENTS_MORE = [
         result: "엄마 차를 타고 겨우 도착했다. '오늘 저녁에 바퀴 때우고 와' 하는 말이 뒤따라왔다." },
     ] },
   { id: "a_umbrella", school: true, who: "narr", when: { months: [6, 7, 9] },
-    text: "하굣길, 비가 쏟아진다. 옆 반 아이가 현관 앞에서 하늘만 올려다보고 있다.",
+    text: "하굣길, 비가 쏟아진다. 다른 학년 아이 하나가 현관 앞에서 하늘만 올려다보고 있다. 얼굴은 알지만 말은 거의 안 해 본 아이다.",
     choices: [
       { mark: "umbrella", label: "우산을 같이 쓰고 간다", fx: { s: { "mental.teamwork": 0.5 }, morale: 2 },
         result: "어깨 한쪽이 다 젖었다. 그래도 가는 내내 이야기가 끊기지 않았다." },
@@ -9799,16 +9801,16 @@ const EVENTS_MORE = [
         result: "스매시 세 개 중 하나는 들어갔다. 나머지 둘은 체육관 천장으로 날아갔다." },
     ] },
   { id: "a_jokgu", school: true, who: "narr",
-    text: "체육 시간, 반 대항 족구 대회. 반 아이들이 \"축구부니까 공격 맡아!\" 하며 나를 앞으로 민다.",
+    text: s => s.player.growthType === "jokgu" ? "체육 시간 족구. 편을 나누기도 전에 다들 \"족구부 출신은 무조건 공격!\" 하며 나를 네트 앞으로 민다." : "체육 시간 족구. 편을 나누자마자 다들 \"축구부니까 공격 맡아!\" 하며 나를 네트 앞으로 민다.",
     choices: [
       { label: "공격을 맡는다", fx: { morale: 3, s: { "phys.jump": 0.3, "mental.confidence": 0.3 } },
-        result: "높이 뜬 공을 발등으로 내리꽂았다. 상대 반이 '반칙 아니냐'며 웃었다." },
+        result: "높이 뜬 공을 발등으로 내리꽂았다. 상대편이 '반칙 아니냐'며 웃었다." },
       { label: "수비에서 받쳐 준다", fx: { s: { "mental.teamwork": 1 } },
         result: "뒤에서 공을 띄워 줬다. 공격을 맡은 친구가 득점할 때마다 내가 더 신났다." },
       { label: "공격은 다른 친구에게 양보한다", fx: { s: { "student.attitude": 1 } },
         result: "양보받은 친구가 첫 득점을 하고 날뛰었다. 그 표정을 보니 양보하길 잘했다." },
       { label: "발등 트래핑 후 상대 코트 구석에 찔러 넣는다", req: { "tech.firstTouch": 62 }, fx: { s: { "tech.firstTouch": 0.4 }, morale: 3 },
-        result: "높게 뜬 공을 발등에 죽여 놓고 구석으로 툭. 상대 반 아이들이 멍하니 공을 바라봤다." },
+        result: "높게 뜬 공을 발등에 죽여 놓고 구석으로 툭. 상대편 아이들이 멍하니 공을 바라봤다." },
     ] },
   { id: "a_club", date: [[3, 3]], school: true, who: "narr", when: { months: [3, 4] }, once: true,
     text: "동아리 신청서를 받았다. 도서부, 요리조리, 방송댄스, 요가와 명상반 가운데 하나를 골라야 한다.",
@@ -9953,7 +9955,7 @@ const EVENTS_MORE = [
         result: "운동장에서 사진을 받았다. 다들 웃고 있는데 내 자리만 비어 있었다." },
     ] },
   { id: "a_window", bg: "ev_classroom", school: true, who: "narr",
-    text: "점심시간에 교실 창문이 깨졌다. 축구공 때문이었다. 반 아이들이 일제히 축구부를 쳐다본다. 공을 찬 건 다른 반 아이였다.",
+    text: "점심시간에 교실 창문이 깨졌다. 축구공 때문이었다. 반 아이들이 일제히 축구부를 쳐다본다. 공을 찬 건 다른 학년 아이였다.",
     choices: [
       { label: "본 대로 차분히 말씀드린다", fx: { s: { "student.attitude": 1 }, teacher: 1 },
         result: "선생님은 끝까지 들으시더니 고개를 끄덕이셨다. 공을 찬 아이가 스스로 교무실을 찾아왔다." },
@@ -10445,7 +10447,7 @@ const EVENTS_STORY = [
     text: s => (samePos(s) ? "훈련이 끝난 운동장. 같은 학년, 같은 자리에서 뛰는 {rival|이/가} 공을 발로 굴리며 다가온다." : "훈련이 끝난 운동장. 같은 학년 {rival|이/가} 공을 발로 굴리며 다가온다. 자리는 달라도 훈련 때마다 눈이 마주치는 녀석이다.") + " " + ({   // 출신마다 라이벌의 첫마디 (HANDOFF 29절)
       ace: "\"너 초등부 득점왕이지? 네 경기 본 적 있다. 그때도 잘하더라. …지금은 내가 더 잘하지만.\"",
       rookie: "\"너 축구 처음이라며? 근데 왜 맨날 제일 늦게 가냐. …그래 봤자 나한텐 안 된다.\"",
-      track: "\"육상부에서 왔다며? 달리기는 인정. …근데 공은 내가 더 잘 찬다.\"",
+      jokgu: "\"족구부 출신이라며? 공중볼은 좀 하겠네. …근데 축구공은 땅으로 온다.\"",
       club: "\"광주에서 클럽 다녔다며? 기본기 좋더라. …그래도 여기선 내가 먼저 뛴다.\"",
     }[s.player.growthType] || "\"너 몇 년 찼냐? 나는 네 경기 본 적 있다. …지금은 내가 더 잘하지만.\""),
     choices: [
@@ -10650,7 +10652,7 @@ const EVENTS_STORY = [
     ] },
   { id: "pay_umbrella", once: true, bg: "bg_stadium", who: "narr",
     trigger: s => { const i = turnInfo(s); return marked(s, "umbrella", 15) && !!i?.match && [5, 6, 7, 8, 9].includes(i.month); },
-    text: "비 소식이 있는 경기 날. 운동장 입구에서 누가 우비를 내민다. 예전에 우산을 같이 썼던 옆 반 아이다. \"오늘은 내가 갚을게.\"",
+    text: "비 소식이 있는 경기 날. 운동장 입구에서 누가 우비를 내민다. 예전에 우산을 같이 썼던 그 아이다. \"오늘은 내가 갚을게.\"",
     choices: [
       { label: "우비를 받아 벤치 가방에 넣는다", fx: { morale: 4 },
         result: "비가 오든 말든 오늘은 춥지 않을 것 같다." },
@@ -10820,36 +10822,37 @@ const EVENTS_ORIGIN = [
         result: "3년 동안 서랍에 있던 메달은 줄이 바래 있었다. 두 개를 나란히 들고 사진을 찍었다. 아이 메달이 더 반짝였다. 그래도 괜찮았다." },
     ] },
 
-  // ── 육상부 출신 ─────────────────────────────
-  { id: "o_tr_meet", cond: is("track"), once: true, priority: 1, school: true, trigger: win(5, 1, 3), when: { grades: [1] }, bg: "ev_hallway", who: "narr",
-    text: "복도에서 육상부 오 선생님이 나를 붙잡으셨다.\n\n\"다음 주 군 육상대회 100m, 한 번만 뛰어 주면 안 되겠냐. 우리 학교에 너만 한 애가 없다.\"",
+  // ── 초등 족구부 출신 ─────────────────────────
+  // 학교에 족구부는 없음. 학교스포츠클럽 족구 대회에 나갈 사람을 체육 선생님이 찾고, 담임이 말을 전함
+  { id: "o_jg_cup", cond: is("jokgu"), once: true, priority: 1, school: true, trigger: weeks([5, 2], [5, 3], [5, 5], [6, 1], [6, 2]), when: { grades: [1] }, bg: "ev_classroom", who: "teacher",
+    text: "종례가 끝나고 {teacher}께서 나를 부르셨다.\n\n\"{given|아/야}, 체육 선생님이 그러시던데 너 초등학교 때 족구부였다며? 이번에 학교스포츠클럽 족구 대회가 있는데, 우리 학교는 네 명 채우기도 빠듯하대. 한번 나가 볼래?\"",
     choices: [
-      { mark: "tr_meet", label: "감독님께 허락받고 나간다", fx: { s: { "phys.speed": 1 }, coach: 1, fatigue: 4 },
-        result: "감독님은 \"뛰고 와라. 대신 다치지 마라\" 하셨다. 결승선을 2등으로 들어왔다. 1등은 육상부 3학년. 오 선생님이 아쉬워하는 얼굴을 보니 조금 미안했고, 조금 시원했다." },
-      { label: "\"이제 축구부라서요\" 정중히 거절한다", fx: { coach: 2, s: { "mental.focus": 0.5 }, morale: -1 },
-        result: "선생님이 아쉬운 얼굴로 웃으셨다. \"그래. 공 갖고도 그렇게 뛰어라.\" 그 말이 훈련 내내 머리에 남았다." },
-      { mark: "tr_dawn", label: "새벽 육상 훈련만 같이 한다", fx: { s: { "phys.speed": 0.6, "phys.stamina": 0.6 }, fatigue: 8 },
-        result: "새벽 6시 반, 육상부 애들 틈에서 스타트 연습. 8시부터는 축구부 훈련. 그 주 내내 점심을 먹자마자 엎드려 잤다." },
+      { mark: "jg_cup", label: "감독님께 허락받고 나간다", fx: { s: { "tech.firstTouch": 0.6, "phys.jump": 0.4 }, coach: 1, fatigue: 4, morale: 4 },
+        result: "감독님은 \"발목 조심해라\" 한마디만 하셨다. 군 대회 결승까지 갔다. 마지막 점수에서 내 서브가 네트 윗줄에 걸려 우리 쪽으로 떨어졌다. 준우승 메달을 받아 들고도 그 서브가 자꾸 떠올랐다." },
+      { label: "\"축구에 집중하고 싶어요\" 하고 말씀드린다", fx: { s: { "mental.focus": 0.6 }, coach: 2, morale: -1 },
+        result: "\"그래, 네가 정했으면 됐다. 체육 선생님께는 내가 말씀드릴게.\" 선생님은 서운한 기색 없이 웃으셨다. 그날 저녁 훈련, 높이 뜬 공이 오자 발등이 먼저 마중을 나갔다. 몸은 아직 족구를 기억하고 있었다." },
+      { mark: "jg_lunch", label: "대회는 빠지고, 점심시간 연습 상대만 해 준다", fx: { s: { "mental.teamwork": 1 }, teacher: 2, fatigue: 2, rel: { friend: 3 } },
+        result: "점심마다 운동장 구석에 네트를 치고 반 친구들과 공을 넘겼다. 발등 서브 하나를 일주일 내내 가르쳤다. 대회 날, 그 서브로 첫 점수가 났다는 문자가 왔다. 내가 넣은 것보다 좋았다." },
     ] },
-  { id: "o_tr_break", cond: is("track"), once: true, priority: 1, trigger: win(4, 2, 4), when: { grades: [2] }, bg: "bg_field_day", who: "assistant",
-    text: "측면에서 공을 받아 그냥 달렸다. 따라오던 수비가 두 걸음, 세 걸음 뒤처졌다. 공이 발에서 떨어지지 않았다. 육상부 시절처럼 귓가에 바람 소리만 들렸다.\n\n크로스는 엉뚱한 데로 날아갔지만, {assistant}님이 휘슬을 문 채 나를 가리키고 계셨다.",
+  { id: "o_jg_volley", cond: is("jokgu"), once: true, priority: 1, trigger: win(4, 2, 4), when: { grades: [2] }, bg: "bg_field_day", who: "assistant",
+    text: "크로스 훈련. 공이 생각보다 길게 넘어와 내 머리 뒤로 떨어진다. 생각할 틈도 없이 몸이 옆으로 누웠다. 족구에서 하던 그대로, 발등으로 공을 내리찍었다.\n\n공은 골대 옆 그물을 흔들었다. {assistant}님이 휘슬을 입에서 뗐다. \"방금 그거, 어디서 배웠냐?\"",
     choices: [
-      { label: "\"한 번 더요!\" 다시 공을 달라고 한다", fx: { s: { "tech.dribble": 1 }, fatigue: 3, morale: 3 },
-        result: "두 번째엔 수비가 처음부터 거리를 두고 섰다. 그 틈으로 공을 밀어 넣고 다시 달렸다. 이번엔 크로스가 공격수 머리에 맞았다." },
-      { label: "크로스 연습을 따로 부탁드린다", fx: { s: { "tech.cross": 1.2 }, coach: 1 },
-        result: "\"빨리 가는 건 됐다. 이제 멈추는 법이랑 올리는 법.\" 훈련이 끝나자 측면에 콘 다섯 개가 놓였다. 그 콘은 한 달 동안 그 자리에 있었다." },
-      { label: "달리면서 고개 드는 연습을 한다", req: { "mental.focus": 45 }, fx: { s: { "mental.focus": 0.8, "tech.pass": 0.5 } },
-        result: "달리면서 고개를 드니 안쪽으로 뛰어드는 동료가 보였다. 빠르기만 한 애가 아니라는 걸 보여 주고 싶었다." },
+      { label: "\"족구요\" 하고 웃는다", fx: { s: { "tech.shoot": 1 }, morale: 4 },
+        result: "\"족구?\" 코치님이 한참 웃으시더니 공 바구니를 끌고 오셨다. \"그 발등, 공 떨어지는 자리만 맞추면 무기다. 오늘은 발리 쉰 개.\"" },
+      { label: "\"땅볼 받는 게 아직 더 어려워요\" 털어놓는다", fx: { s: { "tech.firstTouch": 0.6, "tech.dribble": 0.6 }, coach: 1 },
+        result: "\"알고 있다. 공중에서는 편한데 땅에서는 공이 발에서 자꾸 튄다.\" 코치님은 다 보고 계셨다. 다음 날부터 훈련 끝에 땅볼 패스 받기 백 개가 붙었다." },
+      { label: "이번엔 공을 죽이지 않고 바로 골문 구석으로", req: { "tech.firstTouch": 55 }, fx: { s: { "tech.shoot": 0.8, "mental.confidence": 0.6 }, morale: 5 },
+        result: "두 번째 공. 무릎을 접고 발목을 고정했다. 퍽, 하는 소리와 함께 공이 골키퍼 손끝을 지나 구석에 꽂혔다. 동료들이 \"족구왕!\" 하며 달려들었다. 그날부터 별명이 생겼다." },
     ] },
-  { id: "o_tr_watch", cond: is("track"), once: true, priority: 1, school: true, trigger: weeks([9, 4], [9, 5], [10, 2], [10, 3], [10, 4]), when: { grades: [3] }, bg: "bg_field_day", who: "narr",
-    text: s => `훈련 중에 운동장 끝에서 누가 손을 흔든다. 육상부 오 선생님이다. 목에 스톱워치를 걸고 계신다.${marked(s, "tr_meet") ? " 복도에서는 자주 뵀지만, 운동장까지 오신 건 1학년 군 대회 이후 처음이다." : marked(s, "tr_dawn") ? " 1학년 때 새벽 스타트 연습을 같이 한 뒤로, 운동장에서 뵙는 건 처음이다." : ""}\n\n"공 몰고 측면 한 번만 달려 봐라. 궁금해서 그래."`,
+  { id: "o_jg_net", cond: is("jokgu"), once: true, priority: 1, school: true, trigger: weeks([5, 2], [5, 3], [5, 5], [6, 1], [6, 2]), when: { grades: [3] }, bg: "bg_field_day", who: "narr",
+    text: s => `점심시간. 운동장 구석에 족구 네트가 쳐져 있다. 1학년 넷이 이번 학교스포츠클럽 대회에 나간다며 공을 넘기는데, 서브가 번번이 네트에 걸린다.${marked(s, "jg_cup") ? " 2년 전 결승, 네트 윗줄에 걸렸던 내 서브가 생각났다." : marked(s, "jg_lunch") ? " 1학년 때 반 친구들과 점심마다 공을 넘기던 그 자리다." : ""}\n\n한 아이가 나를 보더니 소리친다. "형! 족구부였다면서요!"`,
     choices: [
-      { label: "공을 몰고 끝까지 달린다", fx: { s: { "tech.dribble": 0.5, "phys.speed": 0.4 }, morale: 6 },
-        result: "선생님이 스톱워치를 한참 들여다보셨다. \"허, 공 몰고 뛰는데 별로 안 느리네. 육상부에 붙잡아 뒀으면 큰일 날 뻔했다.\" 그러고는 혼자 껄껄 웃으셨다. 나도 따라 웃었다." },
-      { label: "육상부 후배들에게 스타트를 가르쳐 준다", fx: { s: { "mental.teamwork": 1 }, morale: 4, teacher: 1 },
-        result: "훈련이 끝나고 육상부 트랙으로 넘어갔다. 무릎 각도, 첫 세 걸음. 축구부에서 3년을 보냈는데도 몸이 다 기억하고 있었다." },
-      { label: "\"고등학교 가서도 측면에서 달릴 거예요\"", req: { "phys.speed": 60 }, fx: { s: { "mental.confidence": 1 }, coach: 1, morale: 5 },
-        result: "선생님이 스톱워치를 내 손에 쥐여 주셨다. \"이거 가져가라. 기록은 네가 재.\" 숫자가 다 지워지지 않은 낡은 스톱워치였다." },
+      { label: "서브부터 가르쳐 준다", fx: { s: { "mental.teamwork": 1 }, morale: 5, teacher: 1 },
+        result: s => `"공 보지 말고 네트 윗줄 한 뼘 위를 봐." 열 번 만에 하나가 넘어갔다. 아이들이 소리를 질렀다.${marked(s, "jg_cup") ? " 그 한 뼘을 나는 2년 전에 몰랐다." : ""}` },
+      { label: "상대편에 서서 공을 받아 준다", fx: { s: { "tech.firstTouch": 0.5, "phys.agility": 0.4 }, fatigue: 3, morale: 4 },
+        result: "넘어오는 공은 전부 받아서 다시 넘겨 줬다. 종이 칠 때쯤 아이들 서브가 꽤 날카로워졌다. 대회 날 문자가 왔다. \"형 저희 4강 갔어요!!\"" },
+      { label: "발등 트래핑 시범을 보여 준다", req: { "tech.firstTouch": 65 }, fx: { s: { "mental.confidence": 1 }, morale: 6 },
+        result: "높이 띄운 공을 발등에 그대로 얹었다. 공이 멈췄다. 1학년들이 입을 벌렸다. 3년 동안 축구를 했는데, 이건 족구부 시절보다 더 잘 된다." },
     ] },
 
   // ── 클럽에서 떨어지고 온 아이 ────────────────
@@ -10937,12 +10940,12 @@ const EVENTS = [
       { label: "미안, 네가 좀 해 줘", fx: { s: { "student.attitude": -1.5 }, rel: { friend: -8 } }, result: "{friend|이/가} 혼자 다 했다. 발표 날 눈을 안 마주친다." },
     ] },
   { id: "sports_day", date: [[10, 2]], bg: "ev_sportsday", who: "teacher", school: true, when: { months: [10] }, once: true,
-    text: "2학기 학급 대항 줄다리기 날. {teacher}께서 부르신다. \"{given|아/야}, 반 아이들이 맨 앞자리를 너한테 맡기자는데?\"",
+    text: "2학기 학년 대항 줄다리기 날. {teacher}께서 부르신다. \"{given|아/야}, 반 아이들이 맨 앞자리를 너한테 맡기자는데?\"",
     choices: [
       { label: "맡겠습니다", fx: { s: { "student.attitude": 1.5, "phys.strength": 0.5 }, fatigue: 6, morale: 6 }, result: "구령에 맞춰 버텼다. 마지막 한 뼘에서 우리 반이 끌려가지 않았다. 반 아이들이 한꺼번에 달려들었다." },
       { label: "다치면 안 돼서요…", fx: { s: { "student.attitude": -0.5 }, fatigue: -3 }, result: "선생님은 웃으며 괜찮다고 하셨지만, 반 단톡방은 조용했다." },
       { label: "허리를 낮추고 줄을 어깨에 감는다", req: { "phys.strength": 60 }, fx: { s: { "phys.strength": 0.5, "mental.teamwork": 0.5 }, morale: 3, teacher: 1 },
-        result: "웨이트로 다진 허리가 버텼다. 첫 당김에 상대 반이 한 걸음 끌려왔다. 반 아이들이 내 이름을 연호한다." },
+        result: "웨이트로 다진 허리가 버텼다. 첫 당김에 상대편이 한 걸음 끌려왔다. 반 아이들이 내 이름을 연호한다." },
     ] },
   { id: "phone_confiscated", school: true, who: "teacher", cond: s => s.player.stats.student.attitude < 60,
     text: "수업 중에 하이라이트 영상을 보다가 {teacher}께 걸렸다. \"휴대폰은 종례 때 찾아가.\"",
@@ -10972,7 +10975,7 @@ const EVENTS = [
     text: "도서관에 새로 들어온 축구 선수 자서전 있던데, 읽어 볼래? 독후감 쓰면 수행평가에도 들어가.",
     choices: [
       { label: "빌려서 읽는다", fx: { s: { "mental.focus": 1, "student.academic": 1.5, "mental.confidence": 0.5 }, fatigue: -2 }, result: "\"남들이 쉴 때 한 번 더 찼다\"는 문장에 밑줄을 그었다." },
-      { label: "시간 없어서 패스", fx: {}, result: "책은 다른 반 친구가 빌려 갔다." },
+      { label: "시간 없어서 패스", fx: {}, result: "책은 결국 옆자리 친구가 빌려 갔다." },
     ] },
   { id: "exam_night", school: true, who: "friend", needs: "friend", cond: s => s.player.stats.student.academic < 60 && examNextWeek(s),
     text: "다음 주 시험인데 나 수학 하나도 모르겠다… 같이 공부할래? 대신 내가 떡볶이 쏜다.",
@@ -11196,10 +11199,10 @@ const EVENTS = [
 
   // ── 소소한 학교생활 ──────────────────────────
   { id: "s_rain_pe", school: true, who: "narr", when: { months: [6, 7, 9] },
-    text: "체육 시간에 비가 온다. 체육관에서 반 대항 피구를 한단다. 반 아이들이 축구부인 나를 쳐다본다.",
+    text: "체육 시간에 비가 온다. 체육관에서 피구를 한단다. 편을 가르자 같은 편 아이들이 축구부인 나를 쳐다본다.",
     choices: [
       { label: "에이스처럼 공을 던진다", fx: { morale: 5, rel: { friend: 3 } }, result: "세 명을 연달아 맞혔다. 축구부는 피구도 잘한다는 소문이 났다." },
-      { label: "친구들이 던지게 양보한다", fx: { s: { "mental.teamwork": 1 }, teacher: 1 }, result: "공을 넘겨줬더니 평소 조용하던 친구가 마지막 한 명을 맞혔다. 반이 이겼다." },
+      { label: "친구들이 던지게 양보한다", fx: { s: { "mental.teamwork": 1 }, teacher: 1 }, result: "공을 넘겨줬더니 평소 조용하던 친구가 마지막 한 명을 맞혔다. 우리 편이 이겼다." },
       { label: "날아오는 공을 다 피해 끝까지 살아남는다", req: { "phys.agility": 60 }, fx: { s: { "phys.agility": 0.4 }, morale: 3 },
         result: "왼쪽, 오른쪽, 점프. 마지막 한 명이 될 때까지 아무도 나를 못 맞혔다. 반 아이들이 \"민첩성 실화냐\"며 웃었다." },
     ] },
@@ -11274,12 +11277,12 @@ const EVENTS = [
       { label: "멀리서 구경한다", fx: { fatigue: -8 }, result: "그늘에 앉아 쉬었다. 습하고 더운 공기 속에서 남의 축구를 보는 것도 나쁘지 않았다." },
     ] },
   { id: "sportsday", bg: "ev_sportsday", fixed: true, who: "teacher",
-    text: "고흥 연합 체육대회 날. 다른 학교 축구부 애들도 보인다. {teacher}께서 부르신다. \"{given|아/야}, 반 대항 계주 마지막 주자 해 볼래?\"",
+    text: "고흥 연합 체육대회 날. 다른 학교 축구부 애들도 보인다. {teacher}께서 부르신다. \"{given|아/야}, 학교 대항 계주 마지막 주자 해 볼래?\"",
     choices: [
       { label: "마지막 주자를 맡는다", fx: { s: { "phys.speed": 0.8, "student.attitude": 1 }, morale: 7, fatigue: 6, teacher: 3 },
         hurt: { p: 0.05, type: "hamstring", cause: "체육대회 계주 마지막 코너에서 허벅지 뒤가 당겼다.", result: "마지막 코너에서 허벅지가 뚝 하고 당겼다. 1등은 했는데, 결승선을 지나 주저앉았다." },
-        result: "마지막 코너에서 다른 학교 축구부를 제쳤다. 반 아이들이 운동장으로 뛰어나왔다." },
-      { label: "응원단장을 한다", fx: { s: { "mental.teamwork": 1.5 }, morale: 5, teacher: 2, rel: { friend: 4 } }, result: "목이 쉬도록 소리를 질렀다. 반이 2등을 했다." },
+        result: "마지막 코너에서 다른 학교 축구부를 제쳤다. 우리 학교 아이들이 다 같이 운동장으로 뛰어나왔다." },
+      { label: "응원단장을 한다", fx: { s: { "mental.teamwork": 1.5 }, morale: 5, teacher: 2, rel: { friend: 4 } }, result: "목이 쉬도록 소리를 질렀다. 우리 학교가 계주 2등을 했다." },
       { label: "다칠까 봐 빠진다", fx: { fatigue: -5, teacher: -2 }, result: "다칠까 봐 빠졌다. 반 단톡방이 조용했다." },
     ] },
   { id: "harmony_camp", bg: "ev_dorm_night", fixed: true, who: "teacher",
@@ -11325,10 +11328,10 @@ const EVENTS = [
     text: s => s.calendar.grade === 3 ? "봉두예술제. 축구부 장기자랑 무대가 잡혔다. 후배들이 나를 쳐다본다. \"형이 센터 해 주세요.\""
       : "봉두예술제. 축구부 장기자랑 무대가 잡혔다. 선배가 나를 가리킨다. \"센터는 너다.\"",
     choices: [
-      { label: "춤을 맡는다", fx: { morale: 9, s: { "mental.confidence": 1.5, "mental.teamwork": 1 }, fatigue: 4 }, result: "연습 일주일, 무대 3분. 강당이 떠나가라 함성이 터졌다. 영상이 학교 전체에 돌았다." },
+      { label: "춤을 맡는다", fx: { morale: 9, s: { "mental.confidence": 1.5, "mental.teamwork": 1 }, fatigue: 4 }, result: "연습 일주일, 무대 3분. 전교생이 마흔 명 남짓인데 강당이 떠나가라 함성이 터졌다. 그날 밤 영상이 학부모 단톡방까지 돌았다." },
       { label: "뒤에서 소품을 맡는다", fx: { s: { "student.attitude": 1.5, "mental.teamwork": 1 }, teacher: 2 },
         result: s => `조명과 소품을 맡았다. 무대가 끝나고 ${s.calendar.grade === 3 ? "후배들이" : "선배가"} 제일 먼저 나를 찾았다.` },
-      { label: "객석에서 본다", fx: { fatigue: -5 }, result: "다른 반 공연을 보며, 한 해가 끝나 간다는 걸 실감했다." },
+      { label: "객석에서 본다", fx: { fatigue: -5 }, result: "다른 학년 공연을 보며, 한 해가 끝나 간다는 걸 실감했다." },
     ] },
   { id: "graduation", bg: "ev_graduation", fixed: true, who: "narr",
     text: s => {
@@ -12627,9 +12630,11 @@ function runExam(state, info, chosen) {
     중하위권: "훈련으로 피곤한 건 알지만, 수업 시간엔 집중하자.",
     하위권: "성적이 많이 걱정된다. 감독님과도 이야기를 나눠 봐야겠어.",
   }[tier];
-  const rank = Math.max(1, Math.round((100 - score) / 100 * 28));
+  // 고흥대서중은 전교생 40여 명, 한 학년 한 반 11~15명. 반 인원은 이름으로 정해 3년 내내 같음 (저장 칸 없음)
+  const classSize = 11 + [...(state.player.name || "")].reduce((a, c) => a + c.charCodeAt(0), 0) % 5;
+  const rank = Math.min(classSize, Math.max(1, Math.round((100 - score) / 100 * classSize)));
   mail(state, "teacher", `${info.exam.name} 결과: ${tier}`,
-    `평균 ${Math.round(score)}점, 반에서 28명 중 ${rank}등 정도야.\n\n${comment}\n\n${studied ? "시험 주에 공부한 게 점수에 보였어." : "시험 주에 공부하는 모습을 한 번도 못 봤어. 하루만 책을 폈어도 5점은 더 나왔을 거야."}${score >= 70 ? "\n\n감독님께도 말씀드렸어. 좋아하시더라." : ""}`);
+    `평균 ${Math.round(score)}점, 우리 반 ${classSize}명 중에 ${rank}등이야.\n\n${comment}\n\n${studied ? "시험 주에 공부한 게 점수에 보였어." : "시험 주에 공부하는 모습을 한 번도 못 봤어. 하루만 책을 폈어도 5점은 더 나왔을 거야."}${score >= 70 ? "\n\n감독님께도 말씀드렸어. 좋아하시더라." : ""}`);
   return { name: info.exam.name, tier, score: Math.round(score) };
 }
 
@@ -16273,9 +16278,9 @@ const TALK = {
     ace: { say: "초등학교 때 대회에서 득점왕 했어요.",
       memory: ["시상식 단상 위, 목에 걸린 메달이 생각보다 무거웠다. 그날 이후로 다들 나를 보며 수군거렸다. \"쟤가 걔야.\"", "중학교에서도 그럴 수 있을까."],
       react: "들었다. 초등부 득점왕. 근데 여긴 중학교다. 형들은 너보다 머리 하나가 크다. 이름값은 운동장에서 다시 증명해라." },
-    track: { say: "육상부였어요. 달리기는 자신 있어요.",
-      memory: ["100m 결승선을 제일 먼저 통과했을 때, 옆 운동장에서 축구부 형들이 소리치며 공을 쫓고 있었다.", "혼자 달리는 것보다 저게 더 재밌어 보였다."],
-      react: "발 빠른 건 가르쳐서 되는 게 아니다. 공만 발에 붙이면 무섭겠네. 근데 축구는 공을 갖고 달리는 거다." },
+    jokgu: { say: "초등학교 때 족구부였어요. 발로 하는 건 자신 있어요.",
+      memory: ["네트 너머로 뜬 공을 발등으로 내리꽂으면 체육관 바닥이 쿵 하고 울렸다. 그 소리가 좋았다.", "그런데 창밖 운동장에서는 다들 공을 땅으로 굴리며 끝까지 몰고 가고 있었다. 네트 없이 저렇게 달려 보고 싶었다."],
+      react: "족구라. 발등 감각은 좋겠네. 근데 축구공은 대부분 땅으로 온다. 그리고 상대가 몸으로 부딪쳐 온다. 그건 여기서 처음 배우는 거다." },
     club: { say: "광주에서 클럽 다녔어요. 유스 테스트에서… 떨어졌고요.",
       memory: ["합격자 명단을 위에서부터 세 번 읽었다. 내 이름은 없었다.", "고흥으로 내려오는 아빠 차 뒷자리에서 축구화 끈만 만지작거렸다."],
       react: "떨어진 건 지난 일이다. 여기서는 다들 처음부터다. 기본기는 클럽에서 제대로 배웠겠지? 보여 줘 봐라." },

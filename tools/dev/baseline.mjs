@@ -20,7 +20,7 @@ DEV.onFinish = (m, res) => extra.set(res, { ours: m.ours, theirs: m.theirs, shot
 for (let i = 0; i < N; i++) {
   setSeed(5000 + i);
   const pos = ["FW", "MF", "DF"][i % 3];
-  const s = newGame(rollPlayer({ name: "테스트", face: "face_01", position: pos, foot: "R", growthType: ["rookie", "ace", "track", "club"][i % 4] }));
+  const s = newGame(rollPlayer({ name: "테스트", face: "face_01", position: pos, foot: "R", growthType: ["rookie", "ace", "jokgu", "club"][i % 4] }));
   while (!s.finished) {
     if (s.pending?.type === "admission") chooseSchool(s, schoolOptions(s).list.find(x => x.ok).id);
     if (s.pending?.type === "national") s.pending = null;
