@@ -120,7 +120,7 @@ function datedEvents(state, info) {
     let tr = false;
     if (!on && e.trigger) { try { tr = !!e.trigger(state); } catch { tr = false; } }
     return (on || tr) && eligible(state, e, info);
-  }).map(e => e.id);
+  }).sort((a, b) => (b.priority || 0) - (a.priority || 0)).map(e => e.id);   // priority: 한 번뿐인 이야기(출신 이야기)가 같은 주 다른 이야기에 밀려 사라지지 않게
 }
 
 // 주 끝에 호출: 다음 주 시작 때 보여 줄 이벤트를 정해 둠 (한 주에 두 개까지)

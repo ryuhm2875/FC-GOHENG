@@ -80,6 +80,10 @@ export function afterMatchChat(state, res, fx = null, lastOfAll = false) {
   if (res.goals >= 3) parts.push(fillJ(pick(AFTER_MATCH.myHat), v));
   else if (res.goals > 0) parts.push(fillJ(pick(AFTER_MATCH.myGoal), v));
   else if (res.rating != null && res.rating < 6.0) parts.push(fillJ(pick(AFTER_MATCH.myBad), v));
+  if (res.shootout?.me != null) {                      // 승부차기에서 내가 찼으면 그 이야기
+    const k = `so${res.shootout.me ? "Goal" : "Miss"}${res.shootout.win ? "Win" : "Loss"}`;
+    if (AFTER_MATCH[k]) parts.push(fillJ(pick(AFTER_MATCH[k]), v));
+  }
   if (res.injury) parts.push(fillJ("{friend}: {name} 괜찮냐?? 많이 아프냐\n\n{assistant}: 병원 다녀왔다. 다들 너무 걱정 마라", v));
   if (lastOfAll) parts.push(fillJ("{junior}: 형 마지막 경기 수고하셨어요 ㅠㅠ\n\n{friend}: 3년 끝… 이상하다 진짜", v));
   return parts.join("\n\n");

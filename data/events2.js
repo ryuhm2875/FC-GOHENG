@@ -728,7 +728,7 @@ export const EVENTS_MORE = [
         result: s => s.flags.jnSelected ? "\"고흥에서 전남 대표라. 오늘은 실컷 자랑해도 된다.\" 감독님 목소리가 평소보다 조금 높았다." : "\"떨어진 날 어떻게 하는지가 다음 기회를 정한다.\" 감독님이 등을 두드려 주셨다." },
       { label: "\"부족한 게 뭐였는지 알고 싶습니다\"", fx: { s: { "mental.focus": 0.5 } },
         act: s => { const G = goalsOf(s); (G.jnResult ||= {})[s.calendar.grade] = true; if (G.jnOutcome) { achieve(s, "jn"); s.flags.jnSelected = true; if (turnInfo(s)?.month === 4) startJnCup(s); } },
-        result: s => s.flags.jnSelected ? "\"붙은 날에도 그걸 묻는구나. 그래서 붙은 거다.\"" : `"선발 점수 기준이 ${JN_NEED[s.calendar.grade]}였다. 너는 ${goalsOf(s).jnLast ?? Math.round(jnScore(s))}. 경기 평점과 능력치, 둘 다 조금씩 모자랐다."` },
+        result: s => s.flags.jnSelected ? "\"붙은 날에도 그걸 묻는구나. 그래서 붙은 거다.\"" : `"선발 점수 기준이 ${JN_NEED[s.calendar.grade]}${"013678".includes(String(JN_NEED[s.calendar.grade]).at(-1)) ? "이었다" : "였다"}. 너는 ${goalsOf(s).jnLast ?? Math.round(jnScore(s))}. 경기 평점과 능력치, 둘 다 조금씩 모자랐다."` },
     ] },
   { id: "goal_award", bg: "ev_award", fixed: true, who: "narr",
     text: s => `고흥군 체육회 시상식. 사회자가 이름을 부른다. "올해의 우수선수상, 고흥FC ${s.player.name}!" 올해 경기 최우수 선수로 뽑힌 게 ${s.record.matches.filter(m => m.grade === s.calendar.grade && m.mom).length}번이었다.`,

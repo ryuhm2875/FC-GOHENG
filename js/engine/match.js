@@ -2377,7 +2377,7 @@ export function finishMatch(state, m) {
   m.stats.poss = possShare(m);
   const [gf, ga] = m.score;
   let shootout = null;
-  if (fx.ko && gf === ga && m.so?.done) shootout = { win: m.so.win === "us", us: m.so.us.filter(Boolean).length, them: m.so.them.filter(Boolean).length };   // 경기장에서 찬 승부차기
+  if (fx.ko && gf === ga && m.so?.done) shootout = { win: m.so.win === "us", us: m.so.us.filter(Boolean).length, them: m.so.them.filter(Boolean).length, ...(m.my.so != null ? { me: m.my.so } : {}) };   // me: 내 킥이 들어갔나 (찼을 때만)   // 경기장에서 찬 승부차기
   else if (fx.ko && gf === ga) {
     const pw = 0.5 + (m.ours - m.theirs) / 80 + (m.onPitch ? (p.stats.tech.shoot - 50) / 400 : 0);
     const win = chance(clamp(pw, 0.2, 0.8));
