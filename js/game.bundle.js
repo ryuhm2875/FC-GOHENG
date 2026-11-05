@@ -5641,6 +5641,8 @@ function targets(S) {
     if (!A && p.ri) {                                     // 수비 전환: 공보다 앞(상대 골 쪽)에 남은 선수는 뛰어서, 막 뺏긴 직후엔 전력으로 돌아옴
       const ahead = ox(def, p.x) - ox(def, S.ball.x), far = hyp(p.tx - p.x, p.ty - p.y);
       if (ahead > 3 || far > 12) p.v = S.wonAt != null && c - S.wonAt < 5 ? SPRINT : RUN;
+      // 공보다 앞에 남은 수비수는 공 뒤(우리 골 쪽)로 먼저 돌아와 라인에 붙음 (한 명만 앞에 떠 있지 않게)
+      if (p.pos === "DF" && ahead > 2) { const gx = ox(def, S.ball.x) - 3; if (ox(def, p.tx) > gx) p.tx = clamp(def === "us" ? gx : 105 - gx, 1.5, 103.5); }
     }
   }
   // 공 가진 선수 주변의 지원: 가까운 동료 둘이 받을 자리로
@@ -5669,6 +5671,12 @@ function targets(S) {
     const g = -dirOf(def);
     if (c1 && (d1 < pressR || !H)) { c1.tx = bpx + g * (H ? 1.5 : 0); c1.ty = bpy + (34 - bpy) * 0.05; c1.v = d1 > 6 ? SPRINT : RUN; c1.press = true; }
     if (c2 && d2 < 15) { c2.tx = bpx + g * 6; c2.ty = bpy + (34 - bpy) * 0.3; c2.v = RUN; }
+    // 압박하는 둘 말고는 공 가진 선수에게 7m 안으로 몰려들지 않음 (패스 길과 자기 자리를 지킴)
+    if (H && H.ri && !S.scur && !S.script.length && !S.bias) for (const p of P) {   // 내 장면 연출·대기 중에는 건드리지 않음
+      if (p.team !== def || !p.ri || p === c1 || p === c2 || p.ov) continue;
+      const dx = p.tx - H.x, dy = p.ty - H.y, d = hyp(dx, dy);
+      if (d < 7 && d > 0.01) { p.tx = clamp(H.x + dx / d * 7, 1.5, 103.5); p.ty = clamp(H.y + dy / d * 7, 1.5, 66.5); }
+    }
     // 흘러 있는 공: 공격 팀도 가장 가까운 선수가 달려감
     if (!H && !flying && a1) { a1.tx = S.ball.x; a1.ty = S.ball.y; a1.v = SPRINT; a1.press = true; }
   }
@@ -7164,7 +7172,7 @@ function timingOf(c) {
 // 모두 우리 전력 − 상대 전력(D)에 따라 바뀜
 // 시험 도구(tools/dev)가 경기 끝마다 내용을 받아 볼 수 있게
 const DEV = { onFinish: null };
-const CAL = { brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 4.7, kcu: 5.8, kcun: 80, ct: 2.65, kct: 22, kctn: 13, ft: 0.2, meShot: 1.0, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.105, dfk: 1.45, mfk: 0.6, rk: { FW: 0.82, MF: 1.08, DF: 1.1 }, dfCS: 0.45 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비 기여 배수, mfk: 미드필더 선택 하나가 평점에 주는 몫 (선택이 많은 만큼), rk: 포지션별 평점 배율, dfCS: 수비수 무실점 가산
+const CAL = { brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 5.3, kcu: 5.8, kcun: 80, ct: 2.65, kct: 22, kctn: 13, ft: 0.2, meShot: 1.08, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.105, dfk: 1.45, mfk: 0.6, rk: { FW: 0.82, MF: 1.08, DF: 1.1 }, dfCS: 0.45 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비 기여 배수, mfk: 미드필더 선택 하나가 평점에 주는 몫 (선택이 많은 만큼), rk: 포지션별 평점 배율, dfCS: 수비수 무실점 가산
 const sig = x => 1 / (1 + Math.exp(-x));
 
 // 상대 성향 → 경기장 움직임
