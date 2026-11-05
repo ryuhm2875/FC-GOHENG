@@ -86,7 +86,7 @@ export const GROWTH_TYPES = {
   ace: {
     label: "초등 득점왕 출신", desc: "처음부터 실력이 눈에 띕니다. 대신 갈수록 성장이 느려지고 기대가 부담이 됩니다.",
     adj: { tech: 10, phys: 7, "mental.confidence": 6 }, mult: [1.0, 0.9, 0.8], techMult: 1, physMult: 1,
-    potential: [70, 83], heightBonus: 0, startHeight: 3, coach: 60,
+    potential: [71, 85], heightBonus: 0, startHeight: 3, coach: 60,
     heightShare: [0.3, 0.25, 0.17, 0.1, 0.06] },
   track: {
     label: "육상부 출신", desc: "달리기와 체력은 학교에서 손꼽힙니다. 공 다루는 건 이제부터입니다.",
