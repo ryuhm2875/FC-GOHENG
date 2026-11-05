@@ -757,6 +757,8 @@ function zoneY(spec, side) {
   if (typeof spec === "number") return spec;
   if (spec === "W") return side < 0 ? 7.5 : 60.5;
   if (spec === "H") return side < 0 ? 20 : 48;
+  if (spec === "WO") return side < 0 ? 60.5 : 7.5;   // 반대편 측면 (방향 전환 패스를 차는 쪽)
+  if (spec === "HO") return side < 0 ? 48 : 20;
   return 34 + side * 3;
 }
 function endPlan(S) {
@@ -812,6 +814,11 @@ function newPlan(S, H, force = false) {
   while (i < pl.steps.length - 1 && pl.steps[i].at[0] < hx - 6) i++;
   const cur = pl.steps[i];
   const fits = cur.who === H.pos || (cur.who === "GK" && H.pos === "GK");
+  // 측면으로 벌림·반대편 전환을 공 가진 선수가 시작하면 그 선수 자리에 맞는 쪽으로 (전환은 반대쪽, 가운데에서 벌리면 가까운 측면)
+  if (!me && fits && i === 0 && ["wing", "switch"].includes(pl.id)) {
+    const hy = oy(team, H.y);
+    side = cur.at[1] === "C" ? (hy < 34 ? -1 : 1) : Math.abs(zoneY(cur.at[1], -1) - hy) <= Math.abs(zoneY(cur.at[1], 1) - hy) ? -1 : 1;
+  }
   S.plan = { team, id: pl.id, steps: pl.steps, finish: pl.finish, side, i: fits ? i : i - 1, actors: [], t0: S.t };
   if (fits) S.plan.actors[i] = H;
   planRun(S);
