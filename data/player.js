@@ -88,10 +88,12 @@ export const GROWTH_TYPES = {
     adj: { tech: 10, phys: 7, "mental.confidence": 6 }, mult: [1.0, 0.9, 0.8], techMult: 1, physMult: 1,
     potential: [71, 85], heightBonus: 0, startHeight: 3, coach: 60,
     heightShare: [0.3, 0.25, 0.17, 0.1, 0.06] },
-  track: {
-    label: "육상부 출신", desc: "달리기와 체력은 학교에서 손꼽힙니다. 공 다루는 건 이제부터입니다.",
-    adj: { tech: -4, phys: 4, "phys.speed": 7, "phys.stamina": 5 }, mult: [1.0, 1.0, 1.0], techMult: 1.05, physMult: 1.1,
-    potential: [70, 86], heightBonus: 2, startHeight: 1,
+  jokgu: {
+    label: "초등 족구부 출신", desc: "발등 감각과 점프는 남다릅니다. 땅으로 굴러오는 공과 몸싸움은 이제부터입니다.",
+    adj: { tech: -3, "tech.firstTouch": 8, "tech.shoot": 4, "tech.dribble": -2, "tech.defense": -2,
+      "phys.jump": 7, "phys.agility": 4, "phys.strength": -3, "phys.stamina": 2, "mental.teamwork": 3 },
+    mult: [1.0, 1.0, 1.0], techMult: 1.07, physMult: 1.05,
+    potential: [70, 86], heightBonus: 1, startHeight: 1,
     heightShare: [0.2, 0.19, 0.18, 0.17, 0.16] },
   club: {
     label: "클럽에서 떨어지고 온 아이", desc: "유소년 클럽에서 배운 기본기가 탄탄합니다. 테스트에서 떨어진 상처가 남아 있습니다.",
@@ -100,7 +102,7 @@ export const GROWTH_TYPES = {
     heightShare: [0.19, 0.19, 0.18, 0.17, 0.16] },
 };
 // 예전 성장 유형 → 출신 (예전 저장 파일·점검 도구). 대기만성형은 클럽 출신 + 숨은 재능 '늦게 피는 꽃'
-export const GROWTH_ALIAS = { early: "ace", steady: "rookie", late: "club", physical: "track", technical: "club" };
+export const GROWTH_ALIAS = { early: "ace", steady: "rookie", late: "club", physical: "jokgu", technical: "club", track: "jokgu" };   // track: 육상부 출신(11월 5일 하루)
 export const growthTypeOf = k => GROWTH_TYPES[k] || GROWTH_TYPES[GROWTH_ALIAS[k]] || GROWTH_TYPES.rookie;
 // 숨은 재능 '늦게 피는 꽃': 선수를 만들 때 이 확률로 몰래 붙고, 중3 3월 신체 측정에서 드러남
 export const BLOOM = { chance: 0.1, mult: [0.88, 0.97, 1.3], potential: 3, heightBonus: 3, startHeight: -2,

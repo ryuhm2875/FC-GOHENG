@@ -268,9 +268,11 @@ function runExam(state, info, chosen) {
     중하위권: "훈련으로 피곤한 건 알지만, 수업 시간엔 집중하자.",
     하위권: "성적이 많이 걱정된다. 감독님과도 이야기를 나눠 봐야겠어.",
   }[tier];
-  const rank = Math.max(1, Math.round((100 - score) / 100 * 28));
+  // 고흥대서중은 전교생 40여 명, 한 학년 한 반 11~15명. 반 인원은 이름으로 정해 3년 내내 같음 (저장 칸 없음)
+  const classSize = 11 + [...(state.player.name || "")].reduce((a, c) => a + c.charCodeAt(0), 0) % 5;
+  const rank = Math.min(classSize, Math.max(1, Math.round((100 - score) / 100 * classSize)));
   mail(state, "teacher", `${info.exam.name} 결과: ${tier}`,
-    `평균 ${Math.round(score)}점, 반에서 28명 중 ${rank}등 정도야.\n\n${comment}\n\n${studied ? "시험 주에 공부한 게 점수에 보였어." : "시험 주에 공부하는 모습을 한 번도 못 봤어. 하루만 책을 폈어도 5점은 더 나왔을 거야."}${score >= 70 ? "\n\n감독님께도 말씀드렸어. 좋아하시더라." : ""}`);
+    `평균 ${Math.round(score)}점, 우리 반 ${classSize}명 중에 ${rank}등이야.\n\n${comment}\n\n${studied ? "시험 주에 공부한 게 점수에 보였어." : "시험 주에 공부하는 모습을 한 번도 못 봤어. 하루만 책을 폈어도 5점은 더 나왔을 거야."}${score >= 70 ? "\n\n감독님께도 말씀드렸어. 좋아하시더라." : ""}`);
   return { name: info.exam.name, tier, score: Math.round(score) };
 }
 
