@@ -3485,6 +3485,7 @@ const HT_TALK = {
 // 우리 팀이 오른쪽으로 공격한다고 보고 좌표를 적습니다 (경기장 105×68).
 // 상대 팀 공격일 때는 엔진이 좌우를 뒤집어 씁니다.
 // at: [x, y]. y 자리에 "W"(측면) "H"(측면과 중앙 사이) "C"(중앙) "K"(코너)를 쓰면 매번 달라집니다.
+// onPass: 문장이 다음 패스 방향(측면으로 벌림·반대편 전환)을 말함. 실제로 그쪽으로 찼을 때만 패스 순간에 씀
 // who: 그 장면에서 공을 가진 선수의 자리. {a}는 그 선수 이름, {b}는 다음 선수 이름.
 // finish: shot 일반 슈팅 / header 헤더 / long 중거리 (득점 확률이 낮음)
 const PLAYS = [
@@ -3494,7 +3495,7 @@ const PLAYS = [
     { who: "FW", at: [80, "C"], t: ["수비 사이로 찔러 준다. {a|이/가} 잡았다!", "{a}의 발밑으로 들어가는 패스!"] },
   ] },
   { id: "wing", weight: 3, finish: "header", steps: [
-    { who: "MF", at: [42, "H"], t: ["{a|이/가} 측면으로 공을 벌린다.", "{a}의 방향 전환 패스."] },
+    { who: "MF", at: [42, "H"], onPass: true, t: ["{a|이/가} 측면으로 공을 벌린다.", "{a|이/가} 측면으로 넓게 내준다."] },
     { who: "MF", at: [70, "W"], t: ["{a|이/가} 측면을 타고 달린다.", "{a|이/가} 터치라인을 따라 치고 올라간다."] },
     { who: "MF", at: [93, "W"], same: true, t: ["{a}의 크로스!", "{a|이/가} 문전으로 공을 띄운다."] },
     { who: "FW", at: [95, "C"], t: [] },
@@ -3532,7 +3533,7 @@ const PLAYS = [
     { who: "FW", at: [95, "C"], t: [] },
   ] },
   { id: "switch", weight: 2, finish: "shot", steps: [
-    { who: "DF", at: [35, "H"], t: ["{a|이/가} 반대편으로 길게 공을 바꾼다.", "{a}의 대각선 롱패스."] },
+    { who: "DF", at: [35, "HO"], onPass: true, t: ["{a|이/가} 반대편으로 길게 공을 바꾼다.", "{a}의 대각선 롱패스."] },
     { who: "MF", at: [66, "W"], t: ["반대편의 {a|이/가} 가슴으로 받아 놓는다.", "{a|이/가} 깔끔하게 잡았다."] },
     { who: "FW", at: [86, "C"], t: ["안쪽으로 파고드는 {a}에게!", "{a|이/가} 공을 받아 돌아선다!"] },
   ] },
@@ -6173,6 +6174,8 @@ function zoneY(spec, side) {
   if (typeof spec === "number") return spec;
   if (spec === "W") return side < 0 ? 7.5 : 60.5;
   if (spec === "H") return side < 0 ? 20 : 48;
+  if (spec === "WO") return side < 0 ? 60.5 : 7.5;   // 반대편 측면 (방향 전환 패스를 차는 쪽)
+  if (spec === "HO") return side < 0 ? 48 : 20;
   return 34 + side * 3;
 }
 function endPlan(S) {
@@ -6228,6 +6231,11 @@ function newPlan(S, H, force = false) {
   while (i < pl.steps.length - 1 && pl.steps[i].at[0] < hx - 6) i++;
   const cur = pl.steps[i];
   const fits = cur.who === H.pos || (cur.who === "GK" && H.pos === "GK");
+  // 측면으로 벌림·반대편 전환을 공 가진 선수가 시작하면 그 선수 자리에 맞는 쪽으로 (전환은 반대쪽, 가운데에서 벌리면 가까운 측면)
+  if (!me && fits && i === 0 && ["wing", "switch"].includes(pl.id)) {
+    const hy = oy(team, H.y);
+    side = cur.at[1] === "C" ? (hy < 34 ? -1 : 1) : Math.abs(zoneY(cur.at[1], -1) - hy) <= Math.abs(zoneY(cur.at[1], 1) - hy) ? -1 : 1;
+  }
   S.plan = { team, id: pl.id, steps: pl.steps, finish: pl.finish, side, i: fits ? i : i - 1, actors: [], t0: S.t };
   if (fits) S.plan.actors[i] = H;
   planRun(S);
@@ -7156,7 +7164,7 @@ function timingOf(c) {
 // 모두 우리 전력 − 상대 전력(D)에 따라 바뀜
 // 시험 도구(tools/dev)가 경기 끝마다 내용을 받아 볼 수 있게
 const DEV = { onFinish: null };
-const CAL = { brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 4.7, kcu: 5.8, kcun: 80, ct: 2.65, kct: 22, kctn: 13, ft: 0.2, meShot: 1.07, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.105, dfk: 1.45, mfk: 0.6, rk: { FW: 0.82, MF: 1.08, DF: 1.1 }, dfCS: 0.45 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비 기여 배수, mfk: 미드필더 선택 하나가 평점에 주는 몫 (선택이 많은 만큼), rk: 포지션별 평점 배율, dfCS: 수비수 무실점 가산
+const CAL = { brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 4.7, kcu: 5.8, kcun: 80, ct: 2.65, kct: 22, kctn: 13, ft: 0.2, meShot: 1.0, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.105, dfk: 1.45, mfk: 0.6, rk: { FW: 0.82, MF: 1.08, DF: 1.1 }, dfCS: 0.45 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비 기여 배수, mfk: 미드필더 선택 하나가 평점에 주는 몫 (선택이 많은 만큼), rk: 포지션별 평점 배율, dfCS: 수비수 무실점 가산
 const sig = x => 1 / (1 + Math.exp(-x));
 
 // 상대 성향 → 경기장 움직임
@@ -7428,6 +7436,11 @@ function narrate(state, m, e) {
     case "step": {
       const pl = PLAY_BY[e.play], st = pl?.steps[e.i];
       if (!st) break;
+      if (st.onPass) {                                                            // 패스 방향을 말하는 문장: 실제 패스를 보고 나서 씀 ("pass")
+        m.stepPend = { e, st };
+        if (e.me && e.team === "us") { my.involved = (my.involved || 0) + 1; my.delta += m.myPos === "MF" ? 0.008 : 0.02; }
+        break;
+      }
       const near = e.x == null || Math.abs(e.x - st.at[0]) <= 13;                 // 문장이 말하는 자리와 실제 공 자리가 맞을 때만
       const tx = st.t.filter(t => !/\{b[|}]/.test(t) || (e.b && e.b !== e.a));
       if (e.me && e.team === "us") {
@@ -7557,6 +7570,18 @@ function narrate(state, m, e) {
       if (e.silent) break;
       const lp = m.lastPass;
       m.lastPass = { from: e.from, to: e.to, t: e.t, team: e.team };
+      // "측면으로 벌린다"·"반대편으로 바꾼다": 공이 정말 옆(반대편)으로 갔을 때만. 앞으로 길게 찼으면 이 문장은 쓰지 않음
+      const sp = m.stepPend; m.stepPend = null;
+      if (sp && sp.e.a === e.from && sp.e.team === e.team && e.t - sp.e.t < 5) {
+        const dx = e.tx - e.fx, dy = Math.abs(e.ty - e.fy);
+        const wide = sp.e.play === "switch" ? dy >= 22 && dy >= dx * 0.6 : dy >= 10 && dy >= dx * 0.8;
+        const tx = sp.st.t.filter(t => !/\{b[|}]/.test(t) || e.to !== e.from);
+        const mine = sp.e.me && e.team === "us";
+        if (wide && tx.length && (mine ? !S.bias?.me : !quiet() && chance(sp.e.first ? 0.55 : 0.85))) {
+          add(fill(pick(tx), { a: e.from, b: e.to }), mine ? "me-auto" : kt(e.team));
+          break;
+        }
+      }
       // 원투: A→B 다음 바로 B→A
       if (lp && lp.team === e.team && lp.from === e.to && lp.to === e.from && e.t - lp.t < 3 && !quiet() && chance(0.75) && tac(m, "oneTwo", 3, 15)) { add(fill(pick(SIM_LINES.oneTwo), { a: e.to, b: e.from }), e.me || e.toMe ? "me-auto" : kt(e.team)); break; }
       // 방향 전환: 반대편으로 길게. 문장은 공이 그 선수에게 닿았을 때
@@ -8477,7 +8502,9 @@ function saveKindOf(t) {
 function passTarget(S, M, act, mate) {
   const nearMate = (pt, f = () => true) => nearestP(S, "us", pt, p => !p.me && p.ri && p.pos !== "GK" && f(p));
   if (act === "passGK") return gkOf(S, "us");
-  if (act === "passWide") return nearMate({ x: M.x + 4, y: M.y < 34 ? 60 : 8 }) || mate;
+  // 측면으로 벌림: 옆으로 멀리 있는 동료. 앞으로 한참 나가 있는 선수(롱볼이 됨)는 빼고
+  if (act === "passWide") return nearMate({ x: M.x + 4, y: M.y < 34 ? 60 : 8 }, p => p.x < M.x + 16 && p.x > M.x - 12 && Math.abs(p.y - M.y) > 10)
+    || nearMate({ x: M.x + 4, y: M.y < 34 ? 60 : 8 }, p => p.x < M.x + 22) || mate;
   if (act === "passBack") return nearMate({ x: M.x - 12, y: M.y }, p => p.x < M.x - 2) || mate;
   return mate && mate !== M && !mate.me && Math.hypot(mate.x - M.x, mate.y - M.y) < 30 ? mate : nearMate(M);
 }
