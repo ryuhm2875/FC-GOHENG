@@ -119,9 +119,9 @@ export const LIFE = [
   { id: "rv_goal", from: "rival", cond: s => last(s)?.goals > 0, title: "봤다", body: "오늘 골, 운 좋았네. …솔직히 잘 찼더라. 이건 비밀이다." },
   { id: "rv_injury", from: "rival", cond: s => !!s.player.condition.injury, title: "발목은", body: "다친 데는 좀 어떠냐. 빨리 낫고 와라. 너 없이 주전 경쟁하면 재미없다." },
   // ── 출신마다 (HANDOFF 29절) ──
-  { id: "o_rk_mom", from: "mom", when: { grades: [1] }, cond: s => s.player.growthType === "rookie" && s.player.condition.morale < 55, title: "처음엔 다 그래",
+  { id: "o_rk_mom", from: "mom", when: { grades: [1] }, cond: s => s.player.growthType === "rookie" && s.player.condition.morale < 65, title: "처음엔 다 그래",
     body: "저녁 먹다가 한숨을 세 번 쉬더라. 축구 시작한 지 몇 달 됐다고 그래. 엄마도 운전 처음 배울 때 주차만 한 달 했어.\n\n내일 아침엔 계란말이 해 줄게." },
-  { id: "o_rk_friend", from: "friend", when: { grades: [1] }, school: true, cond: s => s.player.growthType === "rookie", title: "리프팅 몇 개 됨?",
+  { id: "o_rk_friend", from: "friend", when: { grades: [1, 2] }, cond: s => s.player.growthType === "rookie", title: "리프팅 몇 개 됨?",
     body: "너 요즘 쉬는 시간마다 복도에서 공 튀기더라 ㅋㅋ 몇 개 됨? 나 어제 열두 개 함. 지는 사람 매점 ㄱ" },
   { id: "o_ace_dad", from: "dad", when: { grades: [1, 2] }, cond: s => s.player.growthType === "ace", title: "초등학교 감독님",
     body: "마트에서 초등학교 감독님 만났다. 중학교 가서 고생한다고 했더니 웃으시면서 '걔는 원래 늦게 웃는다' 하시더라.\n\n무슨 뜻인지는 모르겠는데, 아빠는 좀 좋더라." },
@@ -225,6 +225,11 @@ export const AFTER_MATCH = {
     "{mate}: 여기서 끝이라니…\n\n{mentor}: 오늘 진 거 평생 기억날 거다. 그래서 다음에 이기는 거다",
     "{mate2}: 한 골이 이렇게 크다\n\n{assistant}: 다들 고생했다. 고개 숙이지 마라",
   ],
+  // 승부차기에서 내가 찼을 때 (넣음/실축 × 이김/짐)
+  soGoalWin: ["{mate2}: {name} 승부차기 침착한 거 뭐냐 ㄷㄷ\n\n{mate}: 골키퍼 반대로 보내 버림 ㅋㅋㅋ", "{friend}: {name} 차러 걸어 나갈 때 내가 더 떨었다\n\n{mentor}: 잘 찼다. 오늘은 마음껏 자랑해라"],
+  soGoalLoss: ["{friend}: {name} 넌 넣었잖아. 고개 들어\n\n{mentor}: 다음엔 끝까지 같이 웃자", "{mate}: {name} 공은 진짜 깔끔했다\n\n{assistant}: 넣은 사람도 못 넣은 사람도 다 같이 찬 거다"],
+  soMissWin: ["{mate}: {name} 못 넣었을 때 심장 멎는 줄 ㅋㅋ\n\n{friend}: 그래도 이겼다!! 골키퍼 형한테 밥 사라", "{mentor}: {name}, 실축은 잊어라. 팀이 이겼으면 그걸로 된 거다"],
+  soMissLoss: ["{friend}: {name} 실축 신경 쓰지 마라. 키커로 나간 것부터가 용기다\n\n{mentor}: 승부차기는 다 같이 찬 거다. 너 혼자 진 거 아니다", "{assistant}: {name}, 오늘 찬 공 생각은 오늘까지만 해라. 차러 나간 놈만 실축도 하는 거다"],
   koOutPk: [
     "{mate2}: 승부차기는 너무 잔인하다\n\n{assistant}: 찬 사람 아무도 탓하지 마라. 다 같이 진 거다",
   ],

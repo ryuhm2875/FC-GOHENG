@@ -65,7 +65,8 @@ export const EVENTS_ORIGIN = [
   { id: "o_ace_text", cond: is("ace"), once: true, priority: 1, trigger: weeks([5, 3], [5, 4], [5, 5], [6, 1], [6, 2]), when: { grades: [2] }, bg: "bg_home", who: "narr",
     text: s => {
       const p = s.player.position;
-      const line = p === "FW" ? "요즘 기록 봤다. 골이 좀 안 나오더라?" : `네가 ${POS[p]}를 한다며? 득점왕이 웬일이냐 ㅎㅎ`;
+      const recent = s.record.matches.filter(m => m.official).slice(-8).reduce((a, m) => a + (m.goals || 0), 0);
+      const line = p !== "FW" ? `네가 ${POS[p]}를 한다며? 득점왕이 웬일이냐 ㅎㅎ` : recent >= 4 ? "요즘 기록 봤다. 골 꽤 넣더라? 자만하지 말고." : "요즘 기록 봤다. 골이 좀 안 나오더라?";
       return `초등학교 때 코치님에게서 문자가 왔다.\n\n"${line} 초등부 애들한테 아직도 네 얘기 한다. 힘내라."\n\n답장 칸에 손가락을 올려놓은 채 한참 앉아 있었다.`;
     },
     choices: [
@@ -111,7 +112,7 @@ export const EVENTS_ORIGIN = [
         result: "달리면서 고개를 드니 안쪽으로 뛰어드는 동료가 보였다. 빠르기만 한 애가 아니라는 걸 보여 주고 싶었다." },
     ] },
   { id: "o_tr_watch", cond: is("track"), once: true, priority: 1, school: true, trigger: weeks([9, 4], [9, 5], [10, 2], [10, 3], [10, 4]), when: { grades: [3] }, bg: "bg_field_day", who: "narr",
-    text: s => `훈련 중에 운동장 끝에서 누가 손을 흔든다. 육상부 오 선생님이다. 목에 스톱워치를 걸고 계신다.${marked(s, "tr_meet") ? " 1학년 때 100m를 뛰어 드린 뒤로 처음 뵙는다." : marked(s, "tr_dawn") ? " 1학년 때 새벽 스타트 연습을 같이 한 뒤로 처음 뵙는다." : ""}\n\n"공 몰고 측면 한 번만 달려 봐라. 궁금해서 그래."`,
+    text: s => `훈련 중에 운동장 끝에서 누가 손을 흔든다. 육상부 오 선생님이다. 목에 스톱워치를 걸고 계신다.${marked(s, "tr_meet") ? " 복도에서는 자주 뵀지만, 운동장까지 오신 건 1학년 군 대회 이후 처음이다." : marked(s, "tr_dawn") ? " 1학년 때 새벽 스타트 연습을 같이 한 뒤로, 운동장에서 뵙는 건 처음이다." : ""}\n\n"공 몰고 측면 한 번만 달려 봐라. 궁금해서 그래."`,
     choices: [
       { label: "공을 몰고 끝까지 달린다", fx: { s: { "tech.dribble": 0.5, "phys.speed": 0.4 }, morale: 6 },
         result: "선생님이 스톱워치를 한참 들여다보셨다. \"허, 공 몰고 뛰는데 별로 안 느리네. 육상부에 붙잡아 뒀으면 큰일 날 뻔했다.\" 그러고는 혼자 껄껄 웃으셨다. 나도 따라 웃었다." },
@@ -133,7 +134,7 @@ export const EVENTS_ORIGIN = [
         result: "가로등 하나 켜진 운동장. 숨이 찰 때까지 왕복 달리기를 했다. 돌아와서 한 줄만 보냈다. \"여긴 운동장에서 바다 보여.\"" },
     ] },
   { id: "o_cl_scrim", cond: is("club"), once: true, priority: 1, trigger: weeks([4, 4], [4, 5], [5, 2], [5, 3], [5, 4]), when: { grades: [2] }, bg: "ev_lineup", who: "narr",
-    text: s => `광주 한빛유나이티드 U-15가 고흥으로 전지훈련을 왔다. 기록에 남지 않는 연습경기 한 판. 상대 벤치에 낯익은 얼굴이 있다. 작년 겨울, 테스트에서 나를 떨어뜨린 코치님이다.${marked(s, "cl_friend") ? " 그 옆에서 도윤재가 손을 흔든다." : ""}\n\n전반 20분, 내 발밑으로 공이 왔다.`,
+    text: s => `광주 한빛유나이티드 U-15가 고흥으로 전지훈련을 왔다. 기록에 남지 않는 연습경기 한 판. 상대 벤치에 낯익은 얼굴이 있다. 중학교 들어오기 전 겨울, 테스트에서 나를 떨어뜨린 코치님이다.${marked(s, "cl_friend") ? " 그 옆에서 도윤재가 손을 흔든다." : ""}\n\n전반 20분, 내 발밑으로 공이 왔다.`,
     choices: [
       { label: "클럽에서 배운 대로, 원터치로 침착하게", req: { "tech.firstTouch": 50 }, fx: { s: { "mental.confidence": 2, "tech.pass": 0.5 }, morale: 8, coach: 2 },
         result: "받고, 돌고, 내줬다. 터치 세 번. 공이 수비 두 명 사이를 지나 우리 공격수 발에 닿았다. 경기가 끝나고 그 코치님이 다가오셨다. \"많이 늘었네.\" 그 한마디를 1년 넘게 기다렸다." },
@@ -145,7 +146,7 @@ export const EVENTS_ORIGIN = [
         result: "특별한 건 없었다. 그냥 우리 축구를 했다. 2 대 2. 경기가 끝나고, 생각보다 아무렇지 않은 내가 신기했다." },
     ] },
   { id: "o_cl_call", cond: is("club"), once: true, priority: 1, trigger: weeks([11, 3], [11, 4], [11, 5], [12, 2], [12, 4]), when: { grades: [3] }, bg: "bg_home", who: "narr",
-    text: s => `${marked(s, "cl_friend") ? "도윤재에게서 전화가 왔다. 문자가 아니라 전화." : "광주 클럽 시절 친구 도윤재에게서 전화가 왔다. 1년 넘게 연락 없던 녀석이다."} 한참 말이 없다가 겨우 꺼낸다.\n\n"나… U-18 테스트 떨어졌어."`,
+    text: s => `${marked(s, "cl_friend") ? "도윤재에게서 전화가 왔다. 문자가 아니라 전화." : "광주 클럽 시절 친구 도윤재에게서 전화가 왔다. 한참 연락이 없던 녀석이다."} 한동안 말이 없다가 겨우 꺼낸다.\n\n"나… U-18 테스트 떨어졌어."`,
     choices: [
       { label: "\"나도 떨어져 봤잖아. 그다음이 더 중요하더라\"", fx: { s: { "mental.teamwork": 1, "mental.confidence": 1 }, morale: 4 },
         result: "윤재가 웃는 건지 우는 건지 모를 소리를 냈다. \"너 그때 어떻게 버텼냐.\" 고흥 운동장 이야기를 한 시간 했다. 전화를 끊고 보니 내 3년도 꽤 괜찮았다." },
