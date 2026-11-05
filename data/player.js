@@ -71,33 +71,39 @@ export const POSITIONS = {
 
 // mult: [중1, 중2, 중3] 기술·피지컬 성장 배율
 // heightShare: 신체 측정 5번(중1 2학기, 중2 1·2학기, 중3 1·2학기)에 나눠 크는 비율
+// 출신 (선수를 만들 때 고름. 저장 칸 이름은 예전 그대로 growthType)
+// adj: 출발 능력치 보정 ("tech"·"phys"는 그 묶음 전체, "phys.speed"처럼 하나만도)
+// mult: 학년별 기술·피지컬 성장 배율 / techMult·physMult: 기술·피지컬 성장 배율 / potential: 잠재력 범위
+// startHeight·heightBonus: 입학 키·다 컸을 때 키 보정(cm) / heightShare: 측정 5번(중1 9월~중3 9월)마다 남은 키가 크는 몫
+// 3년 뒤 최종 능력치·진학은 비슷하게, 1학년 출발은 확실히 다르게 맞춤 (HANDOFF 28절)
 export const GROWTH_TYPES = {
-  early: {
-    label: "조기성장형", desc: "처음부터 눈에 띄지만, 중3이 되면 성장이 느려집니다.",
-    mult: [1.3, 1.0, 0.7], techMult: 1, physMult: 1,
-    startBonus: 7, potential: [68, 82], heightBonus: 0, startHeight: 4,
-    heightShare: [0.32, 0.27, 0.16, 0.09, 0.04] },
-  steady: {
-    label: "꾸준성장형", desc: "3년 내내 고르게 자랍니다.",
-    mult: [1.0, 1.0, 1.0], techMult: 1, physMult: 1,
-    startBonus: 0, potential: [70, 86], heightBonus: 0, startHeight: 0,
-    heightShare: [0.18, 0.18, 0.18, 0.17, 0.16] },
-  late: {
-    label: "대기만성형", desc: "중1엔 작고 느리지만, 중3에 폭발합니다.",
-    mult: [0.7, 0.95, 1.5], techMult: 1, physMult: 1,
-    startBonus: -5, potential: [76, 94], heightBonus: 2, startHeight: -4,
-    heightShare: [0.07, 0.12, 0.2, 0.28, 0.25] },
-  physical: {
-    label: "피지컬형", desc: "키와 힘이 남다르게 자랍니다. 기술은 조금 더딥니다.",
-    mult: [1.0, 1.0, 1.0], techMult: 0.88, physMult: 1.3,
-    startBonus: 0, potential: [70, 86], heightBonus: 5, startHeight: 2,
-    heightShare: [0.2, 0.2, 0.18, 0.16, 0.14] },
-  technical: {
-    label: "기술형", desc: "공 다루는 감각이 빨리 늡니다. 몸은 천천히 자랍니다.",
-    mult: [1.0, 1.0, 1.0], techMult: 1.3, physMult: 0.88,
-    startBonus: 0, potential: [70, 86], heightBonus: -3, startHeight: -1,
-    heightShare: [0.17, 0.17, 0.17, 0.17, 0.17] },
+  rookie: {
+    label: "축구 처음 시작", desc: "공 다루는 건 서툴지만 스펀지처럼 빨아들입니다. 1학년 때 가장 빨리 늡니다.",
+    adj: { tech: -10, phys: -2, "mental.confidence": -3 }, mult: [1.3, 1.1, 1.0], techMult: 1, physMult: 1,
+    potential: [72, 87], heightBonus: 0, startHeight: 0,
+    heightShare: [0.2, 0.19, 0.18, 0.17, 0.16] },
+  ace: {
+    label: "초등 득점왕 출신", desc: "처음부터 실력이 눈에 띕니다. 대신 갈수록 성장이 느려지고 기대가 부담이 됩니다.",
+    adj: { tech: 10, phys: 7, "mental.confidence": 6 }, mult: [1.0, 0.9, 0.8], techMult: 1, physMult: 1,
+    potential: [70, 83], heightBonus: 0, startHeight: 3,
+    heightShare: [0.3, 0.25, 0.17, 0.1, 0.06] },
+  track: {
+    label: "육상부 출신", desc: "달리기와 체력은 학교에서 손꼽힙니다. 공 다루는 건 이제부터입니다.",
+    adj: { tech: -4, phys: 4, "phys.speed": 7, "phys.stamina": 5 }, mult: [1.0, 1.0, 1.0], techMult: 1.05, physMult: 1.1,
+    potential: [70, 86], heightBonus: 2, startHeight: 1,
+    heightShare: [0.2, 0.19, 0.18, 0.17, 0.16] },
+  club: {
+    label: "클럽에서 떨어지고 온 아이", desc: "유소년 클럽에서 배운 기본기가 탄탄합니다. 테스트에서 떨어진 상처가 남아 있습니다.",
+    adj: { tech: 3, "tech.firstTouch": 3, "mental.confidence": -8 }, mult: [1.0, 1.0, 1.0], techMult: 1.05, physMult: 0.97,
+    potential: [70, 86], heightBonus: -1, startHeight: -1,
+    heightShare: [0.19, 0.19, 0.18, 0.17, 0.16] },
 };
+// 예전 성장 유형 → 출신 (예전 저장 파일·점검 도구). 대기만성형은 클럽 출신 + 숨은 재능 '늦게 피는 꽃'
+export const GROWTH_ALIAS = { early: "ace", steady: "rookie", late: "club", physical: "track", technical: "club" };
+export const growthTypeOf = k => GROWTH_TYPES[k] || GROWTH_TYPES[GROWTH_ALIAS[k]] || GROWTH_TYPES.rookie;
+// 숨은 재능 '늦게 피는 꽃': 선수를 만들 때 이 확률로 몰래 붙고, 중3 3월 신체 측정에서 드러남
+export const BLOOM = { chance: 0.1, mult: [0.88, 0.97, 1.3], potential: 3, heightBonus: 3, startHeight: -2,
+  heightShare: [0.08, 0.12, 0.18, 0.3, 0.24], revealAt: 3 };
 
 // 특성. 효과는 엔진에서 id로 찾아 적용합니다.
 export const TRAITS = {
@@ -131,6 +137,8 @@ export const TRAITS = {
                desc: "후반에도 몸이 무뎌지지 않습니다.", bonus: { "phys.stamina": 2 } },
   scholar:   { label: "문무겸비",    good: true, earned: true, how: "정기시험 상위권 2번",
                desc: "공부 효과 +20%, 시험 성적이 잘 나옵니다.", bonus: { "student.academic": 3, "student.attitude": 2 } },
+  lateBloom: { label: "늦게 피는 꽃", good: true, hidden: true,
+               desc: "1·2학년엔 남들보다 조금 더뎠지만, 중3 동안 키와 실력이 한꺼번에 자랍니다." },
   modelStudent: { label: "모범생",   good: true, earned: true, how: "학업 80 이상을 20주 동안 유지",
                desc: "감독님 신뢰가 매주 조금씩 더 오르고, 집중력이 필요한 경기 장면의 성공률이 오릅니다.", bonus: { "mental.focus": 2, "student.attitude": 2 } },
 };

@@ -78,33 +78,39 @@ const POSITIONS = {
 
 // mult: [중1, 중2, 중3] 기술·피지컬 성장 배율
 // heightShare: 신체 측정 5번(중1 2학기, 중2 1·2학기, 중3 1·2학기)에 나눠 크는 비율
+// 출신 (선수를 만들 때 고름. 저장 칸 이름은 예전 그대로 growthType)
+// adj: 출발 능력치 보정 ("tech"·"phys"는 그 묶음 전체, "phys.speed"처럼 하나만도)
+// mult: 학년별 기술·피지컬 성장 배율 / techMult·physMult: 기술·피지컬 성장 배율 / potential: 잠재력 범위
+// startHeight·heightBonus: 입학 키·다 컸을 때 키 보정(cm) / heightShare: 측정 5번(중1 9월~중3 9월)마다 남은 키가 크는 몫
+// 3년 뒤 최종 능력치·진학은 비슷하게, 1학년 출발은 확실히 다르게 맞춤 (HANDOFF 28절)
 const GROWTH_TYPES = {
-  early: {
-    label: "조기성장형", desc: "처음부터 눈에 띄지만, 중3이 되면 성장이 느려집니다.",
-    mult: [1.3, 1.0, 0.7], techMult: 1, physMult: 1,
-    startBonus: 7, potential: [68, 82], heightBonus: 0, startHeight: 4,
-    heightShare: [0.32, 0.27, 0.16, 0.09, 0.04] },
-  steady: {
-    label: "꾸준성장형", desc: "3년 내내 고르게 자랍니다.",
-    mult: [1.0, 1.0, 1.0], techMult: 1, physMult: 1,
-    startBonus: 0, potential: [70, 86], heightBonus: 0, startHeight: 0,
-    heightShare: [0.18, 0.18, 0.18, 0.17, 0.16] },
-  late: {
-    label: "대기만성형", desc: "중1엔 작고 느리지만, 중3에 폭발합니다.",
-    mult: [0.7, 0.95, 1.5], techMult: 1, physMult: 1,
-    startBonus: -5, potential: [76, 94], heightBonus: 2, startHeight: -4,
-    heightShare: [0.07, 0.12, 0.2, 0.28, 0.25] },
-  physical: {
-    label: "피지컬형", desc: "키와 힘이 남다르게 자랍니다. 기술은 조금 더딥니다.",
-    mult: [1.0, 1.0, 1.0], techMult: 0.88, physMult: 1.3,
-    startBonus: 0, potential: [70, 86], heightBonus: 5, startHeight: 2,
-    heightShare: [0.2, 0.2, 0.18, 0.16, 0.14] },
-  technical: {
-    label: "기술형", desc: "공 다루는 감각이 빨리 늡니다. 몸은 천천히 자랍니다.",
-    mult: [1.0, 1.0, 1.0], techMult: 1.3, physMult: 0.88,
-    startBonus: 0, potential: [70, 86], heightBonus: -3, startHeight: -1,
-    heightShare: [0.17, 0.17, 0.17, 0.17, 0.17] },
+  rookie: {
+    label: "축구 처음 시작", desc: "공 다루는 건 서툴지만 스펀지처럼 빨아들입니다. 1학년 때 가장 빨리 늡니다.",
+    adj: { tech: -10, phys: -2, "mental.confidence": -3 }, mult: [1.3, 1.1, 1.0], techMult: 1, physMult: 1,
+    potential: [72, 87], heightBonus: 0, startHeight: 0,
+    heightShare: [0.2, 0.19, 0.18, 0.17, 0.16] },
+  ace: {
+    label: "초등 득점왕 출신", desc: "처음부터 실력이 눈에 띕니다. 대신 갈수록 성장이 느려지고 기대가 부담이 됩니다.",
+    adj: { tech: 10, phys: 7, "mental.confidence": 6 }, mult: [1.0, 0.9, 0.8], techMult: 1, physMult: 1,
+    potential: [70, 83], heightBonus: 0, startHeight: 3,
+    heightShare: [0.3, 0.25, 0.17, 0.1, 0.06] },
+  track: {
+    label: "육상부 출신", desc: "달리기와 체력은 학교에서 손꼽힙니다. 공 다루는 건 이제부터입니다.",
+    adj: { tech: -4, phys: 4, "phys.speed": 7, "phys.stamina": 5 }, mult: [1.0, 1.0, 1.0], techMult: 1.05, physMult: 1.1,
+    potential: [70, 86], heightBonus: 2, startHeight: 1,
+    heightShare: [0.2, 0.19, 0.18, 0.17, 0.16] },
+  club: {
+    label: "클럽에서 떨어지고 온 아이", desc: "유소년 클럽에서 배운 기본기가 탄탄합니다. 테스트에서 떨어진 상처가 남아 있습니다.",
+    adj: { tech: 3, "tech.firstTouch": 3, "mental.confidence": -8 }, mult: [1.0, 1.0, 1.0], techMult: 1.05, physMult: 0.97,
+    potential: [70, 86], heightBonus: -1, startHeight: -1,
+    heightShare: [0.19, 0.19, 0.18, 0.17, 0.16] },
 };
+// 예전 성장 유형 → 출신 (예전 저장 파일·점검 도구). 대기만성형은 클럽 출신 + 숨은 재능 '늦게 피는 꽃'
+const GROWTH_ALIAS = { early: "ace", steady: "rookie", late: "club", physical: "track", technical: "club" };
+const growthTypeOf = k => GROWTH_TYPES[k] || GROWTH_TYPES[GROWTH_ALIAS[k]] || GROWTH_TYPES.rookie;
+// 숨은 재능 '늦게 피는 꽃': 선수를 만들 때 이 확률로 몰래 붙고, 중3 3월 신체 측정에서 드러남
+const BLOOM = { chance: 0.1, mult: [0.88, 0.97, 1.3], potential: 3, heightBonus: 3, startHeight: -2,
+  heightShare: [0.08, 0.12, 0.18, 0.3, 0.24], revealAt: 3 };
 
 // 특성. 효과는 엔진에서 id로 찾아 적용합니다.
 const TRAITS = {
@@ -138,6 +144,8 @@ const TRAITS = {
                desc: "후반에도 몸이 무뎌지지 않습니다.", bonus: { "phys.stamina": 2 } },
   scholar:   { label: "문무겸비",    good: true, earned: true, how: "정기시험 상위권 2번",
                desc: "공부 효과 +20%, 시험 성적이 잘 나옵니다.", bonus: { "student.academic": 3, "student.attitude": 2 } },
+  lateBloom: { label: "늦게 피는 꽃", good: true, hidden: true,
+               desc: "1·2학년엔 남들보다 조금 더뎠지만, 중3 동안 키와 실력이 한꺼번에 자랍니다." },
   modelStudent: { label: "모범생",   good: true, earned: true, how: "학업 80 이상을 20주 동안 유지",
                desc: "감독님 신뢰가 매주 조금씩 더 오르고, 집중력이 필요한 경기 장면의 성공률이 오릅니다.", bonus: { "mental.focus": 2, "student.attitude": 2 } },
 };
@@ -225,7 +233,7 @@ const DETAIL_POS = {
     taste: { fb_overlap: 2.4, df_overlap: 1.8, df_fullback_duel: 1.7, df_1v1: 1.5, df_corner_attack: 0.5, df_target_man: 0.5, df_race: 0.7 } },
 };
 
-return { STAT_GROUPS, STAT_INFO, STAT_LABEL, POSITIONS, GROWTH_TYPES, TRAITS, EARNABLE, FACES, ROLES, DETAIL_POS };
+return { STAT_GROUPS, STAT_INFO, STAT_LABEL, POSITIONS, GROWTH_TYPES, GROWTH_ALIAS, growthTypeOf, BLOOM, TRAITS, EARNABLE, FACES, ROLES, DETAIL_POS };
 })();
 (__fix["data/player.js"] || []).forEach(f => f());
 
@@ -384,7 +392,7 @@ return { setSeed, rand, range, int, chance, pick, clamp, normal, weighted, shuff
 
 // ── js/engine/growth.js
 __m["js/engine/growth.js"] = (function () {
-const {GROWTH_TYPES, POSITIONS} = __m["data/player.js"];
+const {growthTypeOf, BLOOM, POSITIONS} = __m["data/player.js"];
 const {getPath, setPath, range, clamp, chance, normal} = __m["js/rng.js"];
 // 능력치 성장과 신체 성장
 
@@ -435,8 +443,9 @@ function applyGain(state, path, base, opts = {}) {
   let mult = base * TUNE.gain;
 
   if (group === "tech" || group === "phys") {
-    const type = GROWTH_TYPES[p.growthType];
+    const type = growthTypeOf(p.growthType);
     mult *= type.mult[state.calendar.grade - 1];
+    if (p.bloom) mult *= BLOOM.mult[state.calendar.grade - 1];   // 숨은 재능 '늦게 피는 꽃'
     mult *= group === "tech" ? type.techMult : type.physMult;
   }
   if (!opts.raw) mult *= efficiency(state);
@@ -475,9 +484,9 @@ function weightFor(height, grade, strength) {
 function growBody(state, k) {
   const p = state.player;
   const b = p.body;
-  const type = GROWTH_TYPES[p.growthType];
+  const type = growthTypeOf(p.growthType);
   const total = b.finalHeight - b.startHeight;
-  const gain = Math.max(0, total * type.heightShare[k] + normal(0, 0.6));
+  const gain = Math.max(0, total * (p.bloom ? BLOOM.heightShare : type.heightShare)[k] + normal(0, 0.6));
   const before = b.height;
   b.height = Math.round((b.height + gain) * 10) / 10;
   b.weight = weightFor(b.height, state.calendar.grade, p.stats.phys.strength);
@@ -487,7 +496,9 @@ function growBody(state, k) {
   const cm = b.height - before;
   applyGain(state, "phys.strength", cm * 0.35, { raw: true });
   applyGain(state, "phys.jump", cm * 0.25, { raw: true });
-  return { cm: Math.round(cm * 10) / 10, growingPains: cm >= 4.5 && chance(0.35) };
+  const bloom = !!p.bloom && k === BLOOM.revealAt && !p.traits.includes("lateBloom");   // 중3 3월: 늦게 피는 꽃이 드러남
+  if (bloom) p.traits.push("lateBloom");
+  return { cm: Math.round(cm * 10) / 10, growingPains: cm >= 4.5 && chance(0.35), bloom };
 }
 
 // 매주 자연스럽게 일어나는 변화
@@ -956,7 +967,7 @@ return { setUserNS, ukey };
 
 // ── js/state.js
 __m["js/state.js"] = (function () {
-const {GROWTH_TYPES, POSITIONS, STAT_GROUPS, TRAITS} = __m["data/player.js"];
+const {GROWTH_TYPES, GROWTH_ALIAS, growthTypeOf, BLOOM, POSITIONS, STAT_GROUPS, TRAITS} = __m["data/player.js"];
 const {ROSTER, STAFF} = __m["data/roster.js"];
 const {normal, range, clamp, chance, pick} = __m["js/rng.js"];
 const {weightFor} = __m["js/engine/growth.js"];
@@ -974,8 +985,10 @@ const {ukey} = __m["js/userkey.js"];
 const SAVE_VERSION = 3;
 const KEY = { slot: n => ukey(`gfc_slot_${n}`), get auto() { return ukey("gfc_auto"); }, settings: "gfc_settings" };
 
-function rollPlayer({ name, face, position, foot, growthType }) {
-  const type = GROWTH_TYPES[growthType];
+function rollPlayer({ name, face, position, foot, growthType, bloom = null }) {
+  if (!GROWTH_TYPES[growthType]) { if (growthType === "late" && bloom == null) bloom = true; growthType = GROWTH_ALIAS[growthType] || "rookie"; }   // 예전 유형 이름 (점검 도구)
+  const type = growthTypeOf(growthType);
+  if (bloom == null) bloom = chance(BLOOM.chance);          // 숨은 재능 '늦게 피는 꽃' (처음엔 아무도 모름)
   const bias = POSITIONS[position].bias;
   const stats = {};
   for (const g of STAT_GROUPS) {
@@ -984,10 +997,8 @@ function rollPlayer({ name, face, position, foot, growthType }) {
       const path = `${g.id}.${k}`;
       let v;
       if (g.id === "tech" || g.id === "phys") {
-        v = normal(31, 3.5) + type.startBonus + (bias[path] || 0);
-        if (g.id === "tech") v += (type.techMult - 1) * 12;
-        if (g.id === "phys") v += (type.physMult - 1) * 12;
-      } else if (g.id === "mental") v = normal(44, 6);
+        v = normal(31, 3.5) + (type.adj[g.id] || 0) + (type.adj[path] || 0) + (bias[path] || 0) + (bloom ? -2 : 0);
+      } else if (g.id === "mental") v = normal(44, 6) + (type.adj[path] || 0);
       else if (k === "academic") v = normal(58, 9);
       else v = normal(60, 7);
       stats[g.id][k] = clamp(v, 12, 70);
@@ -995,24 +1006,25 @@ function rollPlayer({ name, face, position, foot, growthType }) {
   }
   if (foot === "L") stats.tech.cross += 2;
 
-  const startHeight = Math.round((normal(151.5, 3.5) + type.startHeight) * 10) / 10;
-  let finalHeight = normal(174, 4.5) + type.heightBonus;
-  finalHeight = Math.max(finalHeight, startHeight + 15);
+  // 키: 입학 150cm대 초반, 다 크면 평균 178cm (중3 9월 측정 때 평균 175cm 안팎, 180cm 넘는 친구도 꽤 있음)
+  const startHeight = Math.round((normal(152, 4) + type.startHeight + (bloom ? BLOOM.startHeight : 0)) * 10) / 10;
+  let finalHeight = normal(178, 5) + type.heightBonus + (bloom ? BLOOM.heightBonus : 0);
+  finalHeight = Math.max(finalHeight, startHeight + 16);
 
-  const good = Object.keys(TRAITS).filter(k => TRAITS[k].good && !TRAITS[k].earned);   // 경기로 얻는 특성은 처음부터 주지 않음
+  const good = Object.keys(TRAITS).filter(k => TRAITS[k].good && !TRAITS[k].earned && !TRAITS[k].hidden);   // 경기로 얻는 특성은 처음부터 주지 않음
   const bad = Object.keys(TRAITS).filter(k => !TRAITS[k].good && !TRAITS[k].earned);
   const traits = [];
   if (chance(0.75)) traits.push(pick(good));
   if (chance(0.55)) traits.push(pick(bad));
   if (!traits.length) traits.push(pick(good));
 
-  const potential = Math.round(range(...type.potential));
+  const potential = Math.round(range(...type.potential)) + (bloom ? BLOOM.potential : 0);
   const est = potential + normal(0, 4);
   const stars = clamp(Math.round(((est - 55) / 7) * 2) / 2, 1, 5);
 
   const weight = weightFor(startHeight, 1, stats.phys.strength);
   return {
-    name, face, position, foot, growthType, potential, traits, number: 0,
+    name, face, position, foot, growthType, bloom, potential, traits, number: 0,
     coachStars: stars,
     stats,
     body: { height: startHeight, weight, startHeight, finalHeight: Math.round(finalHeight * 10) / 10,
@@ -1121,6 +1133,11 @@ function migrate(data) {
   // 1단계 저장(일정 40턴)은 일정이 바뀌어 이어갈 수 없습니다
   if (data.version !== SAVE_VERSION) return null;
   renameMates(data.state);
+  const p = data.state.player;                               // 예전 성장 유형 → 출신 (대기만성형은 '늦게 피는 꽃'이 이미 드러난 클럽 출신)
+  if (p && !GROWTH_TYPES[p.growthType]) {
+    if (p.growthType === "late") { p.bloom = true; if (!p.traits.includes("lateBloom")) p.traits.push("lateBloom"); }
+    p.growthType = GROWTH_ALIAS[p.growthType] || "rookie";
+  }
   return data;
 }
 
@@ -12114,7 +12131,7 @@ return { traitInfo, checkTraits };
 // ── js/engine/week.js
 __m["js/engine/week.js"] = (function () {
 const {ACTION_MAP} = __m["data/actions.js"];
-const {STAT_GROUPS} = __m["data/player.js"];
+const {STAT_GROUPS, TRAITS} = __m["data/player.js"];
 const {turnInfo, label, GRAD_INDEX} = __m["js/engine/calendar.js"];
 const {applyGain, expandGains, growBody, weeklyDrift, hasTrait} = __m["js/engine/growth.js"];
 const {matchFor} = __m["js/engine/season.js"];
@@ -12343,6 +12360,12 @@ function endWeek(state, ctx, matchResult) {
     if (k !== null) {
       const g = growBody(state, k);
       report.body = g;
+      if (g.bloom) {                                     // 숨은 재능이 드러남 (중3 3월 신체 측정)
+        const t = TRAITS.lateBloom;
+        (report.traits ||= []).push({ id: "lateBloom", label: t.label, desc: t.desc, changes: [] });
+        mail(state, "system", `새 특성: ${t.label}`,
+          `줄자를 대던 ${STAFF.assistant}${/[가-힣]/.test(STAFF.assistant.at(-1)) && (STAFF.assistant.at(-1).charCodeAt(0) - 0xac00) % 28 ? "이" : "가"} 고개를 갸웃했다. "너… 겨울 동안 ${g.cm}cm 컸다?"\n\n${STAFF.coach}: "이제야 몸이 따라오는구나. 늦게 피는 꽃이었네."\n\n→ ${t.desc}`);
+      }
       if (g.growingPains && !p.condition.injury) {
         report.injury = injure(state, "growingPains");
       }
@@ -16019,7 +16042,7 @@ const TALK = {
     { who: "assistant", text: "자, 여기 보고. 웃지 말고… 아니, 그래도 좀 웃어." },
   ],
   position: [
-    { who: "coach", text: "초등학교 때 어디서 뛰었냐? 아니, 어디서 뛰고 싶냐가 더 중요하지." },
+    { who: "coach", text: "어디서 뛰고 싶냐? 지금 잘하는 자리 말고, 뛰고 싶은 자리." },
   ],
   positionAnswers: {
     FW: { say: "앞에서 골 넣는 게 제일 좋아요.", react: "공격수라. 우리 팀 앞자리엔 3학년 형들이 버티고 있다. 골로 증명해라." },
@@ -16034,14 +16057,22 @@ const TALK = {
     L: { say: "(왼발로 감아 찬다)", react: "오, 왼발이네. 왼발잡이는 귀하다. 측면에서 쓸 데가 많아." },
   },
   growth: [
-    { who: "coach", text: "마지막으로 하나만 묻자. 넌 스스로 어떤 선수 같냐?" },
+    { who: "coach", text: "마지막으로 하나만 묻자. 넌 어쩌다 축구부 문을 두드렸냐?" },
   ],
+  // 출신 고르기: say(내 대답) → memory(회상) → react(감독님)
   growthAnswers: {
-    early:     { say: "벌써 형들만큼 커요. 지금도 자신 있어요.", react: "일찍 큰 애들은 처음엔 다 잘한다. 문제는 친구들이 따라올 때지." },
-    steady:    { say: "특별한 건 없어도, 꾸준히 하는 건 자신 있어요.", react: "그게 제일 어려운 거다. 3년 내내 그 말 지켜 봐라." },
-    late:      { say: "지금은 작은데, 크면 달라질 거예요.", react: "늦게 피는 꽃이 있지. 대신 그때까지 버텨야 한다." },
-    physical:  { say: "몸싸움은 안 져요.", react: "몸은 타고나는 거라 좋다. 공 다루는 건 따로 연습해야 한다." },
-    technical: { say: "공 다루는 건 자신 있어요.", react: "발재간 좋은 애들은 많다. 그걸 경기에서 쓰는 애가 드물지." },
+    rookie: { say: "사실… 축구는 처음이에요. 친구들 하는 거 보고 해 보고 싶었어요.",
+      memory: ["점심시간마다 운동장 가장자리에 서서 공 차는 애들을 봤다. 공이 내 쪽으로 굴러오면, 어떻게 차야 할지 몰라 손으로 집어 던져 줬다.", "그 공을 내 발로 차 보고 싶었다."],
+      react: "처음이라. 그럼 나쁜 버릇도 없겠네. 하나부터 제대로 배우면 된다." },
+    ace: { say: "초등학교 때 대회에서 득점왕 했어요.",
+      memory: ["시상식 단상 위, 목에 걸린 메달이 생각보다 무거웠다. 그날 이후로 다들 나를 보며 수군거렸다. \"쟤가 걔야.\"", "중학교에서도 그럴 수 있을까."],
+      react: "들었다. 초등부 득점왕. 근데 여긴 중학교다. 형들은 너보다 머리 하나가 크다. 이름값은 운동장에서 다시 증명해라." },
+    track: { say: "육상부였어요. 달리기는 자신 있어요.",
+      memory: ["100m 결승선을 제일 먼저 통과했을 때, 옆 운동장에서 축구부 형들이 소리치며 공을 쫓고 있었다.", "혼자 달리는 것보다 저게 더 재밌어 보였다."],
+      react: "발 빠른 건 가르쳐서 되는 게 아니다. 공만 발에 붙이면 무섭겠네. 근데 축구는 공을 갖고 달리는 거다." },
+    club: { say: "광주에서 클럽 다녔어요. 유스 테스트에서… 떨어졌고요.",
+      memory: ["합격자 명단을 위에서부터 세 번 읽었다. 내 이름은 없었다.", "고흥으로 내려오는 아빠 차 뒷자리에서 축구화 끈만 만지작거렸다."],
+      react: "떨어진 건 지난 일이다. 여기서는 다들 처음부터다. 기본기는 클럽에서 제대로 배웠겠지? 보여 줘 봐라." },
   },
   testIntro: [
     { who: "coach", text: "{assistant}, 기초 체력 측정해." },
@@ -16401,6 +16432,7 @@ function renderCreate(app) {
     const gr = await choose(Object.entries(TALK.growthAnswers).map(([k, v]) => ({ k, html: `${esc(v.say)}<small>${GROWTH_TYPES[k].label}: ${GROWTH_TYPES[k].desc}</small>` })));
     d.growthType = gr.k;
     await say("me", TALK.growthAnswers[d.growthType].say);
+    for (const t of TALK.growthAnswers[d.growthType].memory || []) await say("narr", t);   // 회상
     await say("coach", TALK.growthAnswers[d.growthType].react);
 
     await lines(TALK.testIntro);
@@ -16446,7 +16478,7 @@ return { renderCreate };
 // ── js/ui/views.js
 __m["js/ui/views.js"] = (function () {
 const {ACTION_MAP, ACTIONS} = __m["data/actions.js"];
-const {POSITIONS, GROWTH_TYPES, TRAITS, STAT_GROUPS, ROLES, EARNABLE, DETAIL_POS} = __m["data/player.js"];
+const {POSITIONS, growthTypeOf, TRAITS, STAT_GROUPS, ROLES, EARNABLE, DETAIL_POS} = __m["data/player.js"];
 const {STAFF, ROSTER} = __m["data/roster.js"];
 const {PHASES, MONTHS} = __m["data/calendar.js"];
 const {turnInfo, upcoming, yearTurns, label} = __m["js/engine/calendar.js"];
@@ -16531,7 +16563,7 @@ function fcCard(state, { big = false } = {}) {
         <span class="pc-frame"></span>
         <span class="pc-bg2"></span>
         <span class="pc-bhead"><span class="pc-bo"><b class="num">${o}</b><span>${code}</span></span><b class="pc-bn">${esc(p.name)}</b></span>
-        <span class="pc-meta">#${p.number} · ${GROWTH_TYPES[p.growthType].label}${role ? ` · ${role.label}` : ""}</span>
+        <span class="pc-meta">#${p.number} · ${growthTypeOf(p.growthType).label}${role ? ` · ${role.label}` : ""}</span>
         <span class="pc-rule"></span>
         <span class="pc-stats">${sixStats(p).map(([k, v]) => `<span class="pc-row"><span class="pc-k">${k}</span><span class="pc-bar"><i style="width:${Math.min(100, fl(v))}%"></i></span><b class="num">${fl(v)}</b></span>`).join("")}</span>
         <span class="pc-hint">한 번 더 누르면 앞면</span>
@@ -16774,7 +16806,7 @@ function playerView(state, tab = "stats") {
         <dt>몸무게</dt><dd class="num">${p.body.weight.toFixed(1)}kg</dd>
         <dt>주발</dt><dd>${p.foot === "L" ? "왼발" : "오른발"}</dd>
         ${p.birthday ? `<dt>생일</dt><dd>${p.birthday.month}월 ${p.birthday.day}일${isBirthdayWeek(state, turnInfo(state)) ? " 🎂 생일 주간" : ""}</dd>` : ""}
-        <dt>성장 유형</dt><dd>${GROWTH_TYPES[p.growthType].label}</dd>
+        <dt>출신</dt><dd>${growthTypeOf(p.growthType).label}</dd>
       </dl>
       <table class="tbl"><thead><tr><th>측정</th><th class="r">키</th><th class="r">몸무게</th></tr></thead><tbody>
       ${p.body.history.map(h => `<tr><td>${h.label}</td><td class="r num">${h.height.toFixed(1)}</td><td class="r num">${h.weight.toFixed(1)}</td></tr>`).join("")}

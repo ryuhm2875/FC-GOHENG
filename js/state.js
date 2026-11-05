@@ -1,5 +1,5 @@
 // 게임 상태 만들기와 저장/불러오기
-import { GROWTH_TYPES, POSITIONS, STAT_GROUPS, TRAITS } from "../data/player.js";
+import { GROWTH_TYPES, GROWTH_ALIAS, growthTypeOf, BLOOM, POSITIONS, STAT_GROUPS, TRAITS } from "../data/player.js";
 import { ROSTER, STAFF } from "../data/roster.js";
 import { normal, range, clamp, chance, pick } from "./rng.js";
 import { weightFor } from "./engine/growth.js";
@@ -10,8 +10,10 @@ import { ukey } from "./userkey.js";
 export const SAVE_VERSION = 3;
 const KEY = { slot: n => ukey(`gfc_slot_${n}`), get auto() { return ukey("gfc_auto"); }, settings: "gfc_settings" };
 
-export function rollPlayer({ name, face, position, foot, growthType }) {
-  const type = GROWTH_TYPES[growthType];
+export function rollPlayer({ name, face, position, foot, growthType, bloom = null }) {
+  if (!GROWTH_TYPES[growthType]) { if (growthType === "late" && bloom == null) bloom = true; growthType = GROWTH_ALIAS[growthType] || "rookie"; }   // 예전 유형 이름 (점검 도구)
+  const type = growthTypeOf(growthType);
+  if (bloom == null) bloom = chance(BLOOM.chance);          // 숨은 재능 '늦게 피는 꽃' (처음엔 아무도 모름)
   const bias = POSITIONS[position].bias;
   const stats = {};
   for (const g of STAT_GROUPS) {
@@ -20,10 +22,8 @@ export function rollPlayer({ name, face, position, foot, growthType }) {
       const path = `${g.id}.${k}`;
       let v;
       if (g.id === "tech" || g.id === "phys") {
-        v = normal(31, 3.5) + type.startBonus + (bias[path] || 0);
-        if (g.id === "tech") v += (type.techMult - 1) * 12;
-        if (g.id === "phys") v += (type.physMult - 1) * 12;
-      } else if (g.id === "mental") v = normal(44, 6);
+        v = normal(31, 3.5) + (type.adj[g.id] || 0) + (type.adj[path] || 0) + (bias[path] || 0) + (bloom ? -2 : 0);
+      } else if (g.id === "mental") v = normal(44, 6) + (type.adj[path] || 0);
       else if (k === "academic") v = normal(58, 9);
       else v = normal(60, 7);
       stats[g.id][k] = clamp(v, 12, 70);
@@ -31,24 +31,25 @@ export function rollPlayer({ name, face, position, foot, growthType }) {
   }
   if (foot === "L") stats.tech.cross += 2;
 
-  const startHeight = Math.round((normal(151.5, 3.5) + type.startHeight) * 10) / 10;
-  let finalHeight = normal(174, 4.5) + type.heightBonus;
-  finalHeight = Math.max(finalHeight, startHeight + 15);
+  // 키: 입학 150cm대 초반, 다 크면 평균 178cm (중3 9월 측정 때 평균 175cm 안팎, 180cm 넘는 친구도 꽤 있음)
+  const startHeight = Math.round((normal(152, 4) + type.startHeight + (bloom ? BLOOM.startHeight : 0)) * 10) / 10;
+  let finalHeight = normal(178, 5) + type.heightBonus + (bloom ? BLOOM.heightBonus : 0);
+  finalHeight = Math.max(finalHeight, startHeight + 16);
 
-  const good = Object.keys(TRAITS).filter(k => TRAITS[k].good && !TRAITS[k].earned);   // 경기로 얻는 특성은 처음부터 주지 않음
+  const good = Object.keys(TRAITS).filter(k => TRAITS[k].good && !TRAITS[k].earned && !TRAITS[k].hidden);   // 경기로 얻는 특성은 처음부터 주지 않음
   const bad = Object.keys(TRAITS).filter(k => !TRAITS[k].good && !TRAITS[k].earned);
   const traits = [];
   if (chance(0.75)) traits.push(pick(good));
   if (chance(0.55)) traits.push(pick(bad));
   if (!traits.length) traits.push(pick(good));
 
-  const potential = Math.round(range(...type.potential));
+  const potential = Math.round(range(...type.potential)) + (bloom ? BLOOM.potential : 0);
   const est = potential + normal(0, 4);
   const stars = clamp(Math.round(((est - 55) / 7) * 2) / 2, 1, 5);
 
   const weight = weightFor(startHeight, 1, stats.phys.strength);
   return {
-    name, face, position, foot, growthType, potential, traits, number: 0,
+    name, face, position, foot, growthType, bloom, potential, traits, number: 0,
     coachStars: stars,
     stats,
     body: { height: startHeight, weight, startHeight, finalHeight: Math.round(finalHeight * 10) / 10,
@@ -157,6 +158,11 @@ function migrate(data) {
   // 1단계 저장(일정 40턴)은 일정이 바뀌어 이어갈 수 없습니다
   if (data.version !== SAVE_VERSION) return null;
   renameMates(data.state);
+  const p = data.state.player;                               // 예전 성장 유형 → 출신 (대기만성형은 '늦게 피는 꽃'이 이미 드러난 클럽 출신)
+  if (p && !GROWTH_TYPES[p.growthType]) {
+    if (p.growthType === "late") { p.bloom = true; if (!p.traits.includes("lateBloom")) p.traits.push("lateBloom"); }
+    p.growthType = GROWTH_ALIAS[p.growthType] || "rookie";
+  }
   return data;
 }
 

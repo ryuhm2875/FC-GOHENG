@@ -1,6 +1,6 @@
 // 한 주 진행: 행동 → 경기 → 시험 → 부상 → 학업 체크 → 다음 주
 import { ACTION_MAP } from "../../data/actions.js";
-import { STAT_GROUPS } from "../../data/player.js";
+import { STAT_GROUPS, TRAITS } from "../../data/player.js";
 import { turnInfo, label, GRAD_INDEX } from "./calendar.js";
 import { applyGain, expandGains, growBody, weeklyDrift, hasTrait } from "./growth.js";
 import { matchFor } from "./season.js";
@@ -207,6 +207,12 @@ export function endWeek(state, ctx, matchResult) {
     if (k !== null) {
       const g = growBody(state, k);
       report.body = g;
+      if (g.bloom) {                                     // 숨은 재능이 드러남 (중3 3월 신체 측정)
+        const t = TRAITS.lateBloom;
+        (report.traits ||= []).push({ id: "lateBloom", label: t.label, desc: t.desc, changes: [] });
+        mail(state, "system", `새 특성: ${t.label}`,
+          `줄자를 대던 ${STAFF.assistant}${/[가-힣]/.test(STAFF.assistant.at(-1)) && (STAFF.assistant.at(-1).charCodeAt(0) - 0xac00) % 28 ? "이" : "가"} 고개를 갸웃했다. "너… 겨울 동안 ${g.cm}cm 컸다?"\n\n${STAFF.coach}: "이제야 몸이 따라오는구나. 늦게 피는 꽃이었네."\n\n→ ${t.desc}`);
+      }
       if (g.growingPains && !p.condition.injury) {
         report.injury = injure(state, "growingPains");
       }
