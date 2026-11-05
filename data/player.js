@@ -74,18 +74,19 @@ export const POSITIONS = {
 // 출신 (선수를 만들 때 고름. 저장 칸 이름은 예전 그대로 growthType)
 // adj: 출발 능력치 보정 ("tech"·"phys"는 그 묶음 전체, "phys.speed"처럼 하나만도)
 // mult: 학년별 기술·피지컬 성장 배율 / techMult·physMult: 기술·피지컬 성장 배율 / potential: 잠재력 범위
+// coach: 처음 감독 신뢰 (없으면 50. 선발 점수 = 능력치 × 0.75 + 감독 신뢰 × 0.25)
 // startHeight·heightBonus: 입학 키·다 컸을 때 키 보정(cm) / heightShare: 측정 5번(중1 9월~중3 9월)마다 남은 키가 크는 몫
 // 3년 뒤 최종 능력치·진학은 비슷하게, 1학년 출발은 확실히 다르게 맞춤 (HANDOFF 28절)
 export const GROWTH_TYPES = {
   rookie: {
     label: "축구 처음 시작", desc: "공 다루는 건 서툴지만 스펀지처럼 빨아들입니다. 1학년 때 가장 빨리 늡니다.",
     adj: { tech: -10, phys: -2, "mental.confidence": -3 }, mult: [1.3, 1.1, 1.0], techMult: 1, physMult: 1,
-    potential: [72, 87], heightBonus: 0, startHeight: 0,
+    potential: [72, 87], heightBonus: 0, startHeight: 0, coach: 46,
     heightShare: [0.2, 0.19, 0.18, 0.17, 0.16] },
   ace: {
     label: "초등 득점왕 출신", desc: "처음부터 실력이 눈에 띕니다. 대신 갈수록 성장이 느려지고 기대가 부담이 됩니다.",
     adj: { tech: 10, phys: 7, "mental.confidence": 6 }, mult: [1.0, 0.9, 0.8], techMult: 1, physMult: 1,
-    potential: [70, 83], heightBonus: 0, startHeight: 3,
+    potential: [70, 83], heightBonus: 0, startHeight: 3, coach: 60,
     heightShare: [0.3, 0.25, 0.17, 0.1, 0.06] },
   track: {
     label: "육상부 출신", desc: "달리기와 체력은 학교에서 손꼽힙니다. 공 다루는 건 이제부터입니다.",

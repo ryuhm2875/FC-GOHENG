@@ -63,7 +63,7 @@ export function newGame(player) {
     meta: { version: SAVE_VERSION, createdAt: Date.now(), savedAt: null },
     calendar: { turn: 1, grade: 1, semester: 1 },
     player: structuredClone(player),
-    relations: { coach: 50, teacher: 50 },
+    relations: { coach: growthTypeOf(player.growthType).coach ?? 50, teacher: 50 },   // 출신마다 처음 감독 신뢰가 다름
     team: { roster: ROSTER.map((r, i) => ({ ...r, id: `m${i}`, ovrNow: r.ovr })) },
     record: { apps: 0, starts: 0, goals: 0, assists: 0, mom: 0, ratings: [], matches: [], leagues: [], tournaments: [], titles: [] },
     flags: { academicLevel: 0, wasBenchInG1: false, captain: false, wore10: false, nationalChampion: false },
