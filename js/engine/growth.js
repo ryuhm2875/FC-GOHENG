@@ -1,5 +1,5 @@
 // 능력치 성장과 신체 성장
-import { GROWTH_TYPES, POSITIONS } from "../../data/player.js";
+import { growthTypeOf, BLOOM, POSITIONS } from "../../data/player.js";
 import { getPath, setPath, range, clamp, chance, normal } from "../rng.js";
 
 export const TUNE = { gain: 0.85 };   // 밸런스 조절용 전체 배율 (2026-10-22: 1.0 → 0.85. 훈련을 반만 해도 거의 모두 능력치 72·전국 강호 진학이던 것을 고름)
@@ -48,8 +48,9 @@ export function applyGain(state, path, base, opts = {}) {
   let mult = base * TUNE.gain;
 
   if (group === "tech" || group === "phys") {
-    const type = GROWTH_TYPES[p.growthType];
+    const type = growthTypeOf(p.growthType);
     mult *= type.mult[state.calendar.grade - 1];
+    if (p.bloom) mult *= BLOOM.mult[state.calendar.grade - 1];   // 숨은 재능 '늦게 피는 꽃'
     mult *= group === "tech" ? type.techMult : type.physMult;
   }
   if (!opts.raw) mult *= efficiency(state);
@@ -88,9 +89,9 @@ export function weightFor(height, grade, strength) {
 export function growBody(state, k) {
   const p = state.player;
   const b = p.body;
-  const type = GROWTH_TYPES[p.growthType];
+  const type = growthTypeOf(p.growthType);
   const total = b.finalHeight - b.startHeight;
-  const gain = Math.max(0, total * type.heightShare[k] + normal(0, 0.6));
+  const gain = Math.max(0, total * (p.bloom ? BLOOM.heightShare : type.heightShare)[k] + normal(0, 0.6));
   const before = b.height;
   b.height = Math.round((b.height + gain) * 10) / 10;
   b.weight = weightFor(b.height, state.calendar.grade, p.stats.phys.strength);
@@ -100,7 +101,9 @@ export function growBody(state, k) {
   const cm = b.height - before;
   applyGain(state, "phys.strength", cm * 0.35, { raw: true });
   applyGain(state, "phys.jump", cm * 0.25, { raw: true });
-  return { cm: Math.round(cm * 10) / 10, growingPains: cm >= 4.5 && chance(0.35) };
+  const bloom = !!p.bloom && k === BLOOM.revealAt && !p.traits.includes("lateBloom");   // 중3 3월: 늦게 피는 꽃이 드러남
+  if (bloom) p.traits.push("lateBloom");
+  return { cm: Math.round(cm * 10) / 10, growingPains: cm >= 4.5 && chance(0.35), bloom };
 }
 
 // 매주 자연스럽게 일어나는 변화

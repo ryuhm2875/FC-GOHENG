@@ -212,6 +212,7 @@ export function renderCreate(app) {
     const gr = await choose(Object.entries(TALK.growthAnswers).map(([k, v]) => ({ k, html: `${esc(v.say)}<small>${GROWTH_TYPES[k].label}: ${GROWTH_TYPES[k].desc}</small>` })));
     d.growthType = gr.k;
     await say("me", TALK.growthAnswers[d.growthType].say);
+    for (const t of TALK.growthAnswers[d.growthType].memory || []) await say("narr", t);   // 회상
     await say("coach", TALK.growthAnswers[d.growthType].react);
 
     await lines(TALK.testIntro);

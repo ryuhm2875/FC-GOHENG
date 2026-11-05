@@ -1,6 +1,6 @@
 // 게임 안 화면들: 홈, 선수, 팀, 일정, 메시지
 import { ACTION_MAP, ACTIONS } from "../../data/actions.js";
-import { POSITIONS, GROWTH_TYPES, TRAITS, STAT_GROUPS, ROLES, EARNABLE, DETAIL_POS } from "../../data/player.js";
+import { POSITIONS, growthTypeOf, TRAITS, STAT_GROUPS, ROLES, EARNABLE, DETAIL_POS } from "../../data/player.js";
 import { STAFF, ROSTER } from "../../data/roster.js";
 import { PHASES, MONTHS } from "../../data/calendar.js";
 import { turnInfo, upcoming, yearTurns, label } from "../engine/calendar.js";
@@ -63,7 +63,7 @@ export function fcCard(state, { big = false } = {}) {
         <span class="pc-frame"></span>
         <span class="pc-bg2"></span>
         <span class="pc-bhead"><span class="pc-bo"><b class="num">${o}</b><span>${code}</span></span><b class="pc-bn">${esc(p.name)}</b></span>
-        <span class="pc-meta">#${p.number} · ${GROWTH_TYPES[p.growthType].label}${role ? ` · ${role.label}` : ""}</span>
+        <span class="pc-meta">#${p.number} · ${growthTypeOf(p.growthType).label}${role ? ` · ${role.label}` : ""}</span>
         <span class="pc-rule"></span>
         <span class="pc-stats">${sixStats(p).map(([k, v]) => `<span class="pc-row"><span class="pc-k">${k}</span><span class="pc-bar"><i style="width:${Math.min(100, fl(v))}%"></i></span><b class="num">${fl(v)}</b></span>`).join("")}</span>
         <span class="pc-hint">한 번 더 누르면 앞면</span>
@@ -306,7 +306,7 @@ export function playerView(state, tab = "stats") {
         <dt>몸무게</dt><dd class="num">${p.body.weight.toFixed(1)}kg</dd>
         <dt>주발</dt><dd>${p.foot === "L" ? "왼발" : "오른발"}</dd>
         ${p.birthday ? `<dt>생일</dt><dd>${p.birthday.month}월 ${p.birthday.day}일${isBirthdayWeek(state, turnInfo(state)) ? " 🎂 생일 주간" : ""}</dd>` : ""}
-        <dt>성장 유형</dt><dd>${GROWTH_TYPES[p.growthType].label}</dd>
+        <dt>출신</dt><dd>${growthTypeOf(p.growthType).label}</dd>
       </dl>
       <table class="tbl"><thead><tr><th>측정</th><th class="r">키</th><th class="r">몸무게</th></tr></thead><tbody>
       ${p.body.history.map(h => `<tr><td>${h.label}</td><td class="r num">${h.height.toFixed(1)}</td><td class="r num">${h.weight.toFixed(1)}</td></tr>`).join("")}
