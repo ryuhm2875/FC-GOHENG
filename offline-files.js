@@ -58,7 +58,7 @@ self.OFFLINE_FILES = [
   ["data/events3.js","0adf37b769"],
   ["data/events4.js","fc18efdf40"],
   ["data/goals.js","d2df61fedd"],
-  ["data/match.js","365613fdee"],
+  ["data/match.js","df7097b255"],
   ["data/messages.js","74e3f469c1"],
   ["data/player.js","64c783c2fe"],
   ["data/roster.js","9bcaa3ae82"],

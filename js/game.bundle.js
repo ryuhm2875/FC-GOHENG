@@ -3366,7 +3366,7 @@ const SITUATIONS = [
     ] },
   // ── 2026-11-06 추가: 현대 축구 장면 (포지션별 2개) ──
   // 공격수: 등지고 받아 3선 침투에게 떨궈 주기 (레이오프)
-  { id: "fw_layoff_third", intro: false, pos: ["FW"], zone: "mid", weight: 1,
+  { id: "fw_layoff_third", intro: false, pos: ["FW"], zone: "mid", weight: 0.7,
     text: ["센터백이 내 발밑으로 강하게 꽂아 준다. 등 뒤에 수비가 바짝 붙었다. 뒤에서 {mate|이/가} 앞을 보고 올라온다.", "등지고 공을 받았다. 수비가 등을 밀어 온다. 2선에서 {mate|이/가} 달려 올라오는 게 보인다."],
     choices: [
       { label: "원터치로 올라오는 동료에게 떨군다", stats: { "tech.firstTouch": 0.5, "tech.pass": 0.3, "mental.teamwork": 0.2 }, diff: -1, win: "keyPass", lose: "turnover",
