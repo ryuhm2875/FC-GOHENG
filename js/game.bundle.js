@@ -1514,7 +1514,7 @@ return { LEAGUE_OPPONENTS, HIGH_SCHOOLS, HS_TIERS, NATIONAL_OPPONENTS, ELEMENTAR
 
 // ── js/engine/jn.js
 __m["js/engine/jn.js"] = (function () {
-const {SURNAMES, GIVEN_NAMES, HIGH_SCHOOLS} = __m["data/world.js"];
+const {SURNAMES, GIVEN_NAMES, HIGH_SCHOOLS, LEAGUE_OPPONENTS, OPPONENT_STARS} = __m["data/world.js"];
 const {POSITIONS} = __m["data/player.js"];
 const {shuffle, weighted, pick} = __m["js/rng.js"];
 const {teamStrength} = __m["js/engine/team.js"];
@@ -1536,14 +1536,39 @@ const PROVINCES = [
 ];
 const ROUND_EDGE = [-0.5, 1, 2.5];                 // 라운드가 오를수록 상대가 강해짐
 
-// 선발 발표 때 한 번 만듦: 도내 다른 학교에서 뽑힌 동료들과 세 상대
+// 전남 대표 코칭스태프 (가상 인물). 고흥FC의 김 감독·정 코치와 다른 사람
+const JN_STAFF = { coach: "서 감독", coachFrom: "목포", assistant: "한 코치", assistantFrom: "광양" };
+// 도내(전남) 리그 팀. 광주는 다른 시·도라 빠짐
+const JN_TEAMS = LEAGUE_OPPONENTS.map(t => t.name).filter(n => !n.startsWith("광주"));
+const shortSchool = n => String(n || "").replace(/\s*U-15$/, "");
+// 핵심 선수의 학년: 내가 g학년일 때 "3학년선배"는 g+2학년 (3학년을 넘으면 이미 졸업)
+const YEAR_OFF = { "3학년선배": 2, "2학년선배": 1, "동기": 0, "1년후배": -1, "2년후배": -2 };
+
+// 선발 발표 때 한 번 만듦: 전남 각 팀 에이스로 꾸린 동료들과 세 상대
+// 각 팀 핵심 선수(OPPONENT_STARS) 중 지금 중학생인 선수를 학년 높은 순으로 포지션마다 채우고, 모자라면 도내 학교 이름을 붙여 새로 만듦
+// 다른 학교 맞수가 전남 팀이면 같은 편으로 들어옴
 function startJnCup(state) {
   const p = state.player, g = state.calendar.grade;
   const used = new Set([p.name, ...state.team.roster.map(m => m.name)]);
   const name = () => { let n; do { n = weighted(SURNAMES) + pick(GIVEN_NAMES); } while (used.has(n)); used.add(n); return n; };
   const nums = shuffle([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].filter(n => n !== p.number));
+  const stars = JN_TEAMS.flatMap(team => (OPPONENT_STARS[team] || []).map(r => ({ team, rel: r[0], pos: r[1], name: r[2], g: g + (YEAR_OFF[r[0]] ?? 0) })))
+    .filter(s => s.g >= 2 && s.g <= 3 && !used.has(s.name));
+  const nem = state.nemesis;
   const squad = [];
-  for (const [pos, def] of Object.entries(POSITIONS)) for (let i = 0; i < def.slots + 1; i++) squad.push({ name: name(), number: nums.shift(), pos });
+  for (const [pos, def] of Object.entries(POSITIONS)) {
+    const want = def.slots + 1;
+    const pool = shuffle(stars.filter(s => s.pos === pos)).sort((a, b) => b.g - a.g);
+    if (nem && JN_TEAMS.includes(nem.team) && nem.pos === pos && !used.has(nem.name)) pool.unshift({ team: nem.team, pos, name: nem.name, g, nemesis: true });
+    const teamsUsed = {};
+    for (const s of pool) {
+      if (squad.filter(x => x.pos === pos).length >= want - 1) break;           // 한 자리는 새 얼굴로 (명단이 늘 같은 이름만 되지 않게)
+      if (used.has(s.name) || (teamsUsed[s.team] || 0) >= 1 && !s.nemesis) continue;   // 한 팀에서 포지션마다 한 명
+      used.add(s.name); teamsUsed[s.team] = (teamsUsed[s.team] || 0) + 1;
+      squad.push({ name: s.name, number: nums.shift(), pos, school: s.team, ...(s.nemesis ? { nemesis: true } : {}) });
+    }
+    while (squad.filter(x => x.pos === pos).length < want) squad.push({ name: name(), number: nums.shift(), pos, school: pick(JN_TEAMS) });
+  }
   const str = Math.max(60, teamStrength(state, false) + 4) + (g === 3 ? 1 : 0);
   const base = str * 0.6 + 20;
   const opps = shuffle(PROVINCES).slice(0, 3).map((o, i) => ({ id: `JN${i}`, ...o, strength: Math.round((base + ROUND_EDGE[i]) * 10) / 10 }));
@@ -1590,7 +1615,7 @@ function jnAfter(state, fx, gf, ga, shootoutWin, rating) {
   return notes;
 }
 
-return { JN_WEEK, JN_ROUNDS, JN_NAME, PROVINCES, startJnCup, jnFixture, jnAfter };
+return { JN_WEEK, JN_ROUNDS, JN_NAME, PROVINCES, JN_STAFF, JN_TEAMS, shortSchool, startJnCup, jnFixture, jnAfter };
 })();
 (__fix["js/engine/jn.js"] || []).forEach(f => f());
 
@@ -3919,7 +3944,33 @@ const SIM_LINES = {
   },
 };
 
-return { OUTCOMES, SITUATIONS, LINES, FLOW, HALFTIME_TALK, HT_TALK, PLAYS, BREAK, FINISH, RESULT, AMBIENT, TO_ME, SIGNATURE, ME_IN_PLAY, PREMATCH, SIM_LINES };
+// ── 전남 대표 경기 (전국소년체전) 때 벤치 말 ──
+// 서 감독(목포)·한 코치(광양): 사흘 전에 처음 만난 아이들을 맡은 사람들. 김 감독보다 짧고, 전술 이야기가 먼저, 처음엔 등번호로 부름
+const JN_TALK = {
+  start: [
+    { who: "coach", text: "여긴 학교 팀이 아니다. 사흘 만에 한 팀이 돼야 한다. 공 잡으면 두 번 넘게 만지지 마라.", tag: "pass" },
+    { who: "coach", text: "다들 자기 학교에선 에이스였지. 오늘은 아니다. 옆 사람 이름부터 외워라. 그게 첫 번째 패스다.", tag: null },
+    { who: "coach", text: "상대 왼쪽 풀백이 자꾸 올라온다. 그 뒤가 우리 거다. 뺏으면 바로 그쪽으로 넘겨라.", tag: "pass" },
+    { who: "assistant", text: "시·도 대표는 첫 10분에 몸으로 밀어 본다. 첫 부딪힘에서 물러서면 경기 내내 밀린다.", tag: "physical" },
+    { who: "assistant", text: "하루 걸러 한 경기다. 오늘 다리 다 쓰면 모레가 없다. 뛸 땐 뛰고, 쉴 땐 확실히 서 있어라.", tag: "safe" },
+    { who: "coach", text: "번호 말고 이름 부른다. 고흥, 네 이름 뭐였지. …그래. 오늘 왼쪽은 네가 책임진다.", tag: null },
+  ],
+  team: {
+    winning: ["앞서고 있다고 학교 축구로 돌아가지 마라. 지금처럼 짧게, 빠르게.", "잘하고 있다. 근데 상대 감독이 후반에 뭘 바꿀지 벌써 보인다. 준비해."],
+    drawing: ["비기면 승부차기다. 승부차기까지 가기 싫으면 후반 첫 10분에 끝내라.", "급하게 하지 마라. 지금 필요한 건 한 골이 아니라 실점 0이다."],
+    losing: ["지는 건 괜찮다. 서로 탓하는 건 안 괜찮다. 여기 있는 애들 전부 전남이다.", "한 골이다. 측면으로 넓게 벌려라. 가운데는 저쪽이 다 막고 있다."],
+  },
+  halftime: {
+    praise: ["좋다. 처음 맞춰 본 팀이 이 정도면 된 거다. 너는 특히.", "{me}, 고흥에서 왔다고 했지. 전반은 네가 제일 전남다웠다."],
+    calm: ["전반은 서로 눈치만 봤다. 후반엔 먼저 말해라. 이름 부르면서.", "괜찮다. 한 번만 더 짧게 주고 움직여라. 그럼 열린다."],
+    scold: ["자기 학교에서 하던 대로 혼자 다 하려고 하지 마라. 여긴 너보다 잘하는 애도 있다.", "공 끌지 마라. 받기 전에 다음 사람을 봐 둬라. 그거 하나 못 하면 뺀다."],
+    off: ["오늘은 여기까지다. 다음 경기에서 다시 쓴다. 벤치에서 상대 왼쪽 풀백 계속 봐라."],
+  },
+  // 고흥에 있는 김 감독이 보내는 문자 (첫 경기 전)
+  homeCoach: ["전남 마크는 무겁다. 근데 너한테는 맞는 옷이다. 하던 대로 해라. — 김 감독", "서 감독님은 말이 짧다. 그 말 다 들어라. 내가 아는 감독 중에 제일 정확한 사람이다. — 김 감독"],
+};
+
+return { OUTCOMES, SITUATIONS, LINES, FLOW, HALFTIME_TALK, HT_TALK, PLAYS, BREAK, FINISH, RESULT, AMBIENT, TO_ME, SIGNATURE, ME_IN_PLAY, PREMATCH, SIM_LINES, JN_TALK };
 })();
 (__fix["data/match.js"] || []).forEach(f => f());
 
@@ -7060,10 +7111,11 @@ return { DT, RATE, HALF_T, xgAt, createSim, meOf, gkOf, playT, minuteOf, passTo,
 
 // ── js/engine/match.js
 __m["js/engine/match.js"] = (function () {
-const {SITUATIONS, OUTCOMES, LINES, HALFTIME_TALK, HT_TALK, PLAYS, FINISH, RESULT, AMBIENT, TO_ME, SIGNATURE, ME_IN_PLAY, BREAK, PREMATCH, FLOW, SIM_LINES} = __m["data/match.js"];
+const {JN_TALK, SITUATIONS, OUTCOMES, LINES, HALFTIME_TALK, HT_TALK, PLAYS, FINISH, RESULT, AMBIENT, TO_ME, SIGNATURE, ME_IN_PLAY, BREAK, PREMATCH, FLOW, SIM_LINES} = __m["data/match.js"];
 const {SURNAMES, GIVEN_NAMES} = __m["data/world.js"];
 const {POSITIONS, DETAIL_POS} = __m["data/player.js"];
 const {GOALKEEPERS, STAFF} = __m["data/roster.js"];
+const {JN_STAFF} = __m["js/engine/jn.js"];
 const {rand, int, range, normal, chance, pick, weighted, clamp, getPath, shuffle} = __m["js/rng.js"];
 const {ovr, depthChart, teamStrength, activeRoster, mateGrade} = __m["js/engine/team.js"];
 const {hasTrait, applyGain, conditionOf} = __m["js/engine/growth.js"];
@@ -7082,6 +7134,9 @@ const {createSim, step: simStep, DT, RATE, HALF_T, playT, kickoffSetup, soSetup,
 
 
 
+
+// 벤치 사람 이름: 전남 대표 경기면 서 감독·한 코치
+const staffOf = (m, who) => (m?.fx?.jn ? JN_STAFF : STAFF)[who === "coach" ? "coach" : "assistant"];
 
 
 
@@ -7155,12 +7210,7 @@ function pickTalk(state, fx, status, star) {
     if (star >= 1) keys.push("star");
   }
   if (!keys.length) return null;
-  if (fx.jn && status === "start") return pick([
-    { who: "coach", text: "여기 있는 애들, 다 자기 학교에서 제일 잘하는 애들이다. 그러니까 공을 혼자 들고 있지 마라. 믿고 줘라.", tag: "pass" },
-    { who: "coach", text: "전남 마크 달고 뛰는 거다. 고흥에서 온 걸 부끄러워하지 마라. 오늘은 네가 고흥이다.", tag: null },
-    { who: "assistant", text: "상대 지역 대표는 몸싸움이 세다. 첫 번째 부딪힘에서 밀리지 마라.", tag: "physical" },
-    { who: "coach", text: "하루 걸러 한 경기다. 다리 아끼지 말고, 대신 머리는 차갑게 써라.", tag: "safe" },
-  ].filter(t => !t.tag || tagFit(p.position, t.tag) >= 0.18));
+  if (fx.jn && status === "start") return pick(JN_TALK.start.filter(t => !t.tag || tagFit(p.position, t.tag) >= 0.18));
   if (status === "start" && !(state.record.starts > 0))
     return { who: "coach", text: "첫 선발이다. 떨리는 거 안다. 첫 패스 하나만 정확하게 해라. 나머지는 몸이 알아서 한다.", tag: tagFit(p.position, "pass") >= 0.18 ? "pass" : "safe" };
   // 내 포지션에서 실제로 따를 수 있는 지시만 (공격수에게 '수비 먼저' 같은 지시가 가지 않게)
@@ -7331,12 +7381,12 @@ function prepareMatch(state, info, fx) {
   const myOvr = ovr(p);
   const star = onPitch ? clamp((myOvr - teamAvg) / 15 + (hasTrait(p, "ace") ? 0.2 : 0), 0, 1.7) : 0;
 
-  const roster = cup ? cup.squad.map(x => ({ name: x.name, number: x.number, position: x.pos, ovrNow: cup.str })) : activeRoster(state);
+  const roster = cup ? cup.squad.map(x => ({ name: x.name, number: x.number, position: x.pos, ovrNow: cup.str + (x.school ? 0.5 : 0) + (x.nemesis ? 1 : 0), school: x.school })) : activeRoster(state);
   const lineup = [];
   for (const [pos, def] of Object.entries(POSITIONS)) {
     const n = def.slots - (status === "start" && pos === p.position ? 1 : 0);
     roster.filter(m => m.position === pos).sort((a, b) => b.ovrNow - a.ovrNow).slice(0, n)
-      .forEach(m => lineup.push({ name: m.name, number: m.number, pos, ovr: m.ovrNow }));
+      .forEach(m => lineup.push({ name: m.name, number: m.number, pos, ovr: m.ovrNow, ...(m.school ? { school: m.school } : {}) }));
   }
   // 안전장치: 어느 포지션이 모자라면 다른 포지션 후보가 내려오거나 올라가서 채우고, 그래도 없으면 신입생이 채움
   for (const [pos, def] of Object.entries(POSITIONS)) {
@@ -7742,7 +7792,7 @@ function timedEvent(state, m, ev, ts) {
     if (!fit.length) return out;
     const a = pick(fit);
     m.used[`amb${AMBIENT.indexOf(a)}`] = true;                  // 같은 경기에서 같은 문장은 한 번만
-    const av = { a: mateName(m, ["DF", "MF"]), o: oppName(m), coach: STAFF.coach, gk: m.gk.us };
+    const av = { a: mateName(m, ["DF", "MF"]), o: oppName(m), coach: staffOf(m, "coach"), gk: m.gk.us };
     L(fill(a.t, av), "info", { amb: true });
   }
   if (ev.type === "injury" && m.onPitch && !m.injured) {
@@ -7751,7 +7801,7 @@ function timedEvent(state, m, ev, ts) {
     m.injured = { type, minute: min, cause: t.cause };
     m.onPitch = false;
     L(fill(pick(t.lines), { me: m.me }), "me-bad");
-    L(fill("의무 트레이너가 뛰어 들어간다. {coach|이/가} 벤치에서 교체 사인을 보낸다.", { coach: STAFF.coach }), "coach");
+    L(fill("의무 트레이너가 뛰어 들어간다. {coach|이/가} 벤치에서 교체 사인을 보낸다.", { coach: staffOf(m, "coach") }), "coach");
     const rep = m.bench?.[0];
     if (rep) m.lineup.push({ name: rep.name, number: rep.number, pos: m.myPos });
     swapMe(m, rep || { name: "교체 선수", number: "" }, false);
@@ -7771,7 +7821,7 @@ function timedEvent(state, m, ev, ts) {
     const st = pick(PREMATCH.filter(t => t.when === "sub" && (!t.tag || tagFit(m.myPos, t.tag) >= 0.18)));
     if (st) {
       m.talk = { who: st.who, text: st.t, tag: st.tag };
-      L(`${st.who === "coach" ? STAFF.coach : STAFF.assistant}: "${st.t}"${st.tag ? ` (지시: ${TAG_LABEL[st.tag]})` : ""}`, "coach", { fast: true });
+      L(`${staffOf(m, st.who)}: "${st.t}"${st.tag ? ` (지시: ${TAG_LABEL[st.tag]})` : ""}`, "coach", { fast: true });
     }
   }
   return out;
@@ -8115,7 +8165,7 @@ function startMoment(state, m, sit, ctx, lines, ts) {
       : ctx.set?.taker || nearestP(S, "them", M, p => p.ri))
     : nearestP(S, "them", M, p => p.ri);
   const sideY = (poss === "them" || sc.holder ? holder : M)?.y ?? S.ball.y;
-  const sv = { mate: mateP?.name || mateName(m), opp: oppP?.name || oppName(m), gk: m.gk.us, ogk: m.gk.them, coach: STAFF.coach,
+  const sv = { mate: mateP?.name || mateName(m), opp: oppP?.name || oppName(m), gk: m.gk.us, ogk: m.gk.them, coach: staffOf(m, "coach"),
     wing: mateP?.name || mateName(m), side: sideY < 34 ? "왼쪽" : "오른쪽" };     // side: 장면이 벌어지는 쪽 (우리 팀이 공격하는 방향 기준, 경기장 y < 34가 왼쪽)
   const zone = sit.zone;
   const min = m.minute;
@@ -8335,7 +8385,7 @@ function kickoffLines(state, m) {
   }
   if (m.star >= 1 && m.status === "start") L(fill(pick(ME_IN_PLAY.marked), { me: m.me }), "me-auto");
   if (m.status === "start" && isBirthdayWeek(state, turnInfo(state)))
-    L(fill("생일 주간에 선발 출전한 {me}. 벤치에서 {a|이/가} 손가락으로 케이크 모양을 그려 보인다.", { me: m.me, a: STAFF.assistant }), "coach");
+    L(fill("생일 주간에 선발 출전한 {me}. 벤치에서 {a|이/가} 손가락으로 케이크 모양을 그려 보인다.", { me: m.me, a: staffOf(m, "assistant") }), "coach");
   if (state.flags.captain && m.status === "start") L(fill("주장 완장을 찬 {me|이/가} 상대 주장과 악수하고 동전 던지기에 나선다.", { me: m.me }), "me");
   if (state.player.number === 10 && m.grade === 3 && m.status === "start" && !state.flags.played10) {
     state.flags.played10 = true;
@@ -8344,7 +8394,7 @@ function kickoffLines(state, m) {
   // 큰 부상 뒤 복귀전
   if (m.status === "start" && state.flags.returnTurn != null && m.turn - state.flags.returnTurn <= 3) {
     m.comeback = true; state.flags.returnTurn = null;
-    L(fill("{me}의 복귀전. 벤치에서 {a|이/가} 엄지를 들어 보인다.", { me: m.me, a: STAFF.assistant }), "coach");
+    L(fill("{me}의 복귀전. 벤치에서 {a|이/가} 엄지를 들어 보인다.", { me: m.me, a: staffOf(m, "assistant") }), "coach");
   }
   return out;
 }
@@ -8447,7 +8497,7 @@ function next(state, m) {
     const mood = a > b ? "winning" : a === b ? "drawing" : "losing";
     L(`전반 종료. ${TEAM_NAME} ${a} : ${b} ${m.fx.opponent.name}`, "whistle", { poss: null, htWhistle: true });
     L(statLine(m), "stat");
-    L(`${STAFF.coach}: "${pick(HALFTIME_TALK[mood])}"`, "coach");
+    L(`${staffOf(m, "coach")}: "${pick(m.fx.jn ? JN_TALK.team[mood] : HALFTIME_TALK[mood])}"`, "coach");
     // 전반 내 경기 평가 → 라커룸에서 따로 하는 이야기. 전반이 많이 아쉬우면 교체
     if (m.status === "start" && m.onPitch && !m.injured) {
       const d1 = m.my.delta, dec = m.my.decisions, suc = m.my.successes;
@@ -8457,7 +8507,7 @@ function next(state, m) {
       const off = poor && rep && chance((m.fx.ko ? 0.35 : 0.6) * (m.star >= 1 ? 0.5 : 1));
       const md = off ? "off" : good ? "praise" : poor ? "scold" : "calm";
       const T = HT_TALK[md];
-      m.htTalk = { mood: md, text: fill(pick(T.text), { me: state.player.name.length === 3 ? state.player.name.slice(1) : state.player.name }), choices: T.choices };
+      m.htTalk = { mood: md, text: fill(pick(m.fx.jn ? JN_TALK.halftime[md] : T.text), { me: state.player.name.length === 3 ? state.player.name.slice(1) : state.player.name }), choices: T.choices };
       if (off) {
         m.onPitch = false; m.subbedOff = { minute: HALF };
         m.lineup.push({ name: rep.name, number: rep.number, pos: m.myPos });
@@ -8652,7 +8702,7 @@ function resolve(state, m, ci, timing = null) {
   // 결과 문장이 두 번째 상대({opp2})가 공을 받는다고 말하면: 그 선수가 받아 때림 (득점 기록·경기장 모두 그 선수)
   if (v.opp2 && /\{opp2[|}]/.test(outTpl) && ["danger", "keep", "turnover"].includes(out)) { v.oppHolder = v.opp; v.opp = v.opp2; }
   const scSit = SCENES[pd.sit.id] || {};
-  if (ok && pd.choices[ci].follow) outLines.push({ t: fill("{c|이/가} 벤치에서 주먹을 쥔다. 경기 전 지시 그대로다.", { c: m.talk.who === "coach" ? STAFF.coach : STAFF.assistant }), k: "coach", minute: min, ts });
+  if (ok && pd.choices[ci].follow) outLines.push({ t: fill("{c|이/가} 벤치에서 주먹을 쥔다. 경기 전 지시 그대로다.", { c: staffOf(m, m.talk.who) }), k: "coach", minute: min, ts });
 
   const main = Object.entries(c.stats).sort((a, b) => b[1] - a[1])[0][0];
   m.my.decisions++; if (ok) m.my.successes++;
@@ -9351,7 +9401,7 @@ function soStart(state, m, L) {
   const me = m.so.order.us.findIndex(p => p.me);
   L(`${m.score[0]} : ${m.score[1]}. 승부는 승부차기로 간다.`, "whistle", { soStart: true, so: { us: [], them: [] } });
   L(fill("동전을 던졌다. {t|이/가} 먼저 찬다.", { t: first === "us" ? (m.fx.usName || TEAM_NAME) : m.fx.opponent.name }), "info");
-  if (me >= 0 && me < 5) L(`${STAFF.coach}: "${pl.name.length === 3 ? pl.name.slice(1) : pl.name}, 너는 ${nth(me + 1)}다. ${me === 0 ? "처음부터 분위기 가져와." : me === 4 ? "마지막은 너한테 맡긴다." : "하던 대로만 차."}"`, "coach");
+  if (me >= 0 && me < 5) L(`${staffOf(m, "coach")}: "${pl.name.length === 3 ? pl.name.slice(1) : pl.name}, 너는 ${nth(me + 1)}다. ${me === 0 ? "처음부터 분위기 가져와." : me === 4 ? "마지막은 너한테 맡긴다." : "하던 대로만 차."}"`, "coach");
   else if (me >= 5) L(`다섯 명 안에 내 이름은 없다. 서든데스까지 가면 ${nth(me + 1)}로 나간다.`, "me");
   else L("벤치에서 동료들의 어깨를 바라본다. 할 수 있는 건 손을 모으는 것뿐이다.", "me");
   m.soCut = true;                                        // 화면: 승부차기 자리로 넘어감
@@ -9599,7 +9649,7 @@ function finishMatch(state, m) {
 // 점검 도구용 (tools/dev): 장면 조건 함수
 const _dev = { holderOk: (ctx, s, S, m) => holderOk(ctx, s, S, m), newSceneOk: (ctx, sc, S, m) => newSceneOk(ctx, sc, S, m), sitCat: s => sitCat(s), canSit: (state, m, s) => canSit(state, m, s) };
 
-return { LENGTH, MY_SLOT, detailOf, mySlotOf, HALF, STATUS_LABEL, fill, eligibility, tagFit, TAG_LABEL, choiceTag, timingKind, timingOf, DEV, CAL, styleSim, prepareMatch, next, statLine, prob, playKind, resolve, applyHalftime, autoChoice, autoPlay, finishMatch, _dev };
+return { staffOf, LENGTH, MY_SLOT, detailOf, mySlotOf, HALF, STATUS_LABEL, fill, eligibility, tagFit, TAG_LABEL, choiceTag, timingKind, timingOf, DEV, CAL, styleSim, prepareMatch, next, statLine, prob, playKind, resolve, applyHalftime, autoChoice, autoPlay, finishMatch, _dev };
 })();
 (__fix["js/engine/match.js"] || []).forEach(f => f());
 
@@ -9627,8 +9677,12 @@ const {GOALS, GOAL_ORDER} = __m["data/goals.js"];
 const {ovr} = __m["js/engine/team.js"];
 const {mail} = __m["js/state.js"];
 const {STAFF} = __m["data/roster.js"];
+const {JN_TALK} = __m["data/match.js"];
+const {pick} = __m["js/rng.js"];
 // 중간 목표 (중2부터): 전남 대표 선발, 우수선수상, 주장 후보, 스카우트의 관심, 지역 신문 인터뷰
 // 이벤트는 data/events.js의 goal_* 이벤트. 여기서는 조건 확인과 진행 상황, 이벤트 예약을 맡습니다.
+
+
 
 
 
@@ -9730,6 +9784,12 @@ function fixedGoalEvent(state, info) {
   if (!G.metAt && !G.main && after33 && !tooLate && !info.exam) return "goal_meeting";
   if (info.grade === 2 && at(9, 2) && !G.checkAt) return "goal_check";
   // 전남 대표: 4월 1주 선발전 명단 → 4월 3주 발표 → 5월 2주 전국소년체전 (예전 저장 파일은 4월 2주·4주까지 기다려 줌)
+  // 소년체전 주: 고흥에 남은 김 감독의 문자 한 통 (전남 대표 감독은 따로 있음)
+  const jc = state.jnCup;
+  if (jc && jc.alive && jc.stage === 0 && jc.grade === info.grade && at(5, 2) && !jc.homeMail) {
+    jc.homeMail = true;
+    mail(state, "coach", "고흥에서", pick(JN_TALK.homeCoach).replace(/ — 김 감독$/, "") + "\n\n고흥 애들 다 텔레비전 앞에 있을 거다.");
+  }
   if ((at(4, 1) || at(4, 2)) && !G.done.jn && !(G.jnCalled?.[info.grade])) {
     if (jnScore(state) >= JN_NEED[info.grade] - JN_CALL) return "goal_jn_call";
     if (G.main === "jn" && !(G.jnMissed?.[info.grade])) {
@@ -10572,10 +10632,12 @@ return { EVENTS_MORE };
 // ── data/events3.js
 __m["data/events3.js"] = (function () {
 const {turnInfo} = __m["js/engine/calendar.js"];
+const {shortSchool, JN_STAFF} = __m["js/engine/jn.js"];
 const {rivalGap, person} = __m["js/engine/relations.js"];
 // 이야기 줄기 이벤트: 라이벌 3년, 부모님 장면, 고흥 이야기
 // date: [[월, 주]] 그 주에 반드시 / trigger: 상황이 맞으면 반드시 / when.grades: 학년
 // 문장 안의 {rival} {friend} {mentor} {junior} {teacher} {coach} {name} {given}은 자동으로 바뀝니다.
+
 
 
 
@@ -10706,12 +10768,21 @@ const EVENTS_STORY = [
     ] },
 
   // ── 전남 대표 소년체전 ─────────────────────────
-  { id: "jn_camp", once: true, bg: "ev_jn_camp", who: "coach",
+  { id: "jn_camp", once: true, bg: "ev_jn_camp", who: "narr",
     trigger: s => { const c = s.jnCup, i = turnInfo(s); return !!c && c.alive && c.stage === 0 && i?.grade === c.grade && i.month === 5 && i.week === 2 && !s.player.condition.injury; },
-    text: "전국소년체전 소집 첫날, 숙소 강당. 광양, 목포, 순천에서 온 낯선 얼굴들이 서로 눈치만 본다. 올해 전남 대표 감독은 {coach}님이 맡으셨다. \"학교는 잊어라. 이번 주는 전부 전남이다.\"",
+    // 전남 대표 동료는 도내 각 팀 에이스 (js/engine/jn.js). 다른 학교 맞수가 전남 팀이면 같은 방에 있음
+    text: s => {
+      const c = s.jnCup, nem = c?.squad?.find(x => x.nemesis), two = (c?.squad || []).filter(x => x.school && !x.nemesis).slice(0, 2);
+      return `전국소년체전 소집 첫날, 숙소 강당. 리그에서 상대 팀 유니폼으로만 보던 얼굴들이 전남 트레이닝복을 입고 서로 눈치만 본다.${two.length === 2 ? ` ${shortSchool(two[0].school)}의 ${two[0].name}, ${shortSchool(two[1].school)}의 ${two[1].name}…` : ""}`
+        + (nem ? `\n\n그리고 맨 뒷줄, ${shortSchool(nem.school)}의 ${nem.name}. 눈이 마주쳤다. 둘 다 먼저 고개를 돌렸다. 이번 주는 저 녀석이 같은 편이다.` : "")
+        + `\n\n${JN_STAFF.coachFrom}에서 온 ${JN_STAFF.coach}님이 화이트보드 앞에 섰다. 말이 짧다. "학교는 잊어라. 이번 주는 전부 전남이다. 내일까지 옆 사람 이름 다 외워 와라."`;
+    },
     choices: [
       { label: "먼저 다가가 이름부터 묻는다", fx: { s: { "mental.teamwork": 0.6 }, morale: 3 },
-        result: "목포에서 온 미드필더가 웃으며 손을 내밀었다. \"너 고흥이지? 리그에서 붙어 봤잖아.\" 그날 밤 숙소 방이 제일 시끄러웠다." },
+        result: s => { const nem = s.jnCup?.squad?.find(x => x.nemesis);
+          const ga = w => { const k = w.charCodeAt(w.length - 1) - 0xAC00; return w + (k >= 0 && k <= 11171 && k % 28 ? "이" : "가"); };
+          return nem ? `맨 뒷줄로 갔다. ${ga(nem.name)} 먼저 손을 내밀었다. "리그에선 서로 걷어찼는데, 이번엔 나한테 패스 좀 해라." 그날 밤 숙소 방이 제일 시끄러웠다.`
+            : "목포에서 온 미드필더가 웃으며 손을 내밀었다. \"너 고흥이지? 리그에서 붙어 봤잖아.\" 그날 밤 숙소 방이 제일 시끄러웠다."; } },
       { label: "말없이 축구화 끈부터 다시 묶는다", fx: { s: { "mental.focus": 0.6 } },
         result: "다들 잘하는 애들이다. 여기서는 고흥에서처럼 공이 저절로 오지 않는다. 첫 훈련부터 목소리를 냈다." },
       { label: "부모님께 \"잘 도착했어요\" 하고 문자한다", fx: { morale: 4 },
@@ -15874,7 +15945,7 @@ return { createPitch };
 
 // ── js/ui/match.js
 __m["js/ui/match.js"] = (function () {
-const {next, resolve, autoChoice, autoPlay, finishMatch, applyHalftime, STATUS_LABEL, TAG_LABEL} = __m["js/engine/match.js"];
+const {staffOf, next, resolve, autoChoice, autoPlay, finishMatch, applyHalftime, STATUS_LABEL, TAG_LABEL} = __m["js/engine/match.js"];
 const {track} = __m["js/net/online.js"];
 const {frameNow} = __m["js/engine/sim.js"];
 const {STAFF} = __m["data/roster.js"];
@@ -16023,7 +16094,9 @@ function showMatch(app, m, onDone) {
   }
 
   // 경기 전 선발 명단: 경기장 위 점과 같은 순서·번호
-  const byPos = pos => players.filter(x => x.team === "us" && x.pos === pos).map(x => `${x.me ? "<b class='me-n'>" : ""}${x.number} ${esc(x.name)}${x.me ? "</b>" : ""}`).join(", ");
+  // 전남 대표: 이름 뒤에 소속 학교 (광양 쇠울중 같은)
+  const schoolOf = n => (m.lineup.find(l => l.name === n) || {}).school;
+  const byPos = pos => players.filter(x => x.team === "us" && x.pos === pos).map(x => `${x.me ? "<b class='me-n'>" : ""}${x.number} ${esc(x.name)}${x.me ? "</b>" : ""}${!x.me && schoolOf(x.name) ? `<small class="sch">(${esc(String(schoolOf(x.name)).replace(/\s*U-15$/, ""))})</small>` : ""}`).join(", ");
   feed.innerHTML = `<li class="lineup"><span class="mn">선발</span><span>
     <b>GK</b> ${byPos("GK")}<br><b>DF</b> ${byPos("DF")}<br><b>MF</b> ${byPos("MF")}<br><b>FW</b> ${byPos("FW")}
     </span></li>`;
@@ -16172,8 +16245,8 @@ function showMatch(app, m, onDone) {
         ${wx ? `<span class="chip wx">${wx}</span>` : ""}${sk ? `<span class="chip wx">${sk}</span>` : ""}
         ${role ? `<span class="chip ${m.star >= 1 ? "kit" : ""}">영향력: ${role}</span>` : ""}</div>`; })()}
     ${m.talk ? `<div class="talk">
-      <div class="talk-face">${img(m.talk.who === "coach" ? "npc_coach" : "npc_assistant", "")}</div>
-      <div><div class="talk-who">${esc(m.talk.who === "coach" ? STAFF.coach : STAFF.assistant)}</div>
+      <div class="talk-face">${img(m.fx.jn ? (m.talk.who === "coach" ? "npc_jn_coach" : "npc_jn_assistant") : m.talk.who === "coach" ? "npc_coach" : "npc_assistant", "")}</div>
+      <div><div class="talk-who">${esc(staffOf(m, m.talk.who))}</div>
         <p>"${esc(m.talk.text)}"</p>
         ${m.talk.tag ? `<span class="chip kit">지시: ${TAG_LABEL[m.talk.tag]}</span> <span class="mute" style="font-size:12px">같은 종류를 고르면 성공률 +4%p</span>` : ""}</div></div>` : ""}
     ${fx.school ? `<div class="alert gold">🎓 오늘 ${esc(fx.school.name)}(${tierLabel(fx.school.tier)}) ${esc(fx.school.coach)}님이 직접 보러 오셨습니다. 상대는 고등학생이라 몸싸움이 버겁습니다.</div>` : ""}
@@ -16285,10 +16358,10 @@ function showMatch(app, m, onDone) {
     if (!t) return startBtn();
     // 라커룸: 감독님이 나를 따로 불러서 하는 말과 내 대답 (경기장 자리에 라커룸 그림)
     root.querySelector("#pitch").insertAdjacentHTML("beforeend", `<div class="ht-scene" aria-hidden="true"><img src="assets/img/ev_halftime.webp" data-name="ev_halftime" alt="" onerror="__bgFallback(this)"></div>`);
-    const face = `<div class="talk-face">${img("npc_coach", "")}</div>`;
+    const face = `<div class="talk-face">${img(m.fx.jn ? "npc_jn_coach" : "npc_coach", "")}</div>`;
     ctl.innerHTML = `<div class="ht-talk ${t.mood}">
       <div class="ht-tag">${{ praise: "하프타임 · 칭찬", scold: "하프타임 · 쓴소리", calm: "하프타임 · 주문", off: "하프타임 · 교체" }[t.mood]}</div>
-      <div class="talk">${face}<div><div class="talk-who">${esc(STAFF.coach)}</div><p>"${esc(t.text)}"</p></div></div>
+      <div class="talk">${face}<div><div class="talk-who">${esc(staffOf(m, "coach"))}</div><p>"${esc(t.text)}"</p></div></div>
       <div class="mo-choices">${t.choices.map((c, i) => `<button class="mo-btn" data-h="${i}"><span>${esc(c.label)}</span></button>`).join("")}</div>
     </div>`;
     ctl.classList.add("ask");
@@ -16298,7 +16371,7 @@ function showMatch(app, m, onDone) {
       ctl.classList.remove("ask");
       sfx.play(t.mood === "scold" || t.mood === "off" ? "half" : "good");
       const buff = m.htBuff ? `<span class="chip kit">후반 ${m.htBuff.tag ? `${TAG_LABEL[m.htBuff.tag]} 선택` : "모든 선택"} 성공률 +${Math.round(m.htBuff.bonus * 1000) / 10}%p</span>` : "";
-      startBtn(`<div class="talk">${face}<div><div class="talk-who">${esc(STAFF.coach)}</div><p>"${esc(r?.reply || "")}"</p>${buff}</div></div>`);
+      startBtn(`<div class="talk">${face}<div><div class="talk-who">${esc(staffOf(m, "coach"))}</div><p>"${esc(r?.reply || "")}"</p>${buff}</div></div>`);
     }));
     ctl.querySelector("[data-h]")?.focus({ preventScroll: true });
   }

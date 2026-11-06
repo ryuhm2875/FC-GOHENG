@@ -4,6 +4,8 @@ import { GOALS, GOAL_ORDER } from "../../data/goals.js";
 import { ovr } from "./team.js";
 import { mail } from "../state.js";
 import { STAFF } from "../../data/roster.js";
+import { JN_TALK } from "../../data/match.js";
+import { pick } from "../rng.js";
 
 export const goalsOf = state => (state.goals ||= { main: null, done: {}, failed: {}, queue: [] });
 const yearMatches = (state, g = state.calendar.grade) => state.record.matches.filter(m => m.grade === g);
@@ -102,6 +104,12 @@ export function fixedGoalEvent(state, info) {
   if (!G.metAt && !G.main && after33 && !tooLate && !info.exam) return "goal_meeting";
   if (info.grade === 2 && at(9, 2) && !G.checkAt) return "goal_check";
   // 전남 대표: 4월 1주 선발전 명단 → 4월 3주 발표 → 5월 2주 전국소년체전 (예전 저장 파일은 4월 2주·4주까지 기다려 줌)
+  // 소년체전 주: 고흥에 남은 김 감독의 문자 한 통 (전남 대표 감독은 따로 있음)
+  const jc = state.jnCup;
+  if (jc && jc.alive && jc.stage === 0 && jc.grade === info.grade && at(5, 2) && !jc.homeMail) {
+    jc.homeMail = true;
+    mail(state, "coach", "고흥에서", pick(JN_TALK.homeCoach).replace(/ — 김 감독$/, "") + "\n\n고흥 애들 다 텔레비전 앞에 있을 거다.");
+  }
   if ((at(4, 1) || at(4, 2)) && !G.done.jn && !(G.jnCalled?.[info.grade])) {
     if (jnScore(state) >= JN_NEED[info.grade] - JN_CALL) return "goal_jn_call";
     if (G.main === "jn" && !(G.jnMissed?.[info.grade])) {
