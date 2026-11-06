@@ -151,7 +151,7 @@ export const EVENTS_STORY = [
       { label: "말없이 축구화 끈부터 다시 묶는다", fx: { s: { "mental.focus": 0.6 } },
         result: "다들 잘하는 애들이다. 여기서는 고흥에서처럼 공이 저절로 오지 않는다. 첫 훈련부터 목소리를 냈다." },
       { label: "부모님께 \"잘 도착했어요\" 하고 문자한다", fx: { morale: 4 },
-        result: "엄마 답장이 1초 만에 왔다. '밥 많이 먹고, 텔레비전에 나오면 손 흔들어.'" },
+        result: "엄마 답장이 1초 만에 왔다. '밥 많이 먹고잉. 텔레비전 나오면 손 흔들어 📺'" },
     ] },
   { id: "jn_return", once: true, bg: s => (s.jnCup?.medal === "gold" ? "ev_medal" : "ev_bus_sunset"), who: "narr",
     trigger: s => { const c = s.jnCup, i = turnInfo(s); return !!c && i?.grade === c.grade && i.month === 5 && i.week === 3; },
