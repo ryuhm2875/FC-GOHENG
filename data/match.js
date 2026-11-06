@@ -1474,7 +1474,7 @@ export const SITUATIONS = [
     choices: [
       { label: "안쪽 패스 길을 막으며 달려든다", stats: { "tech.defense": 0.6, "phys.stamina": 0.4 }, diff: 1, win: "win", lose: "keep",
         winText: ["안쪽을 막고 몰아붙이자 {opp}의 첫 터치가 길었다. 공을 빼앗았다!"], loseText: ["달려들었지만 {opp|이/가} 원터치로 안쪽 동료에게 돌렸다. 압박이 한 번에 풀렸다."] },
-      { label: "{mate|와/과} 같이 측면에 가둔다", stats: { "mental.teamwork": 0.6, "phys.speed": 0.4 }, diff: -1, win: "win", lose: "keep",
+      { label: "옆 동료와 같이 측면에 가둔다", stats: { "mental.teamwork": 0.6, "phys.speed": 0.4 }, diff: -1, win: "win", lose: "keep",
         winText: ["{mate|와/과} 양쪽에서 조였다. {opp|이/가} 갈 곳 없이 터치라인 밖으로 찼다. 우리 스로인!"], loseText: ["가두기 전에 {opp|이/가} 길게 차 냈다."] },
       { label: "자리를 지키며 앞으로 가는 길만 막는다", stats: { "mental.focus": 0.6, "tech.defense": 0.4 }, diff: -4, win: "win", lose: "keep",
         winText: ["앞으로 가는 길을 막고 섰다. {opp|이/가} 결국 뒤로 돌린다. 상대 공격이 한 박자 늦어졌다."], loseText: ["{opp|이/가} 내 옆으로 찔렀다. 한 줄이 뚫렸다."] },
@@ -1496,7 +1496,7 @@ export const SITUATIONS = [
     choices: [
       { label: "몸을 반쯤 열어 공과 사람을 같이 본다", stats: { "mental.focus": 0.6, "phys.jump": 0.4 }, diff: -1, win: "win", lose: "danger",
         winText: ["몸을 반쯤 열어 공과 {opp}를 한눈에 뒀다. 날아온 크로스를 먼저 머리로 걷어 냈다."], loseText: ["공을 보는 사이 {opp|이/가} 등 뒤에서 뛰어올랐다!"] },
-      { label: "{opp}에게 바짝 붙어 같이 뛴다", stats: { "phys.strength": 0.6, "phys.jump": 0.4 }, diff: 1, win: "win", lose: "danger", physical: true,
+      { label: "그 상대에게 바짝 붙어 같이 뛴다", stats: { "phys.strength": 0.6, "phys.jump": 0.4 }, diff: 1, win: "win", lose: "danger", physical: true,
         winText: ["어깨를 붙이고 같이 뛰었다. {opp|이/가} 제대로 뛰어오르지 못한다. 공은 골라인 밖으로 나갔다."], loseText: ["붙었지만 크로스가 우리 둘 머리 위로 넘어 뒤로 떨어진다!"] },
       { label: "골키퍼와 소리쳐 정리한다", stats: { "mental.teamwork": 0.7, "mental.focus": 0.3 }, diff: -3, win: "win", lose: "danger",
         winText: ["\"키퍼!\" 소리에 {gk|이/가} 뛰어나와 공을 잡았다. 나는 {opp}의 앞을 막아 섰다."], loseText: ["서로 미루다 공이 그 사이로 떨어졌다!"] },

@@ -1233,7 +1233,9 @@ function finishStaging(state, m) {
   const list = sit.choices.filter(c => meets(state, c.requires) && !(noWing && /흘려/.test(c.label))).map(c => (c.requires ? { ...c, signature: true } : c));
   const sig = SIGNATURE[sit.id];
   if (sig && Object.entries(sig.requires).every(([k, v]) => getPath(state.player.stats, k) >= v)) list.push({ ...sig, signature: true });
-  const choices = list.map(c => { const p = prob(state, m, c); return { label: c.label, p, signature: !!c.signature,
+  // 선택지 글자에 {mate} 같은 자리 표시가 남지 않게 (경기 장면 선택지는 따로 채우지 않으므로 안전장치)
+  const lab = t => /\{/.test(t) ? fill(t, { mate: mateName(m), opp: oppName(m), gk: m.gk.us, ogk: m.gk.them }) : t;
+  const choices = list.map(c => { const p = prob(state, m, c); return { label: lab(c.label), p, signature: !!c.signature,
     level: p >= 0.65 ? "높음" : p >= 0.4 ? "보통" : "낮음", timing: timingOf(c), follow: !!(m.talk?.tag && choiceTag(c) === m.talk.tag) }; });
   const texts = noWing ? sit.text.filter(t => !/\{wing/.test(t)) : sit.text;
   m.pending = { sit, list, vars: sv, text: fill(pick(texts.length ? texts : sit.text), sv), choices, ball: [S.ball.x, S.ball.y], ctx };

@@ -756,3 +756,8 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
 - 단톡: {mate} 들뜨고 ㅋㅋ 많음 · {mate2} 차분하고 맞춤법 꼬박 · {mentor} 짧은 선배 말. 전남 대표 경기 단톡(`advice.js jnChat`)도 같은 말버릇 + "그 리그 때 우리한테 골 넣은 애 아님??"
 - 바꾼 메시지 48개(messages.js), AFTER_MATCH win/draw/loss/myGoal, 소집 이벤트 엄마 답장
 - 확인: 전남 대표 경기 시뮬레이션에서 중계·하프타임·지시 줄 모두 서 감독으로 나옴, uiplay MF 엔딩까지 오류 0
+
+## 35. 경기 선택지에 {mate|와/과} 글자가 그대로 보이던 것 (2026-11-07, 사용자: "선택지에서 한글이 안 나오고 깨진 장면을 봤어")
+- 원인: 33절 새 장면 `mf_press_trigger`·`df_back_post` 선택지 label에 `{mate|와/과}`·`{opp}`를 넣었는데, 경기 장면 선택지 label은 채우지 않음(이벤트 선택지는 채움)
+- 고침: 두 label을 평문으로("옆 동료와 같이 측면에 가둔다", "그 상대에게 바짝 붙어 같이 뛴다"), `presentChoices`에 안전장치(label에 `{`가 있으면 mate·opp·gk로 채움)
+- 소스 전체에서 깨진 글자(U+FFFD·제어 문자·인코딩 깨짐) 검사: 없음
