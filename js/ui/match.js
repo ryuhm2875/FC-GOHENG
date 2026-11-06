@@ -1,5 +1,5 @@
 // 경기 화면: 전광판 → 22명이 움직이는 경기장 → 문자 중계 → 내 장면 선택지
-import { next, resolve, autoChoice, autoPlay, finishMatch, applyHalftime, STATUS_LABEL, TAG_LABEL } from "../engine/match.js";
+import { staffOf, next, resolve, autoChoice, autoPlay, finishMatch, applyHalftime, STATUS_LABEL, TAG_LABEL } from "../engine/match.js";
 import { track } from "../net/online.js";
 import { frameNow } from "../engine/sim.js";
 import { STAFF } from "../../data/roster.js";
@@ -135,7 +135,9 @@ export function showMatch(app, m, onDone) {
   }
 
   // 경기 전 선발 명단: 경기장 위 점과 같은 순서·번호
-  const byPos = pos => players.filter(x => x.team === "us" && x.pos === pos).map(x => `${x.me ? "<b class='me-n'>" : ""}${x.number} ${esc(x.name)}${x.me ? "</b>" : ""}`).join(", ");
+  // 전남 대표: 이름 뒤에 소속 학교 (광양 쇠울중 같은)
+  const schoolOf = n => (m.lineup.find(l => l.name === n) || {}).school;
+  const byPos = pos => players.filter(x => x.team === "us" && x.pos === pos).map(x => `${x.me ? "<b class='me-n'>" : ""}${x.number} ${esc(x.name)}${x.me ? "</b>" : ""}${!x.me && schoolOf(x.name) ? `<small class="sch">(${esc(String(schoolOf(x.name)).replace(/\s*U-15$/, ""))})</small>` : ""}`).join(", ");
   feed.innerHTML = `<li class="lineup"><span class="mn">선발</span><span>
     <b>GK</b> ${byPos("GK")}<br><b>DF</b> ${byPos("DF")}<br><b>MF</b> ${byPos("MF")}<br><b>FW</b> ${byPos("FW")}
     </span></li>`;
@@ -284,8 +286,8 @@ export function showMatch(app, m, onDone) {
         ${wx ? `<span class="chip wx">${wx}</span>` : ""}${sk ? `<span class="chip wx">${sk}</span>` : ""}
         ${role ? `<span class="chip ${m.star >= 1 ? "kit" : ""}">영향력: ${role}</span>` : ""}</div>`; })()}
     ${m.talk ? `<div class="talk">
-      <div class="talk-face">${img(m.talk.who === "coach" ? "npc_coach" : "npc_assistant", "")}</div>
-      <div><div class="talk-who">${esc(m.talk.who === "coach" ? STAFF.coach : STAFF.assistant)}</div>
+      <div class="talk-face">${img(m.fx.jn ? (m.talk.who === "coach" ? "npc_jn_coach" : "npc_jn_assistant") : m.talk.who === "coach" ? "npc_coach" : "npc_assistant", "")}</div>
+      <div><div class="talk-who">${esc(staffOf(m, m.talk.who))}</div>
         <p>"${esc(m.talk.text)}"</p>
         ${m.talk.tag ? `<span class="chip kit">지시: ${TAG_LABEL[m.talk.tag]}</span> <span class="mute" style="font-size:12px">같은 종류를 고르면 성공률 +4%p</span>` : ""}</div></div>` : ""}
     ${fx.school ? `<div class="alert gold">🎓 오늘 ${esc(fx.school.name)}(${tierLabel(fx.school.tier)}) ${esc(fx.school.coach)}님이 직접 보러 오셨습니다. 상대는 고등학생이라 몸싸움이 버겁습니다.</div>` : ""}
@@ -397,10 +399,10 @@ export function showMatch(app, m, onDone) {
     if (!t) return startBtn();
     // 라커룸: 감독님이 나를 따로 불러서 하는 말과 내 대답 (경기장 자리에 라커룸 그림)
     root.querySelector("#pitch").insertAdjacentHTML("beforeend", `<div class="ht-scene" aria-hidden="true"><img src="assets/img/ev_halftime.webp" data-name="ev_halftime" alt="" onerror="__bgFallback(this)"></div>`);
-    const face = `<div class="talk-face">${img("npc_coach", "")}</div>`;
+    const face = `<div class="talk-face">${img(m.fx.jn ? "npc_jn_coach" : "npc_coach", "")}</div>`;
     ctl.innerHTML = `<div class="ht-talk ${t.mood}">
       <div class="ht-tag">${{ praise: "하프타임 · 칭찬", scold: "하프타임 · 쓴소리", calm: "하프타임 · 주문", off: "하프타임 · 교체" }[t.mood]}</div>
-      <div class="talk">${face}<div><div class="talk-who">${esc(STAFF.coach)}</div><p>"${esc(t.text)}"</p></div></div>
+      <div class="talk">${face}<div><div class="talk-who">${esc(staffOf(m, "coach"))}</div><p>"${esc(t.text)}"</p></div></div>
       <div class="mo-choices">${t.choices.map((c, i) => `<button class="mo-btn" data-h="${i}"><span>${esc(c.label)}</span></button>`).join("")}</div>
     </div>`;
     ctl.classList.add("ask");
@@ -410,7 +412,7 @@ export function showMatch(app, m, onDone) {
       ctl.classList.remove("ask");
       sfx.play(t.mood === "scold" || t.mood === "off" ? "half" : "good");
       const buff = m.htBuff ? `<span class="chip kit">후반 ${m.htBuff.tag ? `${TAG_LABEL[m.htBuff.tag]} 선택` : "모든 선택"} 성공률 +${Math.round(m.htBuff.bonus * 1000) / 10}%p</span>` : "";
-      startBtn(`<div class="talk">${face}<div><div class="talk-who">${esc(STAFF.coach)}</div><p>"${esc(r?.reply || "")}"</p>${buff}</div></div>`);
+      startBtn(`<div class="talk">${face}<div><div class="talk-who">${esc(staffOf(m, "coach"))}</div><p>"${esc(r?.reply || "")}"</p>${buff}</div></div>`);
     }));
     ctl.querySelector("[data-h]")?.focus({ preventScroll: true });
   }

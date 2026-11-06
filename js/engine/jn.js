@@ -1,6 +1,6 @@
 // 전남 대표: 선발되면 5월 2주 전국소년체전에 나감 (1회전 → 준결승 → 결승, 지면 그 자리에서 끝)
 // 같은 주에 경기를 이어서 치르고, 결과는 고흥FC 리그·대회 기록과 따로 남음
-import { SURNAMES, GIVEN_NAMES, HIGH_SCHOOLS } from "../../data/world.js";
+import { SURNAMES, GIVEN_NAMES, HIGH_SCHOOLS, LEAGUE_OPPONENTS, OPPONENT_STARS } from "../../data/world.js";
 import { POSITIONS } from "../../data/player.js";
 import { shuffle, weighted, pick } from "../rng.js";
 import { teamStrength } from "./team.js";
@@ -17,14 +17,39 @@ export const PROVINCES = [
 ];
 const ROUND_EDGE = [-0.5, 1, 2.5];                 // 라운드가 오를수록 상대가 강해짐
 
-// 선발 발표 때 한 번 만듦: 도내 다른 학교에서 뽑힌 동료들과 세 상대
+// 전남 대표 코칭스태프 (가상 인물). 고흥FC의 김 감독·정 코치와 다른 사람
+export const JN_STAFF = { coach: "서 감독", coachFrom: "목포", assistant: "한 코치", assistantFrom: "광양" };
+// 도내(전남) 리그 팀. 광주는 다른 시·도라 빠짐
+export const JN_TEAMS = LEAGUE_OPPONENTS.map(t => t.name).filter(n => !n.startsWith("광주"));
+export const shortSchool = n => String(n || "").replace(/\s*U-15$/, "");
+// 핵심 선수의 학년: 내가 g학년일 때 "3학년선배"는 g+2학년 (3학년을 넘으면 이미 졸업)
+const YEAR_OFF = { "3학년선배": 2, "2학년선배": 1, "동기": 0, "1년후배": -1, "2년후배": -2 };
+
+// 선발 발표 때 한 번 만듦: 전남 각 팀 에이스로 꾸린 동료들과 세 상대
+// 각 팀 핵심 선수(OPPONENT_STARS) 중 지금 중학생인 선수를 학년 높은 순으로 포지션마다 채우고, 모자라면 도내 학교 이름을 붙여 새로 만듦
+// 다른 학교 맞수가 전남 팀이면 같은 편으로 들어옴
 export function startJnCup(state) {
   const p = state.player, g = state.calendar.grade;
   const used = new Set([p.name, ...state.team.roster.map(m => m.name)]);
   const name = () => { let n; do { n = weighted(SURNAMES) + pick(GIVEN_NAMES); } while (used.has(n)); used.add(n); return n; };
   const nums = shuffle([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].filter(n => n !== p.number));
+  const stars = JN_TEAMS.flatMap(team => (OPPONENT_STARS[team] || []).map(r => ({ team, rel: r[0], pos: r[1], name: r[2], g: g + (YEAR_OFF[r[0]] ?? 0) })))
+    .filter(s => s.g >= 2 && s.g <= 3 && !used.has(s.name));
+  const nem = state.nemesis;
   const squad = [];
-  for (const [pos, def] of Object.entries(POSITIONS)) for (let i = 0; i < def.slots + 1; i++) squad.push({ name: name(), number: nums.shift(), pos });
+  for (const [pos, def] of Object.entries(POSITIONS)) {
+    const want = def.slots + 1;
+    const pool = shuffle(stars.filter(s => s.pos === pos)).sort((a, b) => b.g - a.g);
+    if (nem && JN_TEAMS.includes(nem.team) && nem.pos === pos && !used.has(nem.name)) pool.unshift({ team: nem.team, pos, name: nem.name, g, nemesis: true });
+    const teamsUsed = {};
+    for (const s of pool) {
+      if (squad.filter(x => x.pos === pos).length >= want - 1) break;           // 한 자리는 새 얼굴로 (명단이 늘 같은 이름만 되지 않게)
+      if (used.has(s.name) || (teamsUsed[s.team] || 0) >= 1 && !s.nemesis) continue;   // 한 팀에서 포지션마다 한 명
+      used.add(s.name); teamsUsed[s.team] = (teamsUsed[s.team] || 0) + 1;
+      squad.push({ name: s.name, number: nums.shift(), pos, school: s.team, ...(s.nemesis ? { nemesis: true } : {}) });
+    }
+    while (squad.filter(x => x.pos === pos).length < want) squad.push({ name: name(), number: nums.shift(), pos, school: pick(JN_TEAMS) });
+  }
   const str = Math.max(60, teamStrength(state, false) + 4) + (g === 3 ? 1 : 0);
   const base = str * 0.6 + 20;
   const opps = shuffle(PROVINCES).slice(0, 3).map((o, i) => ({ id: `JN${i}`, ...o, strength: Math.round((base + ROUND_EDGE[i]) * 10) / 10 }));

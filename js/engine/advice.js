@@ -420,13 +420,14 @@ function noFixtureLeft(state) {
 function jnChat(state, res) {
   const win = res.result === "승";
   return chatText(state, pick(win ? [
-    "{mate}: 소년체전 중계 봤냐?? {name} 전남 유니폼 입은 거 실화냐 ㅋㅋ\n\n{mentor}: 고흥 이름 걸고 뛰는 거다. 잘했다",
-    "{friend}: 반 애들 다 같이 봄 ㅋㅋㅋ 선생님도 보심\n\n{mate}: 다음 경기도 이겨라!!",
-    "{mate2}: 전남 대표 이겼다 ㅋㅋ 우리 학교에서 나간 애가 뛰고 있음\n\n{mate}: 돌아오면 사인 받자",
+    "{mate}: 소년체전 중계 봤냐??? {name} 전남 유니폼 입은거 실화냐 ㅋㅋㅋ\n\n{mentor}: 고흥 이름 걸고 뛰는 거다. 잘했다",
+    "{friend}: 반애들 다같이 봄 ㅋㅋㅋ 쌤도 보심\n\n{mate}: 다음 경기도 이겨라!!!!",
+    "{mate2}: 전남 대표 이겼다. 우리 학교에서 나간 애가 뛰고 있어.\n\n{mate}: 돌아오면 사인받자 ㅋㅋ",
+    "{mate}: 근데 옆에서 같이 뛰던 애 그 리그때 우리한테 골 넣은 애 아님?? ㅋㅋ\n\n{mate2}: 맞아. 이번엔 같은 편이네.",
   ] : [
-    "{mate}: 고생했다… 전남 대표까지 간 것만 해도 대단한 거임\n\n{mentor}: 돌아오면 다시 우리 팀에서 보자",
-    "{friend}: 졌다고 기죽지 마라. 고흥에서 너만큼 간 애 없음\n\n{mate2}: ㄹㅇ",
-  ]));
+    "{mate}: 고생했다…\n전남 대표까지 간것만 해도 대단한거임\n\n{mentor}: 돌아오면 다시 우리 팀에서 보자",
+    "{friend}: 졌다고 기죽지마\n고흥에서 너만큼 간 애 없음\n\n{mate2}: 맞아. 진짜로.",
+    ]));
 }
 
 function nextFixtureText(state) {

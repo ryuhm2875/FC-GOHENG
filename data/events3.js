@@ -3,6 +3,7 @@
 // 문장 안의 {rival} {friend} {mentor} {junior} {teacher} {coach} {name} {given}은 자동으로 바뀝니다.
 
 import { turnInfo } from "../js/engine/calendar.js";
+import { shortSchool, JN_STAFF } from "../js/engine/jn.js";
 import { rivalGap, person } from "../js/engine/relations.js";
 
 const marked = (s, k, gap = 0) => s.marks?.[k] != null && s.calendar.turn - s.marks[k] >= gap;   // 예전 선택 기억
@@ -132,16 +133,25 @@ export const EVENTS_STORY = [
     ] },
 
   // ── 전남 대표 소년체전 ─────────────────────────
-  { id: "jn_camp", once: true, bg: "ev_jn_camp", who: "coach",
+  { id: "jn_camp", once: true, bg: "ev_jn_camp", who: "narr",
     trigger: s => { const c = s.jnCup, i = turnInfo(s); return !!c && c.alive && c.stage === 0 && i?.grade === c.grade && i.month === 5 && i.week === 2 && !s.player.condition.injury; },
-    text: "전국소년체전 소집 첫날, 숙소 강당. 광양, 목포, 순천에서 온 낯선 얼굴들이 서로 눈치만 본다. 올해 전남 대표 감독은 {coach}님이 맡으셨다. \"학교는 잊어라. 이번 주는 전부 전남이다.\"",
+    // 전남 대표 동료는 도내 각 팀 에이스 (js/engine/jn.js). 다른 학교 맞수가 전남 팀이면 같은 방에 있음
+    text: s => {
+      const c = s.jnCup, nem = c?.squad?.find(x => x.nemesis), two = (c?.squad || []).filter(x => x.school && !x.nemesis).slice(0, 2);
+      return `전국소년체전 소집 첫날, 숙소 강당. 리그에서 상대 팀 유니폼으로만 보던 얼굴들이 전남 트레이닝복을 입고 서로 눈치만 본다.${two.length === 2 ? ` ${shortSchool(two[0].school)}의 ${two[0].name}, ${shortSchool(two[1].school)}의 ${two[1].name}…` : ""}`
+        + (nem ? `\n\n그리고 맨 뒷줄, ${shortSchool(nem.school)}의 ${nem.name}. 눈이 마주쳤다. 둘 다 먼저 고개를 돌렸다. 이번 주는 저 녀석이 같은 편이다.` : "")
+        + `\n\n${JN_STAFF.coachFrom}에서 온 ${JN_STAFF.coach}님이 화이트보드 앞에 섰다. 말이 짧다. "학교는 잊어라. 이번 주는 전부 전남이다. 내일까지 옆 사람 이름 다 외워 와라."`;
+    },
     choices: [
       { label: "먼저 다가가 이름부터 묻는다", fx: { s: { "mental.teamwork": 0.6 }, morale: 3 },
-        result: "목포에서 온 미드필더가 웃으며 손을 내밀었다. \"너 고흥이지? 리그에서 붙어 봤잖아.\" 그날 밤 숙소 방이 제일 시끄러웠다." },
+        result: s => { const nem = s.jnCup?.squad?.find(x => x.nemesis);
+          const ga = w => { const k = w.charCodeAt(w.length - 1) - 0xAC00; return w + (k >= 0 && k <= 11171 && k % 28 ? "이" : "가"); };
+          return nem ? `맨 뒷줄로 갔다. ${ga(nem.name)} 먼저 손을 내밀었다. "리그에선 서로 걷어찼는데, 이번엔 나한테 패스 좀 해라." 그날 밤 숙소 방이 제일 시끄러웠다.`
+            : "목포에서 온 미드필더가 웃으며 손을 내밀었다. \"너 고흥이지? 리그에서 붙어 봤잖아.\" 그날 밤 숙소 방이 제일 시끄러웠다."; } },
       { label: "말없이 축구화 끈부터 다시 묶는다", fx: { s: { "mental.focus": 0.6 } },
         result: "다들 잘하는 애들이다. 여기서는 고흥에서처럼 공이 저절로 오지 않는다. 첫 훈련부터 목소리를 냈다." },
       { label: "부모님께 \"잘 도착했어요\" 하고 문자한다", fx: { morale: 4 },
-        result: "엄마 답장이 1초 만에 왔다. '밥 많이 먹고, 텔레비전에 나오면 손 흔들어.'" },
+        result: "엄마 답장이 1초 만에 왔다. '밥 많이 먹고잉. 텔레비전 나오면 손 흔들어 📺'" },
     ] },
   { id: "jn_return", once: true, bg: s => (s.jnCup?.medal === "gold" ? "ev_medal" : "ev_bus_sunset"), who: "narr",
     trigger: s => { const c = s.jnCup, i = turnInfo(s); return !!c && i?.grade === c.grade && i.month === 5 && i.week === 3; },
