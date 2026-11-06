@@ -178,12 +178,12 @@ const DETAIL_POS = {
     desc: "박스 안에서 기다렸다가 한 번에 마무리하는 공격수입니다. 문전 혼전, 컷백, 침투 장면이 자주 나옵니다.",
     why: "공이 박스 안에 떨어지면 네가 제일 먼저 반응한다. 골 냄새를 맡는 감각은 가르쳐서 되는 게 아니다.",
     fit: { "tech.shoot": 0.35, "tech.firstTouch": 0.25, "phys.speed": 0.2, "mental.focus": 0.2 },
-    taste: { fw_rebound: 1.8, rebound_box: 1.8, fw_near_post: 1.7, fw_cutback_arrive: 1.7, fw_slide_finish: 1.7, fw_through: 1.5, fw_near_run: 1.6, fw_drop_deep: 0.5, fw_false_nine: 0.5 } },
+    taste: { fw_blindside: 1.7, fw_rebound: 1.8, rebound_box: 1.8, fw_near_post: 1.7, fw_cutback_arrive: 1.7, fw_slide_finish: 1.7, fw_through: 1.5, fw_near_run: 1.6, fw_drop_deep: 0.5, fw_false_nine: 0.5 } },
   target: { pos: "FW", label: "타깃형 공격수", slot: 0, tune: [0, 0],
     desc: "몸싸움과 높이로 공을 지켜 주는 공격수입니다. 등지고 받기, 헤더, 공 지켜 주기 장면이 자주 나옵니다.",
     why: "롱볼이 너한테 가면 일단 우리 공이 된다. 수비가 붙어도 안 밀린다. 그건 큰 무기다.",
     fit: { "phys.strength": 0.35, "phys.jump": 0.35, "tech.shoot": 0.15, "tech.firstTouch": 0.15 },
-    taste: { target_hold: 2.2, fw_hold: 1.8, fw_cross: 1.7, fw_far_post: 1.6, att_corner_head: 1.6, fw_chase: 1.3, fw_solo_run: 0.6, fw_drop_deep: 0.7 } },
+    taste: { fw_layoff_third: 1.3, target_hold: 2.2, fw_hold: 1.8, fw_cross: 1.7, fw_far_post: 1.6, att_corner_head: 1.6, fw_chase: 1.3, fw_solo_run: 0.6, fw_drop_deep: 0.7 } },
   second: { pos: "FW", label: "처진 공격수", slot: 1, tune: [-5, -2],
     desc: "한 칸 내려와 공을 받고 동료를 살려 주는 공격수입니다. 내려와 받기, 연계, 스루패스 장면이 자주 나옵니다.",
     why: "앞에서 기다리기만 하기엔 네 패스가 아깝다. 한 칸 내려와서 공을 만져라. 그럼 경기가 네 쪽으로 돈다.",
@@ -208,32 +208,32 @@ const DETAIL_POS = {
     desc: "우리 박스부터 상대 박스까지 쉬지 않고 뛰는 미드필더입니다. 2선 침투, 역습, 압박 장면이 고루 나옵니다.",
     why: "후반 막판에도 네 다리는 멈추지 않는다. 공격도 수비도 다 뛰어 줄 사람이 필요하다.",
     fit: { "phys.stamina": 0.35, "tech.pass": 0.2, "tech.defense": 0.2, "tech.shoot": 0.15, "phys.speed": 0.1 },
-    taste: { mf_late_arrive: 1.8, mf_counter_launch: 1.5, mf_counterpress: 1.6, mf_press: 1.3, mf_tempo: 1.4 } },
+    taste: { mf_press_trigger: 1.6, mf_late_arrive: 1.8, mf_counter_launch: 1.5, mf_counterpress: 1.6, mf_press: 1.3, mf_tempo: 1.4 } },
   dm: { pos: "MF", label: "수비형 미드필더", slot: 1, tune: [-7, -3],
     desc: "수비 라인 바로 앞을 지키는 미드필더입니다. 차단, 태클, 빌드업 장면이 자주 나옵니다.",
     why: "네가 수비 앞에 서 있으면 뒤가 편해진다. 공을 뺏고 쉽게 나눠 주는 것, 그게 제일 어려운 일이다.",
     fit: { "tech.defense": 0.35, "mental.teamwork": 0.25, "tech.pass": 0.2, "phys.strength": 0.2 },
-    taste: { dm_screen: 2.4, mf_defend: 1.7, mf_intercept: 1.7, mf_drop_between: 1.8, df_block: 1.6, mf_cover: 1.6, mf_calm_storm: 1.5, mf_open_lane: 0.6, mf_late_arrive: 0.4, mf_lowblock: 0.5 } },
+    taste: { mf_counter_delay: 1.6, dm_screen: 2.4, mf_defend: 1.7, mf_intercept: 1.7, mf_drop_between: 1.8, df_block: 1.6, mf_cover: 1.6, mf_calm_storm: 1.5, mf_open_lane: 0.6, mf_late_arrive: 0.4, mf_lowblock: 0.5 } },
   cb: { pos: "DF", label: "센터백", slot: 1, tune: [0, 0],
     desc: "골문 앞을 지키는 수비수입니다. 경합, 뒷공간 경주, 코너킥 헤더 장면이 자주 나옵니다.",
     why: "공중볼은 네가 다 이긴다. 공격수가 등을 지고 서면 꼼짝을 못 하더라. 가운데를 맡아라.",
     fit: { "tech.defense": 0.3, "phys.jump": 0.3, "phys.strength": 0.3, "mental.focus": 0.1 },
-    taste: { df_race: 1.4, df_target_man: 1.7, df_cross: 1.5, df_aerial_long: 1.6, df_last: 1.5, df_goalline: 1.4, df_corner_attack: 1.5, df_long_assist: 0.7, df_overlap: 0.3 } },
+    taste: { df_back_post: 1.6, df_race: 1.4, df_target_man: 1.7, df_cross: 1.5, df_aerial_long: 1.6, df_last: 1.5, df_goalline: 1.4, df_corner_attack: 1.5, df_long_assist: 0.7, df_overlap: 0.3 } },
   bcb: { pos: "DF", label: "빌드업 센터백", slot: 2, tune: [0, 0],
     desc: "뒤에서 공격을 시작하는 수비수입니다. 압박 벗기기, 롱패스, 직접 몰고 올라가기 장면이 자주 나옵니다.",
     why: "수비수가 이렇게 공을 차는 건 흔하지 않다. 뒤에서 네가 한 번에 찔러 주면 공격이 반은 끝난다.",
     fit: { "tech.pass": 0.35, "tech.defense": 0.25, "mental.focus": 0.2, "tech.firstTouch": 0.2 },
-    taste: { df_long_assist: 1.8, df_split_pass: 1.8, df_gk_triangle: 1.7, df_build: 1.6, df_launch: 1.6, df_launch_counter: 1.5, df_race: 0.7, df_overlap: 0.5 } },
+    taste: { df_bait_press: 1.8, df_long_assist: 1.8, df_split_pass: 1.8, df_gk_triangle: 1.7, df_build: 1.6, df_launch: 1.6, df_launch_counter: 1.5, df_race: 0.7, df_overlap: 0.5 } },
   fb_l: { pos: "DF", side: "L", label: "왼쪽 풀백", group: "fb", slot: 0, tune: [0, 0],
     desc: "측면 수비수입니다. 오버래핑, 크로스, 측면 1 대 1 수비 장면이 자주 나옵니다.",
     why: "수비수인데 측면을 끝까지 달려 올라가는 체력이 있다. 크로스도 된다. 측면은 너한테 맡긴다.",
     fit: { "phys.speed": 0.3, "phys.stamina": 0.25, "tech.cross": 0.25, "tech.defense": 0.2 },
-    taste: { fb_overlap: 2.4, df_overlap: 1.8, df_fullback_duel: 1.7, df_1v1: 1.5, df_corner_attack: 0.5, df_target_man: 0.5, df_race: 0.7 } },
+    taste: { fb_overlap: 2.4, df_overlap: 1.8, df_bait_press: 0.2, df_fullback_duel: 1.7, df_1v1: 1.5, df_corner_attack: 0.5, df_target_man: 0.5, df_race: 0.7 } },
   fb_r: { pos: "DF", side: "R", label: "오른쪽 풀백", group: "fb", slot: 3, tune: [0, 0],
     desc: "측면 수비수입니다. 오버래핑, 크로스, 측면 1 대 1 수비 장면이 자주 나옵니다.",
     why: "수비수인데 측면을 끝까지 달려 올라가는 체력이 있다. 크로스도 된다. 측면은 너한테 맡긴다.",
     fit: { "phys.speed": 0.3, "phys.stamina": 0.25, "tech.cross": 0.25, "tech.defense": 0.2 },
-    taste: { fb_overlap: 2.4, df_overlap: 1.8, df_fullback_duel: 1.7, df_1v1: 1.5, df_corner_attack: 0.5, df_target_man: 0.5, df_race: 0.7 } },
+    taste: { fb_overlap: 2.4, df_overlap: 1.8, df_bait_press: 0.2, df_fullback_duel: 1.7, df_1v1: 1.5, df_corner_attack: 0.5, df_target_man: 0.5, df_race: 0.7 } },
 };
 
 return { STAT_GROUPS, STAT_INFO, STAT_LABEL, POSITIONS, GROWTH_TYPES, GROWTH_ALIAS, growthTypeOf, BLOOM, TRAITS, EARNABLE, FACES, ROLES, DETAIL_POS };
@@ -3051,7 +3051,7 @@ const SITUATIONS = [
     choices: [
       { label: "골키퍼에게 다시 돌려 압박을 끌어낸다", stats: { "tech.pass": 0.5, "mental.focus": 0.5 }, diff: -3, win: "keep", lose: "danger",
         winText: ["골키퍼에게 돌리자 상대 공격수가 따라붙는다. 그 사이 반대편이 텅 비었다."], loseText: ["돌린 공이 느렸다. 상대 공격수가 골키퍼 앞까지 쫓아온다!"] },
-      { label: "반대편 센터백에게 길게 벌린다", stats: { "tech.pass": 0.6, "tech.firstTouch": 0.4 }, diff: 2, win: "keep", lose: "turnover",
+      { label: "반대편 측면 수비에게 길게 벌린다", stats: { "tech.pass": 0.6, "tech.firstTouch": 0.4 }, diff: 2, win: "keep", lose: "turnover",
         winText: ["압박 반대편으로 공을 옮겼다. 상대가 다시 뛰어야 한다."], loseText: ["패스가 휘었다. 상대 측면 공격수가 가로챈다."] },
       { label: "압박 뒤 미드필더에게 바로 찌른다", stats: { "tech.pass": 0.7, "mental.confidence": 0.3 }, diff: 6, win: "keyPass", lose: "danger",
         winText: ["압박을 한 번에 건너뛰었다. 미드필더가 앞을 보고 공을 잡는다!"], loseText: ["끊겼다! 골문 바로 앞이다!"] },
@@ -3364,6 +3364,73 @@ const SITUATIONS = [
       { label: "골키퍼가 쳐 낼 공을 노린다", stats: { "mental.focus": 0.6, "phys.speed": 0.4 }, diff: 4, win: "shot", lose: "miss",
         winText: ["{mate}의 슈팅을 {ogk|이/가} 쳐 냈다. 흘러나온 공이 내 앞이다!"], loseText: ["{ogk|이/가} {mate}의 슈팅을 품에 안았다. 흘러나온 공은 없었다."] },
     ] },
+  // ── 2026-11-06 추가: 현대 축구 장면 (포지션별 2개) ──
+  // 공격수: 등지고 받아 3선 침투에게 떨궈 주기 (레이오프)
+  { id: "fw_layoff_third", intro: false, pos: ["FW"], zone: "mid", weight: 0.7,
+    text: ["센터백이 내 발밑으로 강하게 꽂아 준다. 등 뒤에 수비가 바짝 붙었다. 뒤에서 {mate|이/가} 앞을 보고 올라온다.", "등지고 공을 받았다. 수비가 등을 밀어 온다. 2선에서 {mate|이/가} 달려 올라오는 게 보인다."],
+    choices: [
+      { label: "원터치로 올라오는 동료에게 떨군다", stats: { "tech.firstTouch": 0.5, "tech.pass": 0.3, "mental.teamwork": 0.2 }, diff: -1, win: "keyPass", lose: "turnover",
+        winText: ["몸으로 수비를 막아 둔 채 원터치로 떨궜다. {mate|이/가} 앞을 보고 공을 잡는다!"], loseText: ["떨군 공이 짧았다. 상대 미드필더가 먼저 발을 넣어 빼앗아 간다."] },
+      { label: "등지고 버티며 동료들이 올라올 시간을 번다", stats: { "phys.strength": 0.7, "tech.firstTouch": 0.3 }, diff: 1, win: "keep", lose: "turnover", physical: true,
+        winText: ["수비가 등 뒤에서 밀어도 버텼다. 동료들이 올라오자 옆으로 내줬다."], loseText: ["버티다 공이 발에서 떨어졌다. 수비가 빼앗아 간다."] },
+      { label: "수비를 등에 업은 채 몸을 돌려 앞을 본다", requires: { "tech.dribble": 64, "phys.agility": 60 }, stats: { "tech.dribble": 0.6, "phys.agility": 0.4 }, diff: 5, win: "killPass", lose: "turnover",
+        winText: ["한 바퀴 돌며 수비를 벗겨 냈다. 앞이 열렸다. 뒷공간으로 뛰는 동료에게 찔러 준다!"], loseText: ["돌아서다 공이 발에서 떨어졌다. 상대가 빼앗아 달려 나간다."] },
+    ] },
+  // 공격수: 낮은 크로스 순간의 움직임 (수비 시야 밖 · 니어 · 컷백 자리)
+  { id: "fw_blindside", intro: false, pos: ["FW"], zone: "att", weight: 2, spot: [[92, 97], [29, 39]],
+    text: ["측면 끝에서 {mate|이/가} 고개를 든다. 낮게 깔아 줄 것 같다. 나를 맡은 센터백은 공만 보고 있다."],
+    choices: [
+      { label: "수비 등 뒤로 돌아 먼 쪽 포스트로 빠진다", stats: { "mental.focus": 0.5, "phys.speed": 0.5 }, diff: 3, win: "tapIn", lose: "miss",
+        winText: ["센터백이 공을 보는 사이 등 뒤로 돌아 나왔다. 먼 쪽에 아무도 없다. 미끄러지며 발을 갖다 댄다!"], loseText: ["등 뒤로는 빠졌지만 공이 앞에서 수비 발에 걸려 굴절됐다."] },
+      { label: "니어 포스트로 수비 앞을 끊는다", stats: { "phys.speed": 0.5, "tech.shoot": 0.5 }, diff: 2, win: "shot", lose: "miss",
+        winText: ["수비보다 반 박자 먼저 니어로 끊어 들어갔다. 발끝으로 방향만 바꾼다!"], loseText: ["앞으로 끊었지만 공이 내 뒤로 흘렀다."] },
+      { label: "멈춰 서서 뒤쪽 컷백 자리를 지킨다", stats: { "tech.shoot": 0.6, "mental.focus": 0.4 }, diff: 0, win: "shot", lose: "miss",
+        winText: ["모두가 골문으로 뛰어들 때 나는 멈췄다. 뒤로 깔린 공이 정확히 내 앞으로 온다!"], loseText: ["멈춰 기다렸지만 공이 앞에서 수비 발에 걸렸다."] },
+    ] },
+  // 미드필더: 뺏긴 직후 상대 역습 앞에 홀로 (지연 · 태클 · 측면으로 몰기)
+  { id: "mf_counter_delay", intro: false, poss: "them", pos: ["MF"], zone: "mid", weight: 2,
+    text: ["공을 뺏기자마자 {opp|이/가} 몰고 달려온다. 우리 수비 숫자가 모자라다. 가장 가까운 건 나다."],
+    choices: [
+      { label: "물러서며 속도를 늦추고 동료를 기다린다", stats: { "mental.focus": 0.5, "tech.defense": 0.5 }, diff: -2, win: "win", lose: "danger",
+        winText: ["정면에서 물러나며 길을 막았다. {opp|이/가} 결국 옆으로 돌린다. 그사이 동료들이 다 돌아왔다."], loseText: ["{opp|이/가} 속도를 붙여 나를 지나쳤다! 우리 골문까지 막을 사람이 모자라다!"] },
+      { label: "나란히 달리며 공만 노린다", stats: { "tech.defense": 0.6, "phys.speed": 0.4 }, diff: 2, win: "win", lose: "danger",
+        winText: ["옆에서 나란히 달리다 발끝으로 공만 툭 건드렸다. 공을 빼앗았다!"], loseText: ["발을 뻗었지만 {opp|이/가} 한 번 더 툭 치고 나간다!"] },
+      { label: "안쪽을 막고 터치라인 쪽으로 몰아낸다", stats: { "tech.defense": 0.5, "phys.stamina": 0.5 }, diff: 0, win: "win", lose: "danger",
+        winText: ["안쪽 길을 막고 바깥으로만 몰았다. {opp}의 공이 터치라인을 넘었다. 우리 스로인이다."], loseText: ["바깥으로 몰았지만 {opp|이/가} 그대로 안으로 꺾어 들어온다!"] },
+    ] },
+  // 미드필더: 상대 측면 수비가 받는 순간이 압박 신호
+  { id: "mf_press_trigger", intro: false, poss: "them", pos: ["MF"], zone: "mid", weight: 2,
+    text: ["상대 센터백이 측면 수비에게 공을 내준다. 터치라인 쪽, 고개를 숙이고 받는다. 지금이 압박 신호다."],
+    choices: [
+      { label: "안쪽 패스 길을 막으며 달려든다", stats: { "tech.defense": 0.6, "phys.stamina": 0.4 }, diff: 1, win: "win", lose: "keep",
+        winText: ["안쪽을 막고 몰아붙이자 {opp}의 첫 터치가 길었다. 공을 빼앗았다!"], loseText: ["달려들었지만 {opp|이/가} 원터치로 안쪽 동료에게 돌렸다. 압박이 한 번에 풀렸다."] },
+      { label: "{mate|와/과} 같이 측면에 가둔다", stats: { "mental.teamwork": 0.6, "phys.speed": 0.4 }, diff: -1, win: "win", lose: "keep",
+        winText: ["{mate|와/과} 양쪽에서 조였다. {opp|이/가} 갈 곳 없이 터치라인 밖으로 찼다. 우리 스로인!"], loseText: ["가두기 전에 {opp|이/가} 길게 차 냈다."] },
+      { label: "자리를 지키며 앞으로 가는 길만 막는다", stats: { "mental.focus": 0.6, "tech.defense": 0.4 }, diff: -4, win: "win", lose: "keep",
+        winText: ["앞으로 가는 길을 막고 섰다. {opp|이/가} 결국 뒤로 돌린다. 상대 공격이 한 박자 늦어졌다."], loseText: ["{opp|이/가} 내 옆으로 찔렀다. 한 줄이 뚫렸다."] },
+    ] },
+  // 수비수(센터백): 공을 멈춰 세워 상대 압박을 끌어낸 뒤 그 뒤로 (프레스 유도)
+  { id: "df_bait_press", intro: false, pos: ["DF"], zone: "def", weight: 1.5,
+    text: ["빌드업 중 공을 받았다. 상대 공격수는 아직 10m쯤 떨어져 눈치를 본다. 저 선수가 달려들면 그 뒤가 빈다."],
+    choices: [
+      { label: "공을 발밑에 세워 두고 압박을 끌어낸다", stats: { "mental.focus": 0.5, "tech.pass": 0.5 }, diff: 4, win: "keyPass", lose: "turnover",
+        winText: ["발밑에 공을 세워 두자 {opp|이/가} 달려들었다. 그가 비운 자리로 미드필더에게 찔러 준다!"], loseText: ["기다리다 {opp}의 발이 먼저 닿았다. 공을 빼앗겼다!"] },
+      { label: "옆 센터백에게 안전하게 돌린다", stats: { "tech.pass": 0.6, "mental.teamwork": 0.4 }, diff: -4, win: "keep", lose: "turnover",
+        winText: ["옆으로 돌렸다. 상대가 다시 뛰어야 한다."], loseText: ["패스가 약했다. 상대 공격수가 가로챈다."] },
+      { label: "직접 몰고 나가 한 줄을 넘는다", requires: { "tech.dribble": 60, "mental.confidence": 60 }, stats: { "tech.dribble": 0.5, "mental.confidence": 0.5 }, diff: 3, win: "keyPass", lose: "turnover",
+        winText: ["앞이 비었다. 공을 몰고 중원까지 올라가 동료에게 내준다."], loseText: ["몰고 나가다 상대 미드필더에게 막혔다. 공을 빼앗겼다."] },
+    ] },
+  // 수비수: 반대편 크로스, 등 뒤 먼 쪽 포스트로 빠지는 상대 (공만 보다 사람을 놓치지 않기)
+  { id: "df_back_post", intro: false, poss: "them", pos: ["DF"], zone: "def", weight: 2,
+    text: ["반대편 측면에서 크로스가 올라오려 한다. 내 등 뒤 먼 쪽 포스트로 {opp|이/가} 슬금슬금 빠진다."],
+    choices: [
+      { label: "몸을 반쯤 열어 공과 사람을 같이 본다", stats: { "mental.focus": 0.6, "phys.jump": 0.4 }, diff: -1, win: "win", lose: "danger",
+        winText: ["몸을 반쯤 열어 공과 {opp}를 한눈에 뒀다. 날아온 크로스를 먼저 머리로 걷어 냈다."], loseText: ["공을 보는 사이 {opp|이/가} 등 뒤에서 뛰어올랐다!"] },
+      { label: "{opp}에게 바짝 붙어 같이 뛴다", stats: { "phys.strength": 0.6, "phys.jump": 0.4 }, diff: 1, win: "win", lose: "danger", physical: true,
+        winText: ["어깨를 붙이고 같이 뛰었다. {opp|이/가} 제대로 뛰어오르지 못한다. 공은 골라인 밖으로 나갔다."], loseText: ["붙었지만 크로스가 우리 둘 머리 위로 넘어 뒤로 떨어진다!"] },
+      { label: "골키퍼와 소리쳐 정리한다", stats: { "mental.teamwork": 0.7, "mental.focus": 0.3 }, diff: -3, win: "win", lose: "danger",
+        winText: ["\"키퍼!\" 소리에 {gk|이/가} 뛰어나와 공을 잡았다. 나는 {opp}의 앞을 막아 섰다."], loseText: ["서로 미루다 공이 그 사이로 떨어졌다!"] },
+    ] },
 ];
 
 // 팀 단위 해설
@@ -3495,8 +3562,9 @@ const PLAYS = [
     { who: "FW", at: [80, "C"], t: ["수비 사이로 찔러 준다. {a|이/가} 잡았다!", "{a}의 발밑으로 들어가는 패스!"] },
   ] },
   { id: "wing", weight: 3, finish: "header", steps: [
-    { who: "MF", at: [42, "H"], onPass: true, t: ["{a|이/가} 측면으로 공을 벌린다.", "{a|이/가} 측면으로 넓게 내준다."] },
-    { who: "MF", at: [70, "W"], t: ["{a|이/가} 측면을 타고 달린다.", "{a|이/가} 터치라인을 따라 치고 올라간다."] },
+    { who: "MF", at: [48, "H"], onPass: true, t: ["{a|이/가} 측면으로 공을 벌린다.", "{a|이/가} 측면으로 넓게 내준다."] },
+    { who: "MF", at: [60, "W"], t: ["{a|이/가} 측면을 타고 달린다.", "{a|이/가} 터치라인을 따라 치고 올라간다."] },
+    { who: "MF", at: [78, "W"], same: true, t: [] },
     { who: "MF", at: [93, "W"], same: true, t: ["{a}의 크로스!", "{a|이/가} 문전으로 공을 띄운다."] },
     { who: "FW", at: [95, "C"], t: [] },
   ] },
@@ -3533,9 +3601,10 @@ const PLAYS = [
     { who: "FW", at: [95, "C"], t: [] },
   ] },
   { id: "switch", weight: 2, finish: "shot", steps: [
-    { who: "DF", at: [35, "HO"], onPass: true, t: ["{a|이/가} 반대편으로 길게 공을 바꾼다.", "{a}의 대각선 롱패스."] },
-    { who: "MF", at: [66, "W"], t: ["반대편의 {a|이/가} 가슴으로 받아 놓는다.", "{a|이/가} 깔끔하게 잡았다."] },
-    { who: "FW", at: [86, "C"], t: ["안쪽으로 파고드는 {a}에게!", "{a|이/가} 공을 받아 돌아선다!"] },
+    { who: "MF", at: [48, "HO"], onPass: true, t: ["{a|이/가} 반대편으로 길게 공을 바꾼다.", "{a|이/가} 몸을 열고 반대쪽 측면으로 크게 넘긴다."] },
+    { who: "MF", at: [58, "W"], t: ["반대편의 {a|이/가} 가슴으로 받아 놓는다. 앞이 텅 비었다.", "{a|이/가} 터치라인 앞에서 깔끔하게 잡았다."] },
+    { who: "MF", at: [80, "W"], same: true, t: ["{a|이/가} 측면을 타고 올라간다.", "수비가 넘어오기 전에 {a|이/가} 치고 나간다."] },
+    { who: "FW", at: [88, "C"], t: ["안쪽으로 파고드는 {a}에게!", "{a|이/가} 공을 받아 돌아선다!"] },
   ] },
   { id: "press", weight: 2, finish: "shot", steps: [
     { who: "FW", at: [82, "H"], t: ["{a|이/가} 수비수를 끝까지 쫓아간다. 빼앗았다!", "전방 압박! {a|이/가} 수비수의 공을 낚아챘다!"] },
@@ -5406,6 +5475,13 @@ const SCENES = {
   fw_box_turn: { tight: 1, patience: 4, at: [[89.5, 97], [23, 45]], from: "pass", giver: "mf", press: 1, pressGap: 1.2 },
   fw_flick_on: { air: true, patience: 4, longIn: true, at: [[58, 88], [10, 58]], from: "long", giver: "df", press: 1, pressGap: 1.1 },
   fw_screen: { screen: true, patience: 5, holder: "mate", at: [[76, 87], [20, 48]], from: "pass", press: 1, pressGap: 3 },
+  // 2026-11-06 추가
+  fw_layoff_third: { at: [[60, 72], [24, 44]], from: "pass", giver: "df", src: [-24, -3], runs: [["mf", -2, 5, 7.6]], press: 1, pressGap: 1.2 },
+  fw_blindside: { from: "lowcross", src: [-4, -30], runs: [["oppdf", 1, -2, 7.6]], press: 1, pressGap: 1.6, pack: true },
+  mf_counter_delay: { counter: true, at: [[44, 62], [16, 52]], from: "oppCarry", meGap: 5 },
+  mf_press_trigger: { side: 16, at: [[56, 72], [3, 12]], from: "oppPass", giver: "oppdf", src: [6, -14], meGap: 7 },
+  df_bait_press: { at: [[14, 24], [22, 46]], from: "pass", giver: "df", src: [-2, 14], press: 1, pressGap: 9, block: { them: "high" } },
+  df_back_post: { air: true, at: [[6, 12], [38, 48]], from: "oppCross", meGap: 1.6, pack: "them" },
 };
 
 return { SCENES };
@@ -5656,6 +5732,13 @@ function targets(S) {
     const g = dirOf(H.team), sy = H.y < 34 ? 1 : -1;
     if (m1) { m1.tx = clamp(H.x + g * 9, 3, 102); m1.ty = clamp(H.y + sy * 9, 3, 65); m1.v = RUN; }
     if (m2) { m2.tx = clamp(H.x - g * 5, 3, 102); m2.ty = clamp(H.y + sy * 12, 3, 65); m2.v = RUN; }
+    // 상대 진영 공격: 공 반대편 가장 바깥 선수는 측면 폭을 지킴 (반대편 전환·먼 쪽 포스트 자리)
+    if (ox(H.team, H.x) > 40 && !S.scur && !S.script.length) {
+      const fs = H.y < 34 ? 1 : -1;
+      const w = P.filter(p => p.team === H.team && p.ri && p.pos !== "GK" && p.pos !== "FW" && p !== H && p !== m1 && p !== m2 && !p.ov && (p.ty - 34) * fs > 4)
+        .sort((a, b) => (b.ty - 34) * fs - (a.ty - 34) * fs)[0];
+      if (w && (w.ty - 34) * fs < 24) w.ty = 34 + fs * 24;
+    }
   }
   // 압박: 공에 가장 가까운 수비가 나가고 두 번째가 뒤를 받침
   const pressR = S.style[def].press ? 28 : S.block[def] === "low" ? 17 : 22;
@@ -6637,7 +6720,8 @@ function soShot(S, c) {
   emit(S, "soShot", { team: c.kicker.team, by: c.kicker.name, me: c.kicker.me, keeper: c.keeper.name, result: c.result, dir: c.dir, high: c.high });
 }
 // 킥오프 규칙대로 섰나: 모두 자기 진영 안, 받는 팀은 센터서클(9.15m) 밖
-const settled = S => { const k = S.restart.team; return S.P.every(p => ox(p.team, p.x) <= 52.8 && (p.team === k || hyp(p.x - 52.5, p.y - 34) >= 9.15)); };
+// + 거의 다 멈춰 섬 (자리로 뛰어가는 선수가 둘 이하): 아직 달리는 중에 킥오프하지 않게
+const settled = S => { const k = S.restart.team; return S.P.every(p => ox(p.team, p.x) <= 52.8 && (p.team === k || hyp(p.x - 52.5, p.y - 34) >= 9.15)) && S.P.filter(p => hyp(p.vx, p.vy) > 3).length <= 2; };
 
 // ── 한 틱 ──
 function step(S) {
@@ -8462,7 +8546,8 @@ function prob(state, m, c) {
 const PASS_RE = [
   ["cut", /컷백|뒤로 깔아/],
   ["cross", /크로스|감아 올린|박스 안으로 길게|박스 한가운데로|문전으로|롱 스로인|길게 던|박스 쪽으로 길게/],
-  ["switch", /반대편|반대쪽|대각선|전환|넓게 벌|측면으로 벌|측면의/],
+  ["switch", /반대편|반대쪽|대각선|전환/],
+  ["wide", /넓게 벌|측면으로 벌|측면의|측면으로 넓게/],
   ["over", /뒷공간|수비 뒤로|머리 위로|머리를 넘긴|길게|롱패스|한 번에/],
   ["through", /스루|찔러|찌른|찔렀|침투 패스|킬패스|사이로|틈|가르는|빈 공간으로|비운 자리로|빈 골문/],
   ["head", /머리로|헤더로|떨궈|떨궜/],
@@ -8491,9 +8576,15 @@ function pickReceiver(S, M, kind, avoid) {
     const pool = ahead.filter(p => Math.abs(p.y - M.y) < 32);
     return by(pool.filter(p => p.pos === "FW"), p => -p.x) || by(pool, p => -p.x) || by(mates, p => -p.x);
   }
-  if (kind === "switch") {
-    const far = mates.filter(p => Math.abs(p.y - 34) > 10 && Math.sign(p.y - 34) !== Math.sign(M.y - 34) && p.x > M.x - 12);
-    return by(far, p => -p.x) || by(mates.filter(p => Math.abs(p.y - M.y) > 20), p => -p.x) || by(mates, p => -p.x);
+  // 반대편 전환: 반대쪽 측면에서 나와 비슷한 높이에 있는 가장 넓은 동료 (앞으로 한참 나가 있는 선수에게 길게 차는 건 전환이 아님)
+  if (kind === "switch" || kind === "wide") {
+    const sc = p => -Math.abs(p.y - 34) + Math.max(0, p.x - M.x - 6) * 0.9 + Math.max(0, M.x - p.x - 4) * 0.5;
+    if (kind === "switch") {
+      const opp = mates.filter(p => Math.sign(p.y - 34) !== Math.sign(M.y - 34) && Math.abs(p.y - M.y) >= 22 && p.x > M.x - 10 && p.x < M.x + 20);
+      return by(opp, sc) || by(mates.filter(p => Math.abs(p.y - M.y) >= 18 && p.x > M.x - 12 && p.x < M.x + 24), sc) || by(mates, p => -Math.abs(p.y - M.y));
+    }
+    const side = mates.filter(p => Math.abs(p.y - M.y) >= 10 && Math.abs(p.y - 34) > 12 && p.x > M.x - 10 && p.x < M.x + 16);
+    return by(side, p => Math.abs(p.x - M.x) * 0.6 - Math.abs(p.y - M.y) * 0.3) || by(mates.filter(p => Math.abs(p.y - M.y) >= 8 && p.x < M.x + 20), p => Math.abs(p.x - M.x)) || by(mates, p => Math.hypot(p.x - M.x, p.y - M.y));
   }
   if (kind === "cross" || kind === "cut") return by(mates.filter(p => p.pos === "FW"), p => Math.hypot(p.x - 94, p.y - 34)) || by(mates, p => Math.hypot(p.x - 94, p.y - 34));
   // lay / head: 가까운 동료 (앞이나 옆이면 더 좋음)
@@ -8511,8 +8602,9 @@ function passTarget(S, M, act, mate) {
   const nearMate = (pt, f = () => true) => nearestP(S, "us", pt, p => !p.me && p.ri && p.pos !== "GK" && f(p));
   if (act === "passGK") return gkOf(S, "us");
   // 측면으로 벌림: 옆으로 멀리 있는 동료. 앞으로 한참 나가 있는 선수(롱볼이 됨)는 빼고
-  if (act === "passWide") return nearMate({ x: M.x + 4, y: M.y < 34 ? 60 : 8 }, p => p.x < M.x + 16 && p.x > M.x - 12 && Math.abs(p.y - M.y) > 10)
-    || nearMate({ x: M.x + 4, y: M.y < 34 ? 60 : 8 }, p => p.x < M.x + 22) || mate;
+  if (act === "passWide") return pickReceiver(S, M, "wide") || mate;
+  // 반대편 전환: 반대쪽 측면, 나와 비슷한 높이 (앞으로 멀리 나간 선수 말고)
+  if (act === "passSwitch") return pickReceiver(S, M, "switch") || mate;
   if (act === "passBack") return nearMate({ x: M.x - 12, y: M.y }, p => p.x < M.x - 2) || mate;
   return mate && mate !== M && !mate.me && Math.hypot(mate.x - M.x, mate.y - M.y) < 30 ? mate : nearMate(M);
 }
@@ -8544,7 +8636,7 @@ function resolve(state, m, ci, timing = null) {
   // 결과 문장은 경기장에서 그 동작이 끝나는 순간에 나옴 (대본 안에 넣음, scriptFor). 문장 틀은 동작을 고르는 데도 씀
   const outTpl = pick(ok ? c.winText : c.loseText);
   { const a0 = (pd.sit.poss || "us") === "us" && /\{mate/.test(outTpl) ? actOf(outTpl, out, "us") : null;
-    if (["passNear", "passWide", "passBack"].includes(a0)) { const M0 = meOf(S), t = M0 && passTarget(S, M0, a0, SP(m, v.mate, "us")); if (t && !t.me && t.pos !== "GK") v.mate = t.name; } }
+    if (["passNear", "passWide", "passSwitch", "passBack"].includes(a0)) { const M0 = meOf(S), t = M0 && passTarget(S, M0, a0, SP(m, v.mate, "us")); if (t && !t.me && t.pos !== "GK") v.mate = t.name; } }
   // 패스 선택: 문장이 말하는 패스 종류에 맞는 동료가 받음 (문장의 {mate}도 그 동료)
   pd.play = null;
   if ((pd.sit.poss || "us") === "us" || ["keyPass", "assist", "killPass"].includes(ok ? c.win : c.lose)) {
@@ -8720,7 +8812,8 @@ function actOf(tpl, out, poss) {
       if (/스로인을 얻었다/.test(t)) return "throwUs";
       if (/밖으로 찼|터치라인 밖으로|밖으로 걷어/.test(t)) return /돌려준다/.test(t) ? "outReturn" : "outThem";
       if (/\{gk\}에게|골키퍼에게|골키퍼를 거쳐/.test(t)) return "passGK";
-      if (/측면|넓게|벌렸|반대편|반대쪽|압박 반대편/.test(t)) return "passWide";
+      if (/반대편|반대쪽|전환/.test(t)) return "passSwitch";
+      if (/측면|넓게|벌렸/.test(t)) return "passWide";
       if (/뒤로|수비에게/.test(t)) return "passBack";
       if (/내줬|내준다|연결|이었|원터치|주고|돌려줬|옆으로|줬다|돌리며/.test(t)) return "passNear";
       if (/흘러갔|흘렀|다른 곳으로/.test(t)) return "none";
@@ -8762,6 +8855,7 @@ function actOf(tpl, out, poss) {
     if (/터치라인 밖으로 차 냈/.test(t)) return "oppOutThrowUs";
     if (/벗겨 냈|빠져나간/.test(t)) return "beat";
     if (/앞으로|찔렀/.test(t)) return "oppForward";
+    if (/반대편|반대쪽/.test(t) && /넘겼|돌렸|돌린다|바꿨|바꾼다|전환/.test(t)) return "oppSwitch";
     if (/넘겼|돌렸|돌린다|공을 돌린/.test(t)) return "oppSide";
     if (/걷어 냈/.test(t)) return "clearMate";
     return "contain";
@@ -8837,6 +8931,7 @@ function scriptSteps(state, m, pd, c, out, R, tail, outTpl) {
       steps.push({ do: "space", from, to, cross: kind === "cross", cut: kind === "cut", main });
     } else if (kind === "over" || kind === "through") steps.push({ do: "space", from, to, air: kind === "over", main });
     else if (kind === "switch") steps.push({ do: "space", from, to, air: true, wide: true, main });
+    else if (kind === "wide") steps.push({ do: "pass", from, to, lead: 1.6, air: Math.hypot(to.x - from.x, to.y - from.y) > 30, main });
     else if (kind === "lay" && Math.hypot(to.x - from.x, to.y - from.y) > 24 && to.x > from.x) steps.push({ do: "space", from, to, air: Math.hypot(to.x - from.x, to.y - from.y) > 36, main });   // 멀리 있는 동료에게는 앞 공간으로
     else steps.push({ do: "pass", from, to, lead: kind === "head" ? 1 : 1.6, air: kind === "head", main });
     holder = to;
@@ -9005,6 +9100,13 @@ function scriptSteps(state, m, pd, c, out, R, tail, outTpl) {
       // ── 우리 공 장면 ──
       case "hold": ensure(M); steps.push({ do: "wait", t: 0.8, main: true }); break;
       case "none": steps.push({ do: "wait", t: 0.4, main: true }); break;
+      case "passSwitch": {                                                        // 반대편으로 크게 넘김 (띄운 공, 받는 선수 앞 공간)
+        ensure(M);
+        if (/몰고 (나가|올라)/.test(outTpl)) steps.push({ do: "carry", by: M, dist: 7, v: 7 });
+        const tgt = /\{mate/.test(outTpl) && mate && !mate.me ? mate : passTarget(S, M, act, mate);
+        if (tgt) { steps.push({ do: "space", from: M, to: tgt, air: true, wide: true, main: true }); holder = tgt; }
+        break;
+      }
       case "passNear": case "passWide": case "passBack": case "passGK": {
         ensure(M);
         if (/몰고 (나가|올라)/.test(outTpl)) steps.push({ do: "carry", by: M, dist: 7, v: 7 });    // "몇 걸음 몰고 나가 … 벌렸다"
@@ -9106,6 +9208,14 @@ function scriptSteps(state, m, pd, c, out, R, tail, outTpl) {
         break;
       }
       case "beat": if (H && H.team === "them") { steps.push({ do: "beat", by: H, victim: M, dist: 9, main: true }); } break;
+      case "oppSwitch": {                                                        // 상대가 반대편 측면으로 크게 넘김 (비슷한 높이, 가장 넓은 선수)
+        if (!H || H.team !== "them") { steps.push({ do: "wait", t: 0.6, main: true }); break; }
+        const far = S.P.filter(p => p.team === "them" && p !== H && p.ri && p.pos !== "GK" && Math.sign(p.y - 34) !== Math.sign(H.y - 34) && Math.abs(p.y - H.y) >= 20 && Math.abs(p.x - H.x) < 18)
+          .sort((a, b) => (Math.abs(b.y - 34) - Math.abs(a.y - 34)) - (Math.abs(b.x - H.x) - Math.abs(a.x - H.x)) * 0.8)[0]
+          || nearestP(S, "them", { x: H.x, y: 68 - H.y }, p => p !== H && p.ri && p.pos !== "GK");
+        if (far) { steps.push({ do: "space", from: H, to: far, air: true, wide: true, main: true }); holder = far; }
+        break;
+      }
       case "oppForward": case "oppSide": case "oppBack": {
         if (!H || H.team !== "them") { steps.push({ do: "wait", t: 0.6, main: true }); break; }
         const dir = act === "oppForward" ? -12 : act === "oppBack" ? 12 : 0;        // 상대는 -x로 공격
