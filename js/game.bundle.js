@@ -5735,7 +5735,7 @@ function targets(S) {
     // 상대 진영 공격: 공 반대편 가장 바깥 선수는 측면 폭을 지킴 (반대편 전환·먼 쪽 포스트 자리)
     if (ox(H.team, H.x) > 40 && !S.scur && !S.script.length) {
       const fs = H.y < 34 ? 1 : -1;
-      const w = P.filter(p => p.team === H.team && p.ri && p.pos !== "GK" && p !== H && p !== m1 && p !== m2 && !p.ov && (p.ty - 34) * fs > 4)
+      const w = P.filter(p => p.team === H.team && p.ri && p.pos !== "GK" && p.pos !== "FW" && p !== H && p !== m1 && p !== m2 && !p.ov && (p.ty - 34) * fs > 4)
         .sort((a, b) => (b.ty - 34) * fs - (a.ty - 34) * fs)[0];
       if (w && (w.ty - 34) * fs < 24) w.ty = 34 + fs * 24;
     }
