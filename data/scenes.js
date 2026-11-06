@@ -199,4 +199,11 @@ export const SCENES = {
   fw_box_turn: { tight: 1, patience: 4, at: [[89.5, 97], [23, 45]], from: "pass", giver: "mf", press: 1, pressGap: 1.2 },
   fw_flick_on: { air: true, patience: 4, longIn: true, at: [[58, 88], [10, 58]], from: "long", giver: "df", press: 1, pressGap: 1.1 },
   fw_screen: { screen: true, patience: 5, holder: "mate", at: [[76, 87], [20, 48]], from: "pass", press: 1, pressGap: 3 },
+  // 2026-11-06 추가
+  fw_layoff_third: { at: [[60, 72], [24, 44]], from: "pass", giver: "df", src: [-24, -3], runs: [["mf", -2, 5, 7.6]], press: 1, pressGap: 1.2 },
+  fw_blindside: { from: "lowcross", src: [-4, -30], runs: [["oppdf", 1, -2, 7.6]], press: 1, pressGap: 1.6, pack: true },
+  mf_counter_delay: { counter: true, at: [[44, 62], [16, 52]], from: "oppCarry", meGap: 5 },
+  mf_press_trigger: { side: 16, at: [[56, 72], [3, 12]], from: "oppPass", giver: "oppdf", src: [6, -14], meGap: 7 },
+  df_bait_press: { at: [[14, 24], [22, 46]], from: "pass", giver: "df", src: [-2, 14], press: 1, pressGap: 9, block: { them: "high" } },
+  df_back_post: { air: true, at: [[6, 12], [38, 48]], from: "oppCross", meGap: 1.6, pack: "them" },
 };

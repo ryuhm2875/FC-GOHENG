@@ -239,6 +239,13 @@ function targets(S) {
     const g = dirOf(H.team), sy = H.y < 34 ? 1 : -1;
     if (m1) { m1.tx = clamp(H.x + g * 9, 3, 102); m1.ty = clamp(H.y + sy * 9, 3, 65); m1.v = RUN; }
     if (m2) { m2.tx = clamp(H.x - g * 5, 3, 102); m2.ty = clamp(H.y + sy * 12, 3, 65); m2.v = RUN; }
+    // 상대 진영 공격: 공 반대편 가장 바깥 선수는 측면 폭을 지킴 (반대편 전환·먼 쪽 포스트 자리)
+    if (ox(H.team, H.x) > 40 && !S.scur && !S.script.length) {
+      const fs = H.y < 34 ? 1 : -1;
+      const w = P.filter(p => p.team === H.team && p.ri && p.pos !== "GK" && p !== H && p !== m1 && p !== m2 && !p.ov && (p.ty - 34) * fs > 4)
+        .sort((a, b) => (b.ty - 34) * fs - (a.ty - 34) * fs)[0];
+      if (w && (w.ty - 34) * fs < 24) w.ty = 34 + fs * 24;
+    }
   }
   // 압박: 공에 가장 가까운 수비가 나가고 두 번째가 뒤를 받침
   const pressR = S.style[def].press ? 28 : S.block[def] === "low" ? 17 : 22;
@@ -1220,7 +1227,8 @@ function soShot(S, c) {
   emit(S, "soShot", { team: c.kicker.team, by: c.kicker.name, me: c.kicker.me, keeper: c.keeper.name, result: c.result, dir: c.dir, high: c.high });
 }
 // 킥오프 규칙대로 섰나: 모두 자기 진영 안, 받는 팀은 센터서클(9.15m) 밖
-const settled = S => { const k = S.restart.team; return S.P.every(p => ox(p.team, p.x) <= 52.8 && (p.team === k || hyp(p.x - 52.5, p.y - 34) >= 9.15)); };
+// + 거의 다 멈춰 섬 (자리로 뛰어가는 선수가 둘 이하): 아직 달리는 중에 킥오프하지 않게
+const settled = S => { const k = S.restart.team; return S.P.every(p => ox(p.team, p.x) <= 52.8 && (p.team === k || hyp(p.x - 52.5, p.y - 34) >= 9.15)) && S.P.filter(p => hyp(p.vx, p.vy) > 3).length <= 2; };
 
 // ── 한 틱 ──
 export function step(S) {
