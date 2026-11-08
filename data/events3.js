@@ -133,11 +133,17 @@ export const EVENTS_STORY = [
     ] },
 
   // ── 전남 대표 소년체전 ─────────────────────────
-  { id: "jn_camp", once: true, bg: "ev_jn_camp", who: "narr",
+  // once 대신 그해 5월 2주에만 (중2·중3 두 번 뽑히면 두 번 나옴)
+  { id: "jn_camp", bg: "ev_jn_camp", who: "narr",
     trigger: s => { const c = s.jnCup, i = turnInfo(s); return !!c && c.alive && c.stage === 0 && i?.grade === c.grade && i.month === 5 && i.week === 2 && !s.player.condition.injury; },
     // 전남 대표 동료는 도내 각 팀 에이스 (js/engine/jn.js). 다른 학교 맞수가 전남 팀이면 같은 방에 있음
     text: s => {
       const c = s.jnCup, nem = c?.squad?.find(x => x.nemesis), two = (c?.squad || []).filter(x => x.school && !x.nemesis).slice(0, 2);
+      const last = (s.jnHistory || []).find(h => h.grade === c.grade - 1), again = (c?.squad || []).find(x => x.again && !x.nemesis);
+      if (last) return `두 번째 소년체전 소집. 같은 숙소, 같은 강당인데 이번엔 낯설지 않다.${again ? ` 작년에 같은 방을 쓴 ${shortSchool(again.school)}의 ${again.name}|이/가} 멀리서 손을 흔든다.` : ""}`.replace(/(.)\|이\/가\}/, (m0, ch) => { const k = ch.charCodeAt(0) - 0xAC00; return ch + (k >= 0 && k <= 11171 && k % 28 ? "이" : "가"); })
+        + (nem ? `\n\n맨 뒷줄엔 올해도 ${shortSchool(nem.school)}의 ${nem.name}. 이번엔 눈이 마주치자 먼저 턱을 들어 인사한다.` : "")
+        + `\n\n${JN_STAFF.coach}님이 명단을 훑다가 멈췄다. "고흥. 이번엔 번호 말고 이름으로 부른다. {given}, 올해는 네가 애들 끌고 가라."`
+        + (last.medal === "gold" ? " 작년 금메달 얘기는 아무도 꺼내지 않았다. 다들 알고 있으니까." : last.medal ? "" : " 작년 1회전 탈락. 그 얘기를 먼저 꺼낸 건 감독님이었다. \"작년은 작년이다.\"");
       return `전국소년체전 소집 첫날, 숙소 강당. 리그에서 상대 팀 유니폼으로만 보던 얼굴들이 전남 트레이닝복을 입고 서로 눈치만 본다.${two.length === 2 ? ` ${shortSchool(two[0].school)}의 ${two[0].name}, ${shortSchool(two[1].school)}의 ${two[1].name}…` : ""}`
         + (nem ? `\n\n그리고 맨 뒷줄, ${shortSchool(nem.school)}의 ${nem.name}. 눈이 마주쳤다. 둘 다 먼저 고개를 돌렸다. 이번 주는 저 녀석이 같은 편이다.` : "")
         + `\n\n${JN_STAFF.coachFrom}에서 온 ${JN_STAFF.coach}님이 화이트보드 앞에 섰다. 말이 짧다. "학교는 잊어라. 이번 주는 전부 전남이다. 내일까지 옆 사람 이름 다 외워 와라."`;
@@ -153,7 +159,7 @@ export const EVENTS_STORY = [
       { label: "부모님께 \"잘 도착했어요\" 하고 문자한다", fx: { morale: 4 },
         result: "엄마 답장이 1초 만에 왔다. '밥 많이 먹고잉. 텔레비전 나오면 손 흔들어 📺'" },
     ] },
-  { id: "jn_return", once: true, bg: s => (s.jnCup?.medal === "gold" ? "ev_medal" : "ev_bus_sunset"), who: "narr",
+  { id: "jn_return", bg: s => (s.jnCup?.medal === "gold" ? "ev_medal" : "ev_bus_sunset"), who: "narr",
     trigger: s => { const c = s.jnCup, i = turnInfo(s); return !!c && i?.grade === c.grade && i.month === 5 && i.week === 3; },
     text: s => {
       const c = s.jnCup, m = c.medal;

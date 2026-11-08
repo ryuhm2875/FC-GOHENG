@@ -82,7 +82,8 @@ function pickTalk(state, fx, status, star) {
     if (star >= 1) keys.push("star");
   }
   if (!keys.length) return null;
-  if (fx.jn && status === "start") return pick(JN_TALK.start.filter(t => !t.tag || tagFit(p.position, t.tag) >= 0.18));
+  if (fx.jn && status === "start") { const twice = (state.jnHistory || []).length > 0;
+    return pick(JN_TALK.start.filter(t => (!t.tag || tagFit(p.position, t.tag) >= 0.18) && !(t.first && twice) && !(t.again && !twice))); }
   if (status === "start" && !(state.record.starts > 0))
     return { who: "coach", text: "첫 선발이다. 떨리는 거 안다. 첫 패스 하나만 정확하게 해라. 나머지는 몸이 알아서 한다.", tag: tagFit(p.position, "pass") >= 0.18 ? "pass" : "safe" };
   // 내 포지션에서 실제로 따를 수 있는 지시만 (공격수에게 '수비 먼저' 같은 지시가 가지 않게)

@@ -1,6 +1,7 @@
 // 기록실: 끝낸 판의 선수 카드와 업적 (이 기기·브라우저에 남음)
 import { GRADE_INFO } from "../../data/endings.js";
 import { ACHIEVEMENTS, newAchievements } from "../engine/achievements.js";
+import { bestJnMedal, jnTimes } from "../engine/jn.js";
 import { seenEndings } from "../engine/career.js";
 import { openModal } from "./modals.js";
 import { esc, img, faceOf } from "./util.js";
@@ -25,7 +26,7 @@ export function addHallCard(state, ending, c) {
     name: p.name, position: p.position, face: faceOf(p, 3), numbers: p.numberHistory?.map(h => h.number) || [p.number],
     ending: ending.id, endingTitle: ending.title, grade: ending.grade,
     apps: r.apps, goals: r.goals, assists: r.assists, rating: rated.length ? Math.round(rated.reduce((a, b) => a + b, 0) / rated.length * 100) / 100 : null,
-    school: c.schoolName, captain: !!state.flags.captain, medal: state.jnCup?.medal || null, nt: !!state.flags.nationalTeam,
+    school: c.schoolName, captain: !!state.flags.captain, medal: bestJnMedal(state), jnTimes: jnTimes(state) || 0, nt: !!state.flags.nationalTeam,
     titles: r.titles.length, ovr: c.ovr,
   });
   write(HALL, hall.slice(0, 60));
@@ -51,7 +52,7 @@ export function hallModal() {
   let tab = "hall";
   const cards = () => hall.length ? `<div class="hall-list">${hall.map(h => {
     const g = GRADE_INFO[h.grade] || {};
-    const tags = [h.captain ? "Ⓒ 주장" : null, MEDAL[h.medal], h.nt ? "🇰🇷 국가대표" : null, h.titles ? `🏆 우승 ${h.titles}` : null].filter(Boolean);
+    const tags = [h.captain ? "Ⓒ 주장" : null, h.jnTimes >= 2 ? `🎽 전남 대표 ${h.jnTimes}회` : null, MEDAL[h.medal], h.nt ? "🇰🇷 국가대표" : null, h.titles ? `🏆 우승 ${h.titles}` : null].filter(Boolean);
     return `<article class="hall-card">
       <div class="hc-face">${img(h.face, h.name)}</div>
       <div class="hc-body">

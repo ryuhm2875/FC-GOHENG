@@ -30,6 +30,9 @@ const YEAR_OFF = { "3학년선배": 2, "2학년선배": 1, "동기": 0, "1년후
 // 다른 학교 맞수가 전남 팀이면 같은 편으로 들어옴
 export function startJnCup(state) {
   const p = state.player, g = state.calendar.grade;
+  // 중3 두 번째 소집: 작년 대회 기록은 jnHistory로 옮겨 둠 (명예의 전당·업적은 둘 다 봄). 작년 동료 이름은 다시 뽑히면 again 표시
+  const prev = state.jnCup && state.jnCup.grade !== g ? state.jnCup : null;
+  if (prev) (state.jnHistory ||= []).push({ grade: prev.grade, medal: prev.medal || null, mates: (prev.squad || []).map(x => x.name) });
   const used = new Set([p.name, ...state.team.roster.map(m => m.name)]);
   const name = () => { let n; do { n = weighted(SURNAMES) + pick(GIVEN_NAMES); } while (used.has(n)); used.add(n); return n; };
   const nums = shuffle([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].filter(n => n !== p.number));
@@ -46,7 +49,7 @@ export function startJnCup(state) {
       if (squad.filter(x => x.pos === pos).length >= want - 1) break;           // 한 자리는 새 얼굴로 (명단이 늘 같은 이름만 되지 않게)
       if (used.has(s.name) || (teamsUsed[s.team] || 0) >= 1 && !s.nemesis) continue;   // 한 팀에서 포지션마다 한 명
       used.add(s.name); teamsUsed[s.team] = (teamsUsed[s.team] || 0) + 1;
-      squad.push({ name: s.name, number: nums.shift(), pos, school: s.team, ...(s.nemesis ? { nemesis: true } : {}) });
+      squad.push({ name: s.name, number: nums.shift(), pos, school: s.team, ...(s.nemesis ? { nemesis: true } : {}), ...(prev?.squad?.some(x => x.name === s.name) ? { again: true } : {}) });
     }
     while (squad.filter(x => x.pos === pos).length < want) squad.push({ name: name(), number: nums.shift(), pos, school: pick(JN_TEAMS) });
   }
@@ -94,4 +97,11 @@ export function jnAfter(state, fx, gf, ga, shootoutWin, rating) {
     } else notes.push(`${fx.round} 통과! 다음은 ${JN_ROUNDS[c.stage]}.`);
   }
   return notes;
+}
+
+// 이번까지 전남 대표로 뽑힌 횟수, 가장 좋은 메달 (명예의 전당·업적)
+const MEDAL_RANK = { gold: 3, silver: 2, bronze: 1 };
+export function jnTimes(state) { return (state.jnHistory || []).length + (state.jnCup ? 1 : 0); }
+export function bestJnMedal(state) {
+  return [...(state.jnHistory || []).map(h => h.medal), state.jnCup?.medal].filter(m => MEDAL_RANK[m]).sort((a, b) => MEDAL_RANK[b] - MEDAL_RANK[a])[0] || null;
 }
