@@ -270,7 +270,7 @@ export const EVENTS_MORE = [
       { label: "친구들을 불러 나눠 든다", fx: { teacher: 1, s: { "mental.teamwork": 0.5 } },
         result: "셋이서 한 번에 끝냈다. 선생님이 '역시 팀플레이' 하며 웃으셨다." },
     ] },
-  { id: "t_library_king", school: true, who: "teacher", once: true,
+  { id: "t_library_king", bg: "ev_library", school: true, who: "teacher", once: true,
     text: "\"{given|아/야}, 이번 학기 도서관 대출왕에 도전해 볼래? 한 달에 책 다섯 권. 선생님이 직접 골라 줄게.\"",
     choices: [
       { label: "도전하겠습니다", fx: { s: { "student.academic": 1.5, "mental.focus": 1 }, fatigue: 2, teacher: 3 },
@@ -629,7 +629,7 @@ export const EVENTS_MORE = [
       { label: "버스에 오를 때까지만 돕는다", fx: { s: { "student.attitude": 0.5 } },
         result: "버스 계단까지 올려 드렸다. 창밖에서 할머니가 손을 흔드셨다." },
     ] },
-  { id: "f_fishing", family: true, who: "dad",
+  { id: "f_fishing", bg: "ev_fishing", family: true, who: "dad",
     text: "내일 새벽에 녹동항 가자. 오랜만에 낚시나 하자. 아빠가 미끼는 다 준비해 놨다.",
     choices: [
       { label: "따라간다", fx: { fatigue: -5, morale: 5, s: { "mental.focus": 0.5 } },
@@ -687,7 +687,7 @@ export const EVENTS_MORE = [
       { label: "하루 종일 푹 잔다", fx: { fatigue: -8 },
         result: "눈을 뜨니 태풍이 지나가 있었다. 몸이 깃털처럼 가벼웠다." },
     ] },
-  { id: "f_yuja", date: [[11, 2]], cool: 70, family: true, who: "narr", when: { months: [11] },
+  { id: "f_yuja", bg: "ev_yuja", date: [[11, 2]], cool: 70, family: true, who: "narr", when: { months: [11] },
     text: "고흥 유자축제. 무대 옆 '유자 슈팅 챌린지' 부스 앞에 사람들이 길게 줄을 섰다.",
     choices: [
       { label: "도전한다", fx: { s: { "tech.shoot": 0.3 }, morale: 4 },

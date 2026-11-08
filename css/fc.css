@@ -202,6 +202,24 @@ body::before {
   .ft-menu { grid-column: 2; grid-row: 1; align-self: end; margin: 0; }
   .ft-foot { grid-column: 1 / -1; }
 }
+/* 휴대폰 세로: 세로 그림(title_m). 로고는 하늘 쪽 위에, 아이·그림자·골대가 있는 아래는 비워 둠. 메뉴를 열면 아래를 어둡게 */
+@media (orientation: portrait) and (max-width: 760px) {
+  .fc-title { grid-template-rows: auto auto auto 1fr auto; align-content: start; padding-top: calc(15dvh + env(safe-area-inset-top, 0px)); }
+  .ft-brand { align-self: start; }
+  .ft-bg img { opacity: .9; object-position: 50% 100%; animation: none; }
+  .ft-bg::after { background: linear-gradient(180deg, rgba(5,7,15,.35) 0%, rgba(5,7,15,.45) 30%, rgba(5,7,15,.05) 55%, rgba(5,7,15,0) 75%, rgba(5,7,15,.35) 100%); transition: background .5s; }
+  .fc-title.open .ft-bg::after { background: linear-gradient(180deg, rgba(5,7,15,.4) 0%, rgba(5,7,15,.55) 35%, rgba(5,7,15,.82) 60%, rgba(5,7,15,.92) 100%); }
+  .ft-press { margin-top: 26px; text-shadow: 0 2px 10px rgba(0,0,0,.7); }
+  .ft-foot, .ft-user { grid-row: 6; align-self: end; text-shadow: 0 1px 6px rgba(0,0,0,.8); }
+  .ft-user { grid-row: 5; }
+  .ft-logo { width: clamp(70px, 19vw, 96px); }
+  .ft-brand { gap: 12px; }
+  .ft-name { font-size: clamp(40px, 12.4vw, 64px); }
+  /* 메뉴를 열면 위 여백을 줄이고, 작은 휴대폰에서는 스크롤로 끝까지 */
+  .fc-title.open { padding-top: calc(7dvh + env(safe-area-inset-top, 0px)); overflow-y: auto; height: 100dvh; }
+  .fc-title.open .ft-menu { margin-top: 18px; }
+  .ft-tile { padding: 12px 18px; }
+}
 
 /* ── 도입부 덧칠 ─────────────────── */
 .cine::after { content: ""; position: absolute; inset: 0; z-index: 3; pointer-events: none;
