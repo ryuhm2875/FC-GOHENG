@@ -196,7 +196,7 @@ function renderTitle(app) {
   const auto = readSlot("auto");
   const cont = auto && !auto.state.finished;
   app.root.innerHTML = `<main class="fc-title" id="ft">
-    <div class="ft-bg"><img src="assets/img/title.webp" data-name="title" alt="" onerror="__bgFallback(this)"><span class="ft-streak s1"></span><span class="ft-streak s2"></span><span class="ft-streak s3"></span></div>
+    <div class="ft-bg"><picture><source media="(orientation: portrait) and (max-width: 760px)" srcset="assets/img/title_m.webp"><img src="assets/img/title.webp" data-name="title" alt="" onerror="__bgFallback(this)"></picture><span class="ft-streak s1"></span><span class="ft-streak s2"></span><span class="ft-streak s3"></span></div>
     <div class="ft-brand">
       <img class="ft-logo" src="assets/img/logo.png" alt="고흥FC 엠블럼">
       <div class="ft-words"><span class="ft-kicker">GOHEUNG FC U-15</span><h1 class="ft-name">DREAM<br>PROJECT</h1><p class="ft-ko">고흥FC 드림 프로젝트</p></div>
@@ -215,7 +215,7 @@ function renderTitle(app) {
     <button class="snd-btn ft-mus" data-music aria-label="배경음악" aria-pressed="${!!app.settings.music}">${musicIcon(app.settings.music)}</button>
   </main>`;
   const r = app.root;
-  const open = () => { r.querySelector("#press").hidden = true; const m = r.querySelector("#menu"); m.hidden = false; m.querySelector("button").focus({ preventScroll: true }); document.removeEventListener("keydown", key); };
+  const open = () => { r.querySelector("#ft").classList.add("open"); r.querySelector("#press").hidden = true; const m = r.querySelector("#menu"); m.hidden = false; m.querySelector("button").focus({ preventScroll: true }); document.removeEventListener("keydown", key); };
   const key = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); } };
   document.addEventListener("keydown", key);
   r.querySelector("#press").addEventListener("click", open);

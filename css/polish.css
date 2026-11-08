@@ -610,3 +610,11 @@ body:has(#modal-root .backdrop) .fs-btn { opacity: 0; pointer-events: none; }
   background: rgba(13, 18, 46, .62); text-shadow: 0 2px 8px rgba(0,0,0,.5); }
 @keyframes soCard { 0% { opacity: 0; transform: scale(1.04); } 12%, 72% { opacity: 1; transform: none; } 100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .so-card { animation-duration: 2.2s; } }
+
+/* ── 휴대폰 세로: 화면을 꽉 채우는 배경(홈·선수 만들기·도입·엔딩)은 그림마다 보여 줄 곳을 정함 (가운데 4분의 1만 보이므로) ── */
+@media (orientation: portrait) and (max-width: 760px) {
+  img[data-name="bg_locker"] { object-position: 72% 50%; }
+  img[data-name="bg_field_day"] { object-position: 60% 50%; }
+  img[data-name="ending_setback"] { object-position: 54% 50%; }
+  img[data-name="title"] { object-position: 50% 50%; }
+}

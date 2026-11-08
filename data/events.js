@@ -67,7 +67,7 @@ export const EVENTS = [
       { label: "택시 타고 간다 (용돈 손해)", fx: { morale: -2 }, result: "겨우 출석. 이번 달 용돈이 반으로 줄었다." },
       { label: "지각하고 혼난다", fx: { s: { "student.attitude": -2 }, fatigue: -6 }, result: "벌점 1점. 그래도 몸은 좀 개운하다. 알람을 세 번이나 끈 건 피로가 쌓였다는 신호다." },
     ] },
-  { id: "library_book", school: true, who: "teacher", when: { grades: [1, 2] },
+  { id: "library_book", bg: "ev_library", school: true, who: "teacher", when: { grades: [1, 2] },
     text: "도서관에 새로 들어온 축구 선수 자서전 있던데, 읽어 볼래? 독후감 쓰면 수행평가에도 들어가.",
     choices: [
       { label: "빌려서 읽는다", fx: { s: { "mental.focus": 1, "student.academic": 1.5, "mental.confidence": 0.5 }, fatigue: -2 }, result: "\"남들이 쉴 때 한 번 더 찼다\"는 문장에 밑줄을 그었다." },
@@ -96,7 +96,7 @@ export const EVENTS = [
       { label: "빗속 체력 훈련을 자청한다", req: { "phys.stamina": 62 }, fx: { s: { "phys.stamina": 0.8, "mental.competitive": 0.4 }, fatigue: 6, coach: 2 },
         result: "물 먹은 잔디 위를 왕복 스무 번. {coach}님께서 우산도 없이 끝까지 지켜보셨다. \"그래, 그런 놈이 경기 뛴다.\"" },
     ] },
-  { id: "night_shooting", who: "coach", cond: s => s.relations.coach >= 55,
+  { id: "night_shooting", bg: "ev_night_shooting", who: "coach", cond: s => s.relations.coach >= 55,
     text: "너, 남아서 슈팅 100개 찰 수 있냐? 다른 애들한테는 말 안 했다.",
     choices: [
       { label: "100개 차겠습니다", fx: { s: { "tech.shoot": 2, "mental.confidence": 0.5 }, fatigue: 14, coach: 3 }, result: "다리가 후들거렸지만 마지막 10개가 제일 잘 들어갔다." },
@@ -166,7 +166,7 @@ export const EVENTS = [
       { label: "\"팀을 위해 제가 뭘 하면 될까요\"", req: { "rel.coach": 65 }, fx: { s: { "mental.teamwork": 0.5 }, coach: 3 },
         result: "감독님이 한참 나를 보셨다. \"그 질문을 하는 놈이 몇 없다.\" 수첩에 뭔가를 적으셨다." },
     ] },
-  { id: "video_analysis", who: "assistant", cond: s => s.record.apps >= 3 && lastMatch(s)?.minutes > 0,
+  { id: "video_analysis", bg: "ev_video", who: "assistant", cond: s => s.record.apps >= 3 && lastMatch(s)?.minutes > 0,
     text: "지난 경기에서 네가 나온 장면만 모아 봤다. 같이 볼래?",
     choices: [
       { label: "끝까지 같이 본다", fx: { s: { "mental.focus": 1.5 }, coach: 1, fatigue: -2 }, result: "실수한 장면을 다섯 번 돌려 봤다. 다음엔 안 그럴 것 같다." },
@@ -174,7 +174,7 @@ export const EVENTS = [
       { label: "내 실수 장면을 직접 골라 온다", req: { "mental.focus": 62 }, fx: { s: { "mental.focus": 0.6, "tech.firstTouch": 0.3 }, coach: 2 },
         result: "실수 장면 다섯 개를 골라 갔다. 코치님이 놀라셨다. \"이걸 네가 먼저 찾아왔어?\" 그날 분석은 평소의 두 배로 길었다." },
     ] },
-  { id: "palyeong_hike", date: [[9, 4]], cool: 70, who: "coach", when: { months: [3, 9, 12, 1] },
+  { id: "palyeong_hike", bg: "ev_palyeong", date: [[9, 4]], cool: 70, who: "coach", when: { months: [3, 9, 12, 1] },
     text: "이번 주 체력 훈련은 팔영산이다. 정상까지 뛰어서 간다.",
     choices: [
       { label: "선두로 뛴다", fx: { s: { "phys.stamina": 1.5, "mental.competitive": 0.5 }, fatigue: 12, coach: 2 }, result: "정상에서 내려다본 다도해. 숨이 턱까지 찼지만 1등이었다." },

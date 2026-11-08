@@ -784,3 +784,12 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
   - `o_jg_cup`(담임이 교실에서 권함)은 `ev_classroom` 그대로, `pay_umbrella`(경기 날 우비)는 `bg_stadium` 그대로
 - 프롬프트 공통 문구(다음 그림도 이것으로): 인물 "Korean webtoon style illustration, clean line art, soft cel shading, warm muted colors. Match the art style… Chest-up portrait, centered, dark navy background with a very faint grid pattern… Square 1:1, 768x768… No text…", 장면 "Korean webtoon illustration, cinematic background art… Goheung… main boy seen from behind or side, face small or hidden. Wide 16:9, 1376x768. Keep the center area fairly calm… No text, no letters, no numbers…" (참고 그림 npc_coach / ev_jn_camp 첨부)
 - 확인: uiplay DF 엔딩까지 오류 0, so-shots FW 오류 0 (시험 페이지는 tools/dev 아래라 그림 경로가 안 맞아 카드는 안 뜸, 게임에서는 정상)
+
+## 38. 새 장면 7장·최신식 교실·휴대폰 타이틀, 휴대폰 화면 그림 점검 (2026-11-09, 사용자: "교실이 어색해 보여. 우리 학교 교실은 최신식" / "타이틀이 핸드폰에서 잘리고 느낌이 별로" / "휴대폰에서 잘려서 어색하거나 불편하지 않게 꼼꼼히")
+- 그림: `ev_classroom` 교체(최신식, 책상 13개 정도, 전자칠판), 새 `ev_library`·`ev_yuja`·`ev_palyeong`·`ev_night_shooting`·`ev_video`·`ev_fishing`(1376×768), `title_m`(768×1376, 휴대폰 세로 타이틀). `ev_gim`(김 양식장)은 아직 없음 → 그림 오면 `f_gim`에 연결
+- 연결: `library_book`·`t_library_king` → ev_library, `f_yuja`, `palyeong_hike`, `night_shooting`, `video_analysis`, `f_fishing`
+- 타이틀(`main.js renderTitle`, `css/fc.css`): `<picture>`로 세로 휴대폰은 title_m. 휴대폰 세로에서는 로고를 위쪽(15dvh)에 두고 아래(아이·그림자·골대)는 비움, 그림 밝기 .9, 아래 그라데이션 약하게. 메뉴를 열면(`.fc-title.open`) 위 여백 7dvh·아래 어둡게·작은 화면은 스크롤. 제목 글자 크기·로고 줄여 320px에서도 안 잘림. "made by"는 맨 아래 줄
+- 꽉 찬 배경(홈 `#scene`, 선수 만들기·도입·엔딩 `.cine-bg`)은 휴대폰 세로에서 가운데 26%만 보임 → 그림마다 보여 줄 곳 (`css/polish.css` 끝, `img[data-name]` object-position): bg_locker 72%(유니폼 쪽), bg_field_day 60%, ending_setback 54%. 나머지는 가운데 구도라 그대로
+- 이벤트 그림은 이미 세로에서 위쪽에 전체(contain)+흐린 배경이라 잘리지 않음. 320×568~412×915 다섯 크기에서 그림과 글 상자 겹침 없음(가장 작은 화면도 27px 여유)
+- 생성 도구 반짝이 표시(✦)가 대부분 그림 오른쪽 아래에 있음. 지우지는 않음 (요청 시 처리)
+- 확인: 타이틀 iPhone 13·SE·Galaxy S9+ 화면, uiplay MF 엔딩까지 오류 0
