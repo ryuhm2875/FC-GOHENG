@@ -120,7 +120,7 @@ export const EVENTS_MORE = [
       { label: "엄마에게 전화한다", fx: { s: { "student.attitude": -0.3 } },
         result: "엄마 차를 타고 겨우 도착했다. '오늘 저녁에 바퀴 때우고 와' 하는 말이 뒤따라왔다." },
     ] },
-  { id: "a_umbrella", school: true, who: "narr", when: { months: [6, 7, 9] },
+  { id: "a_umbrella", school: true, bg: "ev_umbrella", who: "narr", when: { months: [6, 7, 9] },
     text: "하굣길, 비가 쏟아진다. 다른 학년 아이 하나가 현관 앞에서 하늘만 올려다보고 있다. 얼굴은 알지만 말은 거의 안 해 본 아이다.",
     choices: [
       { mark: "umbrella", label: "우산을 같이 쓰고 간다", fx: { s: { "mental.teamwork": 0.5 }, morale: 2 },
@@ -178,7 +178,7 @@ export const EVENTS_MORE = [
       { label: "스매시를 마음껏 때린다", fx: { morale: 2, s: { "mental.competitive": 0.5 } },
         result: "스매시 세 개 중 하나는 들어갔다. 나머지 둘은 체육관 천장으로 날아갔다." },
     ] },
-  { id: "a_jokgu", school: true, who: "narr",
+  { id: "a_jokgu", school: true, bg: "ev_jokgu", who: "narr",
     text: s => s.player.growthType === "jokgu" ? "체육 시간 족구. 편을 나누기도 전에 다들 \"족구부 출신은 무조건 공격!\" 하며 나를 네트 앞으로 민다." : "체육 시간 족구. 편을 나누자마자 다들 \"축구부니까 공격 맡아!\" 하며 나를 네트 앞으로 민다.",
     choices: [
       { label: "공격을 맡는다", fx: { morale: 3, s: { "phys.jump": 0.3, "mental.confidence": 0.3 } },

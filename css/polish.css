@@ -599,3 +599,14 @@ body:has(#modal-root .backdrop) .fs-btn { opacity: 0; pointer-events: none; }
 .so-board i.ok { background: #2fbf71; }
 .so-board i.no { background: #e0483e; }
 .so-board b { margin-left: 3px; font-size: 11px; min-width: 1.1em; text-align: right; }
+
+/* 새 일러스트: 늦게 피는 꽃(주간 결과), 승부차기 시작 카드 */
+.rep-scene { margin: 4px 0 8px; border-radius: 12px; overflow: hidden; aspect-ratio: 1376 / 768; background: #0d122e; }
+.rep-scene img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.so-card { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; overflow: hidden; border-radius: inherit;
+  background: #0d122e; animation: soCard 2.6s ease forwards; }
+.so-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.so-card b { position: relative; font-size: 28px; letter-spacing: .12em; color: #fff; padding: 6px 18px; border-radius: 999px;
+  background: rgba(13, 18, 46, .62); text-shadow: 0 2px 8px rgba(0,0,0,.5); }
+@keyframes soCard { 0% { opacity: 0; transform: scale(1.04); } 12%, 72% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .so-card { animation-duration: 2.2s; } }

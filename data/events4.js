@@ -14,7 +14,7 @@ const POS = { FW: "공격수", MF: "미드필더", DF: "수비수" };
 
 export const EVENTS_ORIGIN = [
   // ── 축구 처음 시작 ───────────────────────────
-  { id: "o_rk_juggle", cond: is("rookie"), once: true, priority: 1, trigger: win(4, 2, 4), when: { grades: [1] }, bg: "bg_field_day", who: "assistant",
+  { id: "o_rk_juggle", cond: is("rookie"), once: true, priority: 1, trigger: win(4, 2, 4), when: { grades: [1] }, bg: "ev_lifting", who: "assistant",
     text: "훈련이 끝나고 다들 씻으러 간 사이, 혼자 남아 리프팅을 했다. 하나, 둘… 세 번째에 공이 정강이를 맞고 튀어 나갔다. 공을 주우러 가는데 벤치에 {assistant}님이 앉아 계셨다. \"몇 개 하냐?\"",
     choices: [
       { mark: "rk_juggle", label: "\"세 개요…\" 솔직하게 말한다", fx: { s: { "tech.firstTouch": 1 }, morale: 3 },
@@ -112,7 +112,7 @@ export const EVENTS_ORIGIN = [
       { label: "이번엔 공을 죽이지 않고 바로 골문 구석으로", req: { "tech.firstTouch": 55 }, fx: { s: { "tech.shoot": 0.8, "mental.confidence": 0.6 }, morale: 5 },
         result: "두 번째 공. 무릎을 접고 발목을 고정했다. 퍽, 하는 소리와 함께 공이 골키퍼 손끝을 지나 구석에 꽂혔다. 동료들이 \"족구왕!\" 하며 달려들었다. 그날부터 별명이 생겼다." },
     ] },
-  { id: "o_jg_net", cond: is("jokgu"), once: true, priority: 1, school: true, trigger: weeks([5, 2], [5, 3], [5, 5], [6, 1], [6, 2]), when: { grades: [3] }, bg: "bg_field_day", who: "narr",
+  { id: "o_jg_net", cond: is("jokgu"), once: true, priority: 1, school: true, trigger: weeks([5, 2], [5, 3], [5, 5], [6, 1], [6, 2]), when: { grades: [3] }, bg: "ev_jokgu", who: "narr",
     text: s => `점심시간. 운동장 구석에 족구 네트가 쳐져 있다. 1학년 넷이 이번 학교스포츠클럽 대회에 나간다며 공을 넘기는데, 서브가 번번이 네트에 걸린다.${marked(s, "jg_cup") ? " 2년 전 결승, 네트 윗줄에 걸렸던 내 서브가 생각났다." : marked(s, "jg_lunch") ? " 1학년 때 반 친구들과 점심마다 공을 넘기던 그 자리다." : ""}\n\n한 아이가 나를 보더니 소리친다. "형! 족구부였다면서요!"`,
     choices: [
       { label: "서브부터 가르쳐 준다", fx: { s: { "mental.teamwork": 1 }, morale: 5, teacher: 1 },
@@ -146,7 +146,7 @@ export const EVENTS_ORIGIN = [
       { label: "평소처럼, 우리 팀 약속대로 짧게 돌린다", fx: { s: { "mental.teamwork": 1, "mental.focus": 0.5 }, coach: 2, morale: 3 },
         result: "특별한 건 없었다. 그냥 우리 축구를 했다. 2 대 2. 경기가 끝나고, 생각보다 아무렇지 않은 내가 신기했다." },
     ] },
-  { id: "o_cl_call", cond: is("club"), once: true, priority: 1, trigger: weeks([11, 3], [11, 4], [11, 5], [12, 2], [12, 4]), when: { grades: [3] }, bg: "bg_home", who: "narr",
+  { id: "o_cl_call", cond: is("club"), once: true, priority: 1, trigger: weeks([11, 3], [11, 4], [11, 5], [12, 2], [12, 4]), when: { grades: [3] }, bg: "ev_night_call", who: "narr",
     text: s => `${marked(s, "cl_friend") ? "도윤재에게서 전화가 왔다. 문자가 아니라 전화." : "광주 클럽 시절 친구 도윤재에게서 전화가 왔다. 한참 연락이 없던 녀석이다."} 한동안 말이 없다가 겨우 꺼낸다.\n\n"나… U-18 테스트 떨어졌어."`,
     choices: [
       { label: "\"나도 떨어져 봤잖아. 그다음이 더 중요하더라\"", fx: { s: { "mental.teamwork": 1, "mental.confidence": 1 }, morale: 4 },

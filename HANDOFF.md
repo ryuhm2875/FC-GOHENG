@@ -772,3 +772,15 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
 - `jnHistory`·`again`은 있을 때만 붙음, 예전 저장 파일 그대로
 - 확인: 두 번 뽑히는 상황 스크립트(scratchpad jn2.mjs)로 문장·작년 동료·메달 기록 확인, uiplay FW 오류 0
 - 밸런스(240판): 득점 2.19 / 실점 1.10, FW 7.52·1.49·도움 0.41, MF 7.21, DF 7.12 (33절과 같은 범위)
+
+## 37. 새 일러스트 8장 (2026-11-09, 사용자: 프롬프트 제안 → 그림 8장 가져옴)
+- `assets/img/` 추가 (webp, 품질 82): `npc_jn_coach`·`npc_jn_assistant`(768×768), `ev_jokgu`·`ev_lifting`·`ev_shootout`·`ev_umbrella`·`ev_night_call`·`ev_measure`(1376×768)
+  - 서 감독 원본은 테두리에 영어 글자·거북선·키 장식이 있어 (150,60)-(850,760)만 잘라 768로 키움 (왼쪽 위 그물 무늬 조금 남음)
+- 연결
+  - 전남 대표 얼굴: 파일만 넣으면 나옴 (§34)
+  - `ev_lifting` → `o_rk_juggle` / `ev_jokgu` → `o_jg_net`, `a_jokgu`(체육 시간 족구) / `ev_umbrella` → `a_umbrella` / `ev_night_call` → `o_cl_call`
+  - `ev_shootout`: 승부차기 시작 줄(`soStart`)에서 경기장 위에 2.6초 그림 카드 "승부차기" (`ui/match.js soCard`, 누르면 바로 닫힘, `css/polish.css .so-card`)
+  - `ev_measure`: 늦게 피는 꽃이 드러나는 주의 주간 결과 창에 그림 (`ui/modals.js`, `.rep-scene`)
+  - `o_jg_cup`(담임이 교실에서 권함)은 `ev_classroom` 그대로, `pay_umbrella`(경기 날 우비)는 `bg_stadium` 그대로
+- 프롬프트 공통 문구(다음 그림도 이것으로): 인물 "Korean webtoon style illustration, clean line art, soft cel shading, warm muted colors. Match the art style… Chest-up portrait, centered, dark navy background with a very faint grid pattern… Square 1:1, 768x768… No text…", 장면 "Korean webtoon illustration, cinematic background art… Goheung… main boy seen from behind or side, face small or hidden. Wide 16:9, 1376x768. Keep the center area fairly calm… No text, no letters, no numbers…" (참고 그림 npc_coach / ev_jn_camp 첨부)
+- 확인: uiplay DF 엔딩까지 오류 0, so-shots FW 오류 0 (시험 페이지는 tools/dev 아래라 그림 경로가 안 맞아 카드는 안 뜸, 게임에서는 정상)
