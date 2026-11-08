@@ -14322,19 +14322,21 @@ return { openModal, ask, actionPicker, weekReport, mailModal, saveModal, numberM
 // ── js/ui/minigames.js
 __m["js/ui/minigames.js"] = (function () {
 const {openModal} = __m["js/ui/modals.js"];
+const {sfx} = __m["js/ui/sfx.js"];
 // 훈련 미니게임 4종. 결과 등급에 따라 그 훈련의 능력치 상승량이 달라집니다.
 //   S ×1.5 / A ×1.25 / B ×1.0 / C ×0.8   (건너뛰면 B)
 // 능력치가 오르면 난이도 단계(LV.1~4)가 올라 더 빠르고 방해물이 많아집니다. 등급과 배율 기준은 그대로입니다.
+
 
 const GRADES = { S: 1.5, A: 1.25, B: 1.0, C: 0.8 };
 const STAT_FOR = { shooting: "tech.shoot", passing: "tech.pass", dribble: "tech.dribble", weight: "phys.strength", defend: "tech.defense", sprint: "phys.speed" };
 const INFO = {
   shooting: { title: "슈팅 훈련", tag: "SHOOTING DRILL", how: "조준점이 골문 위를 움직입니다. 골키퍼를 피해 구석을 노려 누르세요. 다섯 번 찹니다.", btn: "슈팅" },
   passing:  { title: "패스 훈련", tag: "PASSING DRILL", how: "동료 등번호를 1부터 6까지 순서대로 빠르게 누르세요. 흰 유니폼 상대를 누르면 끊깁니다.", btn: null },
-  dribble:  { title: "드리블 훈련", tag: "DRIBBLE DRILL", how: "달려드는 수비를 왼쪽·오른쪽으로 피하세요. 12초 버티면 끝입니다. 방향키나 화면을 밀어서도 움직일 수 있습니다.", btn: null },
+  dribble:  { title: "드리블 훈련", tag: "DRIBBLE DRILL", how: "공을 몰고 가며 앞에 놓인 마네킹과 콘을 왼쪽·오른쪽으로 피하세요. 12초 동안 몰고 가면 끝입니다. 방향키나 화면을 밀어서도 움직일 수 있습니다.", btn: null },
   weight:   { title: "웨이트 트레이닝", tag: "STRENGTH", how: "줄어드는 원이 주황 테두리에 닿는 순간 누르세요. 여섯 번 들어 올립니다.", btn: "들어 올리기" },
-  defend:   { title: "수비 훈련", tag: "DEFENDING", how: "공격수의 어깨가 기우는 쪽(주황 화살표)으로 ◀ ▶ 옮겨 서고, 초록 띠 안에 들어왔을 때 태클하세요. 여섯 번 막습니다.", btn: null },
-  sprint:   { title: "스프린트 훈련", tag: "SPEED DRILL", how: "GO! 신호에 맞춰 버튼을 누르면 출발합니다. 누르고 있으면 힘 게이지가 오르고, 떼면 내려갑니다. 게이지를 초록 칸에 맞춰 두면 최고 속도, 빨간 칸까지 올리면 다리가 풀립니다. 40m 달리기.", btn: null },
+  defend:   { title: "수비 훈련", tag: "1 ON 1 DEFENDING", how: "조끼 입은 동료와 1대1입니다. 어깨가 기우는 쪽(주황 화살표)으로 ◀ ▶ 옮겨 서고, 초록 띠 안에 들어왔을 때 태클하세요. 여섯 번 막습니다.", btn: null },
+  sprint:   { title: "스프린트 훈련", tag: "40M SPRINT", how: "코치님 호루라기(삑!)에 맞춰 버튼을 누르면 출발합니다. 누르고 있으면 힘 게이지가 오르고, 떼면 내려갑니다. 게이지를 초록 칸에 맞춰 두면 최고 속도, 빨간 칸까지 올리면 다리가 풀립니다. 40m 달리기.", btn: null },
 };
 const ease = v => Math.max(0, Math.min(1, (v - 20) / 60));
 function statFor(kind) { return STAT_FOR[kind]; }
@@ -14345,9 +14347,9 @@ const LV_NAME = ["", "기본", "중급", "상급", "프로"];
 const LV_NOTE = {
   shooting: ["", "", "조준점이 더 빨라졌습니다.", "골키퍼가 좌우로 움직입니다.", "골키퍼가 조준점을 따라붙습니다."],
   passing:  ["", "", "상대가 한 명 늘고 시간이 줄었습니다.", "상대 선수들이 패스 길로 움직입니다.", "상대가 더 많고, 시간이 더 짧습니다."],
-  dribble:  ["", "", "수비가 더 빨리 달려옵니다.", "두 명이 한꺼번에 막아섭니다.", "더 빠르고, 더 자주 두 명이 막습니다."],
+  dribble:  ["", "", "더 빠르게 몰고 갑니다.", "마네킹 두 개가 나란히 막아섭니다.", "더 빠르고, 두 개가 더 자주 막습니다."],
   weight:   ["", "", "원이 더 빨리 줄어듭니다.", "원이 줄어드는 속도가 매번 바뀝니다.", "판정 범위가 좁아졌습니다."],
-  defend:   ["", "", "공격수가 더 빨리 들어옵니다.", "한 번 속이고 들어오는 공격수가 있습니다.", "더 빠르고, 태클 범위가 좁습니다."],
+  defend:   ["", "", "동료가 더 빨리 들어옵니다.", "한 번 속이고 들어오는 동료가 있습니다.", "더 빠르고, 태클 범위가 좁습니다."],
   sprint:   ["", "", "게이지가 조금 더 빨리 움직입니다.", "초록 칸이 좁아졌습니다.", "초록 칸이 더 좁고, 게이지가 빠릅니다."],
 };
 
@@ -14429,6 +14431,7 @@ function playMinigame(kind, statValue, slotLabel) {
   return new Promise(resolve => {
     const info = INFO[kind];
     const lv = levelOf(statValue);
+    TOD = todOf(slotLabel);
     // 세로로 긴 휴대폰 화면: 창을 화면 가득 띄우고 장면도 세로형으로 그림
     const tall = innerHeight / innerWidth > 1.3 && innerWidth < 700;
     let finished = false, stop = () => {};
@@ -14493,7 +14496,13 @@ const PREVIEW = {
   dribble: (area, tall) => { area.innerHTML = `<div class="mgd-wrap">${dribbleScene(tall)}</div>`; },
   weight: (area, tall) => { area.innerHTML = weightScene(tall); wtDraw(area.querySelector("svg"), 1); },
   defend: (area, tall) => { area.innerHTML = `<div class="mgd-wrap">${defendScene(tall)}</div>`; },
-  sprint: (area, tall) => { area.innerHTML = sprintScene(tall); area.querySelectorAll("#spMeb, #spR1b, #spR2b").forEach((g, i) => spDraw(g, 0.6 + i)); },
+  sprint: (area, tall) => {
+    area.innerHTML = sprintScene(tall);
+    const cam = tall ? 22 : 8;                                      // 경기 시작 때와 같은 카메라 위치: 출발선과 세 명이 보이게
+    area.querySelector("#spWorld").setAttribute("transform", `translate(${cam},0)`);
+    [["#spR1", 0], ["#spMe", 1], ["#spR2", 2]].forEach(([q, i]) => area.querySelector(q).setAttribute("transform", `translate(${(cam / SP_LANES[i].k).toFixed(2)},0)`));
+    area.querySelectorAll("#spMeb, #spR1b, #spR2b").forEach((g, i) => spDraw(g, 0.6 + i));
+  },
 };
 
 // ── 슈팅 ────────────────────────────
@@ -14876,6 +14885,148 @@ function passing(area, status, ctl, e, done, lv = 1, tall = false) {
   return () => cancelAnimationFrame(timer);
 }
 
+// ── 학교 운동장 (드리블·수비·스프린트 훈련 공통) ─────────────
+// 프로 경기장이 아니라 방과 후 학교 운동장: 낮은 학교 건물, 초록 그물 펜스, 뒤로 산과 고흥 바다, 조명탑 두 개.
+// 시간대: 평일 1 = 방과 후 오후(노을빛), 평일 2 = 저녁(조명), 주말 = 오전(맑은 햇빛)
+let TOD = "pm";
+const todOf = label => /평일 2/.test(label || "") ? "night" : /주말/.test(label || "") ? "am" : "pm";
+const SKY = {
+  am:    { sky: ["#6FB6EA", "#A9D6F3", "#E4F3FB"], far: "#94B4C6", near: "#5F9663", near2: "#4C8452", sea: "#4E9FD3", seaHi: "#BFE3F7", bld: "#F3F0E8", bldS: "#D2CCC0", roof: "#8A97A3", win: "#9CC6E6", winF: "#5F7F9C", tree: "#4E8B4A", tree2: "#3D7540",
+           fence: "rgba(36,84,58,.55)", post: "#5E6F66", grass: ["#57A949", "#3F933D"], line: "rgba(255,255,255,.72)", haze: "rgba(228,243,251,.55)", warm: "rgba(255,240,200,0)", shadow: "rgba(20,40,20,.32)", vig: .22, sun: { x: .8, y: .22, r: 3.2, c: "#FFFDF2", g: "rgba(255,252,230,.55)" } },
+  pm:    { sky: ["#7FA8D6", "#E9C9A6", "#FFC98A"], far: "#9C9AB0", near: "#6E7F5E", near2: "#5A6E4E", sea: "#8FA9C2", seaHi: "#FFE0B0", bld: "#F1E3CE", bldS: "#C9B497", roof: "#7F7A7A", win: "#E9C08E", winF: "#7A6A5E", tree: "#5F7B44", tree2: "#4B663A",
+           fence: "rgba(44,74,50,.55)", post: "#665E55", grass: ["#62A843", "#3F8A37"], line: "rgba(255,248,232,.72)", haze: "rgba(255,214,160,.5)", warm: "rgba(255,150,70,.10)", shadow: "rgba(40,24,10,.36)", vig: .3, sun: { x: .76, y: .5, r: 4.2, c: "#FFF1C8", g: "rgba(255,190,110,.6)" } },
+  night: { sky: ["#060A1C", "#101A40", "#22305F"], far: "#1A2346", near: "#111934", near2: "#0E152C", sea: "#1A2850", seaHi: "#3D5590", bld: "#3A4466", bldS: "#2A3250", roof: "#22293F", win: "#232C4A", winF: "#151B30", tree: "#14203A", tree2: "#0F182E",
+           fence: "rgba(110,170,140,.28)", post: "#3A4560", grass: ["#23733F", "#18592F"], line: "rgba(255,255,255,.6)", haze: "rgba(60,80,140,.35)", warm: "rgba(0,0,0,0)", shadow: "rgba(0,0,0,.45)", vig: .5, moon: { x: .78, y: .2, r: 2.4 } },
+};
+const pal = () => SKY[TOD];
+// 결정적 난수 (그림이 매번 같게)
+const rnd = s => { const x = Math.sin(s * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+const SCHOOL_DEFS = () => {
+  const P = pal();
+  return `
+  <linearGradient id="schSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${P.sky[0]}"/><stop offset=".62" stop-color="${P.sky[1]}"/><stop offset="1" stop-color="${P.sky[2]}"/></linearGradient>
+  <radialGradient id="schSun" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="${P.sun ? P.sun.g : "rgba(0,0,0,0)"}"/><stop offset="1" stop-color="rgba(255,255,255,0)"/></radialGradient>
+  <linearGradient id="schSea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${P.seaHi}"/><stop offset=".35" stop-color="${P.sea}"/><stop offset="1" stop-color="${P.sea}"/></linearGradient>
+  <linearGradient id="schGrass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${P.grass[1]}"/><stop offset="1" stop-color="${P.grass[0]}"/></linearGradient>
+  <linearGradient id="schHaze" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${P.haze}"/><stop offset="1" stop-color="rgba(255,255,255,0)"/></linearGradient>
+  <linearGradient id="schBld" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${P.bld}"/><stop offset="1" stop-color="${P.bldS}"/></linearGradient>
+  <pattern id="schMesh" width="2.2" height="2.2" patternUnits="userSpaceOnUse"><path d="M0 0 L2.2 2.2 M2.2 0 L0 2.2" stroke="${P.fence}" stroke-width=".22"/></pattern>
+  <pattern id="schTurf" width="2.6" height="2.6" patternUnits="userSpaceOnUse"><circle cx=".6" cy=".8" r=".16" fill="rgba(255,255,255,.06)"/><circle cx="1.9" cy="2" r=".14" fill="rgba(0,0,0,.08)"/></pattern>
+  <radialGradient id="schMoon" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="rgba(210,222,255,.28)"/><stop offset="1" stop-color="rgba(210,222,255,0)"/></radialGradient>
+  <radialGradient id="schPool" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="rgba(255,248,220,${TOD === "night" ? .28 : 0})"/><stop offset="1" stop-color="rgba(255,248,220,0)"/></radialGradient>
+  <linearGradient id="mgBib" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#C9D21C"/><stop offset=".45" stop-color="#EAF53A"/><stop offset="1" stop-color="#B8C21A"/></linearGradient>
+  <linearGradient id="mgBib2" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#2BB673"/><stop offset=".45" stop-color="#4FE39A"/><stop offset="1" stop-color="#239D62"/></linearGradient>
+  <linearGradient id="mgDummy" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#E9B814"/><stop offset=".45" stop-color="#FFD53D"/><stop offset="1" stop-color="#D9A60E"/></linearGradient>
+  <linearGradient id="mgTrack" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#121A55"/><stop offset=".5" stop-color="#26348F"/><stop offset="1" stop-color="#111850"/></linearGradient>`;
+};
+// 산 능선 (x0~x1, 바닥 yb, 높이 h)
+const ridge = (x0, x1, yb, h, seed, n = 9) => {
+  let d = `M${x0} ${yb}`;
+  for (let i = 0; i <= n; i++) {
+    const x = x0 + (x1 - x0) * i / n, y = yb - h * (0.45 + 0.55 * rnd(seed + i * 1.7));
+    d += i === 0 ? ` L${x.toFixed(1)} ${y.toFixed(1)}` : ` Q${(x - (x1 - x0) / n / 2).toFixed(1)} ${(y - h * 0.25 * rnd(seed + i)).toFixed(1)} ${x.toFixed(1)} ${y.toFixed(1)}`;
+  }
+  return d + ` L${x1} ${yb} Z`;
+};
+// 학교 건물: 3층, 창문 줄, 가운데 현관, 옥상 난간. (bx = 왼쪽, yb = 바닥, w·h)
+function schoolBuilding(bx, yb, w, h) {
+  const P = pal(), fl = 3, fh = h / (fl + 0.35), cols = Math.max(6, Math.round(w / 4.2));
+  let win = "";
+  for (let f = 0; f < fl; f++) for (let c = 0; c < cols; c++) {
+    const x = bx + 1.2 + c * (w - 2.4) / cols, y = yb - fh * (f + 1) + fh * 0.28, ww = (w - 2.4) / cols - 0.9, hh = fh * 0.46;
+    const lit = TOD === "night" && rnd(c * 3.1 + f * 7.7) > 0.72;
+    win += `<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${ww.toFixed(2)}" height="${hh.toFixed(2)}" fill="${lit ? "#FFD98A" : P.win}"/><rect x="${x.toFixed(2)}" y="${(y + hh * 0.62).toFixed(2)}" width="${ww.toFixed(2)}" height="${(hh * 0.38).toFixed(2)}" fill="${lit ? "#F2B95E" : P.winF}" opacity=".55"/>`;
+  }
+  const side = Math.min(5, w * 0.08);
+  return `<g>
+    <path d="M${bx + w} ${yb - h} l${side} ${-side * 0.5} V${yb - side * 0.5} L${bx + w} ${yb} Z" fill="${P.bldS}"/>
+    <rect x="${bx}" y="${yb - h}" width="${w}" height="${h}" fill="url(#schBld)"/>
+    <rect x="${bx - 0.4}" y="${yb - h - 1}" width="${w + 0.8}" height="1.2" fill="${P.roof}"/>
+    ${Array.from({ length: fl }, (_, f) => `<rect x="${bx}" y="${(yb - fh * (f + 1) - 0.2).toFixed(2)}" width="${w}" height=".35" fill="${P.bldS}" opacity=".8"/>`).join("")}
+    ${win}
+    <rect x="${(bx + w * 0.46).toFixed(2)}" y="${(yb - fh * 0.85).toFixed(2)}" width="${(w * 0.08).toFixed(2)}" height="${(fh * 0.85).toFixed(2)}" fill="${P.winF}"/>
+    <rect x="${(bx + w * 0.44).toFixed(2)}" y="${(yb - fh * 0.92).toFixed(2)}" width="${(w * 0.12).toFixed(2)}" height=".6" fill="${P.roof}"/>
+  </g>`;
+}
+const tree = (x, yb, s, seed) => {
+  const P = pal();
+  return `<g transform="translate(${x.toFixed(1)},${yb.toFixed(1)}) scale(${s.toFixed(2)})"><rect x="-.3" y="-2" width=".6" height="2" fill="#5A4636"/>
+    <circle cx="0" cy="-4" r="2.6" fill="${P.tree2}"/><circle cx="-1.3" cy="-3.2" r="1.9" fill="${P.tree}"/><circle cx="1.2" cy="-4.6" r="1.8" fill="${P.tree}"/>${rnd(seed) > .5 ? `<circle cx=".2" cy="-5.6" r="1.4" fill="${P.tree}"/>` : ""}</g>`;
+};
+// 조명탑: 밤에만 켜짐
+const schoolLight = (x, yb, yt) => {
+  const on = TOD === "night";
+  return `<g><rect x="${x - 0.3}" y="${yt}" width=".6" height="${yb - yt}" fill="${pal().post}"/>
+    <rect x="${x - 2.6}" y="${yt - 1.2}" width="5.2" height="1.8" rx=".3" fill="#2A3148"/>
+    ${[0, 1, 2].map(i => `<rect x="${x - 2.2 + i * 1.6}" y="${yt - 0.9}" width="1.2" height="1.2" fill="${on ? "#FFFBEA" : "#AEB6C2"}"/>`).join("")}
+    ${on ? `<ellipse cx="${x}" cy="${yt}" rx="16" ry="10" fill="url(#mgBloom)" opacity=".85"/>` : ""}</g>`;
+};
+// 배경 띠 전체: 하늘 → 해·달 → 먼 산 → 바다 → 가까운 산·나무 → 학교 → 조명탑 → 그물 펜스. 아래 끝(yb)부터 잔디
+function schoolBackdrop(x0, x1, yt, yb) {
+  const P = pal(), H = yb - yt, W = x1 - x0;
+  let s = `<rect x="${x0}" y="${yt}" width="${W}" height="${H + 0.5}" fill="url(#schSky)"/>`;
+  if (P.sun) { const sx = x0 + W * P.sun.x, sy = yt + H * P.sun.y; s += `<circle cx="${sx}" cy="${sy}" r="${P.sun.r * 6}" fill="url(#schSun)"/><circle cx="${sx}" cy="${sy}" r="${P.sun.r}" fill="${P.sun.c}"/>`; }
+  if (P.moon) {
+    for (let i = 0; i < 26; i++) s += `<circle cx="${(x0 + W * rnd(i * 2.3)).toFixed(1)}" cy="${(yt + H * 0.6 * rnd(i * 5.1)).toFixed(1)}" r="${(0.14 + rnd(i) * 0.22).toFixed(2)}" fill="#fff" opacity="${(0.35 + rnd(i * 9) * 0.6).toFixed(2)}"/>`;
+    const mx = x0 + W * P.moon.x, my = yt + H * P.moon.y;
+    s += `<circle cx="${mx}" cy="${my}" r="${P.moon.r * 4}" fill="url(#schMoon)"/><circle cx="${mx}" cy="${my}" r="${P.moon.r}" fill="#F4F1E1"/><circle cx="${mx + 0.9}" cy="${my - 0.5}" r="${P.moon.r * 0.92}" fill="${P.sky[0]}" opacity=".9"/>`;
+  }
+  const seaTop = yb - H * 0.3, fenceH = Math.min(9, H * 0.3);
+  s += `<path d="${ridge(x0, x1, seaTop + 1, H * 0.34, 3, 7)}" fill="${P.far}" opacity=".9"/>`;
+  s += `<rect x="${x0}" y="${seaTop}" width="${W}" height="${(yb - seaTop).toFixed(1)}" fill="url(#schSea)"/>`;
+  if (P.sun && TOD === "pm") s += `<rect x="${(x0 + W * 0.7).toFixed(1)}" y="${(seaTop + 0.6).toFixed(1)}" width="${(W * 0.24).toFixed(1)}" height=".5" fill="#FFE7BD" opacity=".8"/><rect x="${(x0 + W * 0.74).toFixed(1)}" y="${(seaTop + 1.6).toFixed(1)}" width="${(W * 0.14).toFixed(1)}" height=".4" fill="#FFE7BD" opacity=".6"/>`;
+  if (TOD === "night") for (let i = 0; i < 6; i++) s += `<circle cx="${(x0 + W * (0.1 + rnd(i * 4.4) * 0.8)).toFixed(1)}" cy="${(seaTop + 0.8 + rnd(i) * 1.2).toFixed(1)}" r=".28" fill="#FFD98A"/>`;
+  // 가까운 산: 가운데가 트여서 바다가 보임
+  s += `<path d="${ridge(x0, x0 + W * 0.42, yb - fenceH * 0.4, H * 0.42, 11, 5)}" fill="${P.near}"/>`;
+  s += `<path d="${ridge(x0 + W * 0.66, x1, yb - fenceH * 0.4, H * 0.36, 23, 5)}" fill="${P.near2}"/>`;
+  // 학교 건물과 나무
+  const bw = Math.min(62, W * 0.4), bh = Math.min(17, H * 0.5), bx = x0 + W * 0.17;
+  for (let i = 0; i < 4; i++) s += tree(bx - 3 + i * 1.6, yb - fenceH * 0.55, 0.9 + rnd(i) * 0.4, i);
+  s += schoolBuilding(bx, yb - fenceH * 0.45, bw, bh);
+  for (let i = 0; i < 6; i++) s += tree(bx + bw + 5 + i * 3.4, yb - fenceH * 0.5, 0.8 + rnd(i + 9) * 0.5, i + 9);
+  s += schoolLight(x0 + W * 0.13, yb, yt + H * 0.2) + schoolLight(x1 - W * 0.13, yb, yt + H * 0.2);
+  // 펜스 아래 덤불 줄 (땅이 바다처럼 보이지 않게)
+  const hy = yb - fenceH * 0.5; let hedge = `M${x0} ${yb} L${x0} ${hy.toFixed(1)}`;
+  for (let x = x0; x <= x1 + 3; x += 3) hedge += ` Q${(x + 1.5).toFixed(1)} ${(hy - 0.9 - rnd(x) * 0.8).toFixed(1)} ${(x + 3).toFixed(1)} ${hy.toFixed(1)}`;
+  s += `<path d="${hedge} L${x1 + 3} ${yb} Z" fill="${P.tree2}"/><rect x="${x0}" y="${(yb - 0.8).toFixed(1)}" width="${W}" height=".8" fill="${P.post}" opacity=".5"/>`;
+  // 그물 펜스
+  s += `<rect x="${x0}" y="${(yb - fenceH).toFixed(1)}" width="${W}" height="${fenceH.toFixed(1)}" fill="url(#schMesh)"/>`;
+  for (let x = x0; x <= x1; x += 9) s += `<rect x="${x.toFixed(1)}" y="${(yb - fenceH).toFixed(1)}" width=".35" height="${fenceH.toFixed(1)}" fill="${P.post}"/>`;
+  s += `<rect x="${x0}" y="${(yb - fenceH).toFixed(1)}" width="${W}" height=".35" fill="${P.post}"/>`;
+  return s + `<rect x="${x0}" y="${yt}" width="${W}" height="${H}" fill="${P.warm}"/>`;
+}
+// 접시콘 (납작한 훈련용 콘). 원점 = 바닥 가운데
+const discCone = (c = "#FF8A1F") => `<ellipse cx="0" cy=".2" rx="2.6" ry=".7" fill="rgba(0,0,0,.28)"/><path d="M-2.3 0 Q0 -1.9 2.3 0 Q0 .7 -2.3 0 Z" fill="${c}"/><ellipse cx="0" cy="-.85" rx=".7" ry=".25" fill="rgba(0,0,0,.35)"/><path d="M-1.6 -.6 Q0 -1.5 1.2 -.9" stroke="rgba(255,255,255,.55)" stroke-width=".25" fill="none"/>`;
+// 훈련용 마네킹 (프리킥 더미): 노란 사람 모양 판 + 기둥 + 받침
+function dummySVG() {
+  return `<ellipse cx="0" cy="0" rx="5.2" ry="1.4" fill="rgba(0,0,0,.35)"/>
+    <rect x="-3.2" y="-.9" width="6.4" height="1.1" rx=".4" fill="#3A3F4A"/><rect x="-.45" y="-6" width=".9" height="5.4" fill="#8C939F"/>
+    <path d="M-5.6 -21.6 Q-6.2 -22.8 -4.6 -23.4 L-1.9 -24.2 L1.9 -24.2 L4.6 -23.4 Q6.2 -22.8 5.6 -21.6 L4.4 -13 L3.9 -6 L.9 -6 L0 -10.4 L-.9 -6 L-3.9 -6 L-4.4 -13 Z" fill="url(#mgDummy)" stroke="#1B2A6B" stroke-width=".45" stroke-linejoin="round"/>
+    <path d="M-5.2 -19.6 H5.2 L5 -17.8 H-5 Z" fill="#1E2F86" opacity=".9"/>
+    <circle cy="-27" r="3" fill="url(#mgDummy)" stroke="#1B2A6B" stroke-width=".45"/>
+    <path d="M-4.4 -22.6 Q-4 -23 -2.8 -23.2" stroke="rgba(255,255,255,.6)" stroke-width=".4" fill="none" stroke-linecap="round"/>`;
+}
+// 코치 (앞모습, 남색 트레이닝복·모자·호루라기). hold: "ball" 공 주머니 / "watch" 스톱워치
+function coachSVG(hold = "") {
+  return `<ellipse cx="0" cy="0" rx="5.6" ry="1.5" fill="rgba(0,0,0,.35)"/>
+    <rect x="-3" y="-11" width="2.6" height="11" rx="1" fill="url(#mgTrack)"/><rect x=".4" y="-11" width="2.6" height="11" rx="1" fill="url(#mgTrack)"/>
+    <rect x="-2.7" y="-11" width=".35" height="10.6" fill="rgba(255,255,255,.7)"/><rect x="2.4" y="-11" width=".35" height="10.6" fill="rgba(255,255,255,.7)"/>
+    <ellipse cx="-1.7" cy="-.3" rx="2" ry=".9" fill="#F2F2F2"/><ellipse cx="1.7" cy="-.3" rx="2" ry=".9" fill="#F2F2F2"/>
+    <path d="M-5 -22 L-2 -23.6 Q0 -22.4 2 -23.6 L5 -22 L4.4 -10.4 L-4.4 -10.4 Z" fill="url(#mgTrack)"/>
+    <path d="M0 -22.6 V-10.6" stroke="rgba(255,255,255,.5)" stroke-width=".3"/>
+    <rect x="-6.3" y="-21.6" width="1.8" height="9" rx=".8" fill="url(#mgTrack)"/><rect x="4.5" y="-21.6" width="1.8" height="${hold ? 5 : 9}" rx=".8" fill="url(#mgTrack)" ${hold ? `transform="rotate(-50 5.4 -21)"` : ""}/>
+    <circle cx="-5.4" cy="-12" r="1" fill="url(#mgSkin)"/>
+    ${hold === "watch" ? `<circle cx="9.1" cy="-24.6" r="1.6" fill="#E9ECF2" stroke="#2A3148" stroke-width=".35"/><path d="M9.1 -24.6 V-25.6" stroke="#2A3148" stroke-width=".3"/><circle cx="8.6" cy="-23.6" r="1" fill="url(#mgSkin)"/>`
+      : hold === "ball" ? `<circle cx="8.8" cy="-23.6" r="1" fill="url(#mgSkin)"/>` : ""}
+    <path d="M-1 -22.6 L0 -18.6 L1 -22.6" stroke="#ECEFF6" stroke-width=".25" fill="none"/><circle cx="0" cy="-18.4" r=".55" fill="#C9CED8"/>
+    <circle cy="-26" r="3.1" fill="url(#mgSkin)"/>
+    <path d="M-3.4 -26.6 Q-3.3 -30.2 0 -30 Q3.3 -30.2 3.4 -26.6 Z" fill="#1A2470"/><path d="M-3.6 -26.7 H4.6 Q4.2 -25.9 3 -26 H-3.6 Z" fill="#141B55"/>
+    <circle cx="-1.2" cy="-25.4" r=".38" fill="#1B1B1F"/><circle cx="1.2" cy="-25.4" r=".38" fill="#1B1B1F"/><path d="M-.9 -23.8 Q0 -23.5 .9 -23.8" stroke="#8A4A38" stroke-width=".35" fill="none"/>`;
+}
+// 공 주머니 (그물망)
+const ballBag = () => `<ellipse cx="0" cy="0" rx="4" ry="1" fill="rgba(0,0,0,.3)"/>${[[-2, -1.6], [1.6, -1.7], [0, -3.6], [-1.4, -5.2], [1.5, -5.3]].map(([x, y]) => `<g transform="translate(${x},${y})">${BALL(1.7)}</g>`).join("")}
+  <path d="M-3.6 -1 Q-3.8 -5.6 -1 -7.2 L1 -7.2 Q3.8 -5.6 3.6 -1 Z" fill="none" stroke="rgba(30,40,40,.55)" stroke-width=".25" stroke-dasharray=".6 .5"/><path d="M0 -7.2 V-8.6" stroke="#333" stroke-width=".3"/>`;
+
 // ── 드리블 ──────────────────────────
 // 내 등 뒤에서 본 원근 화면. 수비는 멀리 지평선에서 달려와 점점 커짐
 // 판정은 예전과 같음: 수비 위치(fy) 74~92 구간에서 같은 줄이면 부딪힘
@@ -14891,10 +15042,12 @@ function drSetup(tall) {
 drSetup(false);
 const drS = y => (y - DRB.VPY) / (DR_ME_Y - DRB.VPY);            // 원근 배율 (내 자리 = 1)
 const drX = (lanePos, y) => 80 + (lanePos - 1) * 40 * drS(y);
-function drRunner(front, legId) {
-  // front: 앞에서 본 수비수 / 아니면 뒤에서 본 나. 발 위치가 원점
-  const shirt = front ? SHIRT("url(#mgShirtW)", "#2D3FD1", null) : SHIRT("url(#mgShirtO)", "#FFD7B8", null);
-  const shorts = front ? "url(#mgBlue)" : "url(#mgNavy)", sock = front ? "#F4F6FF" : "#FF6B1A", sleeve = front ? "#E9ECF6" : "#F06318";
+function drRunner(front, legId, kit = "") {
+  // front: 앞에서 본 선수 / 아니면 뒤에서 본 나. 발 위치가 원점. kit "bib": 주황 훈련복 위에 노란 조끼를 입은 우리 팀 동료
+  const bib = kit === "bib", white = front && !bib;
+  const shirt = white ? SHIRT("url(#mgShirtW)", "#2D3FD1", null)
+    : SHIRT("url(#mgShirtO)", "#FFD7B8", null) + (bib ? `<path d="M-3.7 -4.7 L-1.8 -5.8 Q0 -4.3 1.8 -5.8 L3.7 -4.7 L3.95 5.9 L-3.95 5.9 Z" fill="url(#mgBib)" stroke="#9EA514" stroke-width=".3"/><path d="M-3.4 -1 H3.5 M-3.6 2.4 H3.7" stroke="rgba(120,130,10,.35)" stroke-width=".3"/>` : "");
+  const shorts = white ? "url(#mgBlue)" : "url(#mgNavy)", sock = white ? "#F4F6FF" : "#FF6B1A", sleeve = white ? "#E9ECF6" : "#F06318";
   const arm = side => `<g class="mgd-arm${side}"><rect x="${side === "L" ? -6.6 : 4.6}" y="-20.6" width="2" height="5.6" rx=".9" fill="${sleeve}"/><rect x="${side === "L" ? -6.4 : 4.8}" y="-15.6" width="1.7" height="4.6" rx=".8" fill="url(#mgSkin)"/></g>`;
   return `<ellipse cx="0" cy="0" rx="6" ry="1.6" fill="rgba(0,0,0,.4)"/>
     <g class="mgd-arms">${arm("L")}${arm("R")}</g>
@@ -14918,32 +15071,28 @@ function drCone() {
 }
 function dribbleScene(tall = false) {
   drSetup(tall);
-  const rows = tall ? Math.floor((DRB.HOR - 18) / 4.2) : 2, L1 = tall ? 26 : 10, L2 = tall ? 134 : 150;
-  const crowd = crowdRows(Array.from({ length: rows }, (_, row) => 11.6 + row * 4.2), 46, 3.55, 5);
-  const edge = (o, y) => drX(o, y).toFixed(2);
-  return `<svg viewBox="${DR_VB}" class="mg-svg mgd">
-    <defs>${COMMON_DEFS}${STADIUM_DEFS}
-      <linearGradient id="drGrass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0F4F2B"/><stop offset=".35" stop-color="#16703D"/><stop offset="1" stop-color="#1D8B4B"/></linearGradient>
-      <radialGradient id="drPool" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="rgba(255,250,220,.2)"/><stop offset="1" stop-color="rgba(255,250,220,0)"/></radialGradient>
-      <linearGradient id="drSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#02030A"/><stop offset="1" stop-color="#16225E"/></linearGradient>
-      <radialGradient id="drFlood" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFF6DA"/><stop offset=".3" stop-color="rgba(255,240,200,.5)"/><stop offset="1" stop-color="rgba(255,240,200,0)"/></radialGradient>
-      <linearGradient id="drFade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(5,8,26,.75)"/><stop offset=".3" stop-color="rgba(5,8,26,0)"/></linearGradient>
-      <radialGradient id="drVig" cx=".5" cy=".6" r=".8"><stop offset=".6" stop-color="rgba(0,0,0,0)"/><stop offset="1" stop-color="rgba(0,0,0,.5)"/></radialGradient>
+  const P = pal(), edge = (o, y) => drX(o, y).toFixed(2);
+  // 양옆 접시콘 (드리블할 때는 잔디와 같이 흘러감)
+  const cones = Array.from({ length: 16 }, (_, i) => {
+    const fy = Math.floor(i / 2) * 15 - 10, y = drY(fy), out = y >= DRB.BOT + 2 || fy < -8;
+    return `<g class="drc" transform="${out ? "translate(-50,-50)" : `translate(${drX(i % 2 ? 2.85 : -0.85, y).toFixed(2)},${y.toFixed(2)}) scale(${(drS(y) * 1.05).toFixed(3)})`}">${discCone(i % 2 ? "#FFB020" : "#FF7A1F")}</g>`;
+  }).join("");
+  return `<svg viewBox="${DR_VB}" class="mg-svg mgd sch-${TOD}">
+    <defs>${COMMON_DEFS}${STADIUM_DEFS}${SCHOOL_DEFS()}
+      <radialGradient id="drVig" cx=".5" cy=".6" r=".8"><stop offset=".6" stop-color="rgba(0,0,0,0)"/><stop offset="1" stop-color="rgba(0,0,0,${P.vig})"/></radialGradient>
     </defs>
-    <rect width="160" height="${DRB.BOT}" fill="url(#drSky)"/>
-    <path d="M0 9 H160 V${DRB.HOR} H0 Z" fill="#0A1134"/>${crowd}
-    <rect x="0" y="${DRB.HOR - 10}" width="160" height="6" fill="url(#mgHaze)"/>
-    ${boards(DRB.HOR - 4, 4)}
-    ${floodBank(L1, 4.5, 10)}${floodBank(L2, 4.5, 10)}
-    <rect x="0" y="${DRB.HOR}" width="160" height="${DRB.BOT - DRB.HOR}" fill="url(#drGrass)"/>
-    <ellipse cx="80" cy="${DR_ME_Y.toFixed(1)}" rx="70" ry="${((DRB.BOT - DRB.HOR) * 0.45).toFixed(1)}" fill="url(#drPool)"/>
+    ${schoolBackdrop(0, 160, 0, DRB.HOR)}
+    <rect x="0" y="${DRB.HOR}" width="160" height="${DRB.BOT - DRB.HOR}" fill="url(#schGrass)"/><rect x="0" y="${DRB.HOR}" width="160" height="${DRB.BOT - DRB.HOR}" fill="url(#schTurf)"/>
+    <ellipse cx="80" cy="${DR_ME_Y.toFixed(1)}" rx="70" ry="${((DRB.BOT - DRB.HOR) * 0.45).toFixed(1)}" fill="url(#schPool)"/>
     <g id="drStripes"></g><g id="drSpeed"></g>
-    <g fill="none" stroke="rgba(255,255,255,.55)" stroke-width=".5">
-      <path d="M${edge(-0.5, DRB.HOR)} ${DRB.HOR} L${edge(-0.5, DRB.BOT)} ${DRB.BOT}"/><path d="M${edge(0.5, DRB.HOR)} ${DRB.HOR} L${edge(0.5, DRB.BOT)} ${DRB.BOT}" stroke-dasharray="2 2"/>
-      <path d="M${edge(1.5, DRB.HOR)} ${DRB.HOR} L${edge(1.5, DRB.BOT)} ${DRB.BOT}" stroke-dasharray="2 2"/><path d="M${edge(2.5, DRB.HOR)} ${DRB.HOR} L${edge(2.5, DRB.BOT)} ${DRB.BOT}"/>
+    <g fill="none" stroke="${P.line}" stroke-width=".45" opacity=".55">
+      <path d="M${edge(-0.5, DRB.HOR)} ${DRB.HOR} L${edge(-0.5, DRB.BOT)} ${DRB.BOT}"/><path d="M${edge(2.5, DRB.HOR)} ${DRB.HOR} L${edge(2.5, DRB.BOT)} ${DRB.BOT}"/>
+      <path d="M${edge(0.5, DRB.HOR)} ${DRB.HOR} L${edge(0.5, DRB.BOT)} ${DRB.BOT}" stroke-dasharray="1.6 2.4" opacity=".6"/><path d="M${edge(1.5, DRB.HOR)} ${DRB.HOR} L${edge(1.5, DRB.BOT)} ${DRB.BOT}" stroke-dasharray="1.6 2.4" opacity=".6"/>
     </g>
-    <g transform="translate(80,${DRB.HOR})"><path d="M-6 0 V-4.4 H6 V0" fill="none" stroke="#fff" stroke-width=".7"/><rect x="-6" y="-4.4" width="12" height="4.4" fill="rgba(255,255,255,.12)"/></g>
-    <rect x="0" y="${DRB.HOR}" width="160" height="30" fill="url(#drFade)"/>
+    <rect x="0" y="${DRB.HOR}" width="160" height="${tall ? 26 : 14}" fill="url(#schHaze)"/>
+    <g transform="translate(80,${DRB.HOR + 0.6})"><path d="M-5 0 V-3.6 H5 V0" fill="none" stroke="#fff" stroke-width=".55"/><rect x="-5" y="-3.6" width="10" height="3.6" fill="rgba(255,255,255,.18)"/><path d="M-5 -3.6 L-4 -2.4 H4 L5 -3.6" fill="none" stroke="rgba(255,255,255,.5)" stroke-width=".25"/></g>
+    <g id="drProps">${drAt(-1.05, -4, coachSVG())}${drAt(3.15, -6, ballBag())}${drAt(3.4, 2, `<rect x="-1" y="-3.2" width="1.2" height="3.2" rx=".4" fill="#4FB3E8"/><rect x=".6" y="-3" width="1.2" height="3" rx=".4" fill="#F05A5A"/>`)}</g>
+    <g id="drCones">${cones}</g>
     <g id="drBack"></g>
     <g id="drMe" transform="translate(80,${DR_ME_Y.toFixed(2)})"><g id="drLean">
       <g id="drBall" transform="translate(5,-1.2)"><ellipse id="drBallSh" cx="0" cy="1.4" rx="2" ry=".7" fill="rgba(0,0,0,.45)"/><g id="drBallB">${BALL(1.8)}</g></g>
@@ -14954,13 +15103,23 @@ function dribbleScene(tall = false) {
     <rect width="160" height="${DRB.BOT}" fill="url(#drVig)" pointer-events="none"/>
   </svg>`;
 }
+const drAt = (lp, fy, inner) => { const y = drY(fy); return `<g transform="translate(${drX(lp, y).toFixed(2)},${y.toFixed(2)}) scale(${(drS(y) * 1.05).toFixed(3)})">${inner}</g>`; };
+// 접시콘 위치: fy(깊이) 0~120을 일정 간격으로 (drift: 흘러간 거리)
+function drPlaceCones(g, drift = 0) {
+  [...g.children].forEach((c, i) => {
+    const k = Math.floor(i / 2), fy = ((k * 15 + drift) % 120) - 10, y = drY(fy);
+    if (y >= DRB.BOT + 2 || fy < -8) { c.setAttribute("transform", "translate(-50,-50)"); return; }
+    c.setAttribute("transform", `translate(${drX(i % 2 ? 2.85 : -0.85, y).toFixed(2)},${y.toFixed(2)}) scale(${(drS(y) * 1.05).toFixed(3)})`);
+  });
+}
 function dribble(area, status, ctl, e, done, lv = 1, tall = false) {
   const DURATION = 12000;
   const speed = (34 - e * 10) * [1, 1, 1.18, 1.3, 1.42][lv];   // 단계가 오를수록 수비가 빨라짐
   const gapMs = (820 - e * 220) * [1, 1, 0.9, 0.95, 0.88][lv];
   const pairP = [0, 0, 0, 0.3, 0.45][lv];                       // LV.3부터 두 명이 한꺼번에 막음
   area.innerHTML = `<div class="mgd-wrap" id="lanes">${dribbleScene(tall)}</div>
-    <div class="mg-hud"><span class="mg-timer"><i id="tbar"></i></span><span id="hits" class="num">부딪힘 0</span></div>`;
+    <div class="mg-hud"><span class="mg-timer"><i id="tbar"></i></span><span id="hits" class="num">건드림 0</span></div>`;
+  const conesG = area.querySelector("#drCones");
   ctl.innerHTML = `<button class="btn mg-dir" data-l>◀ 왼쪽</button><button class="btn mg-dir" data-r>오른쪽 ▶</button>`;
   const lanes = area.querySelector("#lanes"), tbar = area.querySelector("#tbar"), hitsEl = area.querySelector("#hits");
   const stripesG = area.querySelector("#drStripes"), backG = area.querySelector("#drBack"), frontG = area.querySelector("#drFront"), fxG = area.querySelector("#drFx");
@@ -15007,6 +15166,7 @@ function dribble(area, status, ctl, e, done, lv = 1, tall = false) {
       if (ya >= DRB.BOT) { pg.setAttribute("points", ""); return; }
       pg.setAttribute("points", `${drX(-1, ya).toFixed(1)},${ya.toFixed(1)} ${drX(3, ya).toFixed(1)},${ya.toFixed(1)} ${drX(3, yb).toFixed(1)},${yb.toFixed(1)} ${drX(-1, yb).toFixed(1)},${yb.toFixed(1)}`);
     });
+    drPlaceCones(conesG, (now - start) / 1000 * flow);
     // 양옆 속도선
     slines.forEach((ln, i) => {
       const a = ((i * 0.37 + phase * 2.2) % 1) * 120 - 10, ya = drY(a), yb = Math.min(DRB.BOT, drY(a + 7));
@@ -15022,7 +15182,7 @@ function dribble(area, status, ctl, e, done, lv = 1, tall = false) {
         const cone = ls.length === 1 && Math.random() < 0.25;
         const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
         g.setAttribute("class", "mgd-foe");
-        g.innerHTML = `<g class="mgd-foeB">${cone ? drCone() : drRunner(true)}</g>`;
+        g.innerHTML = `<g class="mgd-foeB">${cone ? drCone() : dummySVG()}</g>`;      // 훈련용 마네킹 또는 콘
         backG.insertBefore(g, backG.firstChild);                   // 새로 온 수비는 멀리 있으니 뒤에 그림
         foes.push({ el: g, body: g.firstChild, l, y: -10, hit: false, cone, ph: Math.random() * 6, front: false });
       }
@@ -15043,11 +15203,11 @@ function dribble(area, status, ctl, e, done, lv = 1, tall = false) {
       if (!f.hit && f.y > 74 && f.y < 92 && f.l === lane) {
         f.hit = true; hits++; stumble = 1;
         f.el.classList.add("hit");
-        if (!f.cone) f.body.setAttribute("transform", `translate(${f.l > lane ? -4 : 4},2) rotate(${f.l >= 1 ? -62 : 62})`);   // 태클
+        f.body.setAttribute("transform", f.cone ? `rotate(${px < drX(f.l, drY(f.y)) ? 78 : -78})` : `rotate(${f.l >= 1 ? -32 : 32})`);   // 마네킹은 기울고, 콘은 넘어짐
         lanes.classList.remove("shake"); void lanes.offsetWidth; lanes.classList.add("shake");
         dust(px, DR_ME_Y, 1.4);
-        burst(fxG, px, DR_ME_Y - 8, { n: 9, colors: ["#FFFFFF", "#FF3B4E", "#DDE3FF"], spread: 10, size: 1 });
-        hitsEl.textContent = `부딪힘 ${hits}`;
+        burst(fxG, px, DR_ME_Y - 8, { n: 9, colors: ["#FFFFFF", "#FFD53D", "#FF8A1F"], spread: 10, size: 1 });
+        hitsEl.textContent = `건드림 ${hits}`;
       }
     }
     foes = foes.filter(f => { if (f.y > 110) { f.el.remove(); return false; } return true; });
@@ -15306,7 +15466,9 @@ function dfBand(y0, y1, cls) {
 function defendScene(tall = false, good = 11, perfect = 4) {
   const svg = dribbleScene(tall);
   const zone = `<g id="dfZone">${dfBand(DF_C - good, DF_C + good, "df-good")}${dfBand(DF_C - perfect, DF_C + perfect, "df-perfect")}</g>`;
-  return svg.replace('<g id="drBack"></g>', `${zone}<g id="drBack"></g>`)
+  const props = `<g id="drProps">${drAt(-1.1, -5, coachSVG("ball"))}${drAt(-1.55, -9, ballBag())}${drAt(2.95, -9, drRunner(true, null, "bib"))}${drAt(3.4, -12, drRunner(true, null, "bib"))}
+    ${drAt(0.42, -4, drCone())}${drAt(1.58, -4, drCone())}${drAt(3.5, 3, `<rect x="-1" y="-3.2" width="1.2" height="3.2" rx=".4" fill="#4FB3E8"/><rect x=".6" y="-3" width="1.2" height="3" rx=".4" fill="#F05A5A"/>`)}</g>`;
+  return svg.replace(/<g id="drProps">[\s\S]*?<\/g>\s*<g id="drCones">/, `${props}<g id="drCones">`).replace('<g id="drBack"></g>', `${zone}<g id="drBack"></g>`)
     .replace(/<g id="drBall"[\s\S]*?<\/g><\/g>/, "");             // 내 공은 없음 (공은 공격수가 가짐)
 }
 function defend(area, status, ctl, e, done, lv = 1, tall = false) {
@@ -15335,7 +15497,7 @@ function defend(area, status, ctl, e, done, lv = 1, tall = false) {
   const spawn = () => {
     const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
     g.setAttribute("class", "mgd-foe df-atk");
-    g.innerHTML = `<g class="mgd-foeB">${drRunner(true)}<g class="df-ball" transform="translate(4.2,-1.4)"><ellipse cy="1.4" rx="2" ry=".7" fill="rgba(0,0,0,.45)"/><g class="df-ballB">${BALL(1.8)}</g></g></g>`;
+    g.innerHTML = `<g class="mgd-foeB">${drRunner(true, null, "bib")}<g class="df-ball" transform="translate(4.2,-1.4)"><ellipse cy="1.4" rx="2" ry=".7" fill="rgba(0,0,0,.45)"/><g class="df-ballB">${BALL(1.8)}</g></g></g>`;
     backG.appendChild(g);
     const feintAt = 30 + Math.random() * 16;
     atk = { el: g, body: g.firstChild, ball: g.querySelector(".df-ball"), ballB: g.querySelector(".df-ballB"), y: -8, lane: 1, vis: 1,
@@ -15457,16 +15619,18 @@ function spPose(ph) {
   };
   return { H, S, head, legA: leg(ph), legB: leg(ph + Math.PI), armA: arm(ph + Math.PI), armB: arm(ph) };
 }
-function spRunnerSVG(id, us) {
-  const shirt = us ? "url(#mgShirtO)" : "url(#mgShirtW)", shorts = us ? "url(#mgNavy)" : "url(#mgBlue)", sock = us ? "#FF6B1A" : "#F4F6FF";
+function spRunnerSVG(id, kind) {
+  // kind: "me" 주황 훈련복 / "bib"·"bib2" 주황 훈련복 위에 노랑·초록 조끼를 입은 동료
+  const us = kind === "me" || kind === true, bib = kind === "bib2" ? "url(#mgBib2)" : "url(#mgBib)";
+  const shirt = us ? "url(#mgShirtO)" : bib, edge = us ? "#B4430B" : kind === "bib2" ? "#1E8A55" : "#9EA514";
   return `<g id="${id}">
-    <ellipse class="sp-sh" cx="1" cy=".6" rx="7" ry="1.4" fill="rgba(0,0,0,.42)"/>
-    <path class="sp-armB" fill="${us ? "#C9520F" : "#AEB5CC"}"/><path class="sp-foreB" fill="#C98C66"/>
-    <path class="sp-thighB" fill="${us ? "#1A2470" : "#2638B8"}"/><path class="sp-shinB" fill="#C98C66"/><path class="sp-sockB" fill="${sock}" opacity=".85"/><path class="sp-shoeB" fill="#0E0F14"/>
-    <path class="sp-torso" fill="${shirt}" stroke="${us ? "#B4430B" : "#8E97B5"}" stroke-width=".3"/>
-    <path class="sp-shorts" fill="${shorts}"/>
-    <path class="sp-thighA" fill="${shorts}"/><path class="sp-shinA" fill="url(#mgSkin)"/><path class="sp-sockA" fill="${sock}"/><path class="sp-shoeA" fill="#111"/>
-    <path class="sp-armA" fill="${us ? "#F06318" : "#E9ECF6"}"/><path class="sp-foreA" fill="url(#mgSkin)"/>
+    <ellipse class="sp-sh" cx="1" cy=".6" rx="7" ry="1.4" fill="${pal().shadow}"/>
+    <path class="sp-armB" fill="#C9520F"/><path class="sp-foreB" fill="#C98C66"/>
+    <path class="sp-thighB" fill="#1A2470"/><path class="sp-shinB" fill="#C98C66"/><path class="sp-sockB" fill="#E8641A" opacity=".85"/><path class="sp-shoeB" fill="#0E0F14"/>
+    <path class="sp-torso" fill="${shirt}" stroke="${edge}" stroke-width=".3"/>
+    <path class="sp-shorts" fill="url(#mgNavy)"/>
+    <path class="sp-thighA" fill="url(#mgNavy)"/><path class="sp-shinA" fill="url(#mgSkin)"/><path class="sp-sockA" fill="#FF6B1A"/><path class="sp-shoeA" fill="#111"/>
+    <path class="sp-armA" fill="#F06318"/><path class="sp-foreA" fill="url(#mgSkin)"/>
     <circle class="sp-head" r="3.3" fill="url(#mgSkin)"/><path class="sp-hair" fill="#17171C"/>
     ${us ? `<text class="sp-tag" text-anchor="middle">나</text>` : ""}
   </g>`;
@@ -15491,41 +15655,40 @@ function spDraw(g, ph) {
   const tag = q(".sp-tag"); if (tag) { tag.setAttribute("x", hx.toFixed(1)); tag.setAttribute("y", (hy - 5.6).toFixed(1)); }
 }
 function sprintScene(tall = false) {
-  const top = tall ? -24 : 0;
-  const crowd = crowdRows(tall ? Array.from({ length: 7 }, (_, i) => -1 + i * 5.4) : [15, 20.4, 25.8, 31.2], 46, 3.6, 7);
-  let marks = "";
+  const top = tall ? -24 : 0, P = pal(), fx = SP_M * SP_PX;
+  // 잔디 깎은 줄무늬(5m마다)·거리 표시·접시콘 줄은 달리는 쪽(world)과 같이 움직임
+  let world = "";
+  for (let m = -15; m <= SP_M + 25; m += 5) {
+    const x = m * SP_PX;
+    world += `<path d="M${x} 42 h${5 * SP_PX} l-5.4 54 h${-5 * SP_PX} Z" fill="${(m / 5) % 2 ? "rgba(255,255,255,.055)" : "rgba(0,0,0,.045)"}"/>`;
+  }
   for (let m = 0; m <= SP_M + 10; m += 5) {
     const x = m * SP_PX;
-    marks += `<g transform="translate(${x},0)"><path d="M0 56 L-4 96" stroke="rgba(255,255,255,${m % 10 ? .25 : .5})" stroke-width="${m % 10 ? .4 : .7}"/>
-      ${m % 10 === 0 && m <= SP_M ? `<text x="-1.5" y="54.6" text-anchor="middle" class="sp-mark">${m}m</text>` : ""}</g>`;
+    if (m % 10 === 0 && m <= SP_M && m > 0) world += `<text x="${x - 1.2}" y="54.4" text-anchor="middle" class="sp-mark">${m}m</text>`;
+    [[56, .5], [69.5, .56], [83, .62]].forEach(([y, k], r) => {
+      world += `<g transform="translate(${(x - (y - 56) * 0.1).toFixed(1)},${y}) scale(${k})">${discCone(r === 1 ? "#FFB020" : "#FF7A1F")}</g>`;
+    });
   }
-  const fx = SP_M * SP_PX;
-  const checker = Array.from({ length: 10 }, (_, i) => `<path d="M${fx - i * 0.4 + (i % 2) * 0} ${56 + i * 4} l1.6 0 l-.4 4 l-1.6 0 z" fill="${i % 2 ? "#fff" : "#111"}"/><path d="M${fx + 1.6 - i * 0.4} ${56 + i * 4} l1.6 0 l-.4 4 l-1.6 0 z" fill="${i % 2 ? "#111" : "#fff"}"/>`).join("");
-  return `<svg viewBox="${tall ? "16 -24 128 120" : "0 0 160 96"}" class="mg-svg mgs">
-    <defs>${COMMON_DEFS}${STADIUM_DEFS}
-      <linearGradient id="spSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#02030A"/><stop offset="1" stop-color="#18235E"/></linearGradient>
-      <linearGradient id="spTrack" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8E3420"/><stop offset=".4" stop-color="#B4452A"/><stop offset="1" stop-color="#C9532F"/></linearGradient>
-      <radialGradient id="spPool" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="rgba(255,248,215,.22)"/><stop offset="1" stop-color="rgba(255,248,215,0)"/></radialGradient>
-      <radialGradient id="spVig" cx=".5" cy=".55" r=".75"><stop offset=".55" stop-color="rgba(0,0,0,0)"/><stop offset="1" stop-color="rgba(0,0,0,.55)"/></radialGradient>
-      <pattern id="spGrain" width="3" height="3" patternUnits="userSpaceOnUse"><circle cx=".7" cy=".9" r=".18" fill="rgba(0,0,0,.18)"/><circle cx="2.2" cy="2.1" r=".15" fill="rgba(255,255,255,.07)"/></pattern>
+  // 출발선·도착선 (석회 선), 큰 콘, 도착선 뒤 스톱워치 든 코치, 출발선 옆 공 주머니·물병
+  const chalk = x => `<path d="M${x} 56 L${x - 4} 96" stroke="rgba(255,255,255,.85)" stroke-width=".7"/>`;
+  world += chalk(0) + `<g transform="translate(0,56) scale(.5)">${drCone()}</g><g transform="translate(-3.6,95) scale(.68)">${drCone()}</g>`;
+  world += `<g id="spTape">${chalk(fx)}</g><g transform="translate(${fx},56) scale(.5)">${drCone()}</g><g transform="translate(${fx - 3.6},95) scale(.68)">${drCone()}</g>`;
+  world += `<g transform="translate(${fx + 9},53.6) scale(.5)">${coachSVG("watch")}</g>`;
+  world += `<g transform="translate(-22,53.6) scale(.5)">${ballBag()}</g><g transform="translate(-13,53.8) scale(.5)"><rect x="-1" y="-3.2" width="1.2" height="3.2" rx=".4" fill="#4FB3E8"/><rect x=".6" y="-3" width="1.2" height="3" rx=".4" fill="#F05A5A"/></g>`;
+  return `<svg viewBox="${tall ? "16 -24 128 120" : "0 0 160 96"}" class="mg-svg mgs sch-${TOD}">
+    <defs>${COMMON_DEFS}${STADIUM_DEFS}${SCHOOL_DEFS()}
+      <radialGradient id="spVig" cx=".5" cy=".55" r=".75"><stop offset=".55" stop-color="rgba(0,0,0,0)"/><stop offset="1" stop-color="rgba(0,0,0,${P.vig})"/></radialGradient>
     </defs>
-    <rect y="${top}" width="160" height="${96 - top}" fill="url(#spSky)"/>
-    <path d="M-10 ${top} H170 V${top + 4} Q80 ${top + 7} -10 ${top + 4} Z" fill="#05081A"/>
-    ${floodBank(tall ? 34 : 24, top + 6, 11)}${floodBank(tall ? 126 : 136, top + 6, 11)}
-    <path d="M0 ${tall ? -6 : 11} H160 V36 H0 Z" fill="#0A1134"/>${crowd}
-    <rect x="0" y="26" width="160" height="10" fill="url(#mgHaze)"/>
-    ${boards(36, 6)}
-    <rect x="0" y="42" width="160" height="14" fill="#187A41"/><rect x="0" y="42" width="160" height="14" fill="url(#spPool)"/>
-    <rect x="0" y="55" width="160" height="41" fill="url(#spTrack)"/><rect x="0" y="55" width="160" height="41" fill="url(#spGrain)"/>
-    <g stroke="rgba(255,255,255,.75)" stroke-width=".5"><path d="M0 56 H160"/><path d="M0 69.5 H160"/><path d="M0 83 H160"/><path d="M0 95.6 H160"/></g>
-    <ellipse cx="60" cy="78" rx="80" ry="22" fill="url(#spPool)"/>
-    <g id="spWorld">${marks}${checker}
-      <g id="spTape"><path d="M${fx + 1.5} 57 Q${fx + 2.5} 76 ${fx + 1.5} 95" stroke="#FFC93C" stroke-width=".7" fill="none"/></g>
-    </g>
+    ${schoolBackdrop(0, 160, top, 42)}
+    <rect x="0" y="42" width="160" height="54" fill="url(#schGrass)"/><rect x="0" y="42" width="160" height="54" fill="url(#schTurf)"/>
+    <rect x="0" y="42" width="160" height="7" fill="url(#schHaze)"/>
+    <ellipse cx="70" cy="78" rx="85" ry="24" fill="url(#schPool)"/>
+    <g stroke="${P.line}" stroke-width=".4" opacity=".55"><path d="M0 56 H160"/><path d="M0 69.5 H160" stroke-dasharray="2 2.6"/><path d="M0 83 H160" stroke-dasharray="2 2.6"/></g>
+    <g id="spWorld">${world}</g>
     <g id="spSpeed"></g>
-    <g transform="translate(0,${SP_LANES[0].y}) scale(${SP_LANES[0].k})"><g id="spR1">${spRunnerSVG("spR1b", false)}</g></g>
-    <g transform="translate(0,${SP_LANES[1].y}) scale(${SP_LANES[1].k})"><g id="spMe">${spRunnerSVG("spMeb", true)}</g></g>
-    <g transform="translate(0,${SP_LANES[2].y}) scale(${SP_LANES[2].k})"><g id="spR2">${spRunnerSVG("spR2b", false)}</g></g>
+    <g transform="translate(0,${SP_LANES[0].y}) scale(${SP_LANES[0].k})"><g id="spR1">${spRunnerSVG("spR1b", "bib")}</g></g>
+    <g transform="translate(0,${SP_LANES[1].y}) scale(${SP_LANES[1].k})"><g id="spMe">${spRunnerSVG("spMeb", "me")}</g></g>
+    <g transform="translate(0,${SP_LANES[2].y}) scale(${SP_LANES[2].k})"><g id="spR2">${spRunnerSVG("spR2b", "bib2")}</g></g>
     <g id="spFx"></g>
     <text id="spCount" x="80" y="${tall ? 24 : 40}" text-anchor="middle" class="sp-count"></text>
     <rect y="${top}" width="160" height="${96 - top}" fill="url(#spVig)" pointer-events="none"/>
@@ -15571,7 +15734,7 @@ function sprint(area, status, ctl, e, done, lv = 1, tall = false) {
   const vFor = tf => SP_M / (tf - TAU * (1 - Math.exp(-tf / TAU)));
   const rivals = [{ g: r1, b: r1B, tf: T0 * 1.05, k: SP_LANES[0].k }, { g: r2, b: r2B, tf: T0 * 1.15, k: SP_LANES[2].k }].map(r => ({ ...r, v: vFor(r.tf) }));
   const rPos = (r, t) => Math.min(SP_M + 6, r.v * (t - TAU * (1 - Math.exp(-t / TAU))));
-  const t0 = performance.now(), goAt = 1.3 + Math.random() * 0.9;   // SET 뒤 GO까지 걸리는 시간은 매번 다름
+  const t0 = performance.now(), goAt = 1.3 + Math.random() * 0.9;   // "준비" 뒤 호루라기까지 걸리는 시간은 매번 다름
   let goT = 0, started = false, falseStart = 0, holding = false, g = 0, pos = 0, v = 0, cramp = 0, raf, last = t0, finishT = null, ended = false, ph = Math.random() * 6;
   const say = (html) => { status.innerHTML = html; };
   const press = () => {
@@ -15603,9 +15766,9 @@ function sprint(area, status, ctl, e, done, lv = 1, tall = false) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     const k = (now - t0) / 1000;
     if (!goT) {
-      const txt = k < 0.7 ? "READY" : k < goAt ? "SET" : "GO!";
-      if (count.textContent !== txt) { count.textContent = txt; count.setAttribute("class", `sp-count show ${txt === "GO!" ? "go" : ""}`); }
-      if (k >= goAt) { goT = now; btn.textContent = "누르고 있으면 힘을 낸다"; setTimeout(() => count.setAttribute("class", "sp-count"), 500); if (holding) press(); }
+      const txt = k < 0.7 ? "준비" : k < goAt ? "…" : "삑!";
+      if (count.textContent !== txt) { count.textContent = txt; count.setAttribute("class", `sp-count show ${txt === "삑!" ? "go" : ""}`); }
+      if (k >= goAt) { goT = now; sfx.play("kickoff"); btn.textContent = "누르고 있으면 힘을 낸다"; setTimeout(() => count.setAttribute("class", "sp-count"), 500); if (holding) press(); }
     }
     const t = goT ? (now - goT) / 1000 + falseStart : 0;
     if (goT && !started && t - falseStart > 1) { started = true; say(`<b class="down">출발이 늦었다…</b>`); }
