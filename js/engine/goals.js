@@ -110,7 +110,8 @@ export function fixedGoalEvent(state, info) {
     jc.homeMail = true;
     mail(state, "coach", "고흥에서", pick(JN_TALK.homeCoach).replace(/ — 김 감독$/, "") + "\n\n고흥 애들 다 텔레비전 앞에 있을 거다.");
   }
-  if ((at(4, 1) || at(4, 2)) && !G.done.jn && !(G.jnCalled?.[info.grade])) {
+  // 중2 때 뽑혔어도 중3 선발전에 다시 부름 (소년체전 중등부의 중심은 중3). 기준은 학년마다 JN_NEED
+  if ((at(4, 1) || at(4, 2)) && !(G.jnCalled?.[info.grade])) {
     if (jnScore(state) >= JN_NEED[info.grade] - JN_CALL) return "goal_jn_call";
     if (G.main === "jn" && !(G.jnMissed?.[info.grade])) {
       (G.jnMissed ||= {})[info.grade] = true;

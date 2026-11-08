@@ -1549,6 +1549,9 @@ const YEAR_OFF = { "3학년선배": 2, "2학년선배": 1, "동기": 0, "1년후
 // 다른 학교 맞수가 전남 팀이면 같은 편으로 들어옴
 function startJnCup(state) {
   const p = state.player, g = state.calendar.grade;
+  // 중3 두 번째 소집: 작년 대회 기록은 jnHistory로 옮겨 둠 (명예의 전당·업적은 둘 다 봄). 작년 동료 이름은 다시 뽑히면 again 표시
+  const prev = state.jnCup && state.jnCup.grade !== g ? state.jnCup : null;
+  if (prev) (state.jnHistory ||= []).push({ grade: prev.grade, medal: prev.medal || null, mates: (prev.squad || []).map(x => x.name) });
   const used = new Set([p.name, ...state.team.roster.map(m => m.name)]);
   const name = () => { let n; do { n = weighted(SURNAMES) + pick(GIVEN_NAMES); } while (used.has(n)); used.add(n); return n; };
   const nums = shuffle([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20].filter(n => n !== p.number));
@@ -1565,7 +1568,7 @@ function startJnCup(state) {
       if (squad.filter(x => x.pos === pos).length >= want - 1) break;           // 한 자리는 새 얼굴로 (명단이 늘 같은 이름만 되지 않게)
       if (used.has(s.name) || (teamsUsed[s.team] || 0) >= 1 && !s.nemesis) continue;   // 한 팀에서 포지션마다 한 명
       used.add(s.name); teamsUsed[s.team] = (teamsUsed[s.team] || 0) + 1;
-      squad.push({ name: s.name, number: nums.shift(), pos, school: s.team, ...(s.nemesis ? { nemesis: true } : {}) });
+      squad.push({ name: s.name, number: nums.shift(), pos, school: s.team, ...(s.nemesis ? { nemesis: true } : {}), ...(prev?.squad?.some(x => x.name === s.name) ? { again: true } : {}) });
     }
     while (squad.filter(x => x.pos === pos).length < want) squad.push({ name: name(), number: nums.shift(), pos, school: pick(JN_TEAMS) });
   }
@@ -1615,7 +1618,14 @@ function jnAfter(state, fx, gf, ga, shootoutWin, rating) {
   return notes;
 }
 
-return { JN_WEEK, JN_ROUNDS, JN_NAME, PROVINCES, JN_STAFF, JN_TEAMS, shortSchool, startJnCup, jnFixture, jnAfter };
+// 이번까지 전남 대표로 뽑힌 횟수, 가장 좋은 메달 (명예의 전당·업적)
+const MEDAL_RANK = { gold: 3, silver: 2, bronze: 1 };
+function jnTimes(state) { return (state.jnHistory || []).length + (state.jnCup ? 1 : 0); }
+function bestJnMedal(state) {
+  return [...(state.jnHistory || []).map(h => h.medal), state.jnCup?.medal].filter(m => MEDAL_RANK[m]).sort((a, b) => MEDAL_RANK[b] - MEDAL_RANK[a])[0] || null;
+}
+
+return { JN_WEEK, JN_ROUNDS, JN_NAME, PROVINCES, JN_STAFF, JN_TEAMS, shortSchool, startJnCup, jnFixture, jnAfter, jnTimes, bestJnMedal };
 })();
 (__fix["js/engine/jn.js"] || []).forEach(f => f());
 
@@ -3953,7 +3963,10 @@ const JN_TALK = {
     { who: "coach", text: "상대 왼쪽 풀백이 자꾸 올라온다. 그 뒤가 우리 거다. 뺏으면 바로 그쪽으로 넘겨라.", tag: "pass" },
     { who: "assistant", text: "시·도 대표는 첫 10분에 몸으로 밀어 본다. 첫 부딪힘에서 물러서면 경기 내내 밀린다.", tag: "physical" },
     { who: "assistant", text: "하루 걸러 한 경기다. 오늘 다리 다 쓰면 모레가 없다. 뛸 땐 뛰고, 쉴 땐 확실히 서 있어라.", tag: "safe" },
-    { who: "coach", text: "번호 말고 이름 부른다. 고흥, 네 이름 뭐였지. …그래. 오늘 왼쪽은 네가 책임진다.", tag: null },
+    { who: "coach", text: "번호 말고 이름 부른다. 고흥, 네 이름 뭐였지. …그래. 오늘 왼쪽은 네가 책임진다.", tag: null, first: true },
+    // 두 번째 소년체전(중3)일 때만
+    { who: "coach", text: "작년에 뛴 애들은 알 거다. 소년체전은 첫 경기가 제일 무겁다. 오늘은 너희가 앞에서 끌어라.", tag: null, again: true },
+    { who: "assistant", text: "작년 그 경기장이다. 잔디 길이도 똑같다. 낯설다는 핑계는 이제 없다.", tag: "safe", again: true },
   ],
   team: {
     winning: ["앞서고 있다고 학교 축구로 돌아가지 마라. 지금처럼 짧게, 빠르게.", "잘하고 있다. 근데 상대 감독이 후반에 뭘 바꿀지 벌써 보인다. 준비해."],
@@ -7212,7 +7225,8 @@ function pickTalk(state, fx, status, star) {
     if (star >= 1) keys.push("star");
   }
   if (!keys.length) return null;
-  if (fx.jn && status === "start") return pick(JN_TALK.start.filter(t => !t.tag || tagFit(p.position, t.tag) >= 0.18));
+  if (fx.jn && status === "start") { const twice = (state.jnHistory || []).length > 0;
+    return pick(JN_TALK.start.filter(t => (!t.tag || tagFit(p.position, t.tag) >= 0.18) && !(t.first && twice) && !(t.again && !twice))); }
   if (status === "start" && !(state.record.starts > 0))
     return { who: "coach", text: "첫 선발이다. 떨리는 거 안다. 첫 패스 하나만 정확하게 해라. 나머지는 몸이 알아서 한다.", tag: tagFit(p.position, "pass") >= 0.18 ? "pass" : "safe" };
   // 내 포지션에서 실제로 따를 수 있는 지시만 (공격수에게 '수비 먼저' 같은 지시가 가지 않게)
@@ -9794,7 +9808,8 @@ function fixedGoalEvent(state, info) {
     jc.homeMail = true;
     mail(state, "coach", "고흥에서", pick(JN_TALK.homeCoach).replace(/ — 김 감독$/, "") + "\n\n고흥 애들 다 텔레비전 앞에 있을 거다.");
   }
-  if ((at(4, 1) || at(4, 2)) && !G.done.jn && !(G.jnCalled?.[info.grade])) {
+  // 중2 때 뽑혔어도 중3 선발전에 다시 부름 (소년체전 중등부의 중심은 중3). 기준은 학년마다 JN_NEED
+  if ((at(4, 1) || at(4, 2)) && !(G.jnCalled?.[info.grade])) {
     if (jnScore(state) >= JN_NEED[info.grade] - JN_CALL) return "goal_jn_call";
     if (G.main === "jn" && !(G.jnMissed?.[info.grade])) {
       (G.jnMissed ||= {})[info.grade] = true;
@@ -10540,7 +10555,7 @@ const EVENTS_MORE = [
     })),
   },
   { id: "goal_jn_call", bg: "ev_selection", fixed: true, who: "coach",
-    text: s => `전남 대표 선발전 명단이 나왔다. 네 이름이 있다. ${s.calendar.grade === 3 ? (goalsOf(s).jnCalled?.[2] ? "작년에 한 번 와 본 자리다. 이번엔 붙어야지." : "3학년이 돼서 처음 불렸다. 늦었다고 생각하지 마라.") : "2학년은 몇 명 없다."} 다음 주에 목포에서 테스트다. 어떻게 준비할 거냐.`,
+    text: s => `전남 대표 선발전 명단이 나왔다. 네 이름이 있다. ${s.calendar.grade === 3 ? (s.jnCup?.grade === 2 ? "작년에 전남 마크 달았다고 자리가 정해진 건 아니다. 3학년 선발전은 훨씬 세다. 처음 온 놈처럼 해라." : goalsOf(s).jnCalled?.[2] ? "작년에 한 번 와 본 자리다. 이번엔 붙어야지." : "3학년이 돼서 처음 불렸다. 늦었다고 생각하지 마라.") : "2학년은 몇 명 없다."} 다음 주에 목포에서 테스트다. 어떻게 준비할 거냐.`,
     choices: [
       { label: "남은 일주일, 개인 훈련을 더 한다", fx: { fatigue: 6, s: { "position": 0.3 } }, act: s => { const G = goalsOf(s); (G.jnCalled ||= {})[s.calendar.grade] = true; s.flags.jnBoost = (s.flags.jnBoost || 0) + 2; },
         result: "\"좋다. 대신 테스트 전날엔 쉬어라. 다리가 무거우면 보여 줄 것도 못 보여 준다.\"" },
@@ -10551,7 +10566,8 @@ const EVENTS_MORE = [
     ] },
   { id: "goal_jn_result", bg: "ev_office", fixed: true, who: "coach",
     text: s => goalsOf(s).jnOutcome
-      ? "전남 대표 명단이 발표됐다. …축하한다. 네 이름이 있다. 5월 전국소년체전에 전라남도 마크를 달고 나간다."
+      ? (s.jnCup?.grade === 2 && s.calendar.grade === 3 ? `전남 대표 명단이 발표됐다. 올해도 네 이름이 있다. 두 번째 전라남도 마크다. ${s.jnCup?.medal === "gold" ? "작년 금메달은 작년 거다. 올해 것도 가져와라." : "작년에 못 한 걸 이번엔 해 와라."}`
+        : "전남 대표 명단이 발표됐다. …축하한다. 네 이름이 있다. 5월 전국소년체전에 전라남도 마크를 달고 나간다.")
       : `전남 대표 명단이 발표됐다. 네 이름은… 없다. ${s.calendar.grade === 2 ? "내년에 한 번 더 기회가 있다." : "아쉽다. 여기서 끝이 아니다."}`,
     choices: [
       { label: "고개 숙여 인사한다", fx: { morale: 2 },
@@ -10772,11 +10788,17 @@ const EVENTS_STORY = [
     ] },
 
   // ── 전남 대표 소년체전 ─────────────────────────
-  { id: "jn_camp", once: true, bg: "ev_jn_camp", who: "narr",
+  // once 대신 그해 5월 2주에만 (중2·중3 두 번 뽑히면 두 번 나옴)
+  { id: "jn_camp", bg: "ev_jn_camp", who: "narr",
     trigger: s => { const c = s.jnCup, i = turnInfo(s); return !!c && c.alive && c.stage === 0 && i?.grade === c.grade && i.month === 5 && i.week === 2 && !s.player.condition.injury; },
     // 전남 대표 동료는 도내 각 팀 에이스 (js/engine/jn.js). 다른 학교 맞수가 전남 팀이면 같은 방에 있음
     text: s => {
       const c = s.jnCup, nem = c?.squad?.find(x => x.nemesis), two = (c?.squad || []).filter(x => x.school && !x.nemesis).slice(0, 2);
+      const last = (s.jnHistory || []).find(h => h.grade === c.grade - 1), again = (c?.squad || []).find(x => x.again && !x.nemesis);
+      if (last) return `두 번째 소년체전 소집. 같은 숙소, 같은 강당인데 이번엔 낯설지 않다.${again ? ` 작년에 같은 방을 쓴 ${shortSchool(again.school)}의 ${again.name}|이/가} 멀리서 손을 흔든다.` : ""}`.replace(/(.)\|이\/가\}/, (m0, ch) => { const k = ch.charCodeAt(0) - 0xAC00; return ch + (k >= 0 && k <= 11171 && k % 28 ? "이" : "가"); })
+        + (nem ? `\n\n맨 뒷줄엔 올해도 ${shortSchool(nem.school)}의 ${nem.name}. 이번엔 눈이 마주치자 먼저 턱을 들어 인사한다.` : "")
+        + `\n\n${JN_STAFF.coach}님이 명단을 훑다가 멈췄다. "고흥. 이번엔 번호 말고 이름으로 부른다. {given}, 올해는 네가 애들 끌고 가라."`
+        + (last.medal === "gold" ? " 작년 금메달 얘기는 아무도 꺼내지 않았다. 다들 알고 있으니까." : last.medal ? "" : " 작년 1회전 탈락. 그 얘기를 먼저 꺼낸 건 감독님이었다. \"작년은 작년이다.\"");
       return `전국소년체전 소집 첫날, 숙소 강당. 리그에서 상대 팀 유니폼으로만 보던 얼굴들이 전남 트레이닝복을 입고 서로 눈치만 본다.${two.length === 2 ? ` ${shortSchool(two[0].school)}의 ${two[0].name}, ${shortSchool(two[1].school)}의 ${two[1].name}…` : ""}`
         + (nem ? `\n\n그리고 맨 뒷줄, ${shortSchool(nem.school)}의 ${nem.name}. 눈이 마주쳤다. 둘 다 먼저 고개를 돌렸다. 이번 주는 저 녀석이 같은 편이다.` : "")
         + `\n\n${JN_STAFF.coachFrom}에서 온 ${JN_STAFF.coach}님이 화이트보드 앞에 섰다. 말이 짧다. "학교는 잊어라. 이번 주는 전부 전남이다. 내일까지 옆 사람 이름 다 외워 와라."`;
@@ -10792,7 +10814,7 @@ const EVENTS_STORY = [
       { label: "부모님께 \"잘 도착했어요\" 하고 문자한다", fx: { morale: 4 },
         result: "엄마 답장이 1초 만에 왔다. '밥 많이 먹고잉. 텔레비전 나오면 손 흔들어 📺'" },
     ] },
-  { id: "jn_return", once: true, bg: s => (s.jnCup?.medal === "gold" ? "ev_medal" : "ev_bus_sunset"), who: "narr",
+  { id: "jn_return", bg: s => (s.jnCup?.medal === "gold" ? "ev_medal" : "ev_bus_sunset"), who: "narr",
     trigger: s => { const c = s.jnCup, i = turnInfo(s); return !!c && i?.grade === c.grade && i.month === 5 && i.week === 3; },
     text: s => {
       const c = s.jnCup, m = c.medal;
@@ -17469,7 +17491,7 @@ const ACHIEVEMENTS = [
   { id: "league_title", icon: "🏆", label: "주말리그 우승", desc: "주말리그 1위", check: s => s.record.titles.some(t => t.name.includes("주말리그")) },
   { id: "national_title", icon: "🏆", label: "전국 제패", desc: "전국대회 우승", check: s => !!s.flags.nationalChampion },
   { id: "jn_selected", icon: "🎽", label: "전남 대표", desc: "전남 대표로 뽑힌다", check: s => !!s.flags.jnSelected },
-  { id: "jn_gold", icon: "🥇", label: "소년체전 금메달", desc: "전남 대표로 금메달", check: s => s.jnCup?.medal === "gold" },
+  { id: "jn_gold", icon: "🥇", label: "소년체전 금메달", desc: "전남 대표로 금메달", check: s => s.jnCup?.medal === "gold" || (s.jnHistory || []).some(h => h.medal === "gold") },
   { id: "national_team", icon: "🇰🇷", label: "태극마크", desc: "청소년 국가대표", check: s => !!s.flags.nationalTeam },
   // ── 성장 ──
   { id: "captain", icon: "Ⓒ", label: "주장", desc: "주장 완장을 찬다", check: s => !!s.flags.captain },
@@ -17506,12 +17528,14 @@ return { ACHIEVEMENTS, newAchievements };
 __m["js/ui/hall.js"] = (function () {
 const {GRADE_INFO} = __m["data/endings.js"];
 const {ACHIEVEMENTS, newAchievements} = __m["js/engine/achievements.js"];
+const {bestJnMedal, jnTimes} = __m["js/engine/jn.js"];
 const {seenEndings} = __m["js/engine/career.js"];
 const {openModal} = __m["js/ui/modals.js"];
 const {esc, img, faceOf} = __m["js/ui/util.js"];
 const {sfx} = __m["js/ui/sfx.js"];
 const {ukey} = __m["js/userkey.js"];
 // 기록실: 끝낸 판의 선수 카드와 업적 (이 기기·브라우저에 남음)
+
 
 
 
@@ -17537,7 +17561,7 @@ function addHallCard(state, ending, c) {
     name: p.name, position: p.position, face: faceOf(p, 3), numbers: p.numberHistory?.map(h => h.number) || [p.number],
     ending: ending.id, endingTitle: ending.title, grade: ending.grade,
     apps: r.apps, goals: r.goals, assists: r.assists, rating: rated.length ? Math.round(rated.reduce((a, b) => a + b, 0) / rated.length * 100) / 100 : null,
-    school: c.schoolName, captain: !!state.flags.captain, medal: state.jnCup?.medal || null, nt: !!state.flags.nationalTeam,
+    school: c.schoolName, captain: !!state.flags.captain, medal: bestJnMedal(state), jnTimes: jnTimes(state) || 0, nt: !!state.flags.nationalTeam,
     titles: r.titles.length, ovr: c.ovr,
   });
   write(HALL, hall.slice(0, 60));
@@ -17563,7 +17587,7 @@ function hallModal() {
   let tab = "hall";
   const cards = () => hall.length ? `<div class="hall-list">${hall.map(h => {
     const g = GRADE_INFO[h.grade] || {};
-    const tags = [h.captain ? "Ⓒ 주장" : null, MEDAL[h.medal], h.nt ? "🇰🇷 국가대표" : null, h.titles ? `🏆 우승 ${h.titles}` : null].filter(Boolean);
+    const tags = [h.captain ? "Ⓒ 주장" : null, h.jnTimes >= 2 ? `🎽 전남 대표 ${h.jnTimes}회` : null, MEDAL[h.medal], h.nt ? "🇰🇷 국가대표" : null, h.titles ? `🏆 우승 ${h.titles}` : null].filter(Boolean);
     return `<article class="hall-card">
       <div class="hc-face">${img(h.face, h.name)}</div>
       <div class="hc-body">

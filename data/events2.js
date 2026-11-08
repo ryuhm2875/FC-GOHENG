@@ -709,7 +709,7 @@ export const EVENTS_MORE = [
     })),
   },
   { id: "goal_jn_call", bg: "ev_selection", fixed: true, who: "coach",
-    text: s => `전남 대표 선발전 명단이 나왔다. 네 이름이 있다. ${s.calendar.grade === 3 ? (goalsOf(s).jnCalled?.[2] ? "작년에 한 번 와 본 자리다. 이번엔 붙어야지." : "3학년이 돼서 처음 불렸다. 늦었다고 생각하지 마라.") : "2학년은 몇 명 없다."} 다음 주에 목포에서 테스트다. 어떻게 준비할 거냐.`,
+    text: s => `전남 대표 선발전 명단이 나왔다. 네 이름이 있다. ${s.calendar.grade === 3 ? (s.jnCup?.grade === 2 ? "작년에 전남 마크 달았다고 자리가 정해진 건 아니다. 3학년 선발전은 훨씬 세다. 처음 온 놈처럼 해라." : goalsOf(s).jnCalled?.[2] ? "작년에 한 번 와 본 자리다. 이번엔 붙어야지." : "3학년이 돼서 처음 불렸다. 늦었다고 생각하지 마라.") : "2학년은 몇 명 없다."} 다음 주에 목포에서 테스트다. 어떻게 준비할 거냐.`,
     choices: [
       { label: "남은 일주일, 개인 훈련을 더 한다", fx: { fatigue: 6, s: { "position": 0.3 } }, act: s => { const G = goalsOf(s); (G.jnCalled ||= {})[s.calendar.grade] = true; s.flags.jnBoost = (s.flags.jnBoost || 0) + 2; },
         result: "\"좋다. 대신 테스트 전날엔 쉬어라. 다리가 무거우면 보여 줄 것도 못 보여 준다.\"" },
@@ -720,7 +720,8 @@ export const EVENTS_MORE = [
     ] },
   { id: "goal_jn_result", bg: "ev_office", fixed: true, who: "coach",
     text: s => goalsOf(s).jnOutcome
-      ? "전남 대표 명단이 발표됐다. …축하한다. 네 이름이 있다. 5월 전국소년체전에 전라남도 마크를 달고 나간다."
+      ? (s.jnCup?.grade === 2 && s.calendar.grade === 3 ? `전남 대표 명단이 발표됐다. 올해도 네 이름이 있다. 두 번째 전라남도 마크다. ${s.jnCup?.medal === "gold" ? "작년 금메달은 작년 거다. 올해 것도 가져와라." : "작년에 못 한 걸 이번엔 해 와라."}`
+        : "전남 대표 명단이 발표됐다. …축하한다. 네 이름이 있다. 5월 전국소년체전에 전라남도 마크를 달고 나간다.")
       : `전남 대표 명단이 발표됐다. 네 이름은… 없다. ${s.calendar.grade === 2 ? "내년에 한 번 더 기회가 있다." : "아쉽다. 여기서 끝이 아니다."}`,
     choices: [
       { label: "고개 숙여 인사한다", fx: { morale: 2 },

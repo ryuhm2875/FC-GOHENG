@@ -22,7 +22,7 @@ export const ACHIEVEMENTS = [
   { id: "league_title", icon: "🏆", label: "주말리그 우승", desc: "주말리그 1위", check: s => s.record.titles.some(t => t.name.includes("주말리그")) },
   { id: "national_title", icon: "🏆", label: "전국 제패", desc: "전국대회 우승", check: s => !!s.flags.nationalChampion },
   { id: "jn_selected", icon: "🎽", label: "전남 대표", desc: "전남 대표로 뽑힌다", check: s => !!s.flags.jnSelected },
-  { id: "jn_gold", icon: "🥇", label: "소년체전 금메달", desc: "전남 대표로 금메달", check: s => s.jnCup?.medal === "gold" },
+  { id: "jn_gold", icon: "🥇", label: "소년체전 금메달", desc: "전남 대표로 금메달", check: s => s.jnCup?.medal === "gold" || (s.jnHistory || []).some(h => h.medal === "gold") },
   { id: "national_team", icon: "🇰🇷", label: "태극마크", desc: "청소년 국가대표", check: s => !!s.flags.nationalTeam },
   // ── 성장 ──
   { id: "captain", icon: "Ⓒ", label: "주장", desc: "주장 완장을 찬다", check: s => !!s.flags.captain },

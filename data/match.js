@@ -1998,7 +1998,10 @@ export const JN_TALK = {
     { who: "coach", text: "상대 왼쪽 풀백이 자꾸 올라온다. 그 뒤가 우리 거다. 뺏으면 바로 그쪽으로 넘겨라.", tag: "pass" },
     { who: "assistant", text: "시·도 대표는 첫 10분에 몸으로 밀어 본다. 첫 부딪힘에서 물러서면 경기 내내 밀린다.", tag: "physical" },
     { who: "assistant", text: "하루 걸러 한 경기다. 오늘 다리 다 쓰면 모레가 없다. 뛸 땐 뛰고, 쉴 땐 확실히 서 있어라.", tag: "safe" },
-    { who: "coach", text: "번호 말고 이름 부른다. 고흥, 네 이름 뭐였지. …그래. 오늘 왼쪽은 네가 책임진다.", tag: null },
+    { who: "coach", text: "번호 말고 이름 부른다. 고흥, 네 이름 뭐였지. …그래. 오늘 왼쪽은 네가 책임진다.", tag: null, first: true },
+    // 두 번째 소년체전(중3)일 때만
+    { who: "coach", text: "작년에 뛴 애들은 알 거다. 소년체전은 첫 경기가 제일 무겁다. 오늘은 너희가 앞에서 끌어라.", tag: null, again: true },
+    { who: "assistant", text: "작년 그 경기장이다. 잔디 길이도 똑같다. 낯설다는 핑계는 이제 없다.", tag: "safe", again: true },
   ],
   team: {
     winning: ["앞서고 있다고 학교 축구로 돌아가지 마라. 지금처럼 짧게, 빠르게.", "잘하고 있다. 근데 상대 감독이 후반에 뭘 바꿀지 벌써 보인다. 준비해."],
