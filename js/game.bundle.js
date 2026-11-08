@@ -9966,7 +9966,7 @@ const EVENTS_MORE = [
       { label: "엄마에게 전화한다", fx: { s: { "student.attitude": -0.3 } },
         result: "엄마 차를 타고 겨우 도착했다. '오늘 저녁에 바퀴 때우고 와' 하는 말이 뒤따라왔다." },
     ] },
-  { id: "a_umbrella", school: true, who: "narr", when: { months: [6, 7, 9] },
+  { id: "a_umbrella", school: true, bg: "ev_umbrella", who: "narr", when: { months: [6, 7, 9] },
     text: "하굣길, 비가 쏟아진다. 다른 학년 아이 하나가 현관 앞에서 하늘만 올려다보고 있다. 얼굴은 알지만 말은 거의 안 해 본 아이다.",
     choices: [
       { mark: "umbrella", label: "우산을 같이 쓰고 간다", fx: { s: { "mental.teamwork": 0.5 }, morale: 2 },
@@ -10024,7 +10024,7 @@ const EVENTS_MORE = [
       { label: "스매시를 마음껏 때린다", fx: { morale: 2, s: { "mental.competitive": 0.5 } },
         result: "스매시 세 개 중 하나는 들어갔다. 나머지 둘은 체육관 천장으로 날아갔다." },
     ] },
-  { id: "a_jokgu", school: true, who: "narr",
+  { id: "a_jokgu", school: true, bg: "ev_jokgu", who: "narr",
     text: s => s.player.growthType === "jokgu" ? "체육 시간 족구. 편을 나누기도 전에 다들 \"족구부 출신은 무조건 공격!\" 하며 나를 네트 앞으로 민다." : "체육 시간 족구. 편을 나누자마자 다들 \"축구부니까 공격 맡아!\" 하며 나를 네트 앞으로 민다.",
     choices: [
       { label: "공격을 맡는다", fx: { morale: 3, s: { "phys.jump": 0.3, "mental.confidence": 0.3 } },
@@ -10988,7 +10988,7 @@ const POS = { FW: "공격수", MF: "미드필더", DF: "수비수" };
 
 const EVENTS_ORIGIN = [
   // ── 축구 처음 시작 ───────────────────────────
-  { id: "o_rk_juggle", cond: is("rookie"), once: true, priority: 1, trigger: win(4, 2, 4), when: { grades: [1] }, bg: "bg_field_day", who: "assistant",
+  { id: "o_rk_juggle", cond: is("rookie"), once: true, priority: 1, trigger: win(4, 2, 4), when: { grades: [1] }, bg: "ev_lifting", who: "assistant",
     text: "훈련이 끝나고 다들 씻으러 간 사이, 혼자 남아 리프팅을 했다. 하나, 둘… 세 번째에 공이 정강이를 맞고 튀어 나갔다. 공을 주우러 가는데 벤치에 {assistant}님이 앉아 계셨다. \"몇 개 하냐?\"",
     choices: [
       { mark: "rk_juggle", label: "\"세 개요…\" 솔직하게 말한다", fx: { s: { "tech.firstTouch": 1 }, morale: 3 },
@@ -11086,7 +11086,7 @@ const EVENTS_ORIGIN = [
       { label: "이번엔 공을 죽이지 않고 바로 골문 구석으로", req: { "tech.firstTouch": 55 }, fx: { s: { "tech.shoot": 0.8, "mental.confidence": 0.6 }, morale: 5 },
         result: "두 번째 공. 무릎을 접고 발목을 고정했다. 퍽, 하는 소리와 함께 공이 골키퍼 손끝을 지나 구석에 꽂혔다. 동료들이 \"족구왕!\" 하며 달려들었다. 그날부터 별명이 생겼다." },
     ] },
-  { id: "o_jg_net", cond: is("jokgu"), once: true, priority: 1, school: true, trigger: weeks([5, 2], [5, 3], [5, 5], [6, 1], [6, 2]), when: { grades: [3] }, bg: "bg_field_day", who: "narr",
+  { id: "o_jg_net", cond: is("jokgu"), once: true, priority: 1, school: true, trigger: weeks([5, 2], [5, 3], [5, 5], [6, 1], [6, 2]), when: { grades: [3] }, bg: "ev_jokgu", who: "narr",
     text: s => `점심시간. 운동장 구석에 족구 네트가 쳐져 있다. 1학년 넷이 이번 학교스포츠클럽 대회에 나간다며 공을 넘기는데, 서브가 번번이 네트에 걸린다.${marked(s, "jg_cup") ? " 2년 전 결승, 네트 윗줄에 걸렸던 내 서브가 생각났다." : marked(s, "jg_lunch") ? " 1학년 때 반 친구들과 점심마다 공을 넘기던 그 자리다." : ""}\n\n한 아이가 나를 보더니 소리친다. "형! 족구부였다면서요!"`,
     choices: [
       { label: "서브부터 가르쳐 준다", fx: { s: { "mental.teamwork": 1 }, morale: 5, teacher: 1 },
@@ -11120,7 +11120,7 @@ const EVENTS_ORIGIN = [
       { label: "평소처럼, 우리 팀 약속대로 짧게 돌린다", fx: { s: { "mental.teamwork": 1, "mental.focus": 0.5 }, coach: 2, morale: 3 },
         result: "특별한 건 없었다. 그냥 우리 축구를 했다. 2 대 2. 경기가 끝나고, 생각보다 아무렇지 않은 내가 신기했다." },
     ] },
-  { id: "o_cl_call", cond: is("club"), once: true, priority: 1, trigger: weeks([11, 3], [11, 4], [11, 5], [12, 2], [12, 4]), when: { grades: [3] }, bg: "bg_home", who: "narr",
+  { id: "o_cl_call", cond: is("club"), once: true, priority: 1, trigger: weeks([11, 3], [11, 4], [11, 5], [12, 2], [12, 4]), when: { grades: [3] }, bg: "ev_night_call", who: "narr",
     text: s => `${marked(s, "cl_friend") ? "도윤재에게서 전화가 왔다. 문자가 아니라 전화." : "광주 클럽 시절 친구 도윤재에게서 전화가 왔다. 한참 연락이 없던 녀석이다."} 한동안 말이 없다가 겨우 꺼낸다.\n\n"나… U-18 테스트 떨어졌어."`,
     choices: [
       { label: "\"나도 떨어져 봤잖아. 그다음이 더 중요하더라\"", fx: { s: { "mental.teamwork": 1, "mental.confidence": 1 }, morale: 4 },
@@ -14039,6 +14039,7 @@ function weekReport(app, rep, done) {
     ${rep.recovered ? `<div class="alert gold">💪 부상에서 회복했습니다.</div>` : ""}
     ${rep.order ? `<div class="alert ${rep.order.ok ? "gold" : ""}">${esc(rep.order.text)}</div>` : ""}
     ${rep.camp ? `<div class="alert gold">⛺ 합숙 훈련 주간: 훈련 효과 1.2배</div>` : ""}
+    ${(rep.traits || []).some(t => t.id === "lateBloom") ? `<div class="rep-scene" aria-hidden="true"><img src="assets/img/ev_measure.webp" alt="" onerror="this.parentNode.remove()"></div>` : ""}
     ${(rep.traits || []).map(t => `<div class="alert gold trait-new">✨ 새 특성 <b>${esc(t.label)}</b>: ${esc(t.desc)}</div>`).join("")}
     ${rep.body ? `<div class="alert gold">📏 신체 측정: 키가 ${rep.body.cm}cm 자랐습니다.</div>` : ""}
     <div class="result-list">
@@ -16145,6 +16146,16 @@ function showMatch(app, m, onDone) {
     root.querySelector("#clock").textContent = m.done ? "종료" : soOn ? "승부차기" : `${shownMin ?? m.minute}'`;
   };
   // 승부차기: 경기장 위 ○✕ 기록판 (중계 줄이 그 킥에 도착할 때 바뀜)
+  // 승부차기 시작 그림: 2.6초 동안 떴다가 사라짐 (누르면 바로 닫힘)
+  function soCard() {
+    const wrap = root.querySelector("#pitch");
+    if (!wrap || wrap.querySelector(".so-card")) return;
+    wrap.insertAdjacentHTML("beforeend", `<div class="so-card" aria-hidden="true"><img src="assets/img/ev_shootout.webp" alt="" onerror="this.parentNode.remove()"><b>승부차기</b></div>`);
+    const el = wrap.querySelector(".so-card");
+    const bye = () => el.remove();
+    el.addEventListener("animationend", bye); el.addEventListener("click", bye);
+    setTimeout(bye, 3200);
+  }
   function soBoard(so) {
     const wrap = root.querySelector("#pitch");
     let el = wrap.querySelector(".so-board");
@@ -16213,7 +16224,7 @@ function showMatch(app, m, onDone) {
     if (l.minute != null) shownMin = l.minute;
     if (l.half2 || (l.minute != null && l.minute > HALF_MIN)) setHalf(true);   // 후반 킥오프 문장부터 진영 교체
     if (l.k?.startsWith("goal")) goalFlash(l.k);
-    if (l.soStart) { soOn = true; controls(); }        // 승부차기는 건너뛸 수 없음 (결과만 보기 숨김)
+    if (l.soStart) { soOn = true; controls(); soCard(); }   // 승부차기는 건너뛸 수 없음 (결과만 보기 숨김)
     if (l.so) soBoard(l.so);
     if (l.soEnd) {
       flash.textContent = l.soEnd === "us" ? "승리!" : "탈락";

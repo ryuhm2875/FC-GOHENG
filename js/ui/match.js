@@ -160,6 +160,16 @@ export function showMatch(app, m, onDone) {
     root.querySelector("#clock").textContent = m.done ? "종료" : soOn ? "승부차기" : `${shownMin ?? m.minute}'`;
   };
   // 승부차기: 경기장 위 ○✕ 기록판 (중계 줄이 그 킥에 도착할 때 바뀜)
+  // 승부차기 시작 그림: 2.6초 동안 떴다가 사라짐 (누르면 바로 닫힘)
+  function soCard() {
+    const wrap = root.querySelector("#pitch");
+    if (!wrap || wrap.querySelector(".so-card")) return;
+    wrap.insertAdjacentHTML("beforeend", `<div class="so-card" aria-hidden="true"><img src="assets/img/ev_shootout.webp" alt="" onerror="this.parentNode.remove()"><b>승부차기</b></div>`);
+    const el = wrap.querySelector(".so-card");
+    const bye = () => el.remove();
+    el.addEventListener("animationend", bye); el.addEventListener("click", bye);
+    setTimeout(bye, 3200);
+  }
   function soBoard(so) {
     const wrap = root.querySelector("#pitch");
     let el = wrap.querySelector(".so-board");
@@ -228,7 +238,7 @@ export function showMatch(app, m, onDone) {
     if (l.minute != null) shownMin = l.minute;
     if (l.half2 || (l.minute != null && l.minute > HALF_MIN)) setHalf(true);   // 후반 킥오프 문장부터 진영 교체
     if (l.k?.startsWith("goal")) goalFlash(l.k);
-    if (l.soStart) { soOn = true; controls(); }        // 승부차기는 건너뛸 수 없음 (결과만 보기 숨김)
+    if (l.soStart) { soOn = true; controls(); soCard(); }   // 승부차기는 건너뛸 수 없음 (결과만 보기 숨김)
     if (l.so) soBoard(l.so);
     if (l.soEnd) {
       flash.textContent = l.soEnd === "us" ? "승리!" : "탈락";

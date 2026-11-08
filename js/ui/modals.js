@@ -119,6 +119,7 @@ export function weekReport(app, rep, done) {
     ${rep.recovered ? `<div class="alert gold">💪 부상에서 회복했습니다.</div>` : ""}
     ${rep.order ? `<div class="alert ${rep.order.ok ? "gold" : ""}">${esc(rep.order.text)}</div>` : ""}
     ${rep.camp ? `<div class="alert gold">⛺ 합숙 훈련 주간: 훈련 효과 1.2배</div>` : ""}
+    ${(rep.traits || []).some(t => t.id === "lateBloom") ? `<div class="rep-scene" aria-hidden="true"><img src="assets/img/ev_measure.webp" alt="" onerror="this.parentNode.remove()"></div>` : ""}
     ${(rep.traits || []).map(t => `<div class="alert gold trait-new">✨ 새 특성 <b>${esc(t.label)}</b>: ${esc(t.desc)}</div>`).join("")}
     ${rep.body ? `<div class="alert gold">📏 신체 측정: 키가 ${rep.body.cm}cm 자랐습니다.</div>` : ""}
     <div class="result-list">
