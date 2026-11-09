@@ -19,11 +19,13 @@ const best = (legs, score) => legs.length ? legs.reduce((a, b) => score(b) > sco
 const any = (legs, f, score = l => l.d) => { const hit = legs.find(f); return [!!hit, legStr(hit || best(legs, score))]; };
 const RULES = [
   { id: "gk", name: "골키퍼에게", re: /골키퍼(에게|까지|한테)\s*(다시 |백패스|돌|내|넘|주|굴|공을 돌)|골키퍼에게 백패스|키퍼에게 (돌|내)/, not: /손짓|끌어낸 뒤|제친/, win: [3, 6],
-    test: c => any(c.legsAny, l => l.to && !l.turnover && l.to.pos === "GK") },
+    test: c => any(c.legsAny, l => l.to && !l.turnover && l.to.pos === "GK"),
+    failTest: c => any(c.legsAny, l => l.team === "us" && l.dx <= -4, l => -l.dx) },   // 실패: 뒤로 준 공이 보였는지
   { id: "switch", name: "반대편 전환", re: /반대편|반대쪽|방향 전환|전환 패스|크게 전환|대각선으로 (길게|크게)/, not: /반대편(이|은|에는|에서|도) |반대편 (포스트|골대|구석|사이드라인에 서)|전환(이|을|은) (늦|빠르|느)|공수 전환|역습 전환|텅 비|비어|노리|보인다|손짓|외친|가리킨/, win: [5, 6],
-    test: c => any(c.legs, l => l.dy >= 20 && (l.y0 - 34) * (l.y1 - 34) < 0 && l.dy >= l.dx * 0.9, l => l.dy) },
+    test: c => any(c.legs, l => l.dy >= 20 && (l.y0 - 34) * (l.y1 - 34) < 0 && l.dy >= l.dx * 0.7, l => l.dy),
+    failTest: c => any(c.legsAny, l => l.team === "us" && l.dy >= 12 && l.dy >= l.dx * 0.5 && (l.air || l.dy >= 18), l => l.dy) },   // 실패: 옆으로 크게 보낸 공이 끊기거나 나감
   { id: "wide", name: "측면으로 벌림", re: /측면으로 (공을 )?(벌|넓게|열어|내준|내줬|빼|돌)|넓게 벌|좌우로 벌/, not: /손짓|외친|벌려 서|벌려 선/, win: [4, 5],
-    test: c => any(c.legs, l => l.dy >= 9 && side(l.y1) >= 16 && l.dy >= l.dx * 0.7, l => l.dy) },
+    test: c => any(c.legs, l => l.dy >= 9 && side(l.y1) >= 13 && l.dy >= l.dx * 0.7, l => l.dy) },
   { id: "through", name: "스루패스·뒷공간", re: /스루패스|스루 패스|뒷공간(으로|에|을 향|을 노린 (패스|공))|수비 뒤(로|쪽으로) (찔|넣|보|떨|넘)|침투 패스|찔러 (준|줬|넣)/, not: /막|차단|읽|노리는 눈|손짓/, win: [4, 5],
     test: c => any(c.legs, l => l.dx >= 8 && l.x1 >= l.lineX - 6, l => l.dx) },
   { id: "cross", name: "크로스", re: /크로스(를|가|!|\.| 올| 한)/, not: /크로스를 (막|차단|기다|노리|준비|올리려|못)|크로스가 (올라오면|올라올|막)|손짓|크로스를 올리기 전|크로스 길/, win: [4, 4],
@@ -49,9 +51,11 @@ const RULES = [
   { id: "inbox", name: "박스 안·문전 슛", re: /(박스 안|문전|골문 앞)에서 (슛|슈팅|때|찬|마무리|밀어|발을)/, not: /노리|조심|손짓/, win: [4, 3],
     test: c => { const s = best(c.shots, l => -l.gd); return [!!s && s.gd <= 19, s ? `골문에서 ${fm(s.gd)}m` : "슛 없음"]; } },
   { id: "dribble", name: "드리블·돌파", re: /제쳤|제친다|제치고|돌파(했|한다|에 성공|!)|드리블로 (전진|밀|치|파)|치고 (나간|나갔|달|올라)|몰고 (나간|나갔|올라|들어|전진)/, not: /못|막혔|걸렸|뺏겼|하려|골키퍼까지 제친다/, win: [4, 4],
-    test: c => { const k = best(c.carries, x => x.adv); return [!!k && (k.adv >= 6 || k.len >= 9), k ? `몰고 간 거리 ${fm(k.len)}m(앞 ${fm(k.adv)}m)` : "몰고 간 구간 없음"]; } },
+    test: c => { const k = best(c.carries, x => x.adv); return [!!k && (k.adv >= 6 || k.len >= 9), k ? `몰고 간 거리 ${fm(k.len)}m(앞 ${fm(k.adv)}m)` : "몰고 간 구간 없음"]; },
+    failTest: c => { const k = best(c.carries, x => x.len); return [!!k && k.len >= 3.5, k ? `몰고 간 거리 ${fm(k.len)}m` : "몰고 간 구간 없음"]; } },
   { id: "cb", name: "센터백에게", re: /센터백(에게| .{1,6}에게)/, not: /손짓|상대 센터백에게 (걸|막|붙)|묶|붙/, win: [3, 5],
-    test: c => any(c.legsAny, l => l.to && !l.turnover && /CB/.test(l.to.role)) },
+    test: c => any(c.legsAny, l => l.to && !l.turnover && /CB/.test(l.to.role)),
+    failTest: c => any(c.legsAny, l => l.team === "us" && l.dy >= 4 && l.dx <= 6, l => l.dy) },
   { id: "fb", name: "측면 수비에게", re: /(측면 수비|풀백)(에게| .{1,6}에게)/, not: /손짓|걸|막혔|묶/, win: [3, 5],
     test: c => any(c.legsAny, l => l.to && !l.turnover && /^(LB|RB)$/.test(l.to.role)) },
 ];
@@ -137,7 +141,7 @@ for (let k = 0; k < N; k++) {
       const ic = at(l.ts); let lastCh = -99; for (const t of changes) if (t <= l.ts + 2) lastCh = t;
       c.possAge = l.ts - lastCh;
       { const j0 = at(Math.max(lastCh, l.ts - 4)), j1 = at(Math.max(lastCh, l.ts - 4) + 5); const hh = T[Math.min(T.length - 1, at(l.ts))].h; const tm = hh >= 0 ? teamOf(hh) : team; c.adv5 = Math.abs(T[j1].x - T[j0].x) * 1; }
-      const [ok, why] = R.test(c);
+      const [ok, why] = (src === "pick" && l.fail && R.failTest ? R.failTest : R.test)(c);
       add(R.id + (src === "pick" ? (l.fail ? ":선택지(실패 결과)" : ":선택지") : ""), ok, `[${pos} #${SEED + k} ${l.minute}' ${l.k}] "${l.t.slice(0, 58)}" → ${why}${src === "pick" && l.res ? `  (결과: ${l.res})` : ""}`);
     }
   };

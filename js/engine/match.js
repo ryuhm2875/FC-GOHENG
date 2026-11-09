@@ -457,7 +457,7 @@ function narrate(state, m, e) {
         break;
       }
       const near = e.x == null || Math.abs(e.x - st.at[0]) <= 13;                 // 문장이 말하는 자리와 실제 공 자리가 맞을 때만
-      const tx = st.t.filter(t => !/\{b[|}]/.test(t) || (e.b && e.b !== e.a));
+      const tx = st.t.filter(t => (!/\{b[|}]/.test(t) || (e.b && e.b !== e.a)) && !(/길게/.test(t) && e.d != null && e.d < 24));   // 짧은 패스에 '길게'라고 하지 않음
       if (e.me && e.team === "us") {
         my.involved = (my.involved || 0) + 1; my.delta += m.myPos === "MF" ? 0.008 : 0.02;
         if (S.bias?.me) break;                                                   // 곧 내 장면이 이어지면 따로 적지 않음
@@ -1748,7 +1748,7 @@ function actOf(tpl, out, poss) {
       if (/라인 밖|라인을 넘|멀리 날아|너무 멀리/.test(t)) return "outLoss";
       if (/킥이 짧/.test(t)) return "cut";
       if (/골키퍼|\{ogk|품으로|덮친다|안았다/.test(t)) return "gkLoss";
-      if (/끊|가로채|걸렸|걸린|읽고|그대로 갔|막혔|막아섰|다리에 맞|발에 맞았|패스가 짧았|패스가 약했|떨군 공을|돌아온 패스/.test(t)) return "cut";
+      if (/끊|가로채|걸렸|걸린|읽고|그대로 갔|막혔|막아섰|다리에 맞|발에 맞았|패스가 짧았|패스가 약했|떨군 공을|돌아온 패스|가로챈|공이 짧았|패스가 휘었/.test(t)) return "cut";
       if (/걷어|받아 냈/.test(t)) return "oppClear";
       return "steal";
     }
@@ -1848,7 +1848,7 @@ function scriptSteps(state, m, pd, c, out, R, tail, outTpl) {
     if (kind === "cross" || kind === "cut") {
       const bx = kind === "cut" ? 90 : 94, by = 34 + (from.y < 34 ? 1 : -1) * (kind === "cut" ? 2 : -2);
       steps.push({ do: "runTo", p: to, x: bx, y: by });                                     // 받을 동료는 먼저 박스로 뛰기 시작
-      if (kind === "cut" && tx < 92) steps.push({ do: "carry", by: from, dist: clamp(97 - tx, 3, 14), dy: (from.y < 34 ? 1 : -1) * (Math.abs(from.y - 34) > 17 ? 3 : 0), v: 7.8 });   // 골라인 앞까지 파고든 뒤
+      if (kind === "cut" && tx < 92) steps.push({ do: "carry", by: from, dist: clamp(97 - tx, 3, 14), dy: (from.y < 34 ? 1 : -1) * clamp(Math.abs(from.y - 34) - 13, 0, 10), v: 7.8 });   // 골라인 앞까지 파고든 뒤
       else if (kind === "cross" && wide && tx < 84) steps.push({ do: "carry", by: from, dist: clamp(88 - tx, 4, 14), dy: 0, v: 7.8 });   // 측면을 타고 올라간 뒤
       const dec = nearestP(S, "us", { x: 95, y: 34 }, p => !p.me && p.ri && p.pos !== "GK" && p !== to && p !== from);   // 다른 동료도 니어포스트로 뛰어듦
       if (dec && kind === "cross") steps.push({ do: "runTo", p: dec, x: 96.5, y: 34 + (from.y < 34 ? -4 : 4) });
@@ -1926,7 +1926,11 @@ function scriptSteps(state, m, pd, c, out, R, tail, outTpl) {
     const mv = setKind ? null : shotMove(c.label, outTpl), H0 = S.holder;
     let ot = false, ran = false;
     const arrive = SCENES[pd.sit.id]?.arrive;
-    if (arrive && H0 && H0.team === "us" && !H0.me && (mv === "run" || out === "head")) {
+    if (H0 && H0.team === "us" && !H0.me && H0.pos !== "GK" && ((arrive && (mv === "run" || out === "head")) || (out !== "head" && /컷백이|뒤로 깔린/.test(outTpl)))) {
+      if (out !== "head" && H0.x < 94) {                                                   // 컷백: 동료가 골라인 가까이까지 파고든 뒤 뒤로 깔아 줌
+        steps.push({ do: "runTo", p: M, x: 88, y: 34 + (H0.y < 34 ? 2 : -2) });
+        steps.push({ do: "carry", by: H0, dist: clamp(97 - H0.x, 3, 27), dy: (H0.y < 34 ? 1 : -1) * clamp(Math.abs(H0.y - 34) - 13, 0, 10), v: 7.8 });
+      }
       steps.push({ do: "space", from: H0, to: M, cut: out !== "head", cross: out === "head", main: out !== "miss" });   // 측면의 동료가 박스로 뛰어드는 나에게 (컷백·크로스)
       holder = M; ran = true;
     } else if (mv === "run" && !twoTxt && H0 && H0.team === "us" && !H0.me && H0.pos !== "GK") {
@@ -2009,7 +2013,21 @@ function scriptSteps(state, m, pd, c, out, R, tail, outTpl) {
     shotBy(holder || mate, R?.res, out === "matePk" ? "pk" : "fk");
     steps.push(emit);
   } else if (!setKind && ["win", "keep", "turnover", "danger", "offside", "card"].includes(out) && actOf(outTpl, out, ctx.poss)) {
-    const act = actOf(outTpl, out, ctx.poss);
+    let act = actOf(outTpl, out, ctx.poss);
+    // 선택지가 받는 사람·방법을 말하면 그대로 보이게 (결과 문장이 두루뭉술해도 공은 고른 곳으로)
+    const L_ = ctx.poss === "us" ? c.label || "" : "";
+    const iGK = /골키퍼(에게|까지)[^.]*(백패스|돌려|돌린다)/.test(L_) && !/돌리라고/.test(L_);
+    const iCB = /센터백에게/.test(L_);
+    const iSwitch = /반대(편|쪽)/.test(L_) && /전환|벌린|롱패스/.test(L_);
+    const iDrib = /몰고/.test(L_) && !/측면으로 벌린/.test(L_);
+    const lost = out === "turnover" || out === "danger";
+    if (out === "keep" && iGK && ["passBack", "passNear", "hold", "passWide"].includes(act)) act = "passGK";
+    if (out === "keep" && iCB && ["passBack", "passNear", "hold", "passWide", "passSwitch"].includes(act)) act = "passCB";
+    if (lost && iGK && /쫓아/.test(outTpl)) act = "passGK";                               // 느린 백패스: 공은 골키퍼까지 가고 상대가 쫓아옴
+    else if (lost && (iGK || iCB) && ["steal", "gkLoss"].includes(act)) act = "cut";
+    if (lost && iSwitch && act === "steal") act = "cut";
+    if (lost && iDrib && act === "cut" && !/패스|킥|크로스|컷백/.test(outTpl)) act = "steal";
+    const otherCB = () => nearestP(S, "us", M, p => !p.me && p.ri && (p.role === "LCB" || p.role === "RCB")) || nearMate({ x: M.x - 6, y: M.y });
     m._lastAct = act;
     const H = S.holder;                                                          // 지금 공 가진 선수 (장면 연출 뒤)
     const oppH = H && H.team === "them" ? H : opp;
@@ -2032,8 +2050,16 @@ function scriptSteps(state, m, pd, c, out, R, tail, outTpl) {
         if (tgt) { steps.push({ do: "space", from: M, to: tgt, air: true, wide: true, main: true }); holder = tgt; }
         break;
       }
+      case "passCB": { ensure(M); const cb = otherCB(); if (cb) { steps.push({ do: "pass", from: M, to: cb, lead: 0, main: true }); holder = cb; } break; }
       case "passNear": case "passWide": case "passBack": case "passGK": {
         ensure(M);
+        if (act === "passGK") {                                                    // 골키퍼가 멀면 한 번에 안 감: 뒤쪽 동료를 거쳐 골키퍼까지
+          const gk = gkOf(S, "us");
+          if (gk && Math.hypot(gk.x - M.x, gk.y - M.y) > 34) {
+            const via = nearMate({ x: (M.x + gk.x) / 2, y: (M.y + gk.y) / 2 }, p => p.x < M.x - 5 && Math.hypot(p.x - gk.x, p.y - gk.y) < 34);
+            if (via) { steps.push({ do: "pass", from: M, to: via, lead: 0, main: true }); steps.push({ do: "wait", t: 0.5 }); steps.push({ do: "pass", from: via, to: gk, lead: 0 }); holder = gk; break; }
+          }
+        }
         if (/몰고 (나가|올라)/.test(outTpl)) steps.push({ do: "carry", by: M, dist: 7, v: 7 });    // "몇 걸음 몰고 나가 … 벌렸다"
         const tgt = act !== "passGK" && /\{mate/.test(outTpl) && mate && !mate.me ? mate : passTarget(S, M, act, mate);   // 문장이 이름을 말하면 그 선수에게 (resolve에서 같은 기준으로 이름을 정함)
         if (tgt && twoTxt && act === "passNear") oneTwo(tgt);
@@ -2050,7 +2076,7 @@ function scriptSteps(state, m, pd, c, out, R, tail, outTpl) {
           steps.push({ do: "clear", by: H, out: "touch", main: true });
         } else { ensure(M); steps.push({ do: "clear", by: M, out: "touch", main: true }); }
         break;
-      case "outLoss": ensure(M); steps.push({ do: "clear", by: M, out: /터치라인/.test(outTpl) || M.y < 20 || M.y > 48 ? "touch" : "goal", main: true }); break;
+      case "outLoss": ensure(M); steps.push({ do: "clear", by: M, out: iSwitch ? "touchFar" : /터치라인/.test(outTpl) || M.y < 20 || M.y > 48 ? "touch" : "goal", main: true }); break;   // 전환이 길었으면 반대편 터치라인 밖으로
       case "dummy": {                                                              // 흘려 보냄: 공이 내 옆을 지나 옆·뒤의 동료에게, 그 동료가 앞으로 치고 나감
         ensure(M);
         const w = (v.wing && SP(m, v.wing, "us")) || nearMate(M);
@@ -2068,16 +2094,24 @@ function scriptSteps(state, m, pd, c, out, R, tail, outTpl) {
         const from = H && H.team === "us" ? H : M;
         if (from === M) ensure(M);
         let to = from === M ? (recvP || (mate && mate !== M ? mate : nearMate(M))) : M;
-        if (from === M && /골키퍼/.test(c.label)) to = gkOf(S, "us") || to;                  // 골키퍼에게 돌린 공이 끊김
+        if (from === M && (iGK || /골키퍼/.test(c.label))) to = gkOf(S, "us") || to;       // 골키퍼에게 돌린 공이 끊김
+        if (from === M && iCB) to = otherCB() || to;                                        // 옆 센터백에게 돌린 공이 끊김
+        if (from === M && iSwitch) to = passTarget(S, M, "passSwitch", mate) || to;         // 반대편으로 넘기던 공이 끊김
         if (from === M && /흘려/.test(c.label) && v.wing) to = SP(m, v.wing, "us") || to;    // 흘려 보낸 공이 끊김
         const named = /\{opp[|}]/.test(outTpl) && opp && opp.ri ? opp : null;               // 문장이 끊은 상대 이름을 말하면 그 선수가
         const cutter = named || nearOpp({ x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 });
-        if (cutter && to) { steps.push({ do: "passCut", from, to, by: cutter, air: from === M && ["over", "cross", "switch", "head"].includes(P_.kind), headClear: /머리/.test(outTpl), main: true }); holder = /머리/.test(outTpl) ? null : cutter; } else ensure(cutter, true);
+        if (cutter && to) { steps.push({ do: "passCut", from, to, by: cutter, air: from === M && (iSwitch || ["over", "cross", "switch", "head"].includes(P_.kind)), headClear: /머리/.test(outTpl), main: true }); holder = /머리/.test(outTpl) ? null : cutter; } else ensure(cutter, true);
         break;
       }
       case "oppClear": { const d = /\{opp[|}]/.test(outTpl) && opp && opp.ri && Math.hypot(opp.x - S.ball.x, opp.y - S.ball.y) < 10 ? opp : nearOpp(S.ball); steps.push({ do: "clear", by: d, main: true }); holder = null; break; }
       case "steal":
         if (ctx.poss === "them") ensure(M, true);                                          // 상대 공 장면: 내가 빼앗음
+        else if (iDrib && lost && holder === M) {                                          // 몰고 가다 뺏김: 몇 걸음은 실제로 몰고 나간 뒤에
+          const g_ = 1, ahead = { x: M.x + g_ * 5.5, y: M.y + (34 - M.y) * 0.12 };
+          const th = /\{opp[|}]/.test(outTpl) && opp && opp.ri && Math.hypot(opp.x - ahead.x, opp.y - ahead.y) < 14 ? opp : nearOpp(ahead);
+          steps.push({ do: "carry", by: M, dist: 5.5, dy: (34 - M.y) * 0.12, v: 6.8, noStun: true });
+          ensure(th, true);
+        }
         else ensure(/\{opp[|}]/.test(outTpl) && opp && opp.ri ? opp : oppH !== H ? oppH : nearOpp(S.ball), true);   // 우리 공 장면: 상대가 빼앗음 (문장에 이름이 있으면 그 선수)
         break;
       // ── 상대 공 장면 ──
