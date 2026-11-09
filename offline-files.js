@@ -2,7 +2,7 @@
 self.OFFLINE_FILES = [
   ["index.html","5d5bda3868"],
   ["manifest.webmanifest","989936b74c"],
-  ["css/fc.css","3145528c7a"],
+  ["css/fc.css","84add25e93"],
   ["css/fc26.css","bdb90b30ae"],
   ["css/polish.css","f9a8c27e6c"],
   ["css/style.css","0eae8b16ab"],
@@ -42,7 +42,7 @@ self.OFFLINE_FILES = [
   ["js/ui/intro.js","c53e33f038"],
   ["js/ui/login.js","c4031dd9ac"],
   ["js/ui/match.js","803eba8f32"],
-  ["js/ui/minigames.js","95baeffdbf"],
+  ["js/ui/minigames.js","551d9161ff"],
   ["js/ui/modals.js","14c2c46b8a"],
   ["js/ui/pitch.js","f596145e04"],
   ["js/ui/sfx.js","1c7f5bc70c"],

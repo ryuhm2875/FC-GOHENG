@@ -248,11 +248,6 @@ function shootScene(tall = false) {
       <path d="M58 72 Q80 78 102 72" opacity=".7"/>
     </g>
     <ellipse cx="80" cy="84" rx="1.6" ry=".6" fill="#fff" opacity=".85"/>
-    <!-- 골대 옆 소품: 공 주머니·콘(왼쪽), 코치님(오른쪽) -->
-    <g transform="translate(${tall ? 32 : 16},74) scale(.62)">${ballBag()}</g>
-    <g transform="translate(${tall ? 36 : 22},${tall ? 84 : 66}) scale(.4)">${drCone()}</g>
-    ${[[GX0 + 4, GLINE - 1.4], [GX0 + 13, GLINE - 2.2], [GX1 - 9, GLINE - 1.8]].map(([x, y]) => `<g transform="translate(${x},${y}) scale(.36)" opacity=".9">${BALL(2.9)}</g>`).join("")}
-    <g transform="translate(${tall ? 129 : 146},${tall ? 80 : 70}) scale(.68)">${coachSVG()}</g>
     <!-- 골대 그림자 -->
     <path d="M${GX0 + 1.2} ${GLINE} L${GX0 + 9} ${GLINE + 6} L${GX0 + 10.6} ${GLINE + 6} L${GX0 + 2.6} ${GLINE} Z M${GX1 - 1} ${GLINE} L${GX1 + 7} ${GLINE + 6} L${GX1 + 8.6} ${GLINE + 6} L${GX1 + 0.4} ${GLINE} Z" fill="${P.shadow}"/>
     <!-- 골문: 뒷그물, 옆그물, 지붕 그물, 뒤 기둥(받침대) -->
