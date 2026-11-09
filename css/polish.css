@@ -619,11 +619,8 @@ body:has(#modal-root .backdrop) .fs-btn { opacity: 0; pointer-events: none; }
   img[data-name="title"] { object-position: 50% 50%; }
 }
 
-/* ── 슈팅 훈련(학교 운동장): 골키퍼 팔, 내 차는 발 ── */
+/* ── 슈팅 훈련(학교 운동장): 골키퍼 팔 ── */
 .mg-shoot .gk-arm { transform-box: view-box; transition: transform .22s cubic-bezier(.2,.8,.3,1); }
 .mg-shoot .gk-arm[data-side="L"] { transform-origin: -4.6px -23.2px; }
 .mg-shoot .gk-arm[data-side="R"] { transform-origin: 4.6px -23.2px; }
-.mg-shoot #shKick { transform-box: view-box; }
-.mg-shoot #shKick.go { animation: shkick .42s cubic-bezier(.3,.7,.2,1) both; }
-@keyframes shkick { 0% { transform: none; } 30% { transform: translate(-4px, -7px) rotate(-10deg) scale(.88); } 100% { transform: translate(-1.4px, -2.6px) rotate(-4deg) scale(.95); } }
-@media (prefers-reduced-motion: reduce) { .mg-shoot #shKick.go { animation: none; } }
+@media (prefers-reduced-motion: reduce) { 

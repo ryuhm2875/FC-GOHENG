@@ -211,24 +211,6 @@ function keeperSVG() {
     <path d="M-.9 -27.3 H.9" stroke="#8A4A38" stroke-width=".4" stroke-linecap="round"/>
     <ellipse cx="-3.7" cy="-29.2" rx=".5" ry=".8" fill="#D99E76"/><ellipse cx="3.7" cy="-29.2" rx=".5" ry=".8" fill="#D99E76"/>`;
 }
-// 내 다리: 위에서 내려다본 디딤발(공 왼쪽)과 차는 발(공 오른쪽 뒤). 화면 아래로 갈수록 가까워 굵어짐 (양말 → 정강이)
-function shooterLegs(yb) {
-  const leg = (id, boot, toe, base, wB, wBase, rot) => {
-    const sk = [boot[0] + (base[0] - boot[0]) * 0.42, boot[1] + (base[1] - boot[1]) * 0.42], wS = wB + (wBase - wB) * 0.42;
-    return `<g id="${id}">
-      <path d="${limb(sk, base, wS, wBase, 1)}" fill="url(#mgSkin)"/>
-      <path d="${limb(boot, sk, wB, wS, .5)}" fill="url(#mgShirtO)"/>
-      <path d="${limb([boot[0] + (sk[0] - boot[0]) * .78, boot[1] + (sk[1] - boot[1]) * .78], sk, wS * .98, wS, 0)}" fill="#1A2470" opacity=".9"/>
-      <g transform="translate(${boot[0]},${boot[1]}) rotate(${rot})">
-        <path d="M${-wB * .62} 1 Q${-wB * .7} ${-toe * .6} 0 ${-toe} Q${wB * .7} ${-toe * .6} ${wB * .62} 1 Q0 ${wB * .5} ${-wB * .62} 1 Z" fill="#121318"/>
-        <path d="M${-wB * .5} ${-toe * .3} Q0 ${-toe * .52} ${wB * .5} ${-toe * .3}" stroke="#FF6B1A" stroke-width=".5" fill="none"/>
-        <path d="M${-wB * .2} ${-toe * .78} Q0 ${-toe * .9} ${wB * .2} ${-toe * .78}" stroke="rgba(255,255,255,.25)" stroke-width=".35" fill="none"/>
-      </g></g>`;
-  };
-  const deep = yb > 100;
-  return leg("shPlant", [73.2, 88.4], 4.6, [deep ? 58 : 66, yb + 3], 4.2, deep ? 13 : 7, -12)
-    + leg("shKick", [87.4, 93], 5, [deep ? 104 : 96, yb + 3], 4.8, deep ? 15 : 8, 14);
-}
 // tall: 세로 휴대폰에서는 좌우를 조금 잘라 내고 위(하늘·학교)와 아래(잔디·내 다리)를 늘려 크게 보여 줌
 function shootScene(tall = false) {
   const P = pal(), Y0 = tall ? -40 : 0, H = tall ? 160 : 96, YB = tall ? 120 : 96, night = TOD === "night";
@@ -304,9 +286,8 @@ function shootScene(tall = false) {
       <path d="M-7.4 0 H-5.4 M5.4 0 H7.4 M0 -7.4 V-5.4 M0 5.4 V7.4" stroke="#FFC93C" stroke-width=".8" stroke-linecap="round"/>
       <circle r="6.4" fill="none" stroke="rgba(255,201,60,.5)" stroke-width=".35" stroke-dasharray="2 2.2" class="mg-aimspin"/>
     </g>
-    <!-- 공과 내 다리 -->
+    <!-- 공 -->
     <ellipse id="sshadow" cx="80" cy="88.2" rx="3.4" ry="1" fill="${P.shadow}" filter="url(#shSoft)"/>
-    ${shooterLegs(YB)}
     <g transform="translate(80,85.6)"><g id="sball">${BALL(2.9)}</g></g>
     <g id="shFx"></g>
     <text id="shMsg" x="80" y="52" text-anchor="middle" class="mg-shmsg"></text>
@@ -319,7 +300,7 @@ function shooting(area, status, ctl, e, done, lv = 1, tall = false) {
   area.innerHTML = shootScene(tall);
   const aim = area.querySelector("#aim"), gk = area.querySelector("#gk"), keeper = gk.querySelector(".mg-keeper"), ball = area.querySelector("#sball"),
     shadow = area.querySelector("#sshadow"), net = area.querySelector("#shNetG"), msg = area.querySelector("#shMsg"),
-    dots = area.querySelectorAll("#dots i"), pts = area.querySelector("#pts"), kick = area.querySelector("#shKick");
+    dots = area.querySelectorAll("#dots i"), pts = area.querySelector("#pts");
   const period = (1500 - e * 650) * [1, 1, 0.86, 0.76, 0.68][lv];   // 단계가 오를수록 조준점이 빨라짐
   const gkW = (26 - e * 8) * 1.32;                                    // 골키퍼가 막는 폭 (가로 160 기준)
   const MID = (GX0 + GX1) / 2, HALF = (GX1 - GX0) / 2 - 4;
@@ -386,8 +367,7 @@ function shooting(area, status, ctl, e, done, lv = 1, tall = false) {
       const L = a.dataset.side === "L", up = Math.abs(dx) > 3 || high > .3;
       a.style.transform = up ? `rotate(${L ? 128 : -128}deg)` : `rotate(${L ? 40 : -40}deg)`;
     });
-    kick.style.transformOrigin = `${tall ? 104 : 96}px ${tall ? 123 : 99}px`;
-    kick.classList.remove("go"); void kick.getBoundingClientRect(); kick.classList.add("go");
+
     const d = dots[shot]; d.className = saved ? "miss" : corner ? "top" : "hit";
     shot++;
     pts.textContent = `${score}점`;
@@ -417,7 +397,6 @@ function shooting(area, status, ctl, e, done, lv = 1, tall = false) {
       shadow.style.transition = "none"; shadow.style.transform = ""; shadow.style.opacity = "";
       keeper.style.transform = "";
       keeper.querySelectorAll(".gk-arm").forEach(a => { a.style.transform = ""; });
-      kick.classList.remove("go");
       msg.setAttribute("class", "mg-shmsg");
       if (shot >= 5) return done(score >= 8 ? "S" : score >= 6 ? "A" : score >= 4 ? "B" : "C");
       placeGk(); lock = false;
