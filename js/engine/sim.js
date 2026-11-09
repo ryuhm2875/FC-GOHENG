@@ -548,6 +548,7 @@ export function passTo(S, H, r, tp, { air = false, cross = false, force = false,
   const team = H.team;
   const d = hyp(tp[0] - S.ball.x, tp[1] - S.ball.y);
   const offside = !force && !noOff && ox(team, r.x) > offLine(S, team) + 0.3 && ox(team, tp[0]) > 52.5;
+  S.passD = d;                                             // 방금 찬 패스 길이 (해설이 길게라고 말해도 되는지)
   const lr = laneRisk(S, H, r, tp, air);
   const pk = kind || (cross ? "cross" : air ? (d > 40 ? "long" : "air") : (ox(team, tp[0]) - ox(team, H.x) > 14 && ox(team, tp[0]) > 60 ? "through" : "ground"));
   emit(S, "pass", { from: H.name, to: r.name, team, kind: pk, fx: ox(team, H.x), fy: oy(team, H.y), tx: ox(team, tp[0]), ty: oy(team, tp[1]), me: H.me, toMe: r.me });
@@ -877,7 +878,7 @@ function planRecv(S, r, header = false) {
     P.i = P.expect.i; P.expect = null;
     if (r.ov?.plan) r.ov = null;
     planRun(S);
-    emit(S, "step", { play: P.id, i: P.i, a: r.name, b: P.actors[P.i + 1]?.name || null, team: r.team, me: r.me, header, prev: P.actors[P.i - 1]?.name || null, x: ox(r.team, r.x) });
+    emit(S, "step", { play: P.id, i: P.i, a: r.name, b: P.actors[P.i + 1]?.name || null, team: r.team, me: r.me, header, prev: P.actors[P.i - 1]?.name || null, x: ox(r.team, r.x), d: S.passD ?? null });
   } else if (!header) { endPlan(S); }
 }
 // 계획에 따른 판단. 처리했으면 true
@@ -911,6 +912,19 @@ function planDecide(S, H) {
     }
     H.ov = OV(zx, zy, DRIB + (H.st.drib - 50) / 60 + (step.at[1] === "W" ? 0.6 : 0), "carry");
     S.decideAt = S.t + range(0.35, 0.6);
+    return true;
+  }
+  // 컷백: 골라인 가까이까지 파고든 뒤, 뒤에서 들어오는 동료 앞으로 낮게 깔아 줌 (띄운 크로스가 아님)
+  if (P.id === "cutback" && j === P.steps.length - 1 && P.steps[P.i]?.at?.[0] >= 97) {
+    const sg = hy < 34 ? -1 : 1;
+    P.cb ??= S.t;
+    if (hx < 95 && S.t - P.cb < 3.2 && near > 1.3) {
+      H.ov = OV(ox(team, 98.5), oy(team, 34 + sg * clamp(Math.abs(hy - 34), 9, 17)), DRIB + (H.st.drib - 50) / 60 + 0.6, "carry");
+      S.decideAt = S.t + range(0.3, 0.5); return true;
+    }
+    if (hx < 90) { endPlan(S); return false; }             // 깊이 못 들어갔으면 컷백이 아님: 평소 판단으로
+    const tpc = [ox(team, clamp(hx - range(7, 10), 85, 91)), oy(team, 34 + sg * range(0, 5))];
+    passTo(S, H, r, tpc, { air: false, step: j, noOff: true, kind: "ground" });
     return true;
   }
   // 받을 선수가 아직 자리에 없으면 잠깐 기다림 (압박이 없을 때만)
@@ -1412,10 +1426,11 @@ function startStep(S, st) {
       const g = dirOf(p.team), b = S2.ball;
       let tx = clamp(b.x + g * range(20, 32), 2, 103), ty = clamp(b.y + range(-14, 14), 3, 65);
       if (st.out === "touch") { tx = clamp(b.x + g * range(4, 12), 2, 103); ty = b.y < 34 ? -3 : 71; }
+      if (st.out === "touchFar") { tx = clamp(b.x + g * range(16, 26), 2, 103); ty = b.y < 34 ? 71 : -3; }   // 반대편으로 넘긴 공이 길어서 그쪽 터치라인 밖으로
       if (st.out === "goal") { tx = p.team === "us" ? 108 : -3; ty = clamp(b.y + range(-10, 10), 10, 58); }
       S2.last = p; S2.lastTeam = p.team; S2.holder = null;
       emit(S2, "clear", { by: p.name, team: p.team, me: p.me, x: ox(p.team, b.x), silent: true });
-      launch(S2, tx, ty, { air: true, h: st.out ? 3 : 6, kind: "clear", then: S3 => landLoose(S3) });
+      launch(S2, tx, ty, { air: true, h: st.out === "touchFar" ? 7 : st.out ? 3 : 6, kind: "clear", then: S3 => landLoose(S3) });
     };
     return { until: S2 => { const b = S2.ball; if (b.fl) return false;
         if (S2.holder === p || hyp(p.x - b.x, p.y - b.y) < 1.5) { kick(S2); return true; }
@@ -1469,7 +1484,7 @@ function startStep(S, st) {
     const ty0 = st.toGoal != null ? p.y + (34 - p.y) * 0.45 : p.y + (st.dy ?? (34 - p.y) * 0.25);
     const tx = clamp(p.x + g * dist, 3, 102), ty = clamp(ty0, 3, 65);
     p.ov = OV(tx, ty, st.v ?? 7.6, "carry");
-    for (const o of S.P) if (o.team !== p.team && hyp(o.x - p.x, o.y - p.y) < (st.beat ? 7 : 4) && (o.pos !== "GK" || st.roundGK)) o.stun = st.beat ? 1.3 : 0.9;   // 제친 수비는 잠깐 휘청
+    if (!st.noStun) for (const o of S.P) if (o.team !== p.team && hyp(o.x - p.x, o.y - p.y) < (st.beat ? 7 : 4) && (o.pos !== "GK" || st.roundGK)) o.stun = st.beat ? 1.3 : 0.9;   // 제친 수비는 잠깐 휘청
     if (st.gkOut) { const gk = gkOf(S, other(p.team)); if (gk) { const gx = p.team === "us" ? 105 : 0, k = 0.38; gk.ov = OV(gx + (tx - gx) * k, 34 + (ty - 34) * k, RUN, "recv"); } }   // 골키퍼가 각을 좁히며 나옴
     return busy(S2 => hyp(p.x - tx, p.y - ty) < 0.8 || S2.holder !== p, hyp(tx - p.x, ty - p.y) / (st.v ?? 7.6) + 2.2);   // 옆으로 길게 모는 경우도 시간 넉넉히
   }
