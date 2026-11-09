@@ -7,7 +7,7 @@ import { sfx } from "./sfx.js";
 export const GRADES = { S: 1.5, A: 1.25, B: 1.0, C: 0.8 };
 const STAT_FOR = { shooting: "tech.shoot", passing: "tech.pass", dribble: "tech.dribble", weight: "phys.strength", defend: "tech.defense", sprint: "phys.speed" };
 const INFO = {
-  shooting: { title: "슈팅 훈련", tag: "SHOOTING DRILL", how: "조준점이 골문 위를 움직입니다. 골키퍼를 피해 구석을 노려 누르세요. 다섯 번 찹니다.", btn: "슈팅" },
+  shooting: { title: "슈팅 훈련", tag: "SHOOTING DRILL", how: "조준점이 골문 위를 움직입니다. 우리 팀 골키퍼를 피해 구석을 노려 누르세요. 다섯 번 찹니다.", btn: "슈팅" },
   passing:  { title: "패스 훈련", tag: "PASSING DRILL", how: "동료 등번호를 1부터 6까지 순서대로 빠르게 누르세요. 흰 유니폼 상대를 누르면 끊깁니다.", btn: null },
   dribble:  { title: "드리블 훈련", tag: "DRIBBLE DRILL", how: "공을 몰고 가며 앞에 놓인 마네킹과 콘을 왼쪽·오른쪽으로 피하세요. 12초 동안 몰고 가면 끝입니다. 방향키나 화면을 밀어서도 움직일 수 있습니다.", btn: null },
   weight:   { title: "웨이트 트레이닝", tag: "STRENGTH", how: "줄어드는 원이 주황 테두리에 닿는 순간 누르세요. 여섯 번 들어 올립니다.", btn: "들어 올리기" },
@@ -182,111 +182,131 @@ const PREVIEW = {
 };
 
 // ── 슈팅 ────────────────────────────
-// 야간 경기장, 원근감 있는 골문, 움직이는 골키퍼. 좌표: 가로 160 × 세로 96
+// 방과 후 학교 운동장, 원근감 있는 골문(뒤 기둥·옆 그물), 우리 팀 골키퍼. 좌표: 가로 160 × 세로 96
+// 시간대 빛(오전·오후·저녁)은 드리블·수비·스프린트와 같음 (schoolBackdrop)
 const GX0 = 30, GX1 = 130, GTOP = 20, GLINE = 62;   // 골대 안쪽 왼쪽·오른쪽, 크로스바, 골라인
-// tall: 세로 휴대폰에서는 좌우를 조금 잘라 내고 위(관중석 위층)와 아래(잔디)를 늘려 크게 보여 줌
+// 골키퍼: 무릎을 굽히고 두 손을 앞으로 내민 준비 자세. 팔은 어깨를 축으로 돌려 다이빙 때 위로 뻗음
+function keeperSVG() {
+  const HL = [-2.7, -14], HR = [2.7, -14], KL = [-6.4, -8.4], KR = [6.4, -8.4], AL = [-6.8, -1.8], AR = [6.8, -1.8];
+  const SL = [-4.6, -23.2], SR = [4.6, -23.2], EL = [-8.4, -18.6], ER = [8.4, -18.6], WL = [-8.2, -14.8], WR = [8.2, -14.8];
+  const arm = (S, E, W, side) => `<g class="gk-arm" data-side="${side}">
+      <path d="${limb(S, E, 3, 2.6, .5)}" fill="url(#gkKit)" stroke="#0E6F79" stroke-width=".3"/>
+      <path d="${limb(E, W, 2.6, 2.2, .3)}" fill="url(#gkKit)" stroke="#0E6F79" stroke-width=".3"/>
+      <g transform="translate(${W[0]},${W[1] + 0.6})"><rect x="-1.9" y="-.9" width="3.8" height="1.4" rx=".5" fill="#FF6B1A"/><path d="M-2.2 .4 Q-2.4 3.6 0 3.9 Q2.4 3.6 2.2 .4 Z" fill="#F7F8FB" stroke="#B9C0D0" stroke-width=".3"/>
+        <path d="M-1 1.2 V3.2 M0 1.1 V3.5 M1 1.2 V3.2" stroke="#C9CFDC" stroke-width=".25"/></g></g>`;
+  return `<ellipse cx="0" cy=".6" rx="11" ry="1.8" fill="${pal().shadow}" filter="url(#shSoft)"/>
+    <path d="${limb(HL, KL, 3.6, 3, .6)}" fill="#18213F"/><path d="${limb(HR, KR, 3.6, 3, .6)}" fill="#18213F"/>
+    <path d="${limb(KL, AL, 2.6, 2.1, .4)}" fill="#1BA6B5"/><path d="${limb(KR, AR, 2.6, 2.1, .4)}" fill="#1BA6B5"/>
+    <path d="M-8.9 -2.2 Q-9.2 .5 -6.6 .5 H-4.6 L-4.8 -2.2 Z" fill="#0D0F14"/><path d="M8.9 -2.2 Q9.2 .5 6.6 .5 H4.6 L4.8 -2.2 Z" fill="#0D0F14"/>
+    <path d="M-5 -15.6 H5 L5.6 -11.6 Q3 -10.6 0 -12.6 Q-3 -10.6 -5.6 -11.6 Z" fill="#141B36"/>
+    <path d="${limb([0, -24.6], [0, -14.4], 10, 8.6, .8)}" fill="url(#gkKit)" stroke="#0E6F79" stroke-width=".35"/>
+    <path d="M-4.6 -21.4 H4.6 M-4.4 -18.8 H4.4" stroke="rgba(0,60,70,.18)" stroke-width=".55"/>
+    <text y="-16" text-anchor="middle" font-size="5" font-weight="800" fill="#0B3F47" font-family="Barlow Condensed, sans-serif">1</text>
+    ${arm(SL, EL, WL, "L")}${arm(SR, ER, WR, "R")}
+    <rect x="-1.4" y="-26.6" width="2.8" height="2.4" fill="#D9A47E"/>
+    <circle cy="-29.4" r="3.7" fill="url(#mgSkin)"/>
+    <path d="M-3.8 -30 Q-3.6 -34.2 0 -33.8 Q3.8 -34.2 3.8 -30 Q2.2 -31.8 0 -31.6 Q-2.2 -31.8 -3.8 -30 Z" fill="#17171C"/>
+    <path d="M-2.1 -30.4 h1.3 M.8 -30.4 h1.3" stroke="#2A1E18" stroke-width=".5" stroke-linecap="round"/>
+    <circle cx="-1.3" cy="-29" r=".45" fill="#17171C"/><circle cx="1.3" cy="-29" r=".45" fill="#17171C"/>
+    <path d="M-.9 -27.3 H.9" stroke="#8A4A38" stroke-width=".4" stroke-linecap="round"/>
+    <ellipse cx="-3.7" cy="-29.2" rx=".5" ry=".8" fill="#D99E76"/><ellipse cx="3.7" cy="-29.2" rx=".5" ry=".8" fill="#D99E76"/>`;
+}
+// 내 다리: 위에서 내려다본 디딤발(공 왼쪽)과 차는 발(공 오른쪽 뒤). 화면 아래로 갈수록 가까워 굵어짐 (양말 → 정강이)
+function shooterLegs(yb) {
+  const leg = (id, boot, toe, base, wB, wBase, rot) => {
+    const sk = [boot[0] + (base[0] - boot[0]) * 0.42, boot[1] + (base[1] - boot[1]) * 0.42], wS = wB + (wBase - wB) * 0.42;
+    return `<g id="${id}">
+      <path d="${limb(sk, base, wS, wBase, 1)}" fill="url(#mgSkin)"/>
+      <path d="${limb(boot, sk, wB, wS, .5)}" fill="url(#mgShirtO)"/>
+      <path d="${limb([boot[0] + (sk[0] - boot[0]) * .78, boot[1] + (sk[1] - boot[1]) * .78], sk, wS * .98, wS, 0)}" fill="#1A2470" opacity=".9"/>
+      <g transform="translate(${boot[0]},${boot[1]}) rotate(${rot})">
+        <path d="M${-wB * .62} 1 Q${-wB * .7} ${-toe * .6} 0 ${-toe} Q${wB * .7} ${-toe * .6} ${wB * .62} 1 Q0 ${wB * .5} ${-wB * .62} 1 Z" fill="#121318"/>
+        <path d="M${-wB * .5} ${-toe * .3} Q0 ${-toe * .52} ${wB * .5} ${-toe * .3}" stroke="#FF6B1A" stroke-width=".5" fill="none"/>
+        <path d="M${-wB * .2} ${-toe * .78} Q0 ${-toe * .9} ${wB * .2} ${-toe * .78}" stroke="rgba(255,255,255,.25)" stroke-width=".35" fill="none"/>
+      </g></g>`;
+  };
+  const deep = yb > 100;
+  return leg("shPlant", [73.2, 88.4], 4.6, [deep ? 58 : 66, yb + 3], 4.2, deep ? 13 : 7, -12)
+    + leg("shKick", [87.4, 93], 5, [deep ? 104 : 96, yb + 3], 4.8, deep ? 15 : 8, 14);
+}
+// tall: 세로 휴대폰에서는 좌우를 조금 잘라 내고 위(하늘·학교)와 아래(잔디·내 다리)를 늘려 크게 보여 줌
 function shootScene(tall = false) {
-  const rowsY = tall ? [-27, -21.4, -15.8, -10.2, 13.6, 19.2, 24.8, 30.2] : [13.6, 19.2, 24.8, 30.2];
-  const crowd = crowdRows(rowsY, 46, 3.6, 3);
-  const Y0 = tall ? -40 : 0, H = tall ? 160 : 96, YB = tall ? 120 : 96;
-  // 잔디: 가로 줄무늬 + 소실점으로 모이는 세로 줄무늬(체크 무늬) + 골문 앞 빛 웅덩이
+  const P = pal(), Y0 = tall ? -40 : 0, H = tall ? 160 : 96, YB = tall ? 120 : 96, night = TOD === "night";
+  const g2 = P.grass;
   const stripes = [[40, 45], [45, 51], [51, 58], [58, 66], [66, 76], [76, 88], [88, 96], ...(tall ? [[96, 106], [106, 120]] : [])]
-    .map(([y0, y1], i) => `<rect x="0" y="${y0}" width="160" height="${y1 - y0}" fill="${i % 2 ? "#187A41" : "#1D8A4A"}"/>`).join("");
+    .map(([y0, y1], i) => `<rect x="0" y="${y0}" width="160" height="${y1 - y0}" fill="${i % 2 ? g2[1] : g2[0]}"/>`).join("");
   const VP = [80, -30];
   const fan = Array.from({ length: 14 }, (_, i) => {
-    const a = -150 + i * 32, b = a + 16, y = YB;
-    const xa = VP[0] + (a - VP[0]) * 1, xb = VP[0] + (b - VP[0]) * 1;
-    const t = (40 - VP[1]) / (y - VP[1]);
-    return `<polygon points="${(VP[0] + (xa - VP[0]) * t).toFixed(1)},40 ${(VP[0] + (xb - VP[0]) * t).toFixed(1)},40 ${xb.toFixed(1)},${y} ${xa.toFixed(1)},${y}" fill="rgba(0,0,0,.06)"/>`;
+    const a = -150 + i * 32, b = a + 16, y = YB, t = (40 - VP[1]) / (y - VP[1]);
+    return `<polygon points="${(VP[0] + (a - VP[0]) * t).toFixed(1)},40 ${(VP[0] + (b - VP[0]) * t).toFixed(1)},40 ${b.toFixed(1)},${y} ${a.toFixed(1)},${y}" fill="rgba(0,0,0,.05)"/>`;
   }).join("");
-  return `<svg viewBox="${tall ? "20 -40 120 160" : "0 0 160 96"}" class="mg-svg mg-shoot">
-    <defs>${COMMON_DEFS}${STADIUM_DEFS}
-      <linearGradient id="shSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#02030A"/><stop offset=".55" stop-color="#0B1238"/><stop offset="1" stop-color="#18235E"/></linearGradient>
-      <linearGradient id="shBeam" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(255,244,210,.18)"/><stop offset="1" stop-color="rgba(255,244,210,0)"/></linearGradient>
+  // 골대 깊이: 뒤쪽 아래 모서리(바닥)와 뒤 기둥 위 끝
+  const BX0 = GX0 + 7, BX1 = GX1 - 7, BY = GLINE - 7, BT = GTOP + 10;
+  const netA = night ? .3 : .5, depth = night ? "rgba(4,8,24,.5)" : "rgba(255,255,255,.06)";
+  return `<svg viewBox="${tall ? "20 -40 120 160" : "0 0 160 96"}" class="mg-svg mg-shoot sch-${TOD}">
+    <defs>${COMMON_DEFS}${STADIUM_DEFS}${SCHOOL_DEFS()}
       <linearGradient id="shPost" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#9AA4B8"/><stop offset=".35" stop-color="#FFFFFF"/><stop offset=".6" stop-color="#E6EAF2"/><stop offset="1" stop-color="#8994AA"/></linearGradient>
       <linearGradient id="shBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".6" stop-color="#DCE1EB"/><stop offset="1" stop-color="#8994AA"/></linearGradient>
-      <pattern id="shNet" width="2.6" height="2.6" patternUnits="userSpaceOnUse"><path d="M0 0 L2.6 2.6 M2.6 0 L0 2.6" stroke="rgba(255,255,255,.34)" stroke-width=".22"/></pattern>
-      <linearGradient id="shNetDepth" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="rgba(4,8,24,.55)"/><stop offset="1" stop-color="rgba(4,8,24,.15)"/></linearGradient>
-      <radialGradient id="shPool" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="rgba(255,252,225,.24)"/><stop offset="1" stop-color="rgba(255,252,225,0)"/></radialGradient>
-      <radialGradient id="shVig" cx=".5" cy=".5" r=".72"><stop offset=".55" stop-color="rgba(0,0,0,0)"/><stop offset="1" stop-color="rgba(0,0,0,.6)"/></radialGradient>
-      <linearGradient id="shKit" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#93B81F"/><stop offset=".4" stop-color="#D3FA45"/><stop offset=".7" stop-color="#C6F432"/><stop offset="1" stop-color="#86A81A"/></linearGradient>
-      <linearGradient id="shTrail" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="rgba(255,255,255,0)"/><stop offset="1" stop-color="rgba(255,236,170,.9)"/></linearGradient>
+      <pattern id="shNet" width="2.4" height="2.4" patternUnits="userSpaceOnUse"><path d="M0 0 L2.4 2.4 M2.4 0 L0 2.4" stroke="rgba(255,255,255,${netA})" stroke-width=".2"/></pattern>
+      <linearGradient id="shNetDepth" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${depth}"/><stop offset="1" stop-color="rgba(0,0,0,.08)"/></linearGradient>
+      <radialGradient id="shVig" cx=".5" cy=".5" r=".72"><stop offset=".55" stop-color="rgba(0,0,0,0)"/><stop offset="1" stop-color="rgba(0,0,0,${P.vig + .1})"/></radialGradient>
+      <linearGradient id="gkKit" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#138C99"/><stop offset=".4" stop-color="#2CD3E3"/><stop offset=".7" stop-color="#1FC0D0"/><stop offset="1" stop-color="#0F7D89"/></linearGradient>
       <filter id="shGlow"><feGaussianBlur stdDeviation="1.1" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
       <filter id="shSoft"><feGaussianBlur stdDeviation=".6"/></filter>
     </defs>
-    <rect y="${Y0}" width="160" height="${H}" fill="url(#shSky)"/>
-    ${tall ? `<path d="M0 -36 H160 V-4 H0 Z" fill="#0A1030"/><rect x="0" y="-4" width="160" height="1.6" fill="#FF6B1A" opacity=".75"/>` : ""}
-    <!-- 지붕과 조명탑 -->
-    <path d="M-10 ${tall ? -40 : 0} H170 V${tall ? -36 : 3.2} Q80 ${tall ? -33 : 6} -10 ${tall ? -36 : 3.2} Z" fill="#05081A"/>
-    <path d="M14 4 L-14 62 L50 62 Z" fill="url(#shBeam)"/><path d="M146 4 L110 62 L174 62 Z" fill="url(#shBeam)"/>
-    ${floodBank(14, 5)}${floodBank(146, 5)}
-    <!-- 관중석 -->
-    <path d="M0 10 H160 V34 H0 Z" fill="#0A1134"/>
-    <g>${crowd}</g>
-    <rect x="0" y="22" width="160" height="12" fill="url(#mgHaze)"/>
-    <g fill="#FF6B1A" opacity=".85"><path d="M22 11 l5 1.6 -5 1.6 z"/><path d="M71 11 l5 1.6 -5 1.6 z"/><path d="M118 11 l5 1.6 -5 1.6 z"/></g>
-    ${boards(34, 6)}
+    ${schoolBackdrop(0, 160, Y0, 40)}
     <!-- 잔디 -->
-    ${stripes}${fan}
-    <ellipse cx="80" cy="66" rx="70" ry="16" fill="url(#shPool)"/>
-    <g fill="none" stroke="rgba(255,255,255,.78)" stroke-width=".55">
+    ${stripes}${fan}<rect x="0" y="40" width="160" height="${YB - 40}" fill="url(#schTurf)"/>
+    <rect x="0" y="40" width="160" height="6" fill="url(#schHaze)"/>
+    <ellipse cx="80" cy="66" rx="70" ry="16" fill="url(#schPool)"/>
+    <g fill="none" stroke="${P.line}" stroke-width=".55">
       <path d="M0 ${GLINE} H160"/>
       <path d="M20 ${GLINE} L12 72 H148 L140 ${GLINE}"/>
       <path d="M2 ${GLINE} L-14 92"/><path d="M158 ${GLINE} L174 92"/>
       <path d="M58 72 Q80 78 102 72" opacity=".7"/>
     </g>
-    <ellipse cx="80" cy="84" rx="1.2" ry=".5" fill="#fff" opacity=".8"/>
+    <ellipse cx="80" cy="84" rx="1.6" ry=".6" fill="#fff" opacity=".85"/>
+    <!-- 골대 옆 소품: 공 주머니·콘(왼쪽), 코치님(오른쪽) -->
+    <g transform="translate(${tall ? 32 : 16},74) scale(.62)">${ballBag()}</g>
+    <g transform="translate(${tall ? 36 : 22},${tall ? 84 : 66}) scale(.4)">${drCone()}</g>
+    ${[[GX0 + 4, GLINE - 1.4], [GX0 + 13, GLINE - 2.2], [GX1 - 9, GLINE - 1.8]].map(([x, y]) => `<g transform="translate(${x},${y}) scale(.36)" opacity=".9">${BALL(2.9)}</g>`).join("")}
+    <g transform="translate(${tall ? 129 : 146},${tall ? 80 : 70}) scale(.68)">${coachSVG()}</g>
     <!-- 골대 그림자 -->
-    <path d="M${GX0 + 1.2} ${GLINE} L${GX0 + 9} ${GLINE + 6} L${GX0 + 10.6} ${GLINE + 6} L${GX0 + 2.6} ${GLINE} Z M${GX1 - 1} ${GLINE} L${GX1 + 7} ${GLINE + 6} L${GX1 + 8.6} ${GLINE + 6} L${GX1 + 0.4} ${GLINE} Z" fill="rgba(0,0,0,.25)"/>
-    <!-- 골문: 뒷그물(깊이 음영), 옆그물, 지붕 그물 -->
+    <path d="M${GX0 + 1.2} ${GLINE} L${GX0 + 9} ${GLINE + 6} L${GX0 + 10.6} ${GLINE + 6} L${GX0 + 2.6} ${GLINE} Z M${GX1 - 1} ${GLINE} L${GX1 + 7} ${GLINE + 6} L${GX1 + 8.6} ${GLINE + 6} L${GX1 + 0.4} ${GLINE} Z" fill="${P.shadow}"/>
+    <!-- 골문: 뒷그물, 옆그물, 지붕 그물, 뒤 기둥(받침대) -->
     <g id="shNetG">
-      <path d="M${GX0 + 6} ${GTOP + 7} H${GX1 - 6} V${GLINE - 6} H${GX0 + 6} Z" fill="url(#shNetDepth)"/>
-      <path d="M${GX0 + 6} ${GTOP + 7} H${GX1 - 6} V${GLINE - 6} H${GX0 + 6} Z" fill="url(#shNet)"/>
-      <path d="M${GX0} ${GTOP} L${GX0 + 6} ${GTOP + 7} V${GLINE - 6} L${GX0} ${GLINE} Z" fill="url(#shNet)" opacity=".85"/>
-      <path d="M${GX1} ${GTOP} L${GX1 - 6} ${GTOP + 7} V${GLINE - 6} L${GX1} ${GLINE} Z" fill="url(#shNet)" opacity=".85"/>
-      <path d="M${GX0} ${GTOP} H${GX1} L${GX1 - 6} ${GTOP + 7} H${GX0 + 6} Z" fill="url(#shNet)" opacity=".75"/>
-      <path d="M${GX0 + 6} ${GLINE - 6} H${GX1 - 6} L${GX1} ${GLINE} H${GX0} Z" fill="rgba(0,0,0,.22)"/>
-      <path d="M${GX0 + 6} ${GTOP + 7} H${GX1 - 6} V${GLINE - 6} M${GX0 + 6} ${GTOP + 7} V${GLINE - 6}" fill="none" stroke="rgba(255,255,255,.4)" stroke-width=".45"/>
+      <path d="M${BX0} ${BT} H${BX1} V${BY} H${BX0} Z" fill="url(#shNetDepth)"/>
+      <path d="M${BX0} ${BT} H${BX1} V${BY} H${BX0} Z" fill="url(#shNet)"/>
+      <path d="M${GX0} ${GTOP} L${BX0} ${BT} V${BY} L${GX0} ${GLINE} Z" fill="url(#shNet)" opacity=".9"/>
+      <path d="M${GX1} ${GTOP} L${BX1} ${BT} V${BY} L${GX1} ${GLINE} Z" fill="url(#shNet)" opacity=".9"/>
+      <path d="M${GX0} ${GTOP} H${GX1} L${BX1} ${BT} H${BX0} Z" fill="url(#shNet)" opacity=".8"/>
+      <path d="M${BX0} ${BY} H${BX1} L${GX1} ${GLINE} H${GX0} Z" fill="${P.shadow}" opacity=".6"/>
+      <g fill="none" stroke="rgba(235,240,248,.85)" stroke-width=".5" stroke-linecap="round">
+        <path d="M${GX0} ${GTOP} L${BX0} ${BT} V${BY} H${BX1} V${BT} L${GX1} ${GTOP}"/>
+        <path d="M${BX0} ${BY} L${GX0} ${GLINE} M${BX1} ${BY} L${GX1} ${GLINE}" opacity=".7"/>
+      </g>
+      <path d="M${BX0} ${BT} H${BX1}" stroke="rgba(235,240,248,.5)" stroke-width=".35"/>
     </g>
     <!-- 골대 (둥근 기둥 음영) -->
-    <path d="M${GX0} ${GLINE + .6} V${GTOP} H${GX1} V${GLINE + .6}" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="3.2" transform="translate(.8,.8)"/>
+    <path d="M${GX0} ${GLINE + .6} V${GTOP} H${GX1} V${GLINE + .6}" fill="none" stroke="rgba(0,0,0,.3)" stroke-width="3.2" transform="translate(.8,.8)"/>
     <rect x="${GX0 - 1.3}" y="${GTOP - 1.3}" width="2.6" height="${GLINE - GTOP + 1.9}" fill="url(#shPost)"/>
     <rect x="${GX1 - 1.3}" y="${GTOP - 1.3}" width="2.6" height="${GLINE - GTOP + 1.9}" fill="url(#shPost)"/>
     <rect x="${GX0 - 1.3}" y="${GTOP - 1.3}" width="${GX1 - GX0 + 2.6}" height="2.6" fill="url(#shBar)"/>
     <!-- 골키퍼 -->
-    <g transform="translate(0,${GLINE})"><g id="gk" class="mg-gkmove" style="transform:translateX(80px)"><g class="mg-keeper"><g class="mg-gkidle">
-      <ellipse cx="0" cy=".6" rx="9" ry="1.6" fill="rgba(0,0,0,.4)" filter="url(#shSoft)"/>
-      <path d="M-4.6 -11.4 L-5.4 -4.2 L-2.2 -4.2 L-1.2 -9.6 Z" fill="#1A1F2A"/><path d="M4.6 -11.4 L5.4 -4.2 L2.2 -4.2 L1.2 -9.6 Z" fill="#1A1F2A"/>
-      <path d="M-5.4 -4.4 H-2.1 L-2.3 -.9 H-5.2 Z" fill="url(#shKit)"/><path d="M2.1 -4.4 H5.4 L5.2 -.9 H2.3 Z" fill="url(#shKit)"/>
-      <path d="M-6.2 -1.2 Q-6.2 .4 -4.4 .4 H-1.8 L-2 -1.2 Z" fill="#0D0F14"/><path d="M6.2 -1.2 Q6.2 .4 4.4 .4 H1.8 L2 -1.2 Z" fill="#0D0F14"/>
-      <path d="M-5.3 -12.6 H5.3 L4.8 -9.4 Q0 -8.4 -4.8 -9.4 Z" fill="#141821"/>
-      <path d="M-6.2 -24.2 Q0 -26.4 6.2 -24.2 L5.7 -11.8 Q0 -10.8 -5.7 -11.8 Z" fill="url(#shKit)" stroke="#7C9A16" stroke-width=".35"/>
-      <path d="M-6 -21 L6 -21 M-5.8 -18.4 L5.8 -18.4" stroke="rgba(20,40,0,.18)" stroke-width=".6"/>
-      <path d="M-6.1 -24.2 L-14 -27.4 L-15.2 -24.8 L-6.5 -20.2 Z" fill="url(#shKit)" stroke="#7C9A16" stroke-width=".35"/>
-      <path d="M6.1 -24.2 L14 -27.4 L15.2 -24.8 L6.5 -20.2 Z" fill="url(#shKit)" stroke="#7C9A16" stroke-width=".35"/>
-      <path d="M-13.4 -27.6 L-14.6 -24.8" stroke="#141821" stroke-width=".9"/><path d="M13.4 -27.6 L14.6 -24.8" stroke="#141821" stroke-width=".9"/>
-      <g><circle cx="-15.8" cy="-26.8" r="2.6" fill="#F4F6FF" stroke="#FF6B1A" stroke-width=".8"/><path d="M-17.6 -28.2 Q-15.8 -30.2 -14 -28.2" stroke="#FF6B1A" stroke-width=".6" fill="none"/></g>
-      <g><circle cx="15.8" cy="-26.8" r="2.6" fill="#F4F6FF" stroke="#FF6B1A" stroke-width=".8"/><path d="M14 -28.2 Q15.8 -30.2 17.6 -28.2" stroke="#FF6B1A" stroke-width=".6" fill="none"/></g>
-      <text y="-15.2" text-anchor="middle" font-size="5.4" font-weight="800" fill="#141821" font-family="Barlow Condensed, sans-serif">1</text>
-      <rect x="-1.5" y="-26.8" width="3" height="2.6" fill="#D9A47E"/>
-      <circle cy="-29.8" r="3.7" fill="url(#mgSkin)"/>
-      <path d="M-3.8 -30.4 Q-3.6 -34.6 0 -34.2 Q3.8 -34.6 3.8 -30.4 Q2.2 -32.2 0 -32 Q-2.2 -32.2 -3.8 -30.4 Z" fill="#17171C"/>
-      <path d="M-2 -30.6 h1.2 M.8 -30.6 h1.2" stroke="#2A1E18" stroke-width=".45" stroke-linecap="round"/>
-      <circle cx="-1.3" cy="-29.4" r=".45" fill="#17171C"/><circle cx="1.3" cy="-29.4" r=".45" fill="#17171C"/>
-      <path d="M-1 -27.6 Q0 -27.2 1 -27.6" stroke="#8A4A38" stroke-width=".4" fill="none" stroke-linecap="round"/>
-    </g></g></g></g>
+    <g transform="translate(0,${GLINE})"><g id="gk" class="mg-gkmove" style="transform:translateX(80px)"><g class="mg-keeper"><g class="mg-gkidle">${keeperSVG()}</g></g></g></g>
     <!-- 남은 공 자국 -->
     <g id="balls"></g>
     <g id="shTrailG"></g>
     <!-- 조준점 -->
     <g id="aim" transform="translate(80,40)" filter="url(#shGlow)">
-      <circle r="4.6" fill="rgba(255,201,60,.12)" stroke="#FFC93C" stroke-width=".7"/>
+      <circle r="4.6" fill="rgba(255,201,60,.14)" stroke="#FFC93C" stroke-width=".7"/>
       <circle r="1" fill="#FFC93C"/>
       <path d="M-7.4 0 H-5.4 M5.4 0 H7.4 M0 -7.4 V-5.4 M0 5.4 V7.4" stroke="#FFC93C" stroke-width=".8" stroke-linecap="round"/>
-      <circle r="6.4" fill="none" stroke="rgba(255,201,60,.45)" stroke-width=".35" stroke-dasharray="2 2.2" class="mg-aimspin"/>
+      <circle r="6.4" fill="none" stroke="rgba(255,201,60,.5)" stroke-width=".35" stroke-dasharray="2 2.2" class="mg-aimspin"/>
     </g>
-    <!-- 공 -->
-    <ellipse id="sshadow" cx="80" cy="88.2" rx="3.4" ry="1" fill="rgba(0,0,0,.45)" filter="url(#shSoft)"/>
+    <!-- 공과 내 다리 -->
+    <ellipse id="sshadow" cx="80" cy="88.2" rx="3.4" ry="1" fill="${P.shadow}" filter="url(#shSoft)"/>
+    ${shooterLegs(YB)}
     <g transform="translate(80,85.6)"><g id="sball">${BALL(2.9)}</g></g>
     <g id="shFx"></g>
     <text id="shMsg" x="80" y="52" text-anchor="middle" class="mg-shmsg"></text>
@@ -299,7 +319,7 @@ function shooting(area, status, ctl, e, done, lv = 1, tall = false) {
   area.innerHTML = shootScene(tall);
   const aim = area.querySelector("#aim"), gk = area.querySelector("#gk"), keeper = gk.querySelector(".mg-keeper"), ball = area.querySelector("#sball"),
     shadow = area.querySelector("#sshadow"), net = area.querySelector("#shNetG"), msg = area.querySelector("#shMsg"),
-    dots = area.querySelectorAll("#dots i"), pts = area.querySelector("#pts");
+    dots = area.querySelectorAll("#dots i"), pts = area.querySelector("#pts"), kick = area.querySelector("#shKick");
   const period = (1500 - e * 650) * [1, 1, 0.86, 0.76, 0.68][lv];   // 단계가 오를수록 조준점이 빨라짐
   const gkW = (26 - e * 8) * 1.32;                                    // 골키퍼가 막는 폭 (가로 160 기준)
   const MID = (GX0 + GX1) / 2, HALF = (GX1 - GX0) / 2 - 4;
@@ -362,6 +382,12 @@ function shooting(area, status, ctl, e, done, lv = 1, tall = false) {
     const high = Math.max(0, Math.min(1, (GLINE - y - 10) / 26));          // 높은 공일수록 위로 뜀
     const rot = Math.max(-75, Math.min(75, dx * (2 + high * 1.5)));
     keeper.style.transform = `translate(${dx * 0.7}px, ${-high * 8}px) rotate(${rot}deg)`;
+    keeper.querySelectorAll(".gk-arm").forEach(a => {                  // 팔을 머리 위로 뻗음 (몸이 기울면 공 쪽으로 손이 감)
+      const L = a.dataset.side === "L", up = Math.abs(dx) > 3 || high > .3;
+      a.style.transform = up ? `rotate(${L ? 128 : -128}deg)` : `rotate(${L ? 40 : -40}deg)`;
+    });
+    kick.style.transformOrigin = `${tall ? 104 : 96}px ${tall ? 123 : 99}px`;
+    kick.classList.remove("go"); void kick.getBoundingClientRect(); kick.classList.add("go");
     const d = dots[shot]; d.className = saved ? "miss" : corner ? "top" : "hit";
     shot++;
     pts.textContent = `${score}점`;
@@ -390,6 +416,8 @@ function shooting(area, status, ctl, e, done, lv = 1, tall = false) {
       ball.style.transition = "none"; ball.style.transform = "";
       shadow.style.transition = "none"; shadow.style.transform = ""; shadow.style.opacity = "";
       keeper.style.transform = "";
+      keeper.querySelectorAll(".gk-arm").forEach(a => { a.style.transform = ""; });
+      kick.classList.remove("go");
       msg.setAttribute("class", "mg-shmsg");
       if (shot >= 5) return done(score >= 8 ? "S" : score >= 6 ? "A" : score >= 4 ? "B" : "C");
       placeGk(); lock = false;
