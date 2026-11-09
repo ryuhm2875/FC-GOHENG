@@ -197,7 +197,8 @@ body::before {
 .ft-foot { margin: 22px 0 0; font-size: 12px; color: var(--dim); position: relative; z-index: 2; }
 @media (min-width: 900px) {
   .fc-title { grid-template-columns: 1.2fr 1fr; grid-template-rows: 1fr auto; column-gap: 40px; }
-  .ft-brand { grid-column: 1; grid-row: 1; }
+  .ft-brand { grid-column: 1; grid-row: 1; min-width: 0; }
+  .ft-name { font-size: clamp(54px, 7vw, 120px); }                 /* 메뉴 칸을 침범하지 않게 왼쪽 칸 너비에 맞춤 */
   .ft-press { grid-column: 2; grid-row: 1; align-self: end; }
   .ft-menu { grid-column: 2; grid-row: 1; align-self: end; margin: 0; }
   .ft-foot { grid-column: 1 / -1; }
@@ -210,14 +211,29 @@ body::before {
   .ft-bg::after { background: linear-gradient(180deg, rgba(5,7,15,.35) 0%, rgba(5,7,15,.45) 30%, rgba(5,7,15,.05) 55%, rgba(5,7,15,0) 75%, rgba(5,7,15,.35) 100%); transition: background .5s; }
   .fc-title.open .ft-bg::after { background: linear-gradient(180deg, rgba(5,7,15,.4) 0%, rgba(5,7,15,.55) 35%, rgba(5,7,15,.82) 60%, rgba(5,7,15,.92) 100%); }
   .ft-press { margin-top: 26px; text-shadow: 0 2px 10px rgba(0,0,0,.7); }
-  .ft-foot, .ft-user { grid-row: 6; align-self: end; text-shadow: 0 1px 6px rgba(0,0,0,.8); }
-  .ft-user { grid-row: 5; }
+  /* 로그인 정보(관리자·로그아웃)와 "made by"는 맨 아래 두 줄로. 겹치거나 잘리지 않게 화면 흐름 안에 둠 */
+  .fc-title .ft-user { position: static; grid-row: 5; align-self: end; justify-self: center; margin: 18px 0 0; max-width: 100%; flex-wrap: wrap; justify-content: center; }
+  .ft-foot { grid-row: 6; align-self: end; justify-self: center; margin-top: 10px; text-shadow: 0 1px 6px rgba(0,0,0,.8); }
+  /* 메뉴를 열기 전에는 "화면을 눌러 시작" 바로 아래(하늘 쪽)에 두어 아이·그림자를 가리지 않게 */
+  .fc-title:not(.open) .ft-user { grid-row: 3; align-self: start; margin-top: 16px; }
   .ft-logo { width: clamp(70px, 19vw, 96px); }
   .ft-brand { gap: 12px; }
   .ft-name { font-size: clamp(40px, 12.4vw, 64px); }
   /* 메뉴를 열면 위 여백을 줄이고, 작은 휴대폰에서는 스크롤로 끝까지 */
   .fc-title.open { padding-top: calc(7dvh + env(safe-area-inset-top, 0px)); overflow-y: auto; height: 100dvh; }
   .fc-title.open .ft-menu { margin-top: 18px; }
+}
+/* 키가 작은 휴대폰(예: 320×568, 375×667): 메뉴를 열어도 한 화면에 들어오게 촘촘히 */
+@media (orientation: portrait) and (max-width: 760px) and (max-height: 700px) {
+  .fc-title.open { padding-top: calc(max(4dvh, 52px) + env(safe-area-inset-top, 0px)); }
+  .fc-title.open .ft-logo { width: 62px; }
+  .fc-title.open .ft-name { font-size: clamp(34px, 10.5vw, 48px); }
+  .fc-title.open .ft-menu { gap: 7px; margin-top: 12px; }
+  .fc-title.open .ft-tile { padding: 9px 16px; }
+  .fc-title.open .ft-t { font-size: 17px; }
+  .fc-title.open .ft-s { font-size: 12px; }
+  .fc-title.open .ft-user { margin-top: 10px; }
+  .fc-title.open .ft-foot { margin-top: 6px; }
   .ft-tile { padding: 12px 18px; }
 }
 
