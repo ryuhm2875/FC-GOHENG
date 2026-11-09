@@ -258,6 +258,8 @@ export function showMatch(app, m, onDone) {
     // 경기장 기록의 시각은 32비트 소수라 조금 작게 저장됨 (예: 111.1 → 111.0999985). 기록 간격(0.1초)보다 훨씬 작은 여유를 둬서 줄이 멈춰 있지 않게
     if (pend.length && (pend[0].ts ?? 0) <= clock + TS_EPS && now - lastShown >= gap) { showLine(pend.shift()); lastShown = now; }
     pitch.setSlow(pend.length > 3 && (pend[2].ts ?? 0) <= clock + TS_EPS ? 0.6 : 1);    // 읽을 줄이 많이 밀리면 경기장을 잠깐 천천히
+    if (held && atEnd) { const r = held; held = null; pitch.load(r.frames, r.cut); pend.push(...r.lines); after = r.kind; return; }
+    if (!atEnd) prefetch(clock);
     if (atEnd && !pend.length && !waiting && after) {
       const k = after; after = null;
       if (k === "line") return tick();
@@ -272,9 +274,16 @@ export function showMatch(app, m, onDone) {
     waiting = true;
     const r = next(state, m);
     waiting = false;
+    if (r.cut && pitch.clock() < pitch.end() - 0.05) { held = r; after = null; return; }   // 미리 받은 장면이 이어지지 않는 장면이면 지금 장면이 끝날 때 붙임
     pitch.load(r.frames, r.cut);
     pend.push(...r.lines);
     after = r.kind;
+  }
+  // 다음 장면 미리 받기: 지금 장면이 끝나기 1.5초 전에, 그리는 프레임 밖에서 (장면 사이에 바둑알이 멈칫하지 않게)
+  let held = null, pre = 0;
+  function prefetch(clock) {
+    if (pre || waiting || after !== "line" || pend.length > 2 || clock < pitch.end() - 1.5) return;
+    pre = setTimeout(() => { pre = 0; if (after === "line" && !waiting) tick(); }, 0);
   }
 
   // ── 경기 전 ──
