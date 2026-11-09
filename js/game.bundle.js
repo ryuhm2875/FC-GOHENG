@@ -16075,7 +16075,15 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false }) {
     while (S.i < B.length - 1 && B[S.i + 1][0] <= t) S.i++;
     const a = B[S.i], b = B[Math.min(S.i + 1, B.length - 1)];
     const span = b[0] - a[0], u = span > 1e-6 ? Math.min(1, Math.max(0, (t - a[0]) / span)) : 1;
-    for (let k = 0; k < pos.length; k++) pos[k] = a[k] + (b[k] - a[k]) * u;
+    for (let k = 0; k < 4; k++) pos[k] = a[k] + (b[k] - a[k]) * u;
+    // 선수: 앞뒤 기록까지 써서 곡선으로 이음 → 방향이 바뀔 때 꺾이지 않고 부드럽게 (0.1초에 2.5m 넘게 움직인 순간이동은 직선)
+    const a0 = B[Math.max(0, S.i - 1)], b1 = B[Math.min(B.length - 1, S.i + 2)], u2 = u * u, u3 = u2 * u;
+    for (let k = 4; k < pos.length; k++) {
+      const p1 = a[k], p2 = b[k], d = p2 - p1;
+      if (d > 2.5 || d < -2.5 || Math.abs(p1 - a0[k]) > 2.5 || Math.abs(b1[k] - p2) > 2.5) { pos[k] = p1 + d * u; continue; }
+      const m1 = (p2 - a0[k]) * 0.5, m2 = (b1[k] - p1) * 0.5;
+      pos[k] = (2 * u3 - 3 * u2 + 1) * p1 + (u3 - 2 * u2 + u) * m1 + (-2 * u3 + 3 * u2) * p2 + (u3 - u2) * m2;
+    }
   }
 
   function frame(now) {
@@ -16409,6 +16417,8 @@ function showMatch(app, m, onDone) {
     // 경기장 기록의 시각은 32비트 소수라 조금 작게 저장됨 (예: 111.1 → 111.0999985). 기록 간격(0.1초)보다 훨씬 작은 여유를 둬서 줄이 멈춰 있지 않게
     if (pend.length && (pend[0].ts ?? 0) <= clock + TS_EPS && now - lastShown >= gap) { showLine(pend.shift()); lastShown = now; }
     pitch.setSlow(pend.length > 3 && (pend[2].ts ?? 0) <= clock + TS_EPS ? 0.6 : 1);    // 읽을 줄이 많이 밀리면 경기장을 잠깐 천천히
+    if (held && atEnd) { const r = held; held = null; pitch.load(r.frames, r.cut); pend.push(...r.lines); after = r.kind; return; }
+    if (!atEnd) prefetch(clock);
     if (atEnd && !pend.length && !waiting && after) {
       const k = after; after = null;
       if (k === "line") return tick();
@@ -16423,9 +16433,16 @@ function showMatch(app, m, onDone) {
     waiting = true;
     const r = next(state, m);
     waiting = false;
+    if (r.cut && pitch.clock() < pitch.end() - 0.05) { held = r; after = null; return; }   // 미리 받은 장면이 이어지지 않는 장면이면 지금 장면이 끝날 때 붙임
     pitch.load(r.frames, r.cut);
     pend.push(...r.lines);
     after = r.kind;
+  }
+  // 다음 장면 미리 받기: 지금 장면이 끝나기 1.5초 전에, 그리는 프레임 밖에서 (장면 사이에 바둑알이 멈칫하지 않게)
+  let held = null, pre = 0;
+  function prefetch(clock) {
+    if (pre || waiting || after !== "line" || pend.length > 2 || clock < pitch.end() - 1.5) return;
+    pre = setTimeout(() => { pre = 0; if (after === "line" && !waiting) tick(); }, 0);
   }
 
   // ── 경기 전 ──

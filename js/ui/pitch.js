@@ -35,7 +35,15 @@ export function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = fal
     while (S.i < B.length - 1 && B[S.i + 1][0] <= t) S.i++;
     const a = B[S.i], b = B[Math.min(S.i + 1, B.length - 1)];
     const span = b[0] - a[0], u = span > 1e-6 ? Math.min(1, Math.max(0, (t - a[0]) / span)) : 1;
-    for (let k = 0; k < pos.length; k++) pos[k] = a[k] + (b[k] - a[k]) * u;
+    for (let k = 0; k < 4; k++) pos[k] = a[k] + (b[k] - a[k]) * u;
+    // 선수: 앞뒤 기록까지 써서 곡선으로 이음 → 방향이 바뀔 때 꺾이지 않고 부드럽게 (0.1초에 2.5m 넘게 움직인 순간이동은 직선)
+    const a0 = B[Math.max(0, S.i - 1)], b1 = B[Math.min(B.length - 1, S.i + 2)], u2 = u * u, u3 = u2 * u;
+    for (let k = 4; k < pos.length; k++) {
+      const p1 = a[k], p2 = b[k], d = p2 - p1;
+      if (d > 2.5 || d < -2.5 || Math.abs(p1 - a0[k]) > 2.5 || Math.abs(b1[k] - p2) > 2.5) { pos[k] = p1 + d * u; continue; }
+      const m1 = (p2 - a0[k]) * 0.5, m2 = (b1[k] - p1) * 0.5;
+      pos[k] = (2 * u3 - 3 * u2 + 1) * p1 + (u3 - 2 * u2 + u) * m1 + (-2 * u3 + 3 * u2) * p2 + (u3 - u2) * m2;
+    }
   }
 
   function frame(now) {
