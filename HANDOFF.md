@@ -879,3 +879,17 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
 - 수정: createPitch에 `calm: false` 고정, 중계 줄 간격 1.3배도 없앰. 골 장면 화면 확대(goalCam)·내 선수 고리 깜빡임·날씨 효과 같은 꾸밈은 계속 끔.
 - 확인: Playwright `reducedMotion: "reduce"`, 1280×800에서 4초 동안 바둑알 위치 5가지(수정 전) → 33가지(수정 후), 오류 0.
 - 되돌리지 말 것: 바둑알 움직임은 경기 자체라 움직임 줄이기 대상이 아님.
+
+## 47. 학교 행사 4개, 새 그림 12장, 학교 전경 (2026-11-11)
+- 새 행사 (data/events.js, 일정 data/calendar.js SCHOOL_DAYS)
+  - `memorial` 6월 1주 현충탑 참배·마을 플로깅 (할머니: "대서중이야? 기특하네.")
+  - `appleday` 10월 3주 애플데이 (10월 4주 독도와 겹쳐 한 주 앞으로, 사용자 확인)
+  - `dokdo_bell` 10월 4주 독도의 날 골든벨
+  - `reading_spring`(4·5월)·`reading_autumn`(9~11월) 계절독서: 고정 아님, 학교 장면, cool 40. 여름·겨울은 사용자 요청으로 없음
+- 그림 (assets/img, webp 82, 1376×768): ev_memorial, ev_appleday, ev_dokdo, ev_reading_spring, ev_reading_autumn, ev_gim(f_gim), ev_rain_training(rainy_training), ev_boots(torn_boots), ev_pro_match(pro_match), ev_naro(field_trip), ev_frozen(c_frozen)
+  - ev_gim·ev_rain_training은 원본 아래 검은 띠(77px)가 있어 위 689줄을 16:9로 잘라 키움. 반짝이(✦)는 이번 그림엔 없었음
+  - 프로 경기·축구화는 두 장씩 왔는데 띠 없는 쪽을 씀 (띠 있는 축구화는 상표 비슷한 무늬도 있음)
+- `bg_school`: 실제 학교 전경. 오프닝 두 번째 컷 "고흥대서중학교"(data/story.js)와 late_school, a_principal, a_transfer, a_field_fight, c_turf
+- 아직 그림 없음: ev_beach_clean(a_beach_clean), ev_karaoke(a_karaoke) 프롬프트만 드림
+- 타이틀: PC(title)는 해 진 뒤 섬에서 로켓, 휴대폰(title_m)은 노을·골대·그림자로 구도와 시간대가 다름. 사용자 "참고" 요청, 손대지 않음
+- 확인: 새 이벤트 12개 iPhone 13·1280×800 화면에서 그림·선택지 정상, uiplay MF 엔딩까지 오류 0

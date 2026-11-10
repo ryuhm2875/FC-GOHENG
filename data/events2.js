@@ -128,7 +128,7 @@ export const EVENTS_MORE = [
       { mark: "umbrella", label: "우산을 빌려주고 빗속을 뛴다", fx: { s: { "student.attitude": 1 }, morale: 3, fatigue: 2 },
         result: "빗속을 달리는데 이상하게 신이 났다. 다음 날 우산이 고맙다는 쪽지와 함께 돌아왔다." },
     ] },
-  { id: "a_transfer", school: true, who: "narr", once: true,
+  { id: "a_transfer", bg: "bg_school", school: true, who: "narr", once: true,
     text: "서울에서 전학생이 왔다. 축구부라는 말을 듣더니 \"서울엔 인조 잔디 구장이 엄청 많은데\" 한다.",
     choices: [
       { label: "바다 보이는 운동장을 자랑한다", fx: { morale: 2, s: { "mental.confidence": 0.5 } },
@@ -306,7 +306,7 @@ export const EVENTS_MORE = [
       { label: "\"괜찮아요\" 하고 웃는다", fx: { teacher: -1 },
         result: "\"괜찮지 않을 때 와도 돼.\" 선생님이 문을 열어 두신 채로 보내 주셨다." },
     ] },
-  { id: "a_principal", trigger: s => s.flags.lastCelebration === s.calendar.turn - 1, school: true, who: "narr", cond: s => s.flags.lastCelebration != null && s.calendar.turn - s.flags.lastCelebration <= 4,
+  { id: "a_principal", bg: "bg_school", trigger: s => s.flags.lastCelebration === s.calendar.turn - 1, school: true, who: "narr", cond: s => s.flags.lastCelebration != null && s.calendar.turn - s.flags.lastCelebration <= 4,
     text: "월요일 아침 방송 조회. 교장 선생님께서 \"우리 학교 축구부가 이번 대회에서 정말 큰일을 해냈습니다\" 하시자 교실마다 박수가 터진다.",
     choices: [
       { label: "반 친구들에게 손을 흔든다", fx: { morale: 4 },
@@ -314,7 +314,7 @@ export const EVENTS_MORE = [
       { label: "쑥스러워 고개를 숙인다", fx: { morale: 2, s: { "student.attitude": 0.5 } },
         result: "\"우리 반 축구부 일어나 봐!\" 담임 선생님 한마디에 결국 일어나서 꾸벅 인사했다." },
     ] },
-  { id: "a_field_fight", school: true, who: "narr", when: { grades: [1, 2] },
+  { id: "a_field_fight", bg: "bg_school", school: true, who: "narr", when: { grades: [1, 2] },
     text: "점심시간, 운동장 절반을 두고 우리 반과 3학년 형들이 맞섰다. 분위기가 험악하다.",
     choices: [
       { label: "반씩 나눠 쓰자고 제안한다", fx: { s: { "mental.teamwork": 1, "mental.confidence": 0.5 } },
@@ -454,7 +454,7 @@ export const EVENTS_MORE = [
       { label: "벽 너머로 감아 차서 다섯 개 다 노린다", req: { "tech.shoot": 66 }, fx: { s: { "tech.shoot": 0.6, "mental.confidence": 0.5 }, morale: 2 },
         result: "다섯 개 중 네 개가 골망 위쪽 구석에 꽂혔다. 음료수는 오늘 다른 사람이 산다." },
     ] },
-  { id: "c_turf", who: "coach",
+  { id: "c_turf", bg: "bg_school", who: "coach",
     text: "비 온 뒤라 운동장 곳곳이 패였다. {coach}님께서 삽을 들고 나오셨다. \"시간 있는 사람, 흙 좀 같이 옮기자.\"",
     choices: [
       { mark: "turf", label: "같이 흙을 메운다", fx: { coach: 2, s: { "phys.strength": 0.3 }, fatigue: 3 },
@@ -530,7 +530,7 @@ export const EVENTS_MORE = [
       { label: "부모님과 상의한다", fx: { s: { "mental.focus": 0.5 } },
         result: "엄마는 '네가 정해' 하셨다. 밤새 생각했다. 결국 고흥 운동장이 떠올랐다. 남기로 했다." },
     ] },
-  { id: "c_frozen", date: [[1, 3]], cool: 70, who: "assistant", when: { months: [12, 1, 2] },
+  { id: "c_frozen", bg: "ev_frozen", date: [[1, 3]], cool: 70, who: "assistant", when: { months: [12, 1, 2] },
     text: "운동장이 꽁꽁 얼었다. 오늘은 실내에서 할지, 언 땅에서 그대로 할지 너희가 정해라.",
     choices: [
       { label: "실내에서 줄넘기와 코어 운동", fx: { s: { "phys.stamina": 0.5 }, fatigue: 2 },
@@ -613,7 +613,7 @@ export const EVENTS_MORE = [
     ] },
 
   // ── 가족·고흥 ────────────────────────────────
-  { id: "f_gim", family: true, who: "narr", when: { months: [12, 1, 2] },
+  { id: "f_gim", bg: "ev_gim", family: true, who: "narr", when: { months: [12, 1, 2] },
     text: "겨울 주말, 할아버지의 김 양식장 일을 도우러 갔다. 새벽 바닷바람이 칼날 같다.",
     choices: [
       { label: "끝까지 돕는다", fx: { s: { "phys.strength": 0.5, "phys.stamina": 0.3 }, fatigue: 5, morale: 3 },
