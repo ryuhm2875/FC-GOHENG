@@ -16319,7 +16319,9 @@ function showMatch(app, m, onDone) {
   // 후반에는 그릴 때만 좌우를 뒤집음 (엔진 좌표는 그대로)
   let flipped = false;
   const SX = x => (flipped ? 105 - x : x);
-  const pitch = createPitch({ svg, players, dotEls, ballEl, shadowEl, calm });
+  // 움직임 줄이기(윈도우 '애니메이션 효과' 끔, 안드로이드 '애니메이션 삭제', 아이폰 '동작 줄이기')를 켜 둬도 경기장은 그대로 움직임.
+  // 바둑알 움직임이 경기 자체라서. 골 장면 화면 확대·내 선수 고리 깜빡임 같은 꾸밈만 끔 (HANDOFF §46)
+  const pitch = createPitch({ svg, players, dotEls, ballEl, shadowEl, calm: false });
   m.record = true;
   pitch.load([frameNow(m.sim)]);
   // 골 장면: 골문 쪽으로 화면이 살짝 다가가고, 골망이 출렁임
@@ -16462,7 +16464,7 @@ function showMatch(app, m, onDone) {
     const now = performance.now();
     if (holdUntil && now < holdUntil) return;
     if (holdUntil) { holdUntil = 0; pitch.pause(false); }
-    const gap = calm ? GAP[speed] * 1.3 : GAP[speed];
+    const gap = GAP[speed];
     // 경기장 기록의 시각은 32비트 소수라 조금 작게 저장됨 (예: 111.1 → 111.0999985). 기록 간격(0.1초)보다 훨씬 작은 여유를 둬서 줄이 멈춰 있지 않게
     if (pend.length && (pend[0].ts ?? 0) <= clock + TS_EPS && now - lastShown >= gap) { showLine(pend.shift()); lastShown = now; }
     pitch.setSlow(pend.length > 3 && (pend[2].ts ?? 0) <= clock + TS_EPS ? 0.6 : 1);    // 읽을 줄이 많이 밀리면 경기장을 잠깐 천천히
