@@ -565,10 +565,13 @@ const SCHOOL_DAYS = [
   { month: 4,  week: 2, grades: [1],    event: "retreat",      label: "수련회" },
   { month: 5,  week: 2, grades: [2],    event: "singapore",    label: "싱가포르 국제교류" },
   { month: 5,  week: 4,                 event: "sportsday",    label: "고흥 연합 체육대회" },
+  { month: 6,  week: 1,                 event: "memorial",     label: "현충탑 참배 · 마을 플로깅" },
   { month: 6,  week: 2, grades: [2],    event: "t_presentation", label: "국어 수행평가 발표", hidden: true },
   { month: 7,  week: 2,                 event: "harmony_camp", label: "대서어울림문화캠프 · 방학식" },
   { month: 7,  week: 3,                 event: "summer_camp",  label: "하계훈련 (합숙)", camp: true },
   { month: 9,  week: 3, grades: [3],    event: "t_counsel",    label: "3자 진로 상담" },
+  { month: 10, week: 3,                 event: "appleday",     label: "애플데이" },
+  { month: 10, week: 4,                 event: "dokdo_bell",   label: "독도의 날 골든벨" },
   { month: 11, week: 1, grades: [3],    event: "school_trip",  label: "수학여행" },
   { month: 12, week: 2,                 event: "ski_camp",     label: "스키캠프" },
   { month: 12, week: 3,                 event: "festival",     label: "봉두예술제" },
@@ -10023,7 +10026,7 @@ const EVENTS_MORE = [
       { mark: "umbrella", label: "우산을 빌려주고 빗속을 뛴다", fx: { s: { "student.attitude": 1 }, morale: 3, fatigue: 2 },
         result: "빗속을 달리는데 이상하게 신이 났다. 다음 날 우산이 고맙다는 쪽지와 함께 돌아왔다." },
     ] },
-  { id: "a_transfer", school: true, who: "narr", once: true,
+  { id: "a_transfer", bg: "bg_school", school: true, who: "narr", once: true,
     text: "서울에서 전학생이 왔다. 축구부라는 말을 듣더니 \"서울엔 인조 잔디 구장이 엄청 많은데\" 한다.",
     choices: [
       { label: "바다 보이는 운동장을 자랑한다", fx: { morale: 2, s: { "mental.confidence": 0.5 } },
@@ -10201,7 +10204,7 @@ const EVENTS_MORE = [
       { label: "\"괜찮아요\" 하고 웃는다", fx: { teacher: -1 },
         result: "\"괜찮지 않을 때 와도 돼.\" 선생님이 문을 열어 두신 채로 보내 주셨다." },
     ] },
-  { id: "a_principal", trigger: s => s.flags.lastCelebration === s.calendar.turn - 1, school: true, who: "narr", cond: s => s.flags.lastCelebration != null && s.calendar.turn - s.flags.lastCelebration <= 4,
+  { id: "a_principal", bg: "bg_school", trigger: s => s.flags.lastCelebration === s.calendar.turn - 1, school: true, who: "narr", cond: s => s.flags.lastCelebration != null && s.calendar.turn - s.flags.lastCelebration <= 4,
     text: "월요일 아침 방송 조회. 교장 선생님께서 \"우리 학교 축구부가 이번 대회에서 정말 큰일을 해냈습니다\" 하시자 교실마다 박수가 터진다.",
     choices: [
       { label: "반 친구들에게 손을 흔든다", fx: { morale: 4 },
@@ -10209,7 +10212,7 @@ const EVENTS_MORE = [
       { label: "쑥스러워 고개를 숙인다", fx: { morale: 2, s: { "student.attitude": 0.5 } },
         result: "\"우리 반 축구부 일어나 봐!\" 담임 선생님 한마디에 결국 일어나서 꾸벅 인사했다." },
     ] },
-  { id: "a_field_fight", school: true, who: "narr", when: { grades: [1, 2] },
+  { id: "a_field_fight", bg: "bg_school", school: true, who: "narr", when: { grades: [1, 2] },
     text: "점심시간, 운동장 절반을 두고 우리 반과 3학년 형들이 맞섰다. 분위기가 험악하다.",
     choices: [
       { label: "반씩 나눠 쓰자고 제안한다", fx: { s: { "mental.teamwork": 1, "mental.confidence": 0.5 } },
@@ -10349,7 +10352,7 @@ const EVENTS_MORE = [
       { label: "벽 너머로 감아 차서 다섯 개 다 노린다", req: { "tech.shoot": 66 }, fx: { s: { "tech.shoot": 0.6, "mental.confidence": 0.5 }, morale: 2 },
         result: "다섯 개 중 네 개가 골망 위쪽 구석에 꽂혔다. 음료수는 오늘 다른 사람이 산다." },
     ] },
-  { id: "c_turf", who: "coach",
+  { id: "c_turf", bg: "bg_school", who: "coach",
     text: "비 온 뒤라 운동장 곳곳이 패였다. {coach}님께서 삽을 들고 나오셨다. \"시간 있는 사람, 흙 좀 같이 옮기자.\"",
     choices: [
       { mark: "turf", label: "같이 흙을 메운다", fx: { coach: 2, s: { "phys.strength": 0.3 }, fatigue: 3 },
@@ -10425,7 +10428,7 @@ const EVENTS_MORE = [
       { label: "부모님과 상의한다", fx: { s: { "mental.focus": 0.5 } },
         result: "엄마는 '네가 정해' 하셨다. 밤새 생각했다. 결국 고흥 운동장이 떠올랐다. 남기로 했다." },
     ] },
-  { id: "c_frozen", date: [[1, 3]], cool: 70, who: "assistant", when: { months: [12, 1, 2] },
+  { id: "c_frozen", bg: "ev_frozen", date: [[1, 3]], cool: 70, who: "assistant", when: { months: [12, 1, 2] },
     text: "운동장이 꽁꽁 얼었다. 오늘은 실내에서 할지, 언 땅에서 그대로 할지 너희가 정해라.",
     choices: [
       { label: "실내에서 줄넘기와 코어 운동", fx: { s: { "phys.stamina": 0.5 }, fatigue: 2 },
@@ -10508,7 +10511,7 @@ const EVENTS_MORE = [
     ] },
 
   // ── 가족·고흥 ────────────────────────────────
-  { id: "f_gim", family: true, who: "narr", when: { months: [12, 1, 2] },
+  { id: "f_gim", bg: "ev_gim", family: true, who: "narr", when: { months: [12, 1, 2] },
     text: "겨울 주말, 할아버지의 김 양식장 일을 도우러 갔다. 새벽 바닷바람이 칼날 같다.",
     choices: [
       { label: "끝까지 돕는다", fx: { s: { "phys.strength": 0.5, "phys.stamina": 0.3 }, fatigue: 5, morale: 3 },
@@ -11250,13 +11253,13 @@ const EVENTS = [
       { label: "해 보겠습니다", fx: { s: { "student.attitude": 3, "mental.teamwork": 1 }, fatigue: 5 }, result: "반장이 됐다. 아침 조회를 맡게 됐다. 바쁘지만 뿌듯하다." },
       { label: "운동에 집중할게요", fx: { morale: 2 }, result: "선생님은 고개를 끄덕이셨다. \"그래, 그것도 용기야.\"" },
     ] },
-  { id: "field_trip", date: [[10, 3]], school: true, who: "narr", when: { months: [5, 10] }, once: true,
+  { id: "field_trip", bg: "ev_naro", date: [[10, 3]], school: true, who: "narr", when: { months: [5, 10] }, once: true,
     text: "학년 체험학습 날. 나로우주센터 견학이다. 그런데 그날 오후에 팀 자율 훈련이 잡혀 있다.",
     choices: [
       { label: "체험학습에 끝까지 간다", fx: { morale: 8, fatigue: -8, s: { "student.academic": 1 } }, result: "로켓 발사대 앞에서 친구들과 사진을 찍었다. 오랜만에 축구 생각이 안 났다." },
       { label: "오후엔 빠져서 훈련한다", fx: { s: { "position": 0.6 }, coach: 1.5, morale: -3 }, result: "혼자 운동장에 남아 슈팅 50개. 감독님이 멀리서 보고 계셨다." },
     ] },
-  { id: "late_school", school: true, who: "narr", cond: s => s.player.condition.fatigue >= 55,
+  { id: "late_school", bg: "bg_school", school: true, who: "narr", cond: s => s.player.condition.fatigue >= 55,
     text: "아침 알람을 세 번 껐다. 눈을 뜨니 8시 25분.",
     choices: [
       { label: "택시 타고 간다 (용돈 손해)", fx: { morale: -2 }, result: "겨우 출석. 이번 달 용돈이 반으로 줄었다." },
@@ -11282,7 +11285,7 @@ const EVENTS = [
       { label: "네! 바로 하겠습니다", fx: { s: { "student.attitude": 1 }, fatigue: 3, rel: { mentor: 6 } }, result: "선배가 어깨를 툭 쳤다. \"너 괜찮네.\"" },
       { label: "오늘 당번 아닌데요…", fx: { rel: { mentor: -8 }, morale: -2 }, result: "선배 표정이 굳었다. 그날 훈련 내내 패스가 안 왔다." },
     ] },
-  { id: "rainy_training", who: "assistant",
+  { id: "rainy_training", bg: "ev_rain_training", who: "assistant",
     text: "비가 이렇게 오는데 훈련할 사람? 자율이다. 안 나와도 뭐라 안 한다.",
     choices: [
       { label: "비 맞으며 훈련", fx: { s: { "mental.competitive": 1, "tech.firstTouch": 0.6 }, fatigue: 10, coach: 2 }, result: "젖은 잔디에서 공이 미끄러진다. 그래서 터치가 더 늘었다." },
@@ -11299,13 +11302,13 @@ const EVENTS = [
       { label: "100개 전부 구석만 노린다", req: { "tech.shoot": 65 }, fx: { s: { "tech.shoot": 1, "mental.focus": 0.3 }, fatigue: 5, coach: 2 },
         result: "왼쪽 위, 오른쪽 아래. 구석만 고집했다. 마지막 스무 개는 거의 다 들어갔다. 감독님이 말없이 공을 주워 주셨다." },
     ] },
-  { id: "torn_boots", who: "narr",
+  { id: "torn_boots", bg: "ev_boots", who: "narr",
     text: "축구화 밑창이 떨어졌다. 새 축구화는 20만 원이 넘는다.",
     choices: [
       { label: "엄마한테 말한다", fx: { morale: 3, rel: {} }, result: "엄마가 한숨을 쉬더니 주말에 같이 순천 가자고 했다. 새 축구화, 발이 가볍다.", fxAfter: { s: { "tech.firstTouch": 0.5 } } },
       { label: "테이프 감고 버틴다", fx: { s: { "mental.competitive": 0.8 }, morale: -2 }, result: "흰 테이프를 칭칭 감았다. 다들 웃었지만 상관없다." },
     ] },
-  { id: "pro_match", who: "dad", when: { months: [4, 5, 9, 10] }, cond: s => !matchWeek(s),
+  { id: "pro_match", bg: "ev_pro_match", who: "dad", when: { months: [4, 5, 9, 10] }, cond: s => !matchWeek(s),
     text: "이번 주말에 광양 가서 프로 경기 볼래? 표 두 장 생겼다.",
     choices: [
       { label: "같이 간다", fx: { s: { "mental.focus": 1, "mental.confidence": 0.5 }, morale: 8, fatigue: -5 }, result: "같은 포지션 선수만 90분 내내 봤다. 공 없을 때 움직임이 전혀 달랐다." },
@@ -11624,6 +11627,30 @@ const EVENTS = [
         result: s => `조명과 소품을 맡았다. 무대가 끝나고 ${s.calendar.grade === 3 ? "후배들이" : "선배가"} 제일 먼저 나를 찾았다.` },
       { label: "객석에서 본다", fx: { fatigue: -5 }, result: "다른 학년 공연을 보며, 한 해가 끝나 간다는 걸 실감했다." },
     ] },
+  // 6월 1주: 현충탑 참배와 마을 플로깅 (§47)
+  { id: "memorial", bg: "ev_memorial", fixed: true, who: "narr",
+    text: "현충일을 앞두고 면 현충탑에 다 같이 올라간다. 묵념이 끝나면 내려오는 길에 마을 쓰레기를 줍는다. 6월 햇볕이 벌써 따갑다.",
+    choices: [
+      { label: "조용히 묵념하고 비석 이름을 읽어 본다", fx: { s: { "mental.focus": 1, "student.attitude": 1 }, teacher: 2 }, result: "나이가 적힌 비석이 있었다. 열여덟. 내려오는 길 내내 말이 없었다." },
+      { label: "집게를 들고 앞장서서 줍는다", fx: { s: { "phys.stamina": 0.6, "student.attitude": 0.8 }, teacher: 4, fatigue: 3 }, result: "마을 할머니가 대문 밖으로 나오셨다. \"대서중이야? 기특하네.\" 괜히 집게질이 빨라졌다." },
+      { label: "뒤에서 친구들이랑 장난치며 따라간다", fx: { morale: 5, teacher: -3, rel: { friend: 3 } }, result: "집게로 친구 모자를 집었다가 {teacher}께 눈빛으로 혼났다." },
+    ] },
+  // 10월 3주: 애플데이 (§47)
+  { id: "appleday", bg: "ev_appleday", fixed: true, who: "narr",
+    text: "애플데이. 학생회가 사과를 한 봉지씩 나눠 준다. 고마웠던 사람한테, 아니면 미안했던 사람한테 건네는 날이다. 손에 든 사과가 생각보다 무겁다.",
+    choices: [
+      { label: "감독님께 드린다", fx: { coach: 4, s: { "mental.confidence": 0.6 } }, result: "{coach}님은 사과를 받아 들고 한참 보셨다. \"…훈련이나 똑바로 해.\" 귀가 조금 빨개지셨다." },
+      { label: "요즘 서먹했던 친구에게 건넨다", fx: { rel: { friend: 6 }, s: { "mental.teamwork": 1 } }, result: "\"야, 이게 뭐냐.\" 하면서도 받았다. 점심때 옆자리에 앉았다." },
+      { label: "담임 선생님께 드린다", fx: { teacher: 6, s: { "student.attitude": 1 } }, result: "쪽지에 한 줄 적어 같이 드렸다. 다음 날 칠판 구석에 '사과 맛있었다'고 써 있었다." },
+    ] },
+  // 10월 4주: 독도의 날 기념 독도 골든벨 (§47)
+  { id: "dokdo_bell", bg: "ev_dokdo", fixed: true, who: "narr",
+    text: "독도의 날 기념 골든벨. 강당 바닥에 다 같이 앉아 화이트보드를 든다. 축구부 애들은 늘 일찍 떨어지는데, 올해는 왠지 다르다.",
+    choices: [
+      { label: "끝까지 버텨 본다", fx: { s: { "student.academic": 1.5, "mental.focus": 1 }, morale: 5, teacher: 2 }, result: "마지막 다섯 명까지 남았다. 강당이 웅성거렸다. \"축구부가?\"" },
+      { label: "떨어진 친구들한테 답을 몰래 알려 준다", fx: { rel: { friend: 4 }, morale: 4, s: { "student.attitude": -1 } }, result: "들켰다. 그래도 반 애들이 박수를 쳤다." },
+      { label: "일찍 떨어지고 응원석에서 소리 지른다", fx: { morale: 6, s: { "mental.teamwork": 1 } }, result: "우리 반 마지막 한 명이 남았을 때 목이 다 쉬었다." },
+    ] },
   { id: "graduation", bg: "ev_graduation", fixed: true, who: "narr",
     text: s => {
       const g = s.calendar.grade, m = s.relations.people?.mentor;
@@ -11746,6 +11773,21 @@ const EVENTS = [
     choices: [
       { mark: "book_read", label: "그 주 안에 다 읽는다", fx: { s: { "mental.focus": 1, "student.academic": 1.5, "mental.confidence": 0.5 }, teacher: 6 }, result: "\"재능은 출발선일 뿐이다\"에 밑줄을 그었다. 그 문장을 써서 드렸다." },
       { label: "나중에 읽는다", fx: { teacher: -1 }, result: "책은 가방 속에서 한 달을 보냈다. 선생님은 아무 말도 안 하셨다." },
+    ] },
+  // 계절독서: 봄·가을에 한 번쯤 (§47)
+  { id: "reading_spring", bg: "ev_reading_spring", school: true, who: "narr", cool: 40, weight: 1.5, when: { months: [4, 5] },
+    text: "계절독서 시간. 오늘은 운동장 가 벚나무 아래에 돗자리를 깔고 읽는다. 꽃잎이 자꾸 책장 위로 떨어진다.",
+    choices: [
+      { label: "끝까지 읽는다", fx: { s: { "student.academic": 1, "mental.focus": 1 } }, result: "마지막 장을 덮었는데 종이 쳤다. 이상하게 개운했다." },
+      { label: "축구 책만 골라 읽는다", fx: { s: { "position": 0.4 }, morale: 3 }, result: "어느 선수가 쓴 훈련 일지였다. 오늘 밤에 하나 따라 해 보기로 했다." },
+      { label: "책을 얼굴에 덮고 잔다", fx: { fatigue: -6, s: { "student.academic": -0.5 } }, result: "꿀잠이었다. 깨 보니 머리 위에 꽃잎이 잔뜩 앉아 있었다." },
+    ] },
+  { id: "reading_autumn", bg: "ev_reading_autumn", school: true, who: "narr", cool: 40, weight: 1.5, when: { months: [9, 10, 11] },
+    text: "가을 계절독서. 단풍나무 아래 돗자리에 반 아이들이 흩어져 앉았다. 누가 축구 책 한 권을 슬쩍 밀어 준다.",
+    choices: [
+      { label: "끝까지 읽는다", fx: { s: { "student.academic": 1, "mental.focus": 1 } }, result: "마지막 장을 덮었는데 종이 쳤다. 이상하게 개운했다." },
+      { label: "축구 책만 골라 읽는다", fx: { s: { "position": 0.4 }, morale: 3 }, result: "어느 선수가 쓴 훈련 일지였다. 오늘 밤에 하나 따라 해 보기로 했다." },
+      { label: "책을 얼굴에 덮고 잔다", fx: { fatigue: -6, s: { "student.academic": -0.5 } }, result: "꿀잠이었다. 깨 보니 교복에 단풍잎이 잔뜩 붙어 있었다." },
     ] },
   { id: "t_injured", who: "teacher", school: true, weight: 2.5, cond: s => !!s.player.condition.injury && s.player.condition.injury.total >= 3,
     text: "다리를 절며 교무실 앞을 지나가는데 {teacher}께서 부르신다. \"운동 못 하는 동안 뭐 할 거냐.\"",
@@ -16723,7 +16765,7 @@ const INTRO = [
   // center: 화면 한가운데에 띄움 / type: 작은 글씨를 한 글자씩 찍음
   { bg: "bg_sea",   tone: "sea",   big: "전라남도 고흥",          small: "조용하고 아름다운 자연이 있는" },
   { bg: "title",    tone: "dawn",  big: "하늘길이 열리는 곳", small: "그러니 우리의 꿈도 더욱 높이 날 수 있겠지." },
-  { bg: "bg_field_day", tone: "field", big: "고흥대서중학교",    small: "작지만 큰 꿈을 지닌 학생들이 있다." },
+  { bg: "bg_school", tone: "field", big: "고흥대서중학교",    small: "작지만 큰 꿈을 지닌 학생들이 있다." },
   { bg: "bg_locker", tone: "night", big: "고흥FC U-15",          small: "올봄, 꿈을 품은 유니폼 하나가 새로 걸린다." },
   { bg: null,       tone: "black", big: "3년의 시간",            small: "미래는 네가 만들어 간다.", center: true, type: true },
 ];
