@@ -113,7 +113,7 @@ for (let k = 0; k < N; k++) {
       // 장면 문장 속 이름이 공과 얼마나 먼지 (상대 이름: 공 가진 상대/나를 막는 상대)
       for (const [role, nm] of [["opp", pd.vars.opp], ["mate", pd.vars.mate]]) {
         if (!nm || !txt.includes(nm)) continue;
-        if (crossSc && role === "mate") continue;            // 크로스를 올린 동료는 공(받은 나)에서 먼 게 맞음
+        if ((crossSc || /롱패스가 수비 뒤로|대각선 패스가 내 쪽/.test(txt)) && role === "mate") continue;            // 크로스·긴 패스를 차 준 동료는 공(받은 나)에서 먼 게 맞음
         const P = S.P.find(p => p.name === nm); if (!P) { bad("장면 이름이 경기장에 없는 선수", `${tag} ${role} ${nm}`); continue; }
         const d = hyp(P.x - bx, P.y - by);
         cnt("장면 이름 " + role);
