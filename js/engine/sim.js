@@ -17,7 +17,7 @@ const FORM = {
   ST1: { d: [24, -0.2], a: [41, -0.14] }, ST2: { d: [22, 0.22], a: [38, 0.24] },
 };
 // 수비 블록 높이: [공에서 몇 m 뒤에 라인, 라인 최소, 라인 최대] (자기 골문에서 잰 거리)
-const BLOCK = { low: [24, 9, 24], mid: [25, 16, 38], high: [21, 24, 50] };
+const BLOCK = { low: [24, 9, 24], mid: [25, 16, 38], high: [21, 24, 50], deep: [23, 11, 29] };   // deep: 역습형 (자기 진영에서 기다림)
 const KICKOFF_X = { GK: 4, DF: 25, MF: 37, FW: 47 };
 const JOG = 6.2, RUN = 7.4, SPRINT = 8.6, DRIB = 6.2;
 
@@ -53,7 +53,7 @@ export function createSim(cfg) {
       longShot: !!p.longShot, ace: !!p.ace, qMul: p.qMul || null, slot: p.slot ?? null, tune: p.tune || [0, 0, 0],   // tune: 세부 포지션 [공격, 수비] 앞뒤 조정, [2] 공격할 때 터치라인 쪽으로 (m)
       role, ri: RI[role], runner: ["ST1", "ST2", "LM", "RM"].includes(role), x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0, v: JOG, ov: null, stun: 0, cool: 0,
       press: false, held: false, pressedAt: 0, eng: 0, waitT: 0,
-      runUntil: 0, runTo: [0, 0], overlap: false, ovStay: 0, boxRun: false,   // 경기 중에 쓰는 값도 처음부터 만들어 둠 (객체 모양이 바뀌면 느려짐)
+      runUntil: 0, runTo: [0, 0], overlap: false, ovStay: 0, boxRun: false, cRun: false,   // 경기 중에 쓰는 값도 처음부터 만들어 둠 (객체 모양이 바뀌면 느려짐)
       ph: [rand() * 6.3, rand() * 6.3, rand() * 6.3, rand() * 6.3] };
   });
   const S = {
@@ -61,7 +61,7 @@ export function createSim(cfg) {
     str: { ...cfg.str }, style: { us: {}, them: {}, ...cfg.style }, block: { us: "mid", them: "mid", ...(cfg.blocks || {}) },
     ev: [], rec: null, phase: "play", restart: null, decideAt: 0, script: [], scur: null, stage: null, noFoulUntil: 0,
     pass: null, chain: [], possT: { us: 0, them: 0 }, flow: 0, bias: null, gkHold: 0, stopped: false, kickTeam: "us",
-    pickOnly: null, trace: null, traceEnd: false, onTick: null, lastRestart: null, deflect: null, wonAt: null, wonBy: null, lastClear: false, oneOn: null,
+    pickOnly: null, trace: null, traceEnd: false, onTick: null, lastRestart: null, deflect: null, wonAt: null, wonBy: null, lastClear: false, oneOn: null, sw: { us: { hi: 0, deep: 0, said: -1 }, them: { hi: 0, deep: 0, said: -1 } }, gegenAt: null,
     shot: null, pending: null, clockOff: 0, tk: cfg.tk ?? 0.32, ik: cfg.ik ?? 0.8, prog: cfg.prog ?? 0.00045, dw: cfg.dw ?? 17, ft: cfg.ft ?? 1, brk0: cfg.brk ?? 1,
   };
   S.GK = P.filter(p => p.pos === "GK");
@@ -135,17 +135,21 @@ function shape(S, team) {
   const out = SH[team];
   const att = S.poss === team;
   const bx = ox(team, S.ball.x), by = oy(team, S.ball.y);
+  const st = S.style[team] || {};
   let line, W, cy;
-  if (att) { line = clamp(bx - 31, 12, 58); W = 29; cy = 34 + (by - 34) * 0.15; }
+  if (att) { line = clamp(bx - 31, 12, 58); W = st.wide ? 33 : 29; cy = 34 + (by - 34) * 0.15; }   // wide: 감독 지시 "넓게 벌려라"
   else {
     const B = BLOCK[S.block[team]] || BLOCK.mid;
     line = clamp(bx - B[0], B[1], Math.min(B[2], Math.max(B[1], bx - 4)));
-    W = S.dw; cy = clamp(34 + (by - 34) * 0.55, 19, 49);
-    if (bx > 62 && S.block[team] !== "low") line = Math.max(line, Math.min(bx - 37, B[2] + 9));   // 높은 곳에서 압박할 때는 수비 라인도 따라 올라가 팀을 짧게 (앞뒤 40m 안쪽)
+    W = S.dw * (st.compact ? 0.88 : S.block[team] === "deep" ? 0.9 : st.press ? 0.95 : 1);   // 역습형은 가운데를 잠그고, 압박형은 공 쪽으로 좁힘
+    cy = clamp(34 + (by - 34) * 0.55, 19, 49);
+    if (bx > 62 && S.block[team] !== "low" && S.block[team] !== "deep") line = Math.max(line, Math.min(bx - 37, B[2] + 9));   // 높은 곳에서 압박할 때는 수비 라인도 따라 올라가 팀을 짧게 (앞뒤 40m 안쪽)
+    if (st.press && bx > 45 && S.block[team] !== "low") line = Math.min(line + 4, Math.max(B[1], bx - 4));   // 압박형: 라인을 한 칸 더 올려 팀을 앞으로 (공보다 앞으로는 안 감)
   }
   const stretch = att ? 1.05 : S.block[team] === "high" && bx > 70 ? 1.3 : 0.95;
   const F = att ? FA : FD;
   for (let i = 1; i < 11; i++) { out[i * 2] = line + F[i][0] * stretch; out[i * 2 + 1] = cy + F[i][1] * W; }
+  if (!att && S.block[team] === "deep") out[RI.ST1 * 2] = Math.max(out[RI.ST1 * 2], 46);   // 역습형: 공격수 하나는 하프라인 근처에 남아 역습을 기다림
   if (att && bx > 78) {                     // 공이 상대 박스 근처면 문전과 박스 앞을 채움
     const fy = by < 34 ? 1 : -1;
     out[RI.ST1 * 2] = Math.max(out[RI.ST1 * 2], 95); out[RI.ST1 * 2 + 1] = 34 - fy * 3;
@@ -172,6 +176,8 @@ function targets(S) {
   const H = S.holder, c = S.t, P = S.P;
   const flying = S.ball.fl;
   const markOn = ox(def, S.ball.x) < 60;
+  const wideOn = (S.style[att]?.counter || S.style[att]?.press) && S.wonAt != null && c - S.wonAt < 4 && S.phase === "play" && !S.stage && !S.scur && !S.script.length;
+  const cRunOn = !!S.style[att]?.counter && S.wonAt != null && c - S.wonAt < 4 && S.phase === "play" && !S.stage && !S.scur && !S.script.length;
   for (const p of P) {
     const A = p.team === att, sh = A ? shA : shD;
     let x = sh[p.ri * 2], y = sh[p.ri * 2 + 1];
@@ -180,6 +186,9 @@ function targets(S) {
       if (p.pos === "FW") x = Math.max(x, off - 3.5);                // 공격수는 상대 마지막 수비 라인에 붙어 섬
       else if (p.runner) x = Math.max(x, Math.min(off - 9, x + 12));
       if (p.runner) { const q = Math.max(0, Math.sin(c * 0.55 + p.ph[0] * 1.7)); x += q * q * 9; }   // 뒷공간으로 뛰어들었다 돌아옴
+      p.cRun = false;
+      if (p.runner && cRunOn) { const bxA = ox(att, S.ball.x); if (bxA > 18 && bxA < 72) { x = Math.max(x, Math.min(off - 1, bxA + 20)); p.cRun = true; } }
+      if (wideOn && (p.role === "LM" || p.role === "RM")) y = 34 + (p.role === "LM" ? -1 : 1) * Math.max(Math.abs(y - 34), 24);   // 압박·역습형: 뺏자마자 측면 미드필더는 넓게 벌려 달림 (좁게 뭉친 수비 모양에서 바로 폭을 만듦)   // 역습형: 뺏자마자 공격수·측면 미드필더가 함께 앞으로 뛰어나감
       x = Math.min(x, off - 0.6);
     }
     // 수비: 자기 진영에서는 가까운 상대 공격수 쪽으로 붙음 (골문 쪽에서)
@@ -220,7 +229,7 @@ function targets(S) {
     const a = p.ri ? 0.35 : 0.15, f = p.ph;
     x += a * (1.6 * Math.sin(c * 0.33 + f[0]) + 0.7 * Math.sin(c * 0.87 + f[1]));
     y += a * (1.3 * Math.sin(c * 0.29 + f[2]) + 0.6 * Math.sin(c * 0.71 + f[3]));
-    p.tx = clamp(x, 1.5, 103.5); p.ty = clamp(y, 1.5, 66.5); p.v = p.boxRun ? RUN + 0.8 : p.runUntil > c || p.overlap ? RUN : JOG; p.press = false;
+    p.tx = clamp(x, 1.5, 103.5); p.ty = clamp(y, 1.5, 66.5); p.v = p.boxRun ? RUN + 0.8 : p.cRun ? SPRINT : p.runUntil > c || p.overlap ? RUN : JOG; p.press = false;
     if (!A && p.ri) {                                     // 수비 전환: 공보다 앞(상대 골 쪽)에 남은 선수는 뛰어서, 막 뺏긴 직후엔 전력으로 돌아옴
       const ahead = ox(def, p.x) - ox(def, S.ball.x), far = hyp(p.tx - p.x, p.ty - p.y);
       if (ahead > 3 || far > 12) p.v = S.wonAt != null && c - S.wonAt < 5 ? SPRINT : RUN;
@@ -248,7 +257,7 @@ function targets(S) {
     }
   }
   // 압박: 공에 가장 가까운 수비가 나가고 두 번째가 뒤를 받침
-  const pressR = S.style[def].press ? 28 : S.block[def] === "low" ? 17 : 22;
+  const pressR = S.style[def].press ? 28 : S.block[def] === "low" || S.block[def] === "deep" ? 17 : 22;
   const bpx = flying ? flying.x1 : S.ball.x, bpy = flying ? flying.y1 : S.ball.y;
   if (!S.stage && S.phase === "play") {
     let c1 = null, c2 = null, d1 = 1e9, d2 = 1e9, a1 = null, da = 1e9;
@@ -259,8 +268,13 @@ function targets(S) {
       else if (d < da) { da = d; a1 = p; }
     }
     const g = -dirOf(def);
-    if (c1 && (d1 < pressR || !H)) { c1.tx = bpx + g * (H ? 1.5 : 0); c1.ty = bpy + (34 - bpy) * 0.05; c1.v = d1 > 6 ? SPRINT : RUN; c1.press = true; }
-    if (c2 && d2 < 15) { c2.tx = bpx + g * 6; c2.ty = bpy + (34 - bpy) * 0.3; c2.v = RUN; }
+    // 압박형: 공을 잃은 직후 3초는 가까운 두 명이 함께 전력으로 되찾으러 감 (상대 진영·중원에서만)
+    const gegen = S.style[def].press && S.wonAt != null && c - S.wonAt < 3 && ox(def, bpx) > 40 && H && H.ri && !S.scur && !S.script.length && !S.bias;
+    if (c1 && (d1 < pressR || !H || (gegen && d1 < 34))) { c1.tx = bpx + g * (H ? 1.5 : 0); c1.ty = bpy + (34 - bpy) * 0.05; c1.v = d1 > 6 || gegen ? SPRINT : RUN; c1.press = true; }
+    if (c2 && gegen && d2 < 18) {
+      const sy = c2.y < bpy ? -1 : 1; c2.tx = bpx + g * 2.5; c2.ty = bpy + sy * 2.2; c2.v = SPRINT; c2.press = true;
+      if (S.gegenAt !== S.wonAt && d1 < 12 && d2 < 14) { S.gegenAt = S.wonAt; emit(S, "gegen", { team: def, a: c1.name, b: c2.name }); }
+    } else if (c2 && d2 < 15) { c2.tx = bpx + g * 6; c2.ty = bpy + (34 - bpy) * 0.3; c2.v = RUN; }
     // 압박하는 둘 말고는 공 가진 선수에게 7m 안으로 몰려들지 않음 (패스 길과 자기 자리를 지킴)
     if (H && H.ri && !S.scur && !S.script.length && !S.bias) for (const p of P) {   // 내 장면 연출·대기 중에는 건드리지 않음
       if (p.team !== def || !p.ri || p === c1 || p === c2 || p.ov) continue;
@@ -417,6 +431,7 @@ function decide(S) {
   let near = 99, nearO = null;
   for (const o of S.P) if (o.team === foe && o.ri) { const d = hyp(o.x - H.x, o.y - H.y); if (d < near) { near = d; nearO = o; } }
   const st = S.style[team] || {};
+  const cw = !!st.counter && S.wonAt != null && S.t - S.wonAt < 4 && hx < 72;   // 역습형: 뺏은 직후에는 앞으로, 길게
   const noise = () => Math.exp((rand() - 0.5) * 0.7);
   const opts = [];
   const here = keepV(hx, hy), lose = lossV(hx, hy);
@@ -445,7 +460,7 @@ function decide(S) {
       const rx = ox(team, tp[0]), ry = oy(team, tp[1]);
       const dist = hyp(tp[0] - H.x, tp[1] - H.y);
       const build = S.plan?.build && S.plan.team === team;
-      if (dist < 4 || dist > (build ? 26 : st.long ? 50 : 40)) continue;
+      if (dist < 4 || dist > (build ? 26 : st.long || cw ? 50 : 40)) continue;
       const wide = hx > 78 && Math.abs(hy - 34) > 12 && rx > 86 && Math.abs(ry - 34) < 12;
       const air = wide || dist > 32;
       const lr = laneRisk(S, H, r, tp, air);
@@ -455,9 +470,9 @@ function decide(S) {
       const mid = lossV((hx + rx) / 2, (hy + ry) / 2);
       let free = 99; for (const o of S.P) if (o.team === foe && o.ri) free = Math.min(free, hyp(o.x - tp[0], o.y - tp[1]));
       v += clamp(free - 2, 0, 6) * 0.0012;                                                 // 받을 자리에 여유가 있으면 더 좋음
-      let u = (1 - lr.risk) * (v + clamp(rx - hx, -15, 30) * S.prog) - lr.risk * mid;
+      let u = (1 - lr.risk) * (v + clamp(rx - hx, -15, 30) * S.prog * (cw ? 1.8 : 1)) - lr.risk * mid;
       if (offside) u = Math.min(u, 0) - 0.01;
-      if (air && !wide) u *= st.long ? 0.6 : 0.4;
+      if (air && !wide) u *= st.long ? 0.6 : cw ? 0.55 : 0.4;
       if (r === S.chain[S.chain.length - 1]) u *= 0.75;                                       // 방금 준 선수에게 바로 돌려주는 건 덜
       if (st.keep && !air) u *= 1.1;
       if (st.ace && r.ace) u *= 1.5;
@@ -514,6 +529,7 @@ function decide(S) {
   }
   let best = opts[0];
   for (const o of opts) if (o.u > best.u) best = o;
+  if (cw && best.k === "pass" && best.r && ox(team, best.tp[0]) - hx >= 18 && hyp(best.tp[0] - H.x, best.tp[1] - H.y) >= 24) emit(S, "counterGo", { team, by: H.name, to: best.r.name });
   if (S.dbg) { const k = (S.plan?.build ? "B_" + (near < 3 ? "압박_" : "") : "") + (hx > 70 ? "F_" : "") + best.k + (H.pos === "GK" ? "GK" : "") + (best.air ? "A" : "") + (best.through ? "T" : "") + (best.k === "pass" && best.r && ox(team, best.tp[0]) < hx - 3 ? "back" : ""); S.dbg[k] = (S.dbg[k] || 0) + 1; }
   act(S, H, best);
 }
@@ -805,7 +821,7 @@ function newPlan(S, H, force = false) {
     const first = pl.steps[0];
     if (pl.id === "keeper") { if (H.pos !== "GK") continue; w *= 3; }
     else if (H.pos === "GK") continue;
-    if (pl.id === "counter") { if (!won || hx < 22 || hx > 62) continue; w *= st.counter ? 3 : 1.8; }
+    if (pl.id === "counter") { if (!won || hx < (st.counter ? 12 : 22) || hx > 62) continue; w *= st.counter ? 3 : 1.8; }   // 역습형은 자기 박스 앞에서 뺏어도 바로 역습
     if (pl.id === "press") { if (!won || hx < 70 || H.pos !== "FW") continue; w *= 4; }
     if (pl.id === "solo" && (H.pos !== "FW" || hx < 45 || hx > 72)) continue;
     if (pl.id === "longshot" && !hasLong) continue;
@@ -1282,12 +1298,30 @@ export function step(S) {
   }
   if (S.stage) stageTick(S);
   if (S.so) soTick(S);                                     // 승부차기
+  if (S.phase === "play" && !S.stage && Math.round(S.t * 10) % 10 === 0) styleWatch(S);
   targets(S);
   movePlayers(S);
   moveBall(S);
   if (!S.ball.fl && !S.holder && S.phase === "play") outCheck(S);
   if (S.rec) record(S);
   if (S.onTick) S.onTick(S);                               // 점검 도구용 (tools/dev/audit.mjs)
+}
+// 성향이 경기장에 실제로 보일 때 알림 (해설용): 압박형 라인이 3초 넘게 높이, 역습형이 3초 넘게 자기 진영에 8명 이상
+function styleWatch(S) {
+  for (const team of ["us", "them"]) {
+    const w = S.sw[team], st = S.style[team] || {};
+    if (S.poss === team || !S.holder) { w.hi = 0; w.deep = 0; continue; }
+    if (st.press) {
+      let sx = 0, n = 0; for (const p of S.P) if (p.team === team && p.pos === "DF") { sx += ox(team, p.x); n++; }
+      w.hi = n && sx / n >= 45 ? w.hi + 1 : 0;
+      if (w.hi === 3 && S.t - w.said > 60) { w.said = S.t; emit(S, "lineHigh", { team }); }
+    }
+    if (S.block[team] === "deep") {
+      let n = 0; for (const p of S.P) if (p.team === team && p.ri && ox(team, p.x) < 52.5) n++;
+      w.deep = n >= 8 ? w.deep + 1 : 0;
+      if (w.deep === 3 && S.t - w.said > 60) { w.said = S.t; emit(S, "sitDeep", { team }); }
+    }
+  }
 }
 function record(S) {
   const f = new Float32Array(4 + S.P.length * 2);

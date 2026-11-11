@@ -56,6 +56,10 @@ const RULES = [
   { id: "cb", name: "센터백에게", re: /센터백(에게| .{1,6}에게)/, not: /손짓|상대 센터백에게 (걸|막|붙)|묶|붙/, win: [3, 5],
     test: c => any(c.legsAny, l => l.to && !l.turnover && /CB/.test(l.to.role)),
     failTest: c => any(c.legsAny, l => l.team === "us" && l.dy >= 4 && l.dx <= 6, l => l.dy) },
+  { id: "lineHigh", name: "라인 올림", re: /라인을 하프라인|하프라인 (가까이|근처까지) (끌어|올라)/, win: [4, 2],
+    test: c => [c.dfHi >= 42, `수비수 넷 평균 ${fm(c.dfHi)}m(자기 골문에서)`] },
+  { id: "sitDeep", name: "내려앉음", re: /내려앉아 기다|촘촘히 내려섰/, win: [4, 2],
+    test: c => [c.own8 >= 8, `자기 진영 최다 ${c.own8}명`] },
   { id: "fb", name: "측면 수비에게", re: /(측면 수비|풀백)(에게| .{1,6}에게)/, not: /손짓|걸|막혔|묶/, win: [3, 5],
     test: c => any(c.legsAny, l => l.to && !l.turnover && /^(LB|RB)$/.test(l.to.role)) },
 ];
@@ -138,6 +142,10 @@ for (let k = 0; k < N; k++) {
         if (f.h >= 0 && f.play) { const ht = teamOf(f.h); let n8 = 0, d1 = 99; P.forEach((p, pi) => { if (p.team !== ht) { const d = Math.hypot(f.px[pi] - f.x, f.py[pi] - f.y); if (d <= 8) n8++; d1 = Math.min(d1, d); } });
           if (n8 > c.minPress.n8 || (n8 === c.minPress.n8 && d1 < c.minPress.d1)) c.minPress = { n8, d1 }; }
       }
+      c.dfHi = 0; c.own8 = 0;
+      for (let i = i0; i <= i1; i++) { const f = T[i]; let sx = 0, n = 0, o = 0;
+        P.forEach((p, pi) => { if (p.team !== team || p.pos === "GK") return; const x = team === "us" ? f.px[pi] : 105 - f.px[pi]; if (p.pos === "DF") { sx += x; n++; } if (x < 52.5) o++; });
+        if (n) c.dfHi = Math.max(c.dfHi, sx / n); c.own8 = Math.max(c.own8, o); }
       const ic = at(l.ts); let lastCh = -99; for (const t of changes) if (t <= l.ts + 2) lastCh = t;
       c.possAge = l.ts - lastCh;
       { const j0 = at(Math.max(lastCh, l.ts - 4)), j1 = at(Math.max(lastCh, l.ts - 4) + 5); const hh = T[Math.min(T.length - 1, at(l.ts))].h; const tm = hh >= 0 ? teamOf(hh) : team; c.adv5 = Math.abs(T[j1].x - T[j0].x) * 1; }

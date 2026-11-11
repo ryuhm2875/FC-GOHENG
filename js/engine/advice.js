@@ -17,6 +17,7 @@ import { isBirthdayWeek } from "./birthday.js";
 import { chatText } from "./life.js";
 import { aceOf, aceAbsent } from "./opponents.js";
 import { ACE_TALK, COACH_TALK } from "../../data/messages.js";
+import { LEAGUE_OPPONENTS, NATIONAL_OPPONENTS, HIGH_SCHOOLS, ELEMENTARY_OPPONENTS } from "../../data/world.js";
 
 const f0 = v => Math.floor(v);
 // 받침 판단. 숫자는 읽는 소리 기준 (0 십/영, 1 일, 3 삼, 6 육, 7 칠, 8 팔은 받침 있음)
@@ -51,16 +52,20 @@ export function drillFor(stat) {
 // 상대 팀 성향 (이름으로 늘 같은 성향이 나옴)
 // 팀마다 스타일은 고정 (같은 팀은 늘 같은 색깔), 조언 문장은 매번 골라 씀
 const STYLES = [
-  { label: "전방 압박이 강한 팀", stat: "tech.firstTouch", tips: ["공을 받기 전에 주변을 먼저 봐라. 원터치로 내주는 선택이 안전하다.", "이 팀은 첫 10분에 미친 듯이 뛴다. 그 시간만 버티면 뒤에 공간이 생긴다.", "골키퍼한테 돌리는 것도 겁내지 마라. 압박을 한 번 벗기면 그다음은 우리 차례다."] },
-  { label: "롱볼과 높이로 밀어붙이는 팀", stat: "phys.jump", tips: ["공중볼 경합이 많을 거다. 세컨드볼 위치를 먼저 잡아라.", "머리싸움에서 지더라도 떨어지는 공은 우리가 먼저 줍자. 그게 이 경기의 반이다.", "키 큰 공격수 하나만 보고 차는 팀이다. 그 선수 등 뒤를 비우지 마라."] },
-  { label: "빠른 역습을 노리는 팀", stat: "phys.speed", tips: ["공을 뺏기는 순간이 제일 위험하다. 무리한 드리블은 아껴라.", "우리가 공격할 때 한 명은 꼭 뒤에 남겨라. 이 팀은 세 번 패스로 골문 앞까지 온다.", "뺏기면 바로 반칙으로라도 끊어야 하는 순간이 온다. 그 판단은 네가 해라."] },
-  { label: "공을 오래 돌리는 팀", stat: "phys.stamina", tips: ["많이 뛰어야 하는 경기다. 후반에 체력이 갈린다.", "공 쫓아다니다 지치면 지는 거다. 따라가지 말고 길목에 서 있어라.", "점유율은 줘도 된다. 대신 공을 뺏었을 때 한 번에 찔러라."] },
-  { label: "몸싸움이 거친 팀", stat: "phys.strength", tips: ["부딪힐 때 버티는 쪽이 이긴다. 등지는 플레이를 조심해라.", "넘어져도 바로 일어나라. 아픈 척하면 이 팀은 더 세게 들어온다.", "몸으로 밀리면 공을 빨리 내줘라. 공이 사람보다 빠르다."] },
-  { label: "측면 크로스가 많은 팀", stat: "mental.focus", tips: ["양쪽 날개가 빠르다. 크로스 올라오기 전에 박스 안 자리부터 잡아라.", "크로스는 막는 것보다 올라오기 전에 끊는 게 쉽다. 측면에서 한 발 먼저 붙어라.", "반대편 포스트를 비우지 마라. 이 팀 골은 대부분 거기서 나온다."] },
-  { label: "수비를 내리고 버티는 팀", stat: "tech.pass", tips: ["공은 우리가 오래 잡을 거다. 서두르면 역습 맞는다. 옆으로 흔들다가 한 번에 찔러라.", "박스 앞에 열 명이 서 있을 거다. 중거리 하나가 경기를 연다.", "이런 팀은 한 골 먹으면 무너진다. 선제골이 전부다."] },
-  { label: "에이스 한 명이 끌고 가는 팀", stat: "tech.defense", tips: ["10번 하나만 묶으면 반은 끝난다. 그 선수가 공 잡으면 두 명이 붙어라.", "그 에이스가 왼발잡이다. 오른쪽으로 몰아라.", "에이스 쪽 측면은 내버려 두지 마라. 거기로만 공이 간다."] },
+  { key: "press", label: "전방 압박이 강한 팀", stat: "tech.firstTouch", tips: ["공을 받기 전에 주변을 먼저 봐라. 원터치로 내주는 선택이 안전하다.", "이 팀은 첫 10분에 미친 듯이 뛴다. 그 시간만 버티면 뒤에 공간이 생긴다.", "골키퍼한테 돌리는 것도 겁내지 마라. 압박을 한 번 벗기면 그다음은 우리 차례다."] },
+  { key: "long", label: "롱볼과 높이로 밀어붙이는 팀", stat: "phys.jump", tips: ["공중볼 경합이 많을 거다. 세컨드볼 위치를 먼저 잡아라.", "머리싸움에서 지더라도 떨어지는 공은 우리가 먼저 줍자. 그게 이 경기의 반이다.", "키 큰 공격수 하나만 보고 차는 팀이다. 그 선수 등 뒤를 비우지 마라."] },
+  { key: "counter", label: "빠른 역습을 노리는 팀", stat: "phys.speed", tips: ["공을 뺏기는 순간이 제일 위험하다. 무리한 드리블은 아껴라.", "우리가 공격할 때 한 명은 꼭 뒤에 남겨라. 이 팀은 세 번 패스로 골문 앞까지 온다.", "뺏기면 바로 반칙으로라도 끊어야 하는 순간이 온다. 그 판단은 네가 해라."] },
+  { key: "keep", label: "공을 오래 돌리는 팀", stat: "phys.stamina", tips: ["많이 뛰어야 하는 경기다. 후반에 체력이 갈린다.", "공 쫓아다니다 지치면 지는 거다. 따라가지 말고 길목에 서 있어라.", "점유율은 줘도 된다. 대신 공을 뺏었을 때 한 번에 찔러라."] },
+  { key: "rough", label: "몸싸움이 거친 팀", stat: "phys.strength", tips: ["부딪힐 때 버티는 쪽이 이긴다. 등지는 플레이를 조심해라.", "넘어져도 바로 일어나라. 아픈 척하면 이 팀은 더 세게 들어온다.", "몸으로 밀리면 공을 빨리 내줘라. 공이 사람보다 빠르다."] },
+  { key: "cross", label: "측면 크로스가 많은 팀", stat: "mental.focus", tips: ["양쪽 날개가 빠르다. 크로스 올라오기 전에 박스 안 자리부터 잡아라.", "크로스는 막는 것보다 올라오기 전에 끊는 게 쉽다. 측면에서 한 발 먼저 붙어라.", "반대편 포스트를 비우지 마라. 이 팀 골은 대부분 거기서 나온다."] },
+  { key: "low", label: "수비를 내리고 버티는 팀", stat: "tech.pass", tips: ["공은 우리가 오래 잡을 거다. 서두르면 역습 맞는다. 옆으로 흔들다가 한 번에 찔러라.", "박스 앞에 열 명이 서 있을 거다. 중거리 하나가 경기를 연다.", "이런 팀은 한 골 먹으면 무너진다. 선제골이 전부다."] },
+  { key: "ace", label: "에이스 한 명이 끌고 가는 팀", stat: "tech.defense", tips: ["10번 하나만 묶으면 반은 끝난다. 그 선수가 공 잡으면 두 명이 붙어라.", "그 에이스가 왼발잡이다. 오른쪽으로 몰아라.", "에이스 쪽 측면은 내버려 두지 마라. 거기로만 공이 간다."] },
 ];
+// 팀 성향은 data/world.js의 style에서 (없는 팀만 이름 해시로)
+const TEAM_STYLE = Object.fromEntries([...LEAGUE_OPPONENTS, ...NATIONAL_OPPONENTS, ...HIGH_SCHOOLS, ...ELEMENTARY_OPPONENTS].filter(t => t.style).map(t => [t.name, t.style]));
 export function styleOf(name) {
+  const k = TEAM_STYLE[name], st = k && STYLES.find(x => x.key === k);
+  if (st) return st;
   let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return STYLES[h % STYLES.length];
 }

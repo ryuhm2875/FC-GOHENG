@@ -1287,27 +1287,29 @@ __m["data/world.js"] = (function () {
 // 전남 권역 주말리그 상대 9팀 (우리 팀까지 10팀이 전반기·후반기에 한 번씩 맞붙습니다)
 // strength: 팀 평균 능력치 보정. 0이 보통, +면 강팀
 // color: 유니폼 색, color2: 테두리 색 (경기장 위 상대 선수 점의 색)
+// style: 팀 전술 색깔 (경기장 움직임·해설·경기 전 분석). press 압박, counter 역습, keep 점유, cross 측면·크로스, long 롱볼,
+//        rough 몸싸움, low 내려앉기, ace 에이스 의존. 저장 파일에는 없고 늘 여기서 읽음 (바꾸면 진행 중인 게임에도 반영)
 const LEAGUE_OPPONENTS = [
-  { name: "목포 갈매기FC U-15", strength: 1,  color: "#1E88E5", color2: "#FFFFFF" },
-  { name: "목포 유달중",        strength: 0,  color: "#FFFFFF", color2: "#1B5E20" },
-  { name: "광양 쇠울중",        strength: 3,  color: "#455A64", color2: "#FFD54F" },
-  { name: "광주 빛고을중",      strength: 4,  color: "#FDD835", color2: "#1A237E" },
-  { name: "순천 새벽별중",      strength: 3,  color: "#6A1B9A", color2: "#FFFFFF" },
-  { name: "장흥 정남진중",      strength: -2, color: "#2E7D32", color2: "#FFFFFF" },
-  { name: "해남 땅끝중",        strength: -1, color: "#C62828", color2: "#FFFFFF" },
-  { name: "영광 칠산중",        strength: -3, color: "#00897B", color2: "#E0F2F1" },
-  { name: "여수 바다솔중",      strength: 2,  color: "#0D47A1", color2: "#81D4FA" },
+  { name: "목포 갈매기FC U-15", style: "press", strength: 1,  color: "#1E88E5", color2: "#FFFFFF" },
+  { name: "목포 유달중",        style: "press", strength: 0,  color: "#FFFFFF", color2: "#1B5E20" },
+  { name: "광양 쇠울중",        style: "long", strength: 3,  color: "#455A64", color2: "#FFD54F" },
+  { name: "광주 빛고을중",      style: "ace", strength: 4,  color: "#FDD835", color2: "#1A237E" },
+  { name: "순천 새벽별중",      style: "counter", strength: 3,  color: "#6A1B9A", color2: "#FFFFFF" },
+  { name: "장흥 정남진중",      style: "press", strength: -2, color: "#2E7D32", color2: "#FFFFFF" },
+  { name: "해남 땅끝중",        style: "cross", strength: -1, color: "#C62828", color2: "#FFFFFF" },
+  { name: "영광 칠산중",        style: "long", strength: -3, color: "#00897B", color2: "#E0F2F1" },
+  { name: "여수 바다솔중",      style: "long", strength: 2,  color: "#0D47A1", color2: "#81D4FA" },
 ];
 
 // 진학 연습경기 상대 고등학교 (모두 가상)
 // tier: proYouth 프로 산하 유스 / national 전국 강호 / regional 지역 강호 / footballHS 축구부 일반고
 const HIGH_SCHOOLS = [
-  { id: "hs_namhae",  name: "남해안FC U-18", tier: "proYouth",   strength: 70, coach: "최동혁 감독", color: "#B71C1C", color2: "#FFD54F" },
-  { id: "hs_hannuri", name: "서울 한누리고",  tier: "national",   strength: 67, coach: "정우석 감독", color: "#0D1B4C", color2: "#FFFFFF" },
-  { id: "hs_saesol",  name: "경기 새솔고",    tier: "national",   strength: 66, coach: "김태환 감독", color: "#FFFFFF", color2: "#2E7D32" },
-  { id: "hs_mudeung", name: "광주 무등빛고",  tier: "regional",   strength: 63, coach: "오상민 감독", color: "#F9A825", color2: "#212121" },
-  { id: "hs_neul",    name: "순천 늘푸른고",  tier: "regional",   strength: 62, coach: "배진호 감독", color: "#43A047", color2: "#FFFFFF" },
-  { id: "hs_chabat",  name: "보성 차밭고",    tier: "footballHS", strength: 58, coach: "윤기철 감독", color: "#7CB342", color2: "#33691E" },
+  { id: "hs_namhae",  name: "남해안FC U-18", style: "low", tier: "proYouth",   strength: 70, coach: "최동혁 감독", color: "#B71C1C", color2: "#FFD54F" },
+  { id: "hs_hannuri", name: "서울 한누리고",  style: "press", tier: "national",   strength: 67, coach: "정우석 감독", color: "#0D1B4C", color2: "#FFFFFF" },
+  { id: "hs_saesol",  name: "경기 새솔고",    style: "ace", tier: "national",   strength: 66, coach: "김태환 감독", color: "#FFFFFF", color2: "#2E7D32" },
+  { id: "hs_mudeung", name: "광주 무등빛고",  style: "ace", tier: "regional",   strength: 63, coach: "오상민 감독", color: "#F9A825", color2: "#212121" },
+  { id: "hs_neul",    name: "순천 늘푸른고",  style: "press", tier: "regional",   strength: 62, coach: "배진호 감독", color: "#43A047", color2: "#FFFFFF" },
+  { id: "hs_chabat",  name: "보성 차밭고",    style: "press", tier: "footballHS", strength: 58, coach: "윤기철 감독", color: "#7CB342", color2: "#33691E" },
 ];
 
 const HS_TIERS = {
@@ -1319,29 +1321,29 @@ const HS_TIERS = {
 
 // 전국 대회 상대
 const NATIONAL_OPPONENTS = [
-  { name: "서울 한강중",        strength: 7, color: "#FFFFFF", color2: "#0D47A1" },
-  { name: "경기 은하중",        strength: 6, color: "#283593", color2: "#FFFFFF" },
-  { name: "부산 파도중",        strength: 5, color: "#0277BD", color2: "#FFFFFF" },
-  { name: "대구 달빛중",        strength: 4, color: "#4527A0", color2: "#FFD54F" },
-  { name: "인천 갯벌FC U-15",   strength: 6, color: "#212121", color2: "#29B6F6" },
-  { name: "울산 고래중",        strength: 8, color: "#1565C0", color2: "#FFEB3B" },
-  { name: "강원 설악중",        strength: 2, color: "#2E7D32", color2: "#FFFFFF" },
-  { name: "충북 미루나무중",     strength: 1, color: "#9E9D24", color2: "#FFFFFF" },
-  { name: "제주 한라FC U-15",   strength: 3, color: "#004D40", color2: "#FFFFFF" },
-  { name: "전북 모악산중",      strength: 5, color: "#1B5E20", color2: "#FFEB3B" },
-  { name: "대전 한밭별중",      strength: 4, color: "#4A148C", color2: "#FFFFFF" },
-  { name: "경남 진주성중",      strength: 3, color: "#B71C1C", color2: "#FFFFFF" },
-  { name: "경북 솔뫼중",        strength: 2, color: "#00695C", color2: "#FFFFFF" },
-  { name: "세종 호수FC U-15",   strength: 1, color: "#00ACC1", color2: "#004D40" },
-  { name: "군포FC U-15",        strength: 9, color: "#0B1F4B", color2: "#F2C230" },   // 전국 최강
+  { name: "서울 한강중",        style: "rough", strength: 7, color: "#FFFFFF", color2: "#0D47A1" },
+  { name: "경기 은하중",        style: "rough", strength: 6, color: "#283593", color2: "#FFFFFF" },
+  { name: "부산 파도중",        style: "long", strength: 5, color: "#0277BD", color2: "#FFFFFF" },
+  { name: "대구 달빛중",        style: "low", strength: 4, color: "#4527A0", color2: "#FFD54F" },
+  { name: "인천 갯벌FC U-15",   style: "low", strength: 6, color: "#212121", color2: "#29B6F6" },
+  { name: "울산 고래중",        style: "long", strength: 8, color: "#1565C0", color2: "#FFEB3B" },
+  { name: "강원 설악중",        style: "keep", strength: 2, color: "#2E7D32", color2: "#FFFFFF" },
+  { name: "충북 미루나무중",     style: "cross", strength: 1, color: "#9E9D24", color2: "#FFFFFF" },
+  { name: "제주 한라FC U-15",   style: "ace", strength: 3, color: "#004D40", color2: "#FFFFFF" },
+  { name: "전북 모악산중",      style: "long", strength: 5, color: "#1B5E20", color2: "#FFEB3B" },
+  { name: "대전 한밭별중",      style: "counter", strength: 4, color: "#4A148C", color2: "#FFFFFF" },
+  { name: "경남 진주성중",      style: "cross", strength: 3, color: "#B71C1C", color2: "#FFFFFF" },
+  { name: "경북 솔뫼중",        style: "cross", strength: 2, color: "#00695C", color2: "#FFFFFF" },
+  { name: "세종 호수FC U-15",   style: "rough", strength: 1, color: "#00ACC1", color2: "#004D40" },
+  { name: "군포FC U-15",        style: "keep", strength: 9, color: "#0B1F4B", color2: "#F2C230" },   // 전국 최강
 ];
 
 // 초등학교 팀 (가끔 연습경기 상대. 우리 팀이 조금 우세)
 const ELEMENTARY_OPPONENTS = [
-  { name: "고흥 바닷바람FC U-12", strength: -9, color: "#29B6F6", color2: "#FFFFFF" },
-  { name: "순천 꿈나무FC U-12",   strength: -8, color: "#FFEE58", color2: "#1B5E20" },
-  { name: "벌교 꼬막FC U-12",     strength: -10, color: "#8D6E63", color2: "#FFFFFF" },
-  { name: "보성 녹차잎FC U-12",   strength: -9, color: "#9CCC65", color2: "#FFFFFF" },
+  { name: "고흥 바닷바람FC U-12", style: "low", strength: -9, color: "#29B6F6", color2: "#FFFFFF" },
+  { name: "순천 꿈나무FC U-12",   style: "press", strength: -8, color: "#FFEE58", color2: "#1B5E20" },
+  { name: "벌교 꼬막FC U-12",     style: "keep", strength: -10, color: "#8D6E63", color2: "#FFFFFF" },
+  { name: "보성 녹차잎FC U-12",   style: "press", strength: -9, color: "#9CCC65", color2: "#FFFFFF" },
 ];
 
 // 성씨 (대략적인 빈도 가중치)
@@ -3946,6 +3948,14 @@ const SIM_LINES = {
   roundGK:   ["{a|이/가} 골키퍼까지 제쳤다! 골문이 비었다!", "{a|이/가} 몸을 한 번 흔들어 골키퍼를 넘어뜨렸다!"],
   boxRun:    ["{a}의 크로스! 문전으로 {n}명이 뛰어든다.", "{a|이/가} 공을 띄운다. 니어와 먼 쪽으로 동시에 뛰어든다!"],
   chase:     ["{d|이/가} 끝까지 따라붙는다!", "{d|이/가} 전력으로 쫓아간다. 경주다!"],
+  // 팀 성향이 경기장에 실제로 보일 때 (sim.js styleWatch·압박·역습). Them: 상대 팀, Us: 우리 팀(감독 지시)
+  lineHighThem: ["상대가 수비 라인을 하프라인 가까이 끌어올렸다. 숨 돌릴 틈이 없다.", "상대 수비 넷이 하프라인 근처까지 올라와 있다. 뒤가 비었다."],
+  lineHighUs:   ["우리 수비 라인이 하프라인 근처까지 올라섰다.", "수비수들까지 한 칸씩 올라왔다. 팀 전체가 앞에서 싸운다."],
+  gegenThem:    ["공을 잃자마자 {a|과/와} {b|이/가} 한꺼번에 달려든다.", "{a|이/가} 곧장 달려들고 {b}도 옆을 막는다. 잃자마자 되찾으러 온다."],
+  gegenUs:      ["잃자마자 {a|과/와} {b|이/가} 같이 달려든다!", "{a|이/가} 바로 달려들고 {b}도 옆을 막는다. 다시 뺏으러 간다."],
+  sitDeepThem:  ["상대는 내려앉아 기다린다. 거의 다 자기 진영에 있다.", "상대가 자기 진영에 촘촘히 내려섰다. 공격수 하나만 앞에 남겨 두고."],
+  counterGoThem:["뺏자마자 {a|이/가} 앞으로 길게 찬다. 역습이다!", "{a}의 한 번에 넘기는 패스. 상대가 곧장 역습으로 나온다!"],
+  counterGoUs:  ["뺏자마자 {a|이/가} 앞으로 길게 찬다. 역습이다!", "{a|이/가} 고개를 들자마자 {b}에게 길게 넘긴다. 역습이다!"],
   // 해설이 한참 없을 때 지금 공 가진 선수 이야기 (팀_자리: def 자기 진영, mid 중원, att 상대 진영)
   hold: {
     us_def:   ["{a|이/가} 뒤에서 공을 돌리며 빈틈을 찾는다.", "{a|이/가} 수비 진영에서 침착하게 공을 지킨다.", "{a|이/가} 서두르지 않는다. 동료들이 자리를 잡을 때까지 공을 끈다."],
@@ -4658,8 +4668,10 @@ const {isBirthdayWeek} = __m["js/engine/birthday.js"];
 const {chatText} = __m["js/engine/life.js"];
 const {aceOf, aceAbsent} = __m["js/engine/opponents.js"];
 const {ACE_TALK, COACH_TALK} = __m["data/messages.js"];
+const {LEAGUE_OPPONENTS, NATIONAL_OPPONENTS, HIGH_SCHOOLS, ELEMENTARY_OPPONENTS} = __m["data/world.js"];
 // 메시지 만들기: 경기 전 미팅, 경기 후 피드백, 주간 조언.
 // 모든 문장은 지금 게임 속 숫자(능력치, 순위, 피로, 학업)를 넣어 만듭니다.
+
 
 
 
@@ -4710,16 +4722,20 @@ function drillFor(stat) {
 // 상대 팀 성향 (이름으로 늘 같은 성향이 나옴)
 // 팀마다 스타일은 고정 (같은 팀은 늘 같은 색깔), 조언 문장은 매번 골라 씀
 const STYLES = [
-  { label: "전방 압박이 강한 팀", stat: "tech.firstTouch", tips: ["공을 받기 전에 주변을 먼저 봐라. 원터치로 내주는 선택이 안전하다.", "이 팀은 첫 10분에 미친 듯이 뛴다. 그 시간만 버티면 뒤에 공간이 생긴다.", "골키퍼한테 돌리는 것도 겁내지 마라. 압박을 한 번 벗기면 그다음은 우리 차례다."] },
-  { label: "롱볼과 높이로 밀어붙이는 팀", stat: "phys.jump", tips: ["공중볼 경합이 많을 거다. 세컨드볼 위치를 먼저 잡아라.", "머리싸움에서 지더라도 떨어지는 공은 우리가 먼저 줍자. 그게 이 경기의 반이다.", "키 큰 공격수 하나만 보고 차는 팀이다. 그 선수 등 뒤를 비우지 마라."] },
-  { label: "빠른 역습을 노리는 팀", stat: "phys.speed", tips: ["공을 뺏기는 순간이 제일 위험하다. 무리한 드리블은 아껴라.", "우리가 공격할 때 한 명은 꼭 뒤에 남겨라. 이 팀은 세 번 패스로 골문 앞까지 온다.", "뺏기면 바로 반칙으로라도 끊어야 하는 순간이 온다. 그 판단은 네가 해라."] },
-  { label: "공을 오래 돌리는 팀", stat: "phys.stamina", tips: ["많이 뛰어야 하는 경기다. 후반에 체력이 갈린다.", "공 쫓아다니다 지치면 지는 거다. 따라가지 말고 길목에 서 있어라.", "점유율은 줘도 된다. 대신 공을 뺏었을 때 한 번에 찔러라."] },
-  { label: "몸싸움이 거친 팀", stat: "phys.strength", tips: ["부딪힐 때 버티는 쪽이 이긴다. 등지는 플레이를 조심해라.", "넘어져도 바로 일어나라. 아픈 척하면 이 팀은 더 세게 들어온다.", "몸으로 밀리면 공을 빨리 내줘라. 공이 사람보다 빠르다."] },
-  { label: "측면 크로스가 많은 팀", stat: "mental.focus", tips: ["양쪽 날개가 빠르다. 크로스 올라오기 전에 박스 안 자리부터 잡아라.", "크로스는 막는 것보다 올라오기 전에 끊는 게 쉽다. 측면에서 한 발 먼저 붙어라.", "반대편 포스트를 비우지 마라. 이 팀 골은 대부분 거기서 나온다."] },
-  { label: "수비를 내리고 버티는 팀", stat: "tech.pass", tips: ["공은 우리가 오래 잡을 거다. 서두르면 역습 맞는다. 옆으로 흔들다가 한 번에 찔러라.", "박스 앞에 열 명이 서 있을 거다. 중거리 하나가 경기를 연다.", "이런 팀은 한 골 먹으면 무너진다. 선제골이 전부다."] },
-  { label: "에이스 한 명이 끌고 가는 팀", stat: "tech.defense", tips: ["10번 하나만 묶으면 반은 끝난다. 그 선수가 공 잡으면 두 명이 붙어라.", "그 에이스가 왼발잡이다. 오른쪽으로 몰아라.", "에이스 쪽 측면은 내버려 두지 마라. 거기로만 공이 간다."] },
+  { key: "press", label: "전방 압박이 강한 팀", stat: "tech.firstTouch", tips: ["공을 받기 전에 주변을 먼저 봐라. 원터치로 내주는 선택이 안전하다.", "이 팀은 첫 10분에 미친 듯이 뛴다. 그 시간만 버티면 뒤에 공간이 생긴다.", "골키퍼한테 돌리는 것도 겁내지 마라. 압박을 한 번 벗기면 그다음은 우리 차례다."] },
+  { key: "long", label: "롱볼과 높이로 밀어붙이는 팀", stat: "phys.jump", tips: ["공중볼 경합이 많을 거다. 세컨드볼 위치를 먼저 잡아라.", "머리싸움에서 지더라도 떨어지는 공은 우리가 먼저 줍자. 그게 이 경기의 반이다.", "키 큰 공격수 하나만 보고 차는 팀이다. 그 선수 등 뒤를 비우지 마라."] },
+  { key: "counter", label: "빠른 역습을 노리는 팀", stat: "phys.speed", tips: ["공을 뺏기는 순간이 제일 위험하다. 무리한 드리블은 아껴라.", "우리가 공격할 때 한 명은 꼭 뒤에 남겨라. 이 팀은 세 번 패스로 골문 앞까지 온다.", "뺏기면 바로 반칙으로라도 끊어야 하는 순간이 온다. 그 판단은 네가 해라."] },
+  { key: "keep", label: "공을 오래 돌리는 팀", stat: "phys.stamina", tips: ["많이 뛰어야 하는 경기다. 후반에 체력이 갈린다.", "공 쫓아다니다 지치면 지는 거다. 따라가지 말고 길목에 서 있어라.", "점유율은 줘도 된다. 대신 공을 뺏었을 때 한 번에 찔러라."] },
+  { key: "rough", label: "몸싸움이 거친 팀", stat: "phys.strength", tips: ["부딪힐 때 버티는 쪽이 이긴다. 등지는 플레이를 조심해라.", "넘어져도 바로 일어나라. 아픈 척하면 이 팀은 더 세게 들어온다.", "몸으로 밀리면 공을 빨리 내줘라. 공이 사람보다 빠르다."] },
+  { key: "cross", label: "측면 크로스가 많은 팀", stat: "mental.focus", tips: ["양쪽 날개가 빠르다. 크로스 올라오기 전에 박스 안 자리부터 잡아라.", "크로스는 막는 것보다 올라오기 전에 끊는 게 쉽다. 측면에서 한 발 먼저 붙어라.", "반대편 포스트를 비우지 마라. 이 팀 골은 대부분 거기서 나온다."] },
+  { key: "low", label: "수비를 내리고 버티는 팀", stat: "tech.pass", tips: ["공은 우리가 오래 잡을 거다. 서두르면 역습 맞는다. 옆으로 흔들다가 한 번에 찔러라.", "박스 앞에 열 명이 서 있을 거다. 중거리 하나가 경기를 연다.", "이런 팀은 한 골 먹으면 무너진다. 선제골이 전부다."] },
+  { key: "ace", label: "에이스 한 명이 끌고 가는 팀", stat: "tech.defense", tips: ["10번 하나만 묶으면 반은 끝난다. 그 선수가 공 잡으면 두 명이 붙어라.", "그 에이스가 왼발잡이다. 오른쪽으로 몰아라.", "에이스 쪽 측면은 내버려 두지 마라. 거기로만 공이 간다."] },
 ];
+// 팀 성향은 data/world.js의 style에서 (없는 팀만 이름 해시로)
+const TEAM_STYLE = Object.fromEntries([...LEAGUE_OPPONENTS, ...NATIONAL_OPPONENTS, ...HIGH_SCHOOLS, ...ELEMENTARY_OPPONENTS].filter(t => t.style).map(t => [t.name, t.style]));
 function styleOf(name) {
+  const k = TEAM_STYLE[name], st = k && STYLES.find(x => x.key === k);
+  if (st) return st;
   let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return STYLES[h % STYLES.length];
 }
@@ -5579,7 +5595,7 @@ const FORM = {
   ST1: { d: [24, -0.2], a: [41, -0.14] }, ST2: { d: [22, 0.22], a: [38, 0.24] },
 };
 // 수비 블록 높이: [공에서 몇 m 뒤에 라인, 라인 최소, 라인 최대] (자기 골문에서 잰 거리)
-const BLOCK = { low: [24, 9, 24], mid: [25, 16, 38], high: [21, 24, 50] };
+const BLOCK = { low: [24, 9, 24], mid: [25, 16, 38], high: [21, 24, 50], deep: [23, 11, 29] };   // deep: 역습형 (자기 진영에서 기다림)
 const KICKOFF_X = { GK: 4, DF: 25, MF: 37, FW: 47 };
 const JOG = 6.2, RUN = 7.4, SPRINT = 8.6, DRIB = 6.2;
 
@@ -5615,7 +5631,7 @@ function createSim(cfg) {
       longShot: !!p.longShot, ace: !!p.ace, qMul: p.qMul || null, slot: p.slot ?? null, tune: p.tune || [0, 0, 0],   // tune: 세부 포지션 [공격, 수비] 앞뒤 조정, [2] 공격할 때 터치라인 쪽으로 (m)
       role, ri: RI[role], runner: ["ST1", "ST2", "LM", "RM"].includes(role), x: 0, y: 0, vx: 0, vy: 0, tx: 0, ty: 0, v: JOG, ov: null, stun: 0, cool: 0,
       press: false, held: false, pressedAt: 0, eng: 0, waitT: 0,
-      runUntil: 0, runTo: [0, 0], overlap: false, ovStay: 0, boxRun: false,   // 경기 중에 쓰는 값도 처음부터 만들어 둠 (객체 모양이 바뀌면 느려짐)
+      runUntil: 0, runTo: [0, 0], overlap: false, ovStay: 0, boxRun: false, cRun: false,   // 경기 중에 쓰는 값도 처음부터 만들어 둠 (객체 모양이 바뀌면 느려짐)
       ph: [rand() * 6.3, rand() * 6.3, rand() * 6.3, rand() * 6.3] };
   });
   const S = {
@@ -5623,7 +5639,7 @@ function createSim(cfg) {
     str: { ...cfg.str }, style: { us: {}, them: {}, ...cfg.style }, block: { us: "mid", them: "mid", ...(cfg.blocks || {}) },
     ev: [], rec: null, phase: "play", restart: null, decideAt: 0, script: [], scur: null, stage: null, noFoulUntil: 0,
     pass: null, chain: [], possT: { us: 0, them: 0 }, flow: 0, bias: null, gkHold: 0, stopped: false, kickTeam: "us",
-    pickOnly: null, trace: null, traceEnd: false, onTick: null, lastRestart: null, deflect: null, wonAt: null, wonBy: null, lastClear: false, oneOn: null,
+    pickOnly: null, trace: null, traceEnd: false, onTick: null, lastRestart: null, deflect: null, wonAt: null, wonBy: null, lastClear: false, oneOn: null, sw: { us: { hi: 0, deep: 0, said: -1 }, them: { hi: 0, deep: 0, said: -1 } }, gegenAt: null,
     shot: null, pending: null, clockOff: 0, tk: cfg.tk ?? 0.32, ik: cfg.ik ?? 0.8, prog: cfg.prog ?? 0.00045, dw: cfg.dw ?? 17, ft: cfg.ft ?? 1, brk0: cfg.brk ?? 1,
   };
   S.GK = P.filter(p => p.pos === "GK");
@@ -5697,17 +5713,21 @@ function shape(S, team) {
   const out = SH[team];
   const att = S.poss === team;
   const bx = ox(team, S.ball.x), by = oy(team, S.ball.y);
+  const st = S.style[team] || {};
   let line, W, cy;
-  if (att) { line = clamp(bx - 31, 12, 58); W = 29; cy = 34 + (by - 34) * 0.15; }
+  if (att) { line = clamp(bx - 31, 12, 58); W = st.wide ? 33 : 29; cy = 34 + (by - 34) * 0.15; }   // wide: 감독 지시 "넓게 벌려라"
   else {
     const B = BLOCK[S.block[team]] || BLOCK.mid;
     line = clamp(bx - B[0], B[1], Math.min(B[2], Math.max(B[1], bx - 4)));
-    W = S.dw; cy = clamp(34 + (by - 34) * 0.55, 19, 49);
-    if (bx > 62 && S.block[team] !== "low") line = Math.max(line, Math.min(bx - 37, B[2] + 9));   // 높은 곳에서 압박할 때는 수비 라인도 따라 올라가 팀을 짧게 (앞뒤 40m 안쪽)
+    W = S.dw * (st.compact ? 0.88 : S.block[team] === "deep" ? 0.9 : st.press ? 0.95 : 1);   // 역습형은 가운데를 잠그고, 압박형은 공 쪽으로 좁힘
+    cy = clamp(34 + (by - 34) * 0.55, 19, 49);
+    if (bx > 62 && S.block[team] !== "low" && S.block[team] !== "deep") line = Math.max(line, Math.min(bx - 37, B[2] + 9));   // 높은 곳에서 압박할 때는 수비 라인도 따라 올라가 팀을 짧게 (앞뒤 40m 안쪽)
+    if (st.press && bx > 45 && S.block[team] !== "low") line = Math.min(line + 4, Math.max(B[1], bx - 4));   // 압박형: 라인을 한 칸 더 올려 팀을 앞으로 (공보다 앞으로는 안 감)
   }
   const stretch = att ? 1.05 : S.block[team] === "high" && bx > 70 ? 1.3 : 0.95;
   const F = att ? FA : FD;
   for (let i = 1; i < 11; i++) { out[i * 2] = line + F[i][0] * stretch; out[i * 2 + 1] = cy + F[i][1] * W; }
+  if (!att && S.block[team] === "deep") out[RI.ST1 * 2] = Math.max(out[RI.ST1 * 2], 46);   // 역습형: 공격수 하나는 하프라인 근처에 남아 역습을 기다림
   if (att && bx > 78) {                     // 공이 상대 박스 근처면 문전과 박스 앞을 채움
     const fy = by < 34 ? 1 : -1;
     out[RI.ST1 * 2] = Math.max(out[RI.ST1 * 2], 95); out[RI.ST1 * 2 + 1] = 34 - fy * 3;
@@ -5734,6 +5754,8 @@ function targets(S) {
   const H = S.holder, c = S.t, P = S.P;
   const flying = S.ball.fl;
   const markOn = ox(def, S.ball.x) < 60;
+  const wideOn = (S.style[att]?.counter || S.style[att]?.press) && S.wonAt != null && c - S.wonAt < 4 && S.phase === "play" && !S.stage && !S.scur && !S.script.length;
+  const cRunOn = !!S.style[att]?.counter && S.wonAt != null && c - S.wonAt < 4 && S.phase === "play" && !S.stage && !S.scur && !S.script.length;
   for (const p of P) {
     const A = p.team === att, sh = A ? shA : shD;
     let x = sh[p.ri * 2], y = sh[p.ri * 2 + 1];
@@ -5742,6 +5764,9 @@ function targets(S) {
       if (p.pos === "FW") x = Math.max(x, off - 3.5);                // 공격수는 상대 마지막 수비 라인에 붙어 섬
       else if (p.runner) x = Math.max(x, Math.min(off - 9, x + 12));
       if (p.runner) { const q = Math.max(0, Math.sin(c * 0.55 + p.ph[0] * 1.7)); x += q * q * 9; }   // 뒷공간으로 뛰어들었다 돌아옴
+      p.cRun = false;
+      if (p.runner && cRunOn) { const bxA = ox(att, S.ball.x); if (bxA > 18 && bxA < 72) { x = Math.max(x, Math.min(off - 1, bxA + 20)); p.cRun = true; } }
+      if (wideOn && (p.role === "LM" || p.role === "RM")) y = 34 + (p.role === "LM" ? -1 : 1) * Math.max(Math.abs(y - 34), 24);   // 압박·역습형: 뺏자마자 측면 미드필더는 넓게 벌려 달림 (좁게 뭉친 수비 모양에서 바로 폭을 만듦)   // 역습형: 뺏자마자 공격수·측면 미드필더가 함께 앞으로 뛰어나감
       x = Math.min(x, off - 0.6);
     }
     // 수비: 자기 진영에서는 가까운 상대 공격수 쪽으로 붙음 (골문 쪽에서)
@@ -5782,7 +5807,7 @@ function targets(S) {
     const a = p.ri ? 0.35 : 0.15, f = p.ph;
     x += a * (1.6 * Math.sin(c * 0.33 + f[0]) + 0.7 * Math.sin(c * 0.87 + f[1]));
     y += a * (1.3 * Math.sin(c * 0.29 + f[2]) + 0.6 * Math.sin(c * 0.71 + f[3]));
-    p.tx = clamp(x, 1.5, 103.5); p.ty = clamp(y, 1.5, 66.5); p.v = p.boxRun ? RUN + 0.8 : p.runUntil > c || p.overlap ? RUN : JOG; p.press = false;
+    p.tx = clamp(x, 1.5, 103.5); p.ty = clamp(y, 1.5, 66.5); p.v = p.boxRun ? RUN + 0.8 : p.cRun ? SPRINT : p.runUntil > c || p.overlap ? RUN : JOG; p.press = false;
     if (!A && p.ri) {                                     // 수비 전환: 공보다 앞(상대 골 쪽)에 남은 선수는 뛰어서, 막 뺏긴 직후엔 전력으로 돌아옴
       const ahead = ox(def, p.x) - ox(def, S.ball.x), far = hyp(p.tx - p.x, p.ty - p.y);
       if (ahead > 3 || far > 12) p.v = S.wonAt != null && c - S.wonAt < 5 ? SPRINT : RUN;
@@ -5810,7 +5835,7 @@ function targets(S) {
     }
   }
   // 압박: 공에 가장 가까운 수비가 나가고 두 번째가 뒤를 받침
-  const pressR = S.style[def].press ? 28 : S.block[def] === "low" ? 17 : 22;
+  const pressR = S.style[def].press ? 28 : S.block[def] === "low" || S.block[def] === "deep" ? 17 : 22;
   const bpx = flying ? flying.x1 : S.ball.x, bpy = flying ? flying.y1 : S.ball.y;
   if (!S.stage && S.phase === "play") {
     let c1 = null, c2 = null, d1 = 1e9, d2 = 1e9, a1 = null, da = 1e9;
@@ -5821,8 +5846,13 @@ function targets(S) {
       else if (d < da) { da = d; a1 = p; }
     }
     const g = -dirOf(def);
-    if (c1 && (d1 < pressR || !H)) { c1.tx = bpx + g * (H ? 1.5 : 0); c1.ty = bpy + (34 - bpy) * 0.05; c1.v = d1 > 6 ? SPRINT : RUN; c1.press = true; }
-    if (c2 && d2 < 15) { c2.tx = bpx + g * 6; c2.ty = bpy + (34 - bpy) * 0.3; c2.v = RUN; }
+    // 압박형: 공을 잃은 직후 3초는 가까운 두 명이 함께 전력으로 되찾으러 감 (상대 진영·중원에서만)
+    const gegen = S.style[def].press && S.wonAt != null && c - S.wonAt < 3 && ox(def, bpx) > 40 && H && H.ri && !S.scur && !S.script.length && !S.bias;
+    if (c1 && (d1 < pressR || !H || (gegen && d1 < 34))) { c1.tx = bpx + g * (H ? 1.5 : 0); c1.ty = bpy + (34 - bpy) * 0.05; c1.v = d1 > 6 || gegen ? SPRINT : RUN; c1.press = true; }
+    if (c2 && gegen && d2 < 18) {
+      const sy = c2.y < bpy ? -1 : 1; c2.tx = bpx + g * 2.5; c2.ty = bpy + sy * 2.2; c2.v = SPRINT; c2.press = true;
+      if (S.gegenAt !== S.wonAt && d1 < 12 && d2 < 14) { S.gegenAt = S.wonAt; emit(S, "gegen", { team: def, a: c1.name, b: c2.name }); }
+    } else if (c2 && d2 < 15) { c2.tx = bpx + g * 6; c2.ty = bpy + (34 - bpy) * 0.3; c2.v = RUN; }
     // 압박하는 둘 말고는 공 가진 선수에게 7m 안으로 몰려들지 않음 (패스 길과 자기 자리를 지킴)
     if (H && H.ri && !S.scur && !S.script.length && !S.bias) for (const p of P) {   // 내 장면 연출·대기 중에는 건드리지 않음
       if (p.team !== def || !p.ri || p === c1 || p === c2 || p.ov) continue;
@@ -5979,6 +6009,7 @@ function decide(S) {
   let near = 99, nearO = null;
   for (const o of S.P) if (o.team === foe && o.ri) { const d = hyp(o.x - H.x, o.y - H.y); if (d < near) { near = d; nearO = o; } }
   const st = S.style[team] || {};
+  const cw = !!st.counter && S.wonAt != null && S.t - S.wonAt < 4 && hx < 72;   // 역습형: 뺏은 직후에는 앞으로, 길게
   const noise = () => Math.exp((rand() - 0.5) * 0.7);
   const opts = [];
   const here = keepV(hx, hy), lose = lossV(hx, hy);
@@ -6007,7 +6038,7 @@ function decide(S) {
       const rx = ox(team, tp[0]), ry = oy(team, tp[1]);
       const dist = hyp(tp[0] - H.x, tp[1] - H.y);
       const build = S.plan?.build && S.plan.team === team;
-      if (dist < 4 || dist > (build ? 26 : st.long ? 50 : 40)) continue;
+      if (dist < 4 || dist > (build ? 26 : st.long || cw ? 50 : 40)) continue;
       const wide = hx > 78 && Math.abs(hy - 34) > 12 && rx > 86 && Math.abs(ry - 34) < 12;
       const air = wide || dist > 32;
       const lr = laneRisk(S, H, r, tp, air);
@@ -6017,9 +6048,9 @@ function decide(S) {
       const mid = lossV((hx + rx) / 2, (hy + ry) / 2);
       let free = 99; for (const o of S.P) if (o.team === foe && o.ri) free = Math.min(free, hyp(o.x - tp[0], o.y - tp[1]));
       v += clamp(free - 2, 0, 6) * 0.0012;                                                 // 받을 자리에 여유가 있으면 더 좋음
-      let u = (1 - lr.risk) * (v + clamp(rx - hx, -15, 30) * S.prog) - lr.risk * mid;
+      let u = (1 - lr.risk) * (v + clamp(rx - hx, -15, 30) * S.prog * (cw ? 1.8 : 1)) - lr.risk * mid;
       if (offside) u = Math.min(u, 0) - 0.01;
-      if (air && !wide) u *= st.long ? 0.6 : 0.4;
+      if (air && !wide) u *= st.long ? 0.6 : cw ? 0.55 : 0.4;
       if (r === S.chain[S.chain.length - 1]) u *= 0.75;                                       // 방금 준 선수에게 바로 돌려주는 건 덜
       if (st.keep && !air) u *= 1.1;
       if (st.ace && r.ace) u *= 1.5;
@@ -6076,6 +6107,7 @@ function decide(S) {
   }
   let best = opts[0];
   for (const o of opts) if (o.u > best.u) best = o;
+  if (cw && best.k === "pass" && best.r && ox(team, best.tp[0]) - hx >= 18 && hyp(best.tp[0] - H.x, best.tp[1] - H.y) >= 24) emit(S, "counterGo", { team, by: H.name, to: best.r.name });
   if (S.dbg) { const k = (S.plan?.build ? "B_" + (near < 3 ? "압박_" : "") : "") + (hx > 70 ? "F_" : "") + best.k + (H.pos === "GK" ? "GK" : "") + (best.air ? "A" : "") + (best.through ? "T" : "") + (best.k === "pass" && best.r && ox(team, best.tp[0]) < hx - 3 ? "back" : ""); S.dbg[k] = (S.dbg[k] || 0) + 1; }
   act(S, H, best);
 }
@@ -6367,7 +6399,7 @@ function newPlan(S, H, force = false) {
     const first = pl.steps[0];
     if (pl.id === "keeper") { if (H.pos !== "GK") continue; w *= 3; }
     else if (H.pos === "GK") continue;
-    if (pl.id === "counter") { if (!won || hx < 22 || hx > 62) continue; w *= st.counter ? 3 : 1.8; }
+    if (pl.id === "counter") { if (!won || hx < (st.counter ? 12 : 22) || hx > 62) continue; w *= st.counter ? 3 : 1.8; }   // 역습형은 자기 박스 앞에서 뺏어도 바로 역습
     if (pl.id === "press") { if (!won || hx < 70 || H.pos !== "FW") continue; w *= 4; }
     if (pl.id === "solo" && (H.pos !== "FW" || hx < 45 || hx > 72)) continue;
     if (pl.id === "longshot" && !hasLong) continue;
@@ -6844,12 +6876,30 @@ function step(S) {
   }
   if (S.stage) stageTick(S);
   if (S.so) soTick(S);                                     // 승부차기
+  if (S.phase === "play" && !S.stage && Math.round(S.t * 10) % 10 === 0) styleWatch(S);
   targets(S);
   movePlayers(S);
   moveBall(S);
   if (!S.ball.fl && !S.holder && S.phase === "play") outCheck(S);
   if (S.rec) record(S);
   if (S.onTick) S.onTick(S);                               // 점검 도구용 (tools/dev/audit.mjs)
+}
+// 성향이 경기장에 실제로 보일 때 알림 (해설용): 압박형 라인이 3초 넘게 높이, 역습형이 3초 넘게 자기 진영에 8명 이상
+function styleWatch(S) {
+  for (const team of ["us", "them"]) {
+    const w = S.sw[team], st = S.style[team] || {};
+    if (S.poss === team || !S.holder) { w.hi = 0; w.deep = 0; continue; }
+    if (st.press) {
+      let sx = 0, n = 0; for (const p of S.P) if (p.team === team && p.pos === "DF") { sx += ox(team, p.x); n++; }
+      w.hi = n && sx / n >= 45 ? w.hi + 1 : 0;
+      if (w.hi === 3 && S.t - w.said > 60) { w.said = S.t; emit(S, "lineHigh", { team }); }
+    }
+    if (S.block[team] === "deep") {
+      let n = 0; for (const p of S.P) if (p.team === team && p.ri && ox(team, p.x) < 52.5) n++;
+      w.deep = n >= 8 ? w.deep + 1 : 0;
+      if (w.deep === 3 && S.t - w.said > 60) { w.said = S.t; emit(S, "sitDeep", { team }); }
+    }
+  }
 }
 function record(S) {
   const f = new Float32Array(4 + S.P.length * 2);
@@ -7345,11 +7395,29 @@ const sig = x => 1 / (1 + Math.exp(-x));
 
 // 상대 성향 → 경기장 움직임
 const STYLE_SIM = {
-  "전방 압박이 강한 팀": { press: true, block: "high" }, "롱볼과 높이로 밀어붙이는 팀": { long: true }, "빠른 역습을 노리는 팀": { counter: true },
+  "전방 압박이 강한 팀": { press: true, block: "high" }, "롱볼과 높이로 밀어붙이는 팀": { long: true }, "빠른 역습을 노리는 팀": { counter: true, block: "deep" },
   "공을 오래 돌리는 팀": { keep: true }, "몸싸움이 거친 팀": { rough: true }, "측면 크로스가 많은 팀": { cross: true },
   "수비를 내리고 버티는 팀": { block: "low" }, "에이스 한 명이 끌고 가는 팀": { ace: true },
 };
 const styleSim = name => STYLE_SIM[styleOf(name).label] || {};
+// 중계 첫 줄: 오늘 상대는 이런 팀 (경기장에서 실제로 보이는 성향만)
+const STYLE_INTRO = {
+  press: ["압박형", "라인을 높이 올리고, 공을 잃으면 바로 달려든다. 뒤가 비는 팀이다."],
+  counter: ["역습형", "자기 진영에 내려앉아 기다리다가, 뺏으면 한 번에 앞으로 찬다."],
+};
+// 하프타임 감독님 말 → 후반 처음 15분 팀 움직임 (data/match.js HALFTIME_TALK 문장 그대로)
+const HT_ORDER = {
+  "잘하고 있다. 수비 라인 내리지 마라.": "high", "앞서고 있을 때 제일 많이 지는 이유가 뭔지 알아? 내려앉아서다. 계속 올라가.": "high",
+  "상대가 후반에 라인 올린다. 뒷공간 노려.": "behind", "공 잡으면 서두르지 마. 시간은 우리 편이다.": "calm",
+  "지금 스코어는 잊어. 후반 첫 5분, 거기서 한 번 더 때린다.": "up", "전반은 탐색전이었다. 이제 우리가 먼저 때린다.": "up",
+  "측면이 열린다. 후반엔 더 넓게 벌려라.": "wide", "상대 골키퍼가 높은 공에 약하다. 크로스 많이 올려.": "wide", "상대 오른쪽 수비가 지쳤다. 그쪽으로 계속 두드려.": "wide",
+  "중원 싸움에서 밀렸다. 미드필더들, 간격 좁혀. 그거 하나면 된다.": "compact",
+  "수비 넷 중에 하나만 남기고 다 올라간다. 지는 건 한 골이나 세 골이나 똑같다.": "up", "첫 골만 넣으면 저쪽이 흔들린다. 그 첫 골을 빨리 가져와.": "up",
+};
+const HT_ORDER_LINE = {
+  up: "후반엔 처음부터 앞으로 올라서기로 했다.", high: "후반엔 수비 라인부터 한 칸 끌어올리기로 했다.", behind: "후반엔 뺏으면 바로 뒷공간을 노리기로 했다.",
+  calm: "후반엔 서두르지 않고 공을 돌리기로 했다.", wide: "후반엔 측면을 넓게 쓰기로 했다.", compact: "후반엔 미드필더들 간격부터 좁히기로 했다.",
+};
 
 // 경기장 위 22명 (우리 팀은 왼쪽 수비 → 오른쪽 공격). 점 하나하나가 명단의 실제 선수와 이어져 있음
 const SLOTS = [["GK", 1], ["DF", 4], ["MF", 4], ["FW", 2]];
@@ -7656,6 +7724,12 @@ function narrate(state, m, e) {
     case "boxRun":
       if (!quiet() && chance(0.6) && tac(m, "boxRun", 5, 10)) add(fill(pick(SIM_LINES.boxRun), { a: e.by, n: e.n }), e.me ? "me-auto" : kt(e.team));
       break;
+    case "lineHigh": case "sitDeep": case "gegen": case "counterGo": {
+      const pool = SIM_LINES[e.type + (e.team === "us" ? "Us" : "Them")];
+      if (pool && !quiet() && tac(m, e.type + e.team, e.type === "gegen" ? 3 : e.type === "counterGo" ? 4 : 2, e.type === "gegen" ? 40 : e.type === "counterGo" ? 20 : 90))
+        add(fill(pick(pool), { a: e.a || e.by, b: e.b || e.to }), e.by === m.me ? "me-auto" : kt(e.team));
+      break;
+    }
     case "build":
       if (!quiet() && chance(0.55) && tac(m, "build" + e.team, 2, 30)) add(fill(pick(e.team === "us" ? SIM_LINES.buildUs : SIM_LINES.buildThem), { a: e.by }), kt(e.team));
       break;
@@ -8359,13 +8433,17 @@ function startMoment(state, m, sit, ctx, lines, ts) {
   S.bias = null;
 }
 // 경기 흐름 지시: up 몰아침(슈팅·공격 시작 늘림, 압박) / calm 공 돌리기(상대 공격 시작 줄임) / wide 측면 공격
-function setTactic(m, k) {
+// high 라인 올리기(압박형 움직임) / behind 뺏으면 뒷공간(역습형 움직임) / compact 간격 좁히기 (하프타임 지시)
+function setTactic(m, k, dur = 15) {
   const S = m.sim;
   if (m.tactic) endTactic(m);
-  m.tactic = { k, until: S.t + 15, keep: { ...S.style.us }, att: { ...S.attackP }, sm: S.shootMul ? { ...S.shootMul } : null };
+  m.tactic = { k, until: S.t + dur, keep: { ...S.style.us }, att: { ...S.attackP }, sm: S.shootMul ? { ...S.shootMul } : null };
   if (k === "up") { S.style.us = { ...S.style.us, press: true, counter: true }; S.attackP.us = Math.min(0.98, S.attackP.us + 0.06); S.shootMul = { ...(S.shootMul || {}), us: (S.shootMul?.us ?? 1) * 1.25 }; }
   if (k === "calm") { S.style.us = { ...S.style.us, keep: true }; S.attackP.them = S.attackP.them * 0.8; }
-  if (k === "wide") { S.style.us = { ...S.style.us, cross: true }; S.attackP.us = Math.min(0.98, S.attackP.us + 0.03); }
+  if (k === "wide") { S.style.us = { ...S.style.us, cross: true, wide: true }; S.attackP.us = Math.min(0.98, S.attackP.us + 0.03); }
+  if (k === "high") S.style.us = { ...S.style.us, press: true };
+  if (k === "behind") S.style.us = { ...S.style.us, counter: true };
+  if (k === "compact") S.style.us = { ...S.style.us, compact: true };
 }
 function endTactic(m) {
   const S = m.sim, T = m.tactic; if (!T) return;
@@ -8406,6 +8484,8 @@ function finishStaging(state, m) {
 // 경기 시작 줄
 function kickoffLines(state, m) {
   const out = [], L = (t, k = "info", extra = {}) => out.push({ t, k, minute: 0, ts: m.sim.t, ...extra });
+  const intro = STYLE_INTRO[styleOf(m.fx.opponent.name).key];
+  if (intro && !m.fx.elementary) L(`오늘 상대 · ${m.fx.opponent.name} — ${intro[0]}. ${intro[1]}`, "info");
   L(say(LINES.kickoff, { us: m.fx.usName || TEAM_NAME }), "whistle");
   if (m.bond && m.status === "start") L(m.bond.line, "me");   // 예전 선택이 돌아오는 순간
   if (m.status !== "start") L(m.status === "bench" || m.status === "sub" ? "벤치에서 경기를 지켜본다. 언제 부를지 모른다." : (m.reason || "관중석에서 경기를 지켜본다."));
@@ -8456,6 +8536,7 @@ function next(state, m) {
     m.half2Pending = false; cut = true;
     kickoffSetup(S, "them", true);
     lines.push({ t: say(LINES.secondHalf, {}), k: "whistle", minute: HALF, ts: S.t, half2: true });
+    if (m.htOrder) { setTactic(m, m.htOrder, 45); lines.push({ t: HT_ORDER_LINE[m.htOrder], k: "info", minute: HALF, ts: S.t }); m.htOrder = null; }   // 하프타임 지시: 후반 처음 15분
   }
   const t0 = S.t;
   let kind = "line";
@@ -8533,7 +8614,9 @@ function next(state, m) {
     const mood = a > b ? "winning" : a === b ? "drawing" : "losing";
     L(`전반 종료. ${TEAM_NAME} ${a} : ${b} ${m.fx.opponent.name}`, "whistle", { poss: null, htWhistle: true });
     L(statLine(m), "stat");
-    L(`${staffOf(m, "coach")}: "${pick(m.fx.jn ? JN_TALK.team[mood] : HALFTIME_TALK[mood])}"`, "coach");
+    const htSay = pick(m.fx.jn ? JN_TALK.team[mood] : HALFTIME_TALK[mood]);
+    L(`${staffOf(m, "coach")}: "${htSay}"`, "coach");
+    m.htOrder = HT_ORDER[htSay] || null;
     // 전반 내 경기 평가 → 라커룸에서 따로 하는 이야기. 전반이 많이 아쉬우면 교체
     if (m.status === "start" && m.onPitch && !m.injured) {
       const d1 = m.my.delta, dec = m.my.decisions, suc = m.my.successes;

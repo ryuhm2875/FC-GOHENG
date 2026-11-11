@@ -184,11 +184,29 @@ const sig = x => 1 / (1 + Math.exp(-x));
 
 // 상대 성향 → 경기장 움직임
 const STYLE_SIM = {
-  "전방 압박이 강한 팀": { press: true, block: "high" }, "롱볼과 높이로 밀어붙이는 팀": { long: true }, "빠른 역습을 노리는 팀": { counter: true },
+  "전방 압박이 강한 팀": { press: true, block: "high" }, "롱볼과 높이로 밀어붙이는 팀": { long: true }, "빠른 역습을 노리는 팀": { counter: true, block: "deep" },
   "공을 오래 돌리는 팀": { keep: true }, "몸싸움이 거친 팀": { rough: true }, "측면 크로스가 많은 팀": { cross: true },
   "수비를 내리고 버티는 팀": { block: "low" }, "에이스 한 명이 끌고 가는 팀": { ace: true },
 };
 export const styleSim = name => STYLE_SIM[styleOf(name).label] || {};
+// 중계 첫 줄: 오늘 상대는 이런 팀 (경기장에서 실제로 보이는 성향만)
+const STYLE_INTRO = {
+  press: ["압박형", "라인을 높이 올리고, 공을 잃으면 바로 달려든다. 뒤가 비는 팀이다."],
+  counter: ["역습형", "자기 진영에 내려앉아 기다리다가, 뺏으면 한 번에 앞으로 찬다."],
+};
+// 하프타임 감독님 말 → 후반 처음 15분 팀 움직임 (data/match.js HALFTIME_TALK 문장 그대로)
+const HT_ORDER = {
+  "잘하고 있다. 수비 라인 내리지 마라.": "high", "앞서고 있을 때 제일 많이 지는 이유가 뭔지 알아? 내려앉아서다. 계속 올라가.": "high",
+  "상대가 후반에 라인 올린다. 뒷공간 노려.": "behind", "공 잡으면 서두르지 마. 시간은 우리 편이다.": "calm",
+  "지금 스코어는 잊어. 후반 첫 5분, 거기서 한 번 더 때린다.": "up", "전반은 탐색전이었다. 이제 우리가 먼저 때린다.": "up",
+  "측면이 열린다. 후반엔 더 넓게 벌려라.": "wide", "상대 골키퍼가 높은 공에 약하다. 크로스 많이 올려.": "wide", "상대 오른쪽 수비가 지쳤다. 그쪽으로 계속 두드려.": "wide",
+  "중원 싸움에서 밀렸다. 미드필더들, 간격 좁혀. 그거 하나면 된다.": "compact",
+  "수비 넷 중에 하나만 남기고 다 올라간다. 지는 건 한 골이나 세 골이나 똑같다.": "up", "첫 골만 넣으면 저쪽이 흔들린다. 그 첫 골을 빨리 가져와.": "up",
+};
+const HT_ORDER_LINE = {
+  up: "후반엔 처음부터 앞으로 올라서기로 했다.", high: "후반엔 수비 라인부터 한 칸 끌어올리기로 했다.", behind: "후반엔 뺏으면 바로 뒷공간을 노리기로 했다.",
+  calm: "후반엔 서두르지 않고 공을 돌리기로 했다.", wide: "후반엔 측면을 넓게 쓰기로 했다.", compact: "후반엔 미드필더들 간격부터 좁히기로 했다.",
+};
 
 // 경기장 위 22명 (우리 팀은 왼쪽 수비 → 오른쪽 공격). 점 하나하나가 명단의 실제 선수와 이어져 있음
 const SLOTS = [["GK", 1], ["DF", 4], ["MF", 4], ["FW", 2]];
@@ -495,6 +513,12 @@ function narrate(state, m, e) {
     case "boxRun":
       if (!quiet() && chance(0.6) && tac(m, "boxRun", 5, 10)) add(fill(pick(SIM_LINES.boxRun), { a: e.by, n: e.n }), e.me ? "me-auto" : kt(e.team));
       break;
+    case "lineHigh": case "sitDeep": case "gegen": case "counterGo": {
+      const pool = SIM_LINES[e.type + (e.team === "us" ? "Us" : "Them")];
+      if (pool && !quiet() && tac(m, e.type + e.team, e.type === "gegen" ? 3 : e.type === "counterGo" ? 4 : 2, e.type === "gegen" ? 40 : e.type === "counterGo" ? 20 : 90))
+        add(fill(pick(pool), { a: e.a || e.by, b: e.b || e.to }), e.by === m.me ? "me-auto" : kt(e.team));
+      break;
+    }
     case "build":
       if (!quiet() && chance(0.55) && tac(m, "build" + e.team, 2, 30)) add(fill(pick(e.team === "us" ? SIM_LINES.buildUs : SIM_LINES.buildThem), { a: e.by }), kt(e.team));
       break;
@@ -1198,13 +1222,17 @@ function startMoment(state, m, sit, ctx, lines, ts) {
   S.bias = null;
 }
 // 경기 흐름 지시: up 몰아침(슈팅·공격 시작 늘림, 압박) / calm 공 돌리기(상대 공격 시작 줄임) / wide 측면 공격
-function setTactic(m, k) {
+// high 라인 올리기(압박형 움직임) / behind 뺏으면 뒷공간(역습형 움직임) / compact 간격 좁히기 (하프타임 지시)
+function setTactic(m, k, dur = 15) {
   const S = m.sim;
   if (m.tactic) endTactic(m);
-  m.tactic = { k, until: S.t + 15, keep: { ...S.style.us }, att: { ...S.attackP }, sm: S.shootMul ? { ...S.shootMul } : null };
+  m.tactic = { k, until: S.t + dur, keep: { ...S.style.us }, att: { ...S.attackP }, sm: S.shootMul ? { ...S.shootMul } : null };
   if (k === "up") { S.style.us = { ...S.style.us, press: true, counter: true }; S.attackP.us = Math.min(0.98, S.attackP.us + 0.06); S.shootMul = { ...(S.shootMul || {}), us: (S.shootMul?.us ?? 1) * 1.25 }; }
   if (k === "calm") { S.style.us = { ...S.style.us, keep: true }; S.attackP.them = S.attackP.them * 0.8; }
-  if (k === "wide") { S.style.us = { ...S.style.us, cross: true }; S.attackP.us = Math.min(0.98, S.attackP.us + 0.03); }
+  if (k === "wide") { S.style.us = { ...S.style.us, cross: true, wide: true }; S.attackP.us = Math.min(0.98, S.attackP.us + 0.03); }
+  if (k === "high") S.style.us = { ...S.style.us, press: true };
+  if (k === "behind") S.style.us = { ...S.style.us, counter: true };
+  if (k === "compact") S.style.us = { ...S.style.us, compact: true };
 }
 function endTactic(m) {
   const S = m.sim, T = m.tactic; if (!T) return;
@@ -1245,6 +1273,8 @@ function finishStaging(state, m) {
 // 경기 시작 줄
 function kickoffLines(state, m) {
   const out = [], L = (t, k = "info", extra = {}) => out.push({ t, k, minute: 0, ts: m.sim.t, ...extra });
+  const intro = STYLE_INTRO[styleOf(m.fx.opponent.name).key];
+  if (intro && !m.fx.elementary) L(`오늘 상대 · ${m.fx.opponent.name} — ${intro[0]}. ${intro[1]}`, "info");
   L(say(LINES.kickoff, { us: m.fx.usName || TEAM_NAME }), "whistle");
   if (m.bond && m.status === "start") L(m.bond.line, "me");   // 예전 선택이 돌아오는 순간
   if (m.status !== "start") L(m.status === "bench" || m.status === "sub" ? "벤치에서 경기를 지켜본다. 언제 부를지 모른다." : (m.reason || "관중석에서 경기를 지켜본다."));
@@ -1295,6 +1325,7 @@ export function next(state, m) {
     m.half2Pending = false; cut = true;
     kickoffSetup(S, "them", true);
     lines.push({ t: say(LINES.secondHalf, {}), k: "whistle", minute: HALF, ts: S.t, half2: true });
+    if (m.htOrder) { setTactic(m, m.htOrder, 45); lines.push({ t: HT_ORDER_LINE[m.htOrder], k: "info", minute: HALF, ts: S.t }); m.htOrder = null; }   // 하프타임 지시: 후반 처음 15분
   }
   const t0 = S.t;
   let kind = "line";
@@ -1372,7 +1403,9 @@ export function next(state, m) {
     const mood = a > b ? "winning" : a === b ? "drawing" : "losing";
     L(`전반 종료. ${TEAM_NAME} ${a} : ${b} ${m.fx.opponent.name}`, "whistle", { poss: null, htWhistle: true });
     L(statLine(m), "stat");
-    L(`${staffOf(m, "coach")}: "${pick(m.fx.jn ? JN_TALK.team[mood] : HALFTIME_TALK[mood])}"`, "coach");
+    const htSay = pick(m.fx.jn ? JN_TALK.team[mood] : HALFTIME_TALK[mood]);
+    L(`${staffOf(m, "coach")}: "${htSay}"`, "coach");
+    m.htOrder = HT_ORDER[htSay] || null;
     // 전반 내 경기 평가 → 라커룸에서 따로 하는 이야기. 전반이 많이 아쉬우면 교체
     if (m.status === "start" && m.onPitch && !m.injured) {
       const d1 = m.my.delta, dec = m.my.decisions, suc = m.my.successes;
