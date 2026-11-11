@@ -844,6 +844,7 @@ function newPlan(S, H, force = false) {
     if (pl.id === "solo" && (H.pos !== "FW" || hx < 45 || hx > 72)) continue;
     if (pl.id === "longshot" && !hasLong) continue;
     if (S.bias?.planPos && team === "us" && pl.steps.some(st => st.who === S.bias.planPos && st.at[0] >= 78)) w *= 2.5;   // 내 장면을 기다릴 때: 내가 마무리 근처에 끼는 공격
+    if (S.bias?.lure && S.bias.lureTeam === team && S.bias.lure.includes(pl.id)) w *= 3;   // 기다리는 장면의 모양을 만드는 공격 (data/scenes.js lure)
     if (st.long && ["long", "keeper", "switch"].includes(pl.id)) w *= 1.8;
     if (st.cross && ["wing", "overlap", "wingdribble"].includes(pl.id)) w *= 2.2;
     if (st.keep && ["build", "buildup", "onetwo"].includes(pl.id)) w *= 1.5;
@@ -859,6 +860,7 @@ function newPlan(S, H, force = false) {
   let side = rand() < 0.5 ? -1 : 1;
   const me = S.bias?.defSide && team === "them" ? S.P.find(p => p.me) : null;          // 내 수비 장면을 기다릴 때: 상대 공격이 내 쪽으로
   if (me) side = oy(team, me.y) < 34 ? -1 : 1;
+  if (S.bias?.lureSide && team === "us" && S.bias.lure?.includes(pl.id)) { const mm = S.P.find(p => p.me); if (mm) side = oy(team, mm.y) < 34 ? -1 : 1; }   // 오버래핑 장면: 내 쪽 측면으로
   // 시작 단계: 공 자리를 이미 지난 단계는 건너뜀. 지금 공 가진 선수가 그 단계 포지션이면 그 단계를 맡음
   let i = 0;
   while (i < pl.steps.length - 1 && pl.steps[i].at[0] < hx - 6) i++;

@@ -959,3 +959,24 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
 - 원래 있던 쏠림: 150경기에 FW 57종 중 47종만 나옴, 상위 5개가 42%(fw_counterpress·fw_press_cb·fw_solo_run…). DF는 df_race 11.8%
 - 원인: 장면을 먼저 고르고 경기장 모양을 기다리는데, 어떤 장면은 모양이 거의 안 생겨 포기 → 대신 아무 데서나 맞는 장면으로. 예: fw_cutback_arrive 58번 기다려 0번, mf_late_arrive 56번→0, fb_overlap 68번→94% 실패, mf_lowblock·df_corner_attack 0
 - 주의: 이 도구는 커리어 첫 경기만 봄(날씨·시즌 장면은 원래 안 나옴)
+
+## 51. 선택 장면 다양성 1차: 상대 성향별 장면(③) + 안 나오던 장면 끌어내기(① 첫 묶음) (2026-11-11, 사용자: "다양한 선택지가 골고루 나오게", ①+③ 먼저, ②는 나중에)
+### ③ 상대 성향별 장면 (match.js `OPP_TASTE`, `m.oppTaste` → `sitWeight`)
+- press: mf_third_man·mf_split·fw_layoff_third·fw_through·fw_gk_out·fw_chase / counter: mf_lowblock·mf_halfspace_turn·mf_rest_defense·mf_counter_delay·mf_defend·fw_box_turn·fw_screen·df_2v1·df_counter_2v2·df_slide_counter / keep: 압박 타이밍·패스 길 끊기 장면 / cross: df_cross·df_back_post·df_cutback_guard… / long: df_aerial_long·df_target_man·mf_second… (×1.2~1.8). 이미 많이 나오는 장면은 넣지 않음
+- press에 df_build·df_gk_triangle·df_bait_press·df_split_pass·mf_drop_between을 넣으면 sync-audit 평균이 0.3%p 올라 뺌 (세 시드 평균으로 판단)
+- 효과는 작음: 압박형 상대에서 MF의 그 성향 장면 9.4→13.1%. 다른 장면과 같은 벽(경기장 모양이 안 생김)에 막힘
+### ① 기다리는 장면 모양 만들기 (data/scenes.js `lure`, `lureSide`, `bylineMate`, `patience: 4`)
+- 장면을 기다리는 동안 `S.bias.lure`의 공격 패턴을 ×3 (내 장면은 우리 팀, 상대 공 장면은 상대 팀), lureSide면 내 쪽 측면으로. 동료가 공을 끌고 가야 하는 장면은 `S.bias.me` 1·planPos 없음 (공이 나에게 일찍 오지 않게)
+- bylineMate: 측면 골라인 앞(x 88↑) 동료 + 박스 근처의 나 → 공격수 장면 상황. fw_cutback_arrive tight 5→11 (연출이 13m 끌고 감)
+- 첫 묶음: fw_cutback_arrive·fw_near_run·fw_blindside / mf_late_arrive·mf_late_run / fb_overlap·df_overlap·df_cutback_guard·df_cross·df_back_post
+- patience 6은 sync-audit를 올림(기다리는 동안 `!S.bias` 조건으로 압박 일부가 꺼짐) → 4
+- 결과(150경기, 전→후): 컷백 0→4, 니어포스트 0→3, 오버래핑 15→28, df_overlap 15→18, 컷백 막기 18→23. mf_late_run·df_back_post는 여전히 거의 0
+- 실질 가짓수는 거의 그대로 (FW 24.0→23.9, MF 35.9→36.3, DF 32.2→32.5). 바닥 원인: 기다리는 장면의 81~95%가 "상황없음"(내 근처에 그 모양이 안 생김)
+### 진단 도구
+- `tools/dev/variety-audit.mjs` IDS=장면들(기다림→나옴), WHY=장면들(막힌 곳: 상황없음/공 가진 쪽/조건:종류:이유/자리), WHYX=1(공 가진 선수 자리), TASTE=1(성향 장면 비율). match.js `wantWhy`는 `m.dbgWant`일 때만
+### 점검
+- sync-audit 300: 시드 30000 6.8%, 50000 7.4%, 70000 6.6% (main 6.2·7.2·7.1, 평균 6.9 대 6.8 → 잡음 범위). 기준 6.7%는 시드 30000 하나라 ±0.5%p 흔들림
+- 밸런스 240: 득점 2.27/실점 1.10, FW 7.57, MF 7.24, DF 7.17 (±2% 안)
+- moment-audit 60: "상대 장면인데 내가 멂" 3건(한 경기 df_offside_trap·df_through 26~28m), 나머지 1~2건짜리. uiplay FW·MF·DF 엔딩까지 오류 0
+### 다음
+- 실질 가짓수를 올리려면: 장면 시작 조건을 넓히고 연출(pre/src/runs)이 자리를 만들게 하는 쪽(끊김 §44 주의), 또는 ② 흔한 장면 비중 낮추기

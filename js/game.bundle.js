@@ -5392,6 +5392,8 @@ __m["data/scenes.js"] = (function () {
 // hold   : 장면이 다 준비된 뒤 선택지가 뜨기 전 잠깐 멈추는 시간(초)
 // down   : 방금 공을 뺏긴 가까운 상대({opp})가 그 자리에 쓰러져 있음 (7m 안에 상대가 있을 때만)
 
+// lure: 이 장면을 기다리는 동안 그 모양을 만드는 공격 패턴(data/match.js PLAYS)을 더 고름 (내 장면은 우리 팀, 상대 공 장면은 상대 팀). lureSide: 내 쪽 측면으로
+// bylineMate: 공격수 장면. 동료가 측면 골라인 앞(x 88↑)에서 공을 가졌고 내가 박스 근처면 장면 상황으로 봄
 const SCENES = {
   // ── 공격수 ──
   fw_1v1: { at: [[80, 86], [26, 42]], from: "pass", giver: "mf", runs: [["fw", 9, -9, 7.6]], press: 1, pressGap: 3 },
@@ -5422,14 +5424,14 @@ const SCENES = {
   fw_gk_short: { from: "oppGk", meGap: 5, block: { us: "high" } },
   fw_mindgame: { at: [[84, 92], [24, 44]], from: "oppHold", meGap: 1.1 },
   fw_slide_finish: { from: "lowcross", src: [-5, -36], press: 1, pressGap: 1.6, pack: true },
-  fw_near_run: { at: [[96, 101], [6, 12]], from: "carry", holder: "mate", src: [-14, -3], pre: [["me", -14, -16]], runs: [["me", 1, -19, 8.4]], press: 1, pressGap: 1.4 },
+  fw_near_run: { lure: ["wingdribble", "wing"], patience: 4, bylineMate: true, at: [[96, 101], [6, 12]], from: "carry", holder: "mate", src: [-14, -3], pre: [["me", -14, -16]], runs: [["me", 1, -19, 8.4]], press: 1, pressGap: 1.4 },
   fw_flow_storm: { tight: 6, at: [[78, 85], [26, 42]], from: "pass", giver: "mf", block: { them: "low" }, press: 1, pressGap: 3 },
   fw_after_concede: { at: [[50, 58], [24, 44]], from: "pass", giver: "df", press: 1, pressGap: 3 },
   fw_decoy: { side: 14, at: [[78, 86], [8, 15]], from: "carry", holder: "mate", src: [-14, 2], pre: [["me", 15, -21], ["oppdf", 16.5, -19], ["oppdf", 16, -24]], press: 1, pressGap: 2.4 },
   keeper_rush: { at: [[84, 90], [28, 40]], line: -4, from: "long", giver: "df", gk: [4, 0], press: 0 },
   rebound_box: { after: "us", at: [[90, 96], [28, 40]], from: "save", pack: true, press: 0 },
   elder_shout: { at: [[84, 88], [15, 21]], from: "pass", giver: "mf", press: 1, pressGap: 3 },
-  fw_cutback_arrive: { tight: 5, at: [[98, 101], [8, 14]], from: "carry", holder: "mate", src: [-13, -3], pre: [["me", -17, -17]], press: 1, pressGap: 1.4, pack: true },
+  fw_cutback_arrive: { lure: ["wingdribble", "wing"], patience: 4, bylineMate: true, tight: 11, at: [[98, 101], [8, 14]], from: "carry", holder: "mate", src: [-13, -3], pre: [["me", -17, -17]], press: 1, pressGap: 1.4, pack: true },
   fw_press_curve: { at: [[86, 94], [18, 28]], from: "oppGk", meGap: 7, block: { us: "high" } },
   fw_false_nine: { at: [[50, 58], [26, 42]], from: "pass", giver: "df", src: [-18, -4], pre: [["oppdf", 1.6, 0]], runs: [["wing", 30, 4, 8.4]], press: 0 },
 
@@ -5455,7 +5457,7 @@ const SCENES = {
   mf_split: { from: "pass", giver: "df", press: 2, pressGap: 4 },
   mf_quick_fk: { from: "kicker", runs: [["fw", 22, 4, 7.6]], press: 0 },
   mf_switch_receive: { at: [[70, 80], [5, 12]], from: "long", giver: "df", src: [-40, -42], press: 1, pressGap: 3 },
-  mf_late_run: { at: [[78, 84], [28, 40]], from: "lowcross", giver: "mate", src: [20, 30], press: 0 },
+  mf_late_run: { lure: ["wing", "wingdribble", "cutback"], patience: 4, at: [[78, 84], [28, 40]], from: "lowcross", giver: "mate", src: [20, 30], press: 0 },
   mf_rally: { from: "pass", giver: "df", press: 1, pressGap: 3.4 },
   mf_shield_wing: { side: 16, at: [[48, 60], [4, 10]], from: "oppCarry", src: [15, 0], meGap: 3 },
   mf_hold_lead: { at: [[44, 56], [24, 44]], from: "pass", giver: "df", block: { them: "high" }, press: 3, pressGap: 2.2 },
@@ -5470,7 +5472,7 @@ const SCENES = {
 
   // ── 수비수 ──
   df_1v1: { at: [[26, 36], [22, 46]], from: "oppCarry", src: [15, 0], v: 7.8, meGap: 3 },
-  df_cross: { air: true, at: [[8, 14], [28, 40]], from: "oppCross", meGap: 1, pack: "them" },
+  df_cross: { lure: ["wing", "overlap", "wingdribble"], patience: 4, air: true, at: [[8, 14], [28, 40]], from: "oppCross", meGap: 1, pack: "them" },
   df_build: { at: [[10, 16], [18, 50]], from: "gk", press: 1, pressGap: 4, block: { them: "high" } },
   df_through: { at: [[34, 42], [24, 44]], from: "oppPass", src: [14, -6], runs: [["oppfw", -16, 2, 8.6]], mePress: false },
   df_corner: { at: [[94, 99], [28, 40]], from: "corner", pack: true },
@@ -5482,7 +5484,7 @@ const SCENES = {
   penalty: { at: [[94, 94], [34, 34]], from: "pk" },
   df_2v1: { counter: true, at: [[36, 44], [24, 44]], from: "oppCarry", src: [16, 0], v: 8, runs: [["oppfw", -6, -12, 8.4]], pre: [["df", 18, 12], ["df", 20, -12]], meGap: 5 },
   df_box: { tight: 1.5, at: [[8, 14], [26, 42]], from: "loose", holder: "me", src: [3, -2], runs: [["opp", 1.5, 1.5, 8]], pack: "them" },
-  df_overlap: { at: [[70, 80], [4, 10]], from: "through", giver: "mate", src: [-8, -10], press: 0 },
+  df_overlap: { lure: ["wing", "wingdribble", "switch"], patience: 4, lureSide: true, at: [[70, 80], [4, 10]], from: "through", giver: "mate", src: [-8, -10], press: 0 },
   df_boxdribble: { at: [[12, 18], [24, 44]], from: "oppCarry", src: [10, 4], v: 6, meGap: 2 },
   df_last: { at: [[8, 14], [28, 40]], from: "oppLong", pack: "them", meGap: 1 },
   df_offside_trap: { from: "oppHold", pre: [["oppfw", -12, -6], ["oppfw", -12.5, 6]], mePress: false },
@@ -5507,7 +5509,7 @@ const SCENES = {
   df_player_down: { at: [[24, 32], [24, 44]], from: "turn", pre: [["opp", 2, 2.5]], press: 0, down: true },
   df_gk_triangle: { at: [[10, 16], [18, 26]], from: "gk", press: 1, pressGap: 5, block: { them: "high" } },
   df_high_line_cover: { at: [[24, 32], [24, 44]], line: 20, from: "oppLong", src: [48, 0], pre: [["me", 20, 2], ["opp", 19, -2]], runs: [["me", 0.5, 1.4, 8.3]], mePress: false, block: { us: "high" } },
-  mf_late_arrive: { at: [[86, 101], [3, 15]], from: "carry", holder: "mate", arrive: true, press: 1, pressGap: 2.2 },
+  mf_late_arrive: { lure: ["wing", "wingdribble", "overlap"], patience: 4, at: [[86, 101], [3, 15]], from: "carry", holder: "mate", arrive: true, press: 1, pressGap: 2.2 },
   mf_counter_launch: { from: "turn", press: 0, clear: true },
   mf_conductor: { from: "pass", giver: "df", press: 0 },
   df_race: { at: [[8, 40], [8, 60]], from: "oppPass", race: true, mePress: false },   // at: 공이 수비 뒤로 넘어간 뒤 자리 (장면 고를 때는 자리를 따지지 않음)
@@ -5535,7 +5537,7 @@ const SCENES = {
   // farSide: 반대편 측면의 동료가 공을 가졌을 때만 (윙어 먼 쪽 포스트)
   // overlap: 같은 쪽 측면 미드필더가 상대 진영에서 공을 잡았고 내가 그 뒤·바깥에 있을 때만. 장면이 열리면 내가 터치라인 쪽으로 달려 올라감
   wing_isolation: { side: 16, at: [[64, 88], [2, 20]], from: "pass", giver: "fb", press: 1, pressGap: 3 },
-  fb_overlap: { side: 15, at: [[52, 84], [2, 22]], from: "carry", holder: "mate", overlap: true, press: 1, pressGap: 2.4 },
+  fb_overlap: { lure: ["wing", "wingdribble", "switch"], patience: 4, lureSide: true, side: 15, at: [[52, 84], [2, 22]], from: "carry", holder: "mate", overlap: true, press: 1, pressGap: 2.4 },
   wing_far_post: { side: 17, at: [[86, 101], [3, 15]], from: "carry", holder: "mate", arrive: true, farSide: true, press: 1, pressGap: 2.2 },
   dm_screen: { at: [[20, 38], [16, 52]], tight: 3, from: "oppPass", src: [14, -9], meGap: 1.8 },
   target_hold: { air: true, longIn: true, at: [[60, 86], [14, 54]], from: "long", giver: "df", press: 1, pressGap: 1.1 },
@@ -5553,7 +5555,7 @@ const SCENES = {
   // patience: 이 장면을 기다리다 다른 장면으로 넘어가기까지의 시간(분). 경기장 모양이 드물게 생기는 장면은 길게
   df_carry_out: { open: 7, at: [[20, 46], [10, 58]], from: "pass", giver: "df", press: 0, clear: true },
   df_counter_2v2: { counter: true, even: true, patience: 5, at: [[34, 68], [8, 60]], from: "oppCarry", meGap: 5 },
-  df_cutback_guard: { byline: true, patience: 5, at: [[3, 30], [2, 24]], from: "oppCarry", mePress: false },
+  df_cutback_guard: { lure: ["wingdribble", "wing", "cutback", "overlap"], byline: true, patience: 4, at: [[3, 30], [2, 24]], from: "oppCarry", mePress: false },
   df_shield_out: { race: "channel", at: [[2, 40], [2, 66]], from: "oppPass", mePress: false },
   fb_inverted: { invert: true, at: [[30, 60], [4, 64]], from: "pass", giver: "df", press: 1, pressGap: 4 },
   mf_scan_turn: { scan: true, at: [[42, 64], [14, 54]], from: "pass", giver: "df", press: 1, pressGap: 1.7 },
@@ -5567,11 +5569,11 @@ const SCENES = {
   fw_screen: { screen: true, patience: 5, holder: "mate", at: [[76, 87], [20, 48]], from: "pass", press: 1, pressGap: 3 },
   // 2026-11-06 추가
   fw_layoff_third: { at: [[60, 72], [24, 44]], from: "pass", giver: "df", src: [-24, -3], runs: [["mf", -2, 5, 7.6]], press: 1, pressGap: 1.2 },
-  fw_blindside: { from: "lowcross", src: [-4, -30], runs: [["oppdf", 1, -2, 7.6]], press: 1, pressGap: 1.6, pack: true },
+  fw_blindside: { lure: ["wingdribble", "cutback", "overlap"], patience: 4, from: "lowcross", src: [-4, -30], runs: [["oppdf", 1, -2, 7.6]], press: 1, pressGap: 1.6, pack: true },
   mf_counter_delay: { counter: true, at: [[44, 62], [16, 52]], from: "oppCarry", meGap: 5 },
   mf_press_trigger: { side: 16, at: [[56, 72], [3, 12]], from: "oppPass", giver: "oppdf", src: [6, -14], meGap: 7 },
   df_bait_press: { at: [[14, 24], [22, 46]], from: "pass", giver: "df", src: [-2, 14], press: 1, pressGap: 9, block: { them: "high" } },
-  df_back_post: { air: true, at: [[6, 12], [38, 48]], from: "oppCross", meGap: 1.6, pack: "them" },
+  df_back_post: { lure: ["wing", "overlap", "switch"], patience: 4, air: true, at: [[6, 12], [38, 48]], from: "oppCross", meGap: 1.6, pack: "them" },
 };
 
 return { SCENES };
@@ -6427,6 +6429,7 @@ function newPlan(S, H, force = false) {
     if (pl.id === "solo" && (H.pos !== "FW" || hx < 45 || hx > 72)) continue;
     if (pl.id === "longshot" && !hasLong) continue;
     if (S.bias?.planPos && team === "us" && pl.steps.some(st => st.who === S.bias.planPos && st.at[0] >= 78)) w *= 2.5;   // 내 장면을 기다릴 때: 내가 마무리 근처에 끼는 공격
+    if (S.bias?.lure && S.bias.lureTeam === team && S.bias.lure.includes(pl.id)) w *= 3;   // 기다리는 장면의 모양을 만드는 공격 (data/scenes.js lure)
     if (st.long && ["long", "keeper", "switch"].includes(pl.id)) w *= 1.8;
     if (st.cross && ["wing", "overlap", "wingdribble"].includes(pl.id)) w *= 2.2;
     if (st.keep && ["build", "buildup", "onetwo"].includes(pl.id)) w *= 1.5;
@@ -6442,6 +6445,7 @@ function newPlan(S, H, force = false) {
   let side = rand() < 0.5 ? -1 : 1;
   const me = S.bias?.defSide && team === "them" ? S.P.find(p => p.me) : null;          // 내 수비 장면을 기다릴 때: 상대 공격이 내 쪽으로
   if (me) side = oy(team, me.y) < 34 ? -1 : 1;
+  if (S.bias?.lureSide && team === "us" && S.bias.lure?.includes(pl.id)) { const mm = S.P.find(p => p.me); if (mm) side = oy(team, mm.y) < 34 ? -1 : 1; }   // 오버래핑 장면: 내 쪽 측면으로
   // 시작 단계: 공 자리를 이미 지난 단계는 건너뜀. 지금 공 가진 선수가 그 단계 포지션이면 그 단계를 맡음
   let i = 0;
   while (i < pl.steps.length - 1 && pl.steps[i].at[0] < hx - 6) i++;
@@ -7435,6 +7439,14 @@ const STYLE_SIM = {
   "수비를 내리고 버티는 팀": { block: "low" }, "에이스 한 명이 끌고 가는 팀": { ace: true },
 };
 const styleSim = name => STYLE_SIM[styleOf(name).label] || {};
+// 상대 성향에 따라 자주 나오는 장면 (경기마다 장면 구성이 달라지게). 이미 많이 나오는 장면은 넣지 않음 (tools/dev/variety-audit.mjs)
+const OPP_TASTE = {
+  press: { mf_third_man: 1.4, mf_split: 1.3, fw_layoff_third: 1.5, fw_through: 1.3, fw_gk_out: 1.4, fw_chase: 1.3 },
+  counter: { mf_lowblock: 1.6, mf_halfspace_turn: 1.4, mf_rest_defense: 1.5, mf_counter_delay: 1.5, mf_defend: 1.4, fw_box_turn: 1.3, fw_screen: 1.3, df_2v1: 1.4, df_counter_2v2: 1.4, df_slide_counter: 1.4 },
+  keep: { mf_press_trigger: 1.6, mf_intercept: 1.4, mf_counterpress: 1.3, fw_press: 1.4, fw_press_curve: 1.4, fw_gk_short: 1.5, fw_press_fb: 1.3, dm_screen: 1.4, df_step_out: 1.4, df_line_step: 1.3, mf_backpass_steal: 1.4 },
+  cross: { df_cross: 1.6, df_back_post: 1.6, df_cutback_guard: 1.4, df_keeper_call: 1.4, df_fullback_duel: 1.4, mf_shield_wing: 1.5, mf_track_runner: 1.4, fw_press_fb: 1.3 },
+  long: { df_aerial_long: 1.6, df_target_man: 1.6, df_high_line_cover: 1.4, df_shield_out: 1.3, df_keeper_call: 1.3, mf_second: 1.8, fw_flick_on: 1.3, target_hold: 1.2 },
+};
 // 중계 첫 줄: 오늘 상대는 이런 팀 (경기장에서 실제로 보이는 성향만)
 const STYLE_INTRO = {
   press: ["압박형", "라인을 높이 올리고, 공을 잃으면 바로 달려든다. 뒤가 비는 팀이다."],
@@ -7646,6 +7658,7 @@ function prepareMatch(state, info, fx) {
   S.noPen = {};
   Object.defineProperty(m, "sim", { value: S, enumerable: false, configurable: true, writable: true });
   m.oppBlock = oppStyle.block || "mid";
+  m.oppTaste = fx.elementary ? null : OPP_TASTE[styleOf(fx.opponent.name).key] || null;   // 상대 성향에 따라 자주 나오는 장면
   return m;
 }
 
@@ -8054,6 +8067,7 @@ function momentCtx(state, m, evs) {
     if (M.pos === "FW" && ws && H.team === "us" && H.pos !== "GK" && !H.me) {
       if (ws.dummy && H.x > 76 && Math.abs(H.y - 34) > 12 && M.x > 72 && dist2(H, M) < 38) return { cat: "mate", poss: "us", holder: H, dummy: true };
       if (ws.screen && H.x > 76 && H.x < 88 && Math.abs(H.y - 34) < 15 && M.x > 80 && Math.abs(M.y - 34) < 14 && dist2(H, M) < 36) return { cat: "mate", poss: "us", holder: H, screen: true };
+      if (ws.bylineMate && H.x > 88 && Math.abs(H.y - 34) > 13 && M.x > 74 && dist2(H, M) < 32) return { cat: "mate", poss: "us", holder: H };   // 측면 골라인 앞 동료 (컷백·니어포스트 장면)
       if (s_boxTurn(ws) && H.x > 60 && H.x < 90 && M.x > 89.5 && Math.abs(M.y - 34) < 11 && dist2(H, M) < 32) return { cat: "mate", poss: "us", holder: H };   // 박스 안의 나에게 동료가 줌
     }
     if (M.pos === "MF" && ws?.underlap && H.team === "us" && H.pos !== "GK" && !H.me && H.x > 50 && H.x < 90 && Math.abs(H.y - 34) > 16.5 && dist2(H, M) < 32) return { cat: "mate", poss: "us", holder: H };   // 측면 동료 옆으로 뛰어드는 장면
@@ -8087,7 +8101,7 @@ const posTaste = (m, s) => {
   if (s.choices.some(c => ATT_PASS.has(c.win))) k *= 1.6;
   return k;
 };
-const sitWeight = (m, s) => s.weight * posTaste(m, s) * (m.detail?.taste[s.id] ?? 1) * (m.score[0] < m.score[1] && m.minute > 50 && s.zone === "att" ? 1.6 : 1) * 0.3 ** (m.seen?.[s.id] || 0);   // 같은 장면이 되풀이되지 않게
+const sitWeight = (m, s) => s.weight * posTaste(m, s) * (m.detail?.taste[s.id] ?? 1) * (m.oppTaste?.[s.id] ?? 1) * (m.score[0] < m.score[1] && m.minute > 50 && s.zone === "att" ? 1.6 : 1) * 0.3 ** (m.seen?.[s.id] || 0);   // 같은 장면이 되풀이되지 않게
 // 장면이 말하는 자리와 지금 공 자리가 얼마나 맞는지 (1이면 그 자리)
 // 장면이 시작될 때 공이 있을 자리: 동료가 공을 가졌는데 장면은 내가 받는 장면이면 동료가 나에게 패스하므로 내 자리
 function sceneBall(m, s) {
@@ -8243,6 +8257,21 @@ function wantFits(m, want, ctx) {
   if (c < (wait < 1.5 ? 1 : wait < 3 ? 0.5 : 0.3)) return false;                    // 처음엔 딱 맞는 상황만, 기다릴수록 비슷한 상황도
   if (want.cat.includes(":")) return true;
   return geoFit(m, s) >= Math.max(0.12, 0.3 * Math.max(0, 1 - wait / 3));         // 아무리 오래 기다려도 장면 자리에서 13m 안
+}
+// 개발용: wantFits가 어디서 막히는지 (ctx 없음 / 공 가진 쪽 / 공 가진 선수·경기장 조건 / 상황 종류 / 자리)
+function wantWhy(m, want, ctx) {
+  if (!ctx) return "상황없음";
+  const s = want.sit;
+  if ((s.poss || "us") !== ctx.poss) return "공 가진 쪽";
+  if (!holderOk(ctx, s, m.sim, m)) {
+    const S = m.sim, sc = SCENES[s.id], M = meOf(S), d = ctx.holder ? Math.hypot(ctx.holder.x - M.x, ctx.holder.y - M.y).toFixed(0) : "-";
+    const why = !!sc?.arrive !== !!ctx.arrive ? "arrive" : !!sc?.race !== !!ctx.race ? "race" : !!sc?.dummy !== !!ctx.dummy || !!sc?.screen !== !!ctx.screen ? "dummy" : sc && !newSceneOk(ctx, sc, S, m) ? "newScene" : !textOk(ctx, s, sc, S, m) ? "text" : "side/etc";
+    return "조건:" + (ctx.cat || "?") + ":" + why + (m.dbgWant === "x" ? `(H${ctx.holder?.x.toFixed(0)},${ctx.holder?.y.toFixed(0)} d${d})` : "");
+  }
+  const c = ctxFits(ctx, want.cat), wait = m.minute - want.t0;
+  if (c < (wait < 1.5 ? 1 : wait < 3 ? 0.5 : 0.3)) return "종류:" + ctx.cat;
+  if (want.cat.includes(":")) return "맞음";
+  return geoFit(m, s) >= Math.max(0.12, 0.3 * Math.max(0, 1 - wait / 3)) ? "맞음" : "자리";
 }
 // 기다리던 장면을 언제 포기하고 지금 상황에 맞는 장면으로 바꿀지 (분)
 // 공격 장면을 기다리는데 상대 공 상황이 왔을 때, 세트피스를 기다릴 때는 더 오래 참음 (한쪽 장면으로 쏠리지 않게)
@@ -8624,14 +8653,17 @@ function next(state, m) {
       && playT(S) < halfEnd - 7;                                   // 휘슬 직전(2분 20초)에는 새 장면을 시작하지 않음 (크로스·침투처럼 긴 결과도 경기장에서 다 이어지도록)
     if (due && !S.script.length && !S.scur) {
       if (!m.want) { const w = wantSituation(state, m); m.want = w ? { sit: w, cat: sitCat(w), t0: m.minute } : null; }
-      S.bias = { me: 3, planPos: m.want && (m.want.sit.poss || "us") === "us" && m.want.sit.zone === "att" ? state.player.position : null,
+      const mateLure = SCENES[m.want?.sit.id]?.lure && SCENES[m.want.sit.id].holder === "mate";   // 동료가 공을 끌고 가야 하는 장면: 공이 나에게 일찍 오지 않게
+      S.bias = { me: mateLure ? 1 : 3, planPos: !mateLure && m.want && (m.want.sit.poss || "us") === "us" && m.want.sit.zone === "att" ? state.player.position : null,
         defSide: m.want?.sit.poss === "them",
-        them: m.want?.sit.poss === "them" && m.minute - m.want.t0 >= 1.5 };          // 내 수비 장면을 오래 기다리면 상대가 조금 더 적극적으로 올라옴
+        them: m.want?.sit.poss === "them" && m.minute - m.want.t0 >= 1.5,
+        lure: SCENES[m.want?.sit.id]?.lure || null, lureTeam: m.want?.sit.poss === "them" ? "them" : "us", lureSide: !!SCENES[m.want?.sit.id]?.lureSide };   // 기다리는 장면 모양을 만드는 공격 패턴          // 내 수비 장면을 오래 기다리면 상대가 조금 더 적극적으로 올라옴
       let ctx = momentCtx(state, m, S.ev.slice(n0));
       // 미드필더: 공이 우리 진영 깊은 곳(x34 안)이면 중원으로 나올 때까지 기다림 (수비·뒤로 돌리기 장면만 나오지 않게). 5분 넘게 기다리면 허용
       const backlog = m.momentQ.length >= 2 && m.minute >= m.momentQ[1];        // 밀린 장면이 쌓였으면 깊은 곳에서도
       if (ctx && m.myPos === "MF" && !ctx.cat.includes(":") && S.ball.x < 34 && m.want && m.minute - m.want.t0 < 5 && m.minute < 63 && !backlog) ctx = null;
       let sit = null;
+      if (m.dbgWant && m.want) { const id = m.want.sit.id, d = (m.wdbg ||= {})[id] ||= {}; const k = wantWhy(m, m.want, ctx); d[k] = (d[k] || 0) + 1; }   // 개발용: 기다리는 장면이 어디서 막히는지 (tools/dev/variety-audit.mjs WHY=1)
       if (ctx && m.want && wantFits(m, m.want, ctx)) sit = m.want.sit;
       else if (ctx && (!m.want || m.minute - m.want.t0 >= wantPatience(m, m.want, ctx))) sit = pickSituation(state, m, ctx);   // 오래 안 맞으면 지금 상황에 맞는 장면으로
       if (sit) { m.want = null; startMoment(state, m, sit, ctx, lines, S.t); }

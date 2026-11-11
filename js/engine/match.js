@@ -189,6 +189,14 @@ const STYLE_SIM = {
   "수비를 내리고 버티는 팀": { block: "low" }, "에이스 한 명이 끌고 가는 팀": { ace: true },
 };
 export const styleSim = name => STYLE_SIM[styleOf(name).label] || {};
+// 상대 성향에 따라 자주 나오는 장면 (경기마다 장면 구성이 달라지게). 이미 많이 나오는 장면은 넣지 않음 (tools/dev/variety-audit.mjs)
+const OPP_TASTE = {
+  press: { mf_third_man: 1.4, mf_split: 1.3, fw_layoff_third: 1.5, fw_through: 1.3, fw_gk_out: 1.4, fw_chase: 1.3 },
+  counter: { mf_lowblock: 1.6, mf_halfspace_turn: 1.4, mf_rest_defense: 1.5, mf_counter_delay: 1.5, mf_defend: 1.4, fw_box_turn: 1.3, fw_screen: 1.3, df_2v1: 1.4, df_counter_2v2: 1.4, df_slide_counter: 1.4 },
+  keep: { mf_press_trigger: 1.6, mf_intercept: 1.4, mf_counterpress: 1.3, fw_press: 1.4, fw_press_curve: 1.4, fw_gk_short: 1.5, fw_press_fb: 1.3, dm_screen: 1.4, df_step_out: 1.4, df_line_step: 1.3, mf_backpass_steal: 1.4 },
+  cross: { df_cross: 1.6, df_back_post: 1.6, df_cutback_guard: 1.4, df_keeper_call: 1.4, df_fullback_duel: 1.4, mf_shield_wing: 1.5, mf_track_runner: 1.4, fw_press_fb: 1.3 },
+  long: { df_aerial_long: 1.6, df_target_man: 1.6, df_high_line_cover: 1.4, df_shield_out: 1.3, df_keeper_call: 1.3, mf_second: 1.8, fw_flick_on: 1.3, target_hold: 1.2 },
+};
 // 중계 첫 줄: 오늘 상대는 이런 팀 (경기장에서 실제로 보이는 성향만)
 const STYLE_INTRO = {
   press: ["압박형", "라인을 높이 올리고, 공을 잃으면 바로 달려든다. 뒤가 비는 팀이다."],
@@ -400,6 +408,7 @@ export function prepareMatch(state, info, fx) {
   S.noPen = {};
   Object.defineProperty(m, "sim", { value: S, enumerable: false, configurable: true, writable: true });
   m.oppBlock = oppStyle.block || "mid";
+  m.oppTaste = fx.elementary ? null : OPP_TASTE[styleOf(fx.opponent.name).key] || null;   // 상대 성향에 따라 자주 나오는 장면
   return m;
 }
 
@@ -808,6 +817,7 @@ function momentCtx(state, m, evs) {
     if (M.pos === "FW" && ws && H.team === "us" && H.pos !== "GK" && !H.me) {
       if (ws.dummy && H.x > 76 && Math.abs(H.y - 34) > 12 && M.x > 72 && dist2(H, M) < 38) return { cat: "mate", poss: "us", holder: H, dummy: true };
       if (ws.screen && H.x > 76 && H.x < 88 && Math.abs(H.y - 34) < 15 && M.x > 80 && Math.abs(M.y - 34) < 14 && dist2(H, M) < 36) return { cat: "mate", poss: "us", holder: H, screen: true };
+      if (ws.bylineMate && H.x > 88 && Math.abs(H.y - 34) > 13 && M.x > 74 && dist2(H, M) < 32) return { cat: "mate", poss: "us", holder: H };   // 측면 골라인 앞 동료 (컷백·니어포스트 장면)
       if (s_boxTurn(ws) && H.x > 60 && H.x < 90 && M.x > 89.5 && Math.abs(M.y - 34) < 11 && dist2(H, M) < 32) return { cat: "mate", poss: "us", holder: H };   // 박스 안의 나에게 동료가 줌
     }
     if (M.pos === "MF" && ws?.underlap && H.team === "us" && H.pos !== "GK" && !H.me && H.x > 50 && H.x < 90 && Math.abs(H.y - 34) > 16.5 && dist2(H, M) < 32) return { cat: "mate", poss: "us", holder: H };   // 측면 동료 옆으로 뛰어드는 장면
@@ -841,7 +851,7 @@ const posTaste = (m, s) => {
   if (s.choices.some(c => ATT_PASS.has(c.win))) k *= 1.6;
   return k;
 };
-const sitWeight = (m, s) => s.weight * posTaste(m, s) * (m.detail?.taste[s.id] ?? 1) * (m.score[0] < m.score[1] && m.minute > 50 && s.zone === "att" ? 1.6 : 1) * 0.3 ** (m.seen?.[s.id] || 0);   // 같은 장면이 되풀이되지 않게
+const sitWeight = (m, s) => s.weight * posTaste(m, s) * (m.detail?.taste[s.id] ?? 1) * (m.oppTaste?.[s.id] ?? 1) * (m.score[0] < m.score[1] && m.minute > 50 && s.zone === "att" ? 1.6 : 1) * 0.3 ** (m.seen?.[s.id] || 0);   // 같은 장면이 되풀이되지 않게
 // 장면이 말하는 자리와 지금 공 자리가 얼마나 맞는지 (1이면 그 자리)
 // 장면이 시작될 때 공이 있을 자리: 동료가 공을 가졌는데 장면은 내가 받는 장면이면 동료가 나에게 패스하므로 내 자리
 function sceneBall(m, s) {
@@ -997,6 +1007,21 @@ function wantFits(m, want, ctx) {
   if (c < (wait < 1.5 ? 1 : wait < 3 ? 0.5 : 0.3)) return false;                    // 처음엔 딱 맞는 상황만, 기다릴수록 비슷한 상황도
   if (want.cat.includes(":")) return true;
   return geoFit(m, s) >= Math.max(0.12, 0.3 * Math.max(0, 1 - wait / 3));         // 아무리 오래 기다려도 장면 자리에서 13m 안
+}
+// 개발용: wantFits가 어디서 막히는지 (ctx 없음 / 공 가진 쪽 / 공 가진 선수·경기장 조건 / 상황 종류 / 자리)
+function wantWhy(m, want, ctx) {
+  if (!ctx) return "상황없음";
+  const s = want.sit;
+  if ((s.poss || "us") !== ctx.poss) return "공 가진 쪽";
+  if (!holderOk(ctx, s, m.sim, m)) {
+    const S = m.sim, sc = SCENES[s.id], M = meOf(S), d = ctx.holder ? Math.hypot(ctx.holder.x - M.x, ctx.holder.y - M.y).toFixed(0) : "-";
+    const why = !!sc?.arrive !== !!ctx.arrive ? "arrive" : !!sc?.race !== !!ctx.race ? "race" : !!sc?.dummy !== !!ctx.dummy || !!sc?.screen !== !!ctx.screen ? "dummy" : sc && !newSceneOk(ctx, sc, S, m) ? "newScene" : !textOk(ctx, s, sc, S, m) ? "text" : "side/etc";
+    return "조건:" + (ctx.cat || "?") + ":" + why + (m.dbgWant === "x" ? `(H${ctx.holder?.x.toFixed(0)},${ctx.holder?.y.toFixed(0)} d${d})` : "");
+  }
+  const c = ctxFits(ctx, want.cat), wait = m.minute - want.t0;
+  if (c < (wait < 1.5 ? 1 : wait < 3 ? 0.5 : 0.3)) return "종류:" + ctx.cat;
+  if (want.cat.includes(":")) return "맞음";
+  return geoFit(m, s) >= Math.max(0.12, 0.3 * Math.max(0, 1 - wait / 3)) ? "맞음" : "자리";
 }
 // 기다리던 장면을 언제 포기하고 지금 상황에 맞는 장면으로 바꿀지 (분)
 // 공격 장면을 기다리는데 상대 공 상황이 왔을 때, 세트피스를 기다릴 때는 더 오래 참음 (한쪽 장면으로 쏠리지 않게)
@@ -1378,14 +1403,17 @@ export function next(state, m) {
       && playT(S) < halfEnd - 7;                                   // 휘슬 직전(2분 20초)에는 새 장면을 시작하지 않음 (크로스·침투처럼 긴 결과도 경기장에서 다 이어지도록)
     if (due && !S.script.length && !S.scur) {
       if (!m.want) { const w = wantSituation(state, m); m.want = w ? { sit: w, cat: sitCat(w), t0: m.minute } : null; }
-      S.bias = { me: 3, planPos: m.want && (m.want.sit.poss || "us") === "us" && m.want.sit.zone === "att" ? state.player.position : null,
+      const mateLure = SCENES[m.want?.sit.id]?.lure && SCENES[m.want.sit.id].holder === "mate";   // 동료가 공을 끌고 가야 하는 장면: 공이 나에게 일찍 오지 않게
+      S.bias = { me: mateLure ? 1 : 3, planPos: !mateLure && m.want && (m.want.sit.poss || "us") === "us" && m.want.sit.zone === "att" ? state.player.position : null,
         defSide: m.want?.sit.poss === "them",
-        them: m.want?.sit.poss === "them" && m.minute - m.want.t0 >= 1.5 };          // 내 수비 장면을 오래 기다리면 상대가 조금 더 적극적으로 올라옴
+        them: m.want?.sit.poss === "them" && m.minute - m.want.t0 >= 1.5,
+        lure: SCENES[m.want?.sit.id]?.lure || null, lureTeam: m.want?.sit.poss === "them" ? "them" : "us", lureSide: !!SCENES[m.want?.sit.id]?.lureSide };   // 기다리는 장면 모양을 만드는 공격 패턴          // 내 수비 장면을 오래 기다리면 상대가 조금 더 적극적으로 올라옴
       let ctx = momentCtx(state, m, S.ev.slice(n0));
       // 미드필더: 공이 우리 진영 깊은 곳(x34 안)이면 중원으로 나올 때까지 기다림 (수비·뒤로 돌리기 장면만 나오지 않게). 5분 넘게 기다리면 허용
       const backlog = m.momentQ.length >= 2 && m.minute >= m.momentQ[1];        // 밀린 장면이 쌓였으면 깊은 곳에서도
       if (ctx && m.myPos === "MF" && !ctx.cat.includes(":") && S.ball.x < 34 && m.want && m.minute - m.want.t0 < 5 && m.minute < 63 && !backlog) ctx = null;
       let sit = null;
+      if (m.dbgWant && m.want) { const id = m.want.sit.id, d = (m.wdbg ||= {})[id] ||= {}; const k = wantWhy(m, m.want, ctx); d[k] = (d[k] || 0) + 1; }   // 개발용: 기다리는 장면이 어디서 막히는지 (tools/dev/variety-audit.mjs WHY=1)
       if (ctx && m.want && wantFits(m, m.want, ctx)) sit = m.want.sit;
       else if (ctx && (!m.want || m.minute - m.want.t0 >= wantPatience(m, m.want, ctx))) sit = pickSituation(state, m, ctx);   // 오래 안 맞으면 지금 상황에 맞는 장면으로
       if (sit) { m.want = null; startMoment(state, m, sit, ctx, lines, S.t); }
