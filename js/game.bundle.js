@@ -7659,6 +7659,7 @@ function prepareMatch(state, info, fx) {
   Object.defineProperty(m, "sim", { value: S, enumerable: false, configurable: true, writable: true });
   m.oppBlock = oppStyle.block || "mid";
   m.oppTaste = fx.elementary ? null : OPP_TASTE[styleOf(fx.opponent.name).key] || null;   // 상대 성향에 따라 자주 나오는 장면
+  m.recent = {}; for (const ids of recentOf(state)) for (const id of ids) m.recent[id] = (m.recent[id] || 0) + 1;   // 최근 경기에서 본 장면
   return m;
 }
 
@@ -8101,7 +8102,20 @@ const posTaste = (m, s) => {
   if (s.choices.some(c => ATT_PASS.has(c.win))) k *= 1.6;
   return k;
 };
-const sitWeight = (m, s) => s.weight * posTaste(m, s) * (m.detail?.taste[s.id] ?? 1) * (m.oppTaste?.[s.id] ?? 1) * (m.score[0] < m.score[1] && m.minute > 50 && s.zone === "att" ? 1.6 : 1) * 0.3 ** (m.seen?.[s.id] || 0);   // 같은 장면이 되풀이되지 않게
+// 어디서나 상황이 맞아 너무 자주 나오는 장면은 덜 고름 (tools/dev/variety-audit.mjs TOP=10: 포지션별 비율 6%↑)
+const FREQ_DAMP = {
+  FW: { fw_counterpress: 0.4, fw_press_cb: 0.45, fw_solo_run: 0.5, mf_foul: 0.6, fw_false_nine: 0.5, fw_drop_deep: 0.5 },
+  MF: { mf_scan_turn: 0.75, mf_press: 0.75, mf_space: 0.75 },
+  DF: { df_race: 0.55, df_long_assist: 0.7, df_carry_out: 0.8 },
+};
+// 최근 세 경기에서 본 장면은 덜 고름 (게임을 켜 둔 동안만 기억: 저장 파일에는 안 들어감)
+const RECENT_N = 3, RECENT_K = 0.6;
+function recentOf(state) {
+  if (!Object.prototype.hasOwnProperty.call(state, "_recentSc")) Object.defineProperty(state, "_recentSc", { value: [], writable: true, enumerable: false });   // enumerable:false → JSON 저장에서 빠짐
+  return state._recentSc;
+}
+// fb: 기다리던 장면을 포기하고 지금 상황에 맞는 장면을 고를 때는 덜 깎음 (경기당 장면 수가 줄지 않게)
+const sitWeight = (m, s, fb = false) => s.weight * posTaste(m, s) * (m.detail?.taste[s.id] ?? 1) * (m.oppTaste?.[s.id] ?? 1) * ((FREQ_DAMP[m.myPos]?.[s.id] ?? 1) * RECENT_K ** (m.recent?.[s.id] || 0)) ** (fb ? 0.5 : 1) * (m.score[0] < m.score[1] && m.minute > 50 && s.zone === "att" ? 1.6 : 1) * 0.3 ** (m.seen?.[s.id] || 0);   // 같은 장면이 되풀이되지 않게
 // 장면이 말하는 자리와 지금 공 자리가 얼마나 맞는지 (1이면 그 자리)
 // 장면이 시작될 때 공이 있을 자리: 동료가 공을 가졌는데 장면은 내가 받는 장면이면 동료가 나에게 패스하므로 내 자리
 function sceneBall(m, s) {
@@ -8242,7 +8256,7 @@ function pickSituation(state, m, ctx) {
     if (!c) continue;
     const geo = cat.includes(":") ? 1 : geoFit(m, s);
     if (geo < 0.12) continue;                                                       // 공 자리와 너무 먼 장면은 안 고름 (13m)
-    const w = sitWeight(m, s) * c * geo * (SCENES[s.id]?.at || s.spot || cat.includes(":") ? 1 : 0.35);   // 자리가 정해지지 않은 장면은 어디서나 맞으므로 덜 고름 (한 장면만 되풀이되지 않게)
+    const w = sitWeight(m, s, true) * c * geo * (SCENES[s.id]?.at || s.spot || cat.includes(":") ? 1 : 0.35);   // 자리가 정해지지 않은 장면은 어디서나 맞으므로 덜 고름 (한 장면만 되풀이되지 않게)
     if (w > 0.002) { pool.push([s, w]); best = Math.max(best, w); }
   }
   const ok = pool.filter(([, w]) => w >= best * 0.12);
@@ -9767,6 +9781,7 @@ const INJURY_LINES = {
 
 // ── 경기 끝 ─────────────────────────
 function finishMatch(state, m) {
+  if (m.seen && Object.keys(m.seen).length) { const r = recentOf(state); r.push(Object.keys(m.seen)); while (r.length > RECENT_N) r.shift(); }
   const p = state.player, fx = m.fx;
   m.stats.poss = possShare(m);
   const [gf, ga] = m.score;

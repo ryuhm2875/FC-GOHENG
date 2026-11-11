@@ -18,7 +18,7 @@ self.OFFLINE_FILES = [
   ["js/engine/injury.js","f2c028556b"],
   ["js/engine/jn.js","f67470ecef"],
   ["js/engine/life.js","1a24c28b98"],
-  ["js/engine/match.js","832f700c0b"],
+  ["js/engine/match.js","4ccbdcf6b7"],
   ["js/engine/nemesis.js","b3b3ee7f2c"],
   ["js/engine/opponents.js","8249303515"],
   ["js/engine/orders.js","ad2cb0644f"],

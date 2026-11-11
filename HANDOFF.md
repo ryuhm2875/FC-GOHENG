@@ -980,3 +980,19 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
 - moment-audit 60: "상대 장면인데 내가 멂" 3건(한 경기 df_offside_trap·df_through 26~28m), 나머지 1~2건짜리. uiplay FW·MF·DF 엔딩까지 오류 0
 ### 다음
 - 실질 가짓수를 올리려면: 장면 시작 조건을 넓히고 연출(pre/src/runs)이 자리를 만들게 하는 쪽(끊김 §44 주의), 또는 ② 흔한 장면 비중 낮추기
+
+## 52. 선택 장면 다양성 2차: 흔한 장면 덜 고르기(②) + 최근 경기에서 본 장면 덜 고르기 (2026-11-11, 사용자: "경기 중 다양한 장면이 연출되어야 재미있다", "한 게임에서 선택하는 수는 비슷한 거지?")
+- match.js `FREQ_DAMP`(포지션별): FW fw_counterpress 0.4·fw_press_cb 0.45·fw_solo_run 0.5·mf_foul 0.6·fw_false_nine 0.5·fw_drop_deep 0.5 / MF mf_scan_turn·mf_press·mf_space 0.75 / DF df_race 0.55·df_long_assist 0.7·df_carry_out 0.8
+- 최근 3경기에서 본 장면 ×0.6^(본 경기 수). `state._recentSc`는 `Object.defineProperty(enumerable: false)` → JSON 저장에서 빠짐(게임을 켜 둔 동안만 기억, 다시 켜면 처음부터). finishMatch에서 m.seen을 넣음
+- 기다리던 장면을 포기하고 고를 때(`pickSituation`)는 두 값을 제곱근으로만 적용(`sitWeight(m, s, true)`). 그대로 적용하면 경기당 장면 수가 FW −3%까지 줄었음(어디서나 맞는 장면이 경기를 이어 주므로)
+- RECENT_K 0.5는 MF 장면 수 −2.2%라서 0.6
+- 측정 `CAREER=10 node tools/dev/variety-audit.mjs 40` (커리어마다 10경기 이어서, "직전 3경기에서 본 장면" 비율). 시드 60000·90000 (main → 지금):
+  - 실질 가짓수 FW 25.1/24.4 → 27.1/26.6, MF 35.0/36.4 → 39.5/39.1, DF 32.8/31.6 → 35.3/35.2
+  - 상위 5개 FW 44/43% → 39/40%, MF 34/33% → 28/29%, DF 34/37% → 31/33% (목표 35%: FW만 못 맞춤)
+  - 직전 3경기에서 본 장면 FW 53/54% → 47/49%, MF 55/53% → 46/49%, DF 42/45% → 34/37%
+  - 경기당 장면 수 FW −1.5~−1.8%, MF·DF ±0.5% 안. 밸런스 도구 "경기당 내 순간" 6.85 → 6.78
+- FW가 35%까지 안 내려가는 이유: 많이 나오는 장면이 어디서나 상황이 맞는 장면이라, 더 깎으면 장면 수가 줄어듦. 더 내리려면 §51의 장면 시작 조건 넓히기 쪽
+### 점검
+- sync-audit 300 다섯 시드(30000·50000·70000·110000·130000): 7.0·7.0·7.3·7.6·7.2% (평균 7.2), main 6.8·7.4·6.6·7.5·7.4% (평균 7.1) → 잡음 범위. 앞으로 sync는 여러 시드 평균으로 볼 것
+- 밸런스 240: 득점 2.24/실점 1.11, FW 7.58, MF 7.18, DF 7.14
+- moment-audit 60: "공이 멀리서 붙음" 2건은 mf_third_man 4m(main에도 있던 것). deep-audit 1건짜리만. uiplay FW·MF·DF 엔딩까지 오류 0
