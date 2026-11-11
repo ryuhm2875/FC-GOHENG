@@ -137,7 +137,8 @@ function shape(S, team) {
   const bx = ox(team, S.ball.x), by = oy(team, S.ball.y);
   const st = S.style[team] || {};
   let line, W, cy;
-  if (att) { line = clamp(bx - 31, 12, 58); W = st.wide ? 33 : 29; cy = 34 + (by - 34) * 0.15; }   // wide: 감독 지시 "넓게 벌려라"
+  if (att) { line = clamp(bx - 31, 12, 58); W = st.wide || st.cross ? 33 : st.keep ? 31 : 29;   // 측면형은 넓게, 점유형은 조금 넓게 (패스 길을 많이)
+      cy = 34 + (by - 34) * 0.15; }   // wide: 감독 지시 "넓게 벌려라"
   else {
     const B = BLOCK[S.block[team]] || BLOCK.mid;
     line = clamp(bx - B[0], B[1], Math.min(B[2], Math.max(B[1], bx - 4)));
@@ -202,15 +203,30 @@ function targets(S) {
       const hx = ox(att, H.x), hy = oy(att, H.y);
       // 오버래핑: 측면 미드필더가 상대 진영에서 공을 잡으면 같은 쪽 측면 수비가 바깥으로 올라감
       if ((p.role === "LB" && H.role === "LM") || (p.role === "RB" && H.role === "RM")) {
-        if (hx > 48 && hx < 88) { x = Math.min(off - 1, hx + 9); y = hy < 34 ? 4 : 64; p.overlap = true; }
+        if (hx > ((S.style[att] || {}).cross ? 40 : 48) && hx < 88) { x = Math.min(off - 1, hx + 9); y = hy < 34 ? 4 : 64; p.overlap = true; }
       } else p.overlap = false;
       // 공격수 내려오기: 빌드업 중이면 한 명이 받으러 내려옴
       if (p.role === "ST2" && S.plan?.build && hx < 55) { x = Math.min(x, hx + 16); y += (hy - y) * 0.3; }
+      const sa = S.style[att] || {};
+      // 점유형: 빌드업 때 중앙 미드필더 하나가 센터백 사이로 내려오고, 측면 수비는 높이 올라가 패스 길을 넓힘
+      if (sa.keep && S.plan?.build && S.plan.team === att && hx < 45) {
+        if (p.role === "LCM" && H.pos !== "GK") { x = Math.min(x, hx + 4); y = 34 + (hy - 34) * 0.3; }
+        if (p.role === "LB" || p.role === "RB") x = Math.max(x, Math.min(off - 2, hx + 14));
+      }
+      // 측면형: 상대 진영에서는 측면 미드필더가 터치라인을 밟고 섬
+      if (sa.cross && hx > 45 && (p.role === "LM" || p.role === "RM") && !p.boxRun) y = 34 + (p.role === "LM" ? -1 : 1) * Math.max(Math.abs(y - 34), 27);
+      // 롱볼형: 뒤에서 공을 잡으면 중앙 미드필더 둘이 공격수 근처로 올라가 떨어지는 공(세컨드 볼)을 기다리고, 두 번째 공격수는 첫 번째 옆에 붙음
+      if (sa.long && hx < 45 && !S.plan?.build) {
+        const st1 = P.find(q => q.team === att && q.role === "ST1");
+        if (st1 && (p.role === "LCM" || p.role === "RCM")) { x = Math.max(x, Math.min(off - 6, ox(att, st1.x) - 12)); y += ((p.role === "LCM" ? 27 : 41) - y) * 0.5; }
+        if (st1 && p.role === "ST2") { x = Math.max(x, ox(att, st1.x) - 4); y += (oy(att, st1.y) + (y < oy(att, st1.y) ? -7 : 7) - y) * 0.6; }
+      }
       // 패스하고 움직이기 (원투)
       if (p.runUntil > c) { x = ox(att, p.runTo[0]); y = oy(att, p.runTo[1]); }
       // 측면 깊은 곳에서 공을 잡으면: 공격수는 니어·먼 쪽 포스트로, 반대쪽 중앙 미드필더는 페널티 지점으로 뛰어듦
       p.boxRun = false;
-      if (hx > 76 && Math.abs(hy - 34) > 13 && H.pos !== "GK") {
+      const crossT = (S.style[att] || {}).cross;
+      if (hx > (crossT ? 72 : 76) && Math.abs(hy - 34) > (crossT ? 11 : 13) && H.pos !== "GK") {   // 측면형은 조금 일찍, 넓게 박스로 들어감
         const nr = hy < 34 ? -1 : 1, far = (r => r === (nr < 0 ? "RCM" : "LCM"));
         const wingFar = p.tune[2] > 0 && ((p.role === "LM" && nr > 0) || (p.role === "RM" && nr < 0));   // 세부 포지션 윙어: 반대편 측면에서 공이 깊이 들어가면 먼 쪽 포스트로
         const slot = p.role === "ST1" ? [95.5, 34 + nr * 3.5] : p.role === "ST2" ? [96, 34 - nr * 6] : far(p.role) ? [88.5, 34 - nr * 1.5] : wingFar ? [92, 34 - nr * 9] : null;
@@ -470,11 +486,12 @@ function decide(S) {
       const mid = lossV((hx + rx) / 2, (hy + ry) / 2);
       let free = 99; for (const o of S.P) if (o.team === foe && o.ri) free = Math.min(free, hyp(o.x - tp[0], o.y - tp[1]));
       v += clamp(free - 2, 0, 6) * 0.0012;                                                 // 받을 자리에 여유가 있으면 더 좋음
-      let u = (1 - lr.risk) * (v + clamp(rx - hx, -15, 30) * S.prog * (cw ? 1.8 : 1)) - lr.risk * mid;
+      let u = (1 - lr.risk) * (v + clamp(rx - hx, -15, 30) * S.prog * (cw ? 1.8 : st.keep ? 0.75 : 1)) - lr.risk * mid;   // 점유형은 앞으로 덜 서두름
       if (offside) u = Math.min(u, 0) - 0.01;
       if (air && !wide) u *= st.long ? 0.6 : cw ? 0.55 : 0.4;
       if (r === S.chain[S.chain.length - 1]) u *= 0.75;                                       // 방금 준 선수에게 바로 돌려주는 건 덜
-      if (st.keep && !air) u *= 1.1;
+      if (st.keep && !air) u *= 1.1 * (1 - lr.risk * 0.6);   // 점유형: 끊길 만한 패스는 덜 고름 (공을 지킴)
+      if (st.long && air && !wide && r.pos === "FW" && (H.pos === "DF" || H.pos === "GK")) u *= 1.4;   // 롱볼형: 수비가 공격수 머리로 바로
       if (st.ace && r.ace) u *= 1.5;
       if (build) { if (air) continue; u = (1 - lr.risk) * (keepV(rx, ry) + clamp(rx - hx, -10, 20) * S.prog * 0.5 + 0.006) - lr.risk * mid * 1.4; }   // 빌드업: 안전한 짧은 패스
       if (r.runUntil > S.t && free > 3) u *= 1.35;                                           // 패스하고 뛰어든 선수 (원투)
@@ -521,7 +538,7 @@ function decide(S) {
     if (S.plan?.build && near < 4 && carryU > 0) carryU *= 0.3 + Math.max(0, (H.st.drib - 55) / 100);   // 빌드업 중 압박이 오면 혼자 끌지 않고 짧게 내줌 (드리블 좋은 선수만 가끔 벗겨 냄)
     if ((H.pos === "FW" || H.role === "LM" || H.role === "RM") && hx > 62 && front) carryU *= 1 + (H.st.drib - 50) / 120;   // 공격 3분의 1: 드리블 좋은 선수는 제치기를 더 시도
     if (hx > 70 && carryU > 0) carryU *= near < 5 ? 0.55 : 0.8;                            // 박스 근처에서 계속 끌면 막힘
-    opts.push({ k: "carry", tp: ahead, u: carryU > 0 ? carryU * noise() : carryU });
+    opts.push({ k: "carry", tp: ahead, u: carryU > 0 ? carryU * noise() * (st.keep ? 0.8 : 1) : carryU });
     // 걷어 내기: 자기 박스 근처에서 압박받으면
     if (hx < 25 && near < 3.5) opts.push({ k: "clear", u: 0.01 * noise() });
     // 공 지키기 (잠깐 기다림)
@@ -568,6 +585,7 @@ export function passTo(S, H, r, tp, { air = false, cross = false, force = false,
   const lr = laneRisk(S, H, r, tp, air);
   const pk = kind || (cross ? "cross" : air ? (d > 40 ? "long" : "air") : (ox(team, tp[0]) - ox(team, H.x) > 14 && ox(team, tp[0]) > 60 ? "through" : "ground"));
   emit(S, "pass", { from: H.name, to: r.name, team, kind: pk, fx: ox(team, H.x), fy: oy(team, H.y), tx: ox(team, tp[0]), ty: oy(team, tp[1]), me: H.me, toMe: r.me });
+  if (S.style[team]?.long && air && r.pos === "FW" && (H.pos === "DF" || H.pos === "GK") && hyp(tp[0] - H.x, tp[1] - H.y) >= 32) emit(S, "longBall", { team, by: H.name, to: r.name });   // 롱볼형: 뒤에서 공격수 머리로
   if (S.plan?.build && S.plan.team === team) S.plan.done++;
   // 패스하고 움직이기: 준 선수는 앞쪽 빈 공간으로 뛰어 다시 받을 준비 (원투). 수비·골키퍼는 빼고
   if (!force && H.pos !== "GK" && H.pos !== "DF" && ox(team, H.x) > 30 && ox(team, H.x) < 88 && rand() < 0.6) {
@@ -827,7 +845,7 @@ function newPlan(S, H, force = false) {
     if (pl.id === "longshot" && !hasLong) continue;
     if (S.bias?.planPos && team === "us" && pl.steps.some(st => st.who === S.bias.planPos && st.at[0] >= 78)) w *= 2.5;   // 내 장면을 기다릴 때: 내가 마무리 근처에 끼는 공격
     if (st.long && ["long", "keeper", "switch"].includes(pl.id)) w *= 1.8;
-    if (st.cross && ["wing", "overlap", "wingdribble"].includes(pl.id)) w *= 1.6;
+    if (st.cross && ["wing", "overlap", "wingdribble"].includes(pl.id)) w *= 2.2;
     if (st.keep && ["build", "buildup", "onetwo"].includes(pl.id)) w *= 1.5;
     // 지금 공 자리보다 한참 뒤에서 시작하는 공격은 중간부터
     const lastX = pl.steps[pl.steps.length - 1].at[0];
@@ -1310,6 +1328,18 @@ export function step(S) {
 function styleWatch(S) {
   for (const team of ["us", "them"]) {
     const w = S.sw[team], st = S.style[team] || {};
+    if (S.poss === team && S.holder) {
+      w.hi = 0; w.deep = 0;
+      w.kp = (w.kp || 0) + 1;                                  // 점유형: 15초 넘게 공을 갖고 있으면
+      if (st.keep && w.kp === 12 && S.t - w.said > 60) { w.said = S.t; emit(S, "keepLong", { team }); }
+      if (st.cross) {                                           // 측면형: 공이 측면 깊은 곳에 있고 박스 안에 셋 이상
+        const bx = ox(team, S.ball.x), by = oy(team, S.ball.y);
+        let n = 0; for (const p of S.P) if (p.team === team && p.ri && ox(team, p.x) > 88.5 && Math.abs(oy(team, p.y) - 34) < 20) n++;
+        if (bx > 70 && Math.abs(by - 34) > 18 && n >= 3 && S.t - w.said > 60) { w.said = S.t; emit(S, "boxLoad", { team }); }
+      }
+      continue;
+    }
+    if (S.poss !== team) w.kp = 0;
     if (S.poss === team || !S.holder) { w.hi = 0; w.deep = 0; continue; }
     if (st.press) {
       let sx = 0, n = 0; for (const p of S.P) if (p.team === team && p.pos === "DF") { sx += ox(team, p.x); n++; }

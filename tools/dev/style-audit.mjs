@@ -5,6 +5,7 @@ import { rollPlayer, newGame } from "../../js/state.js";
 import { beginWeek, endWeek } from "../../js/engine/week.js";
 import { prepareMatch, next, resolve, autoChoice, finishMatch } from "../../js/engine/match.js";
 import { styleOf } from "../../js/engine/advice.js";
+import { LEAGUE_OPPONENTS, NATIONAL_OPPONENTS, HIGH_SCHOOLS } from "../../data/world.js";
 const N = +process.argv[2] || 60, SEED = +(process.env.SEED || 40000);
 const G = {};
 const ox = (t, x) => (t === "us" ? x : 105 - x);
@@ -14,9 +15,14 @@ for (let k = 0; k < N; k++) {
   const s = newGame(rollPlayer({ name: "테스트", face: "face_01", position: pos, foot: "R", growthType: "rookie" }));
   let ctx; for (let i = 0; i < 60; i++) { ctx = beginWeek(s); if (ctx.fx) break; endWeek(s, ctx, null); }
   if (!ctx.fx) continue;
+  if (process.env.FORCE) {   // FORCE=keep,cross,long,rough → 상대 이름을 그 성향 팀으로 바꿔 돌아가며 (측정용)
+    const want = process.env.FORCE.split(",")[k % process.env.FORCE.split(",").length];
+    const t = [...LEAGUE_OPPONENTS, ...NATIONAL_OPPONENTS, ...HIGH_SCHOOLS].find(x => x.style === want);
+    if (t) ctx.fx.opponent.name = t.name;
+  }
   const m = prepareMatch(s, ctx.info, ctx.fx), S = m.sim;
   const key = styleOf(ctx.fx.opponent.name).key || "?";
-  const g = G[key] ||= { games: 0, f: 0, line: 0, lineMid: 0, nMid: 0, wid: 0, own: 0, ev: {}, lines: {}, len: 0, aw: [0, 0], an: [0, 0], an30: 0, gf: 0, ga: 0, first: 0 };
+  const g = G[key] ||= { games: 0, f: 0, line: 0, lineMid: 0, nMid: 0, wid: 0, own: 0, ev: {}, lines: {}, len: 0, aw: [0, 0], an: [0, 0], an30: 0, pn: 0, pd: 0, pl: 0, pc: 0, spell: 0, spn: 0, gf: 0, ga: 0, first: 0 };
   g.games++;
   S.onTick = S2 => {
     if (S2.phase === "play" && S2.poss === "them" && S2.holder && ox("them", S2.ball.x) > 40 && Math.round(S2.t * 10) % 5 === 0) {   // 상대가 우리 진영에서 공격할 때 폭
@@ -35,12 +41,14 @@ for (let k = 0; k < N; k++) {
     if (m.pending) { L.push(...resolve(s, m, autoChoice(m)).lines); continue; }
     L.push(...next(s, m).lines);
   }
+  for (const e of S.ev) if (e.type === "pass" && e.team === "them" && e.fx != null) { const d = Math.hypot(e.tx - e.fx, e.ty - e.fy); g.pn++; g.pd += d; if (d >= 30) g.pl++; if (e.kind === "cross") g.pc++; }
+  { let last = null, t0 = 0, sp = []; for (const e of S.ev) if (e.type === "pass" && e.team) { if (e.team !== last) { if (last === "them") sp.push(e.t - t0); last = e.team; t0 = e.t; } } g.spell += sp.reduce((a, b) => a + b, 0); g.spn += sp.length; }
   for (const e of S.ev) if (e.type === "step" && e.first && e.team === "them" && e.play === "counter") g.ev.counterPlay = (g.ev.counterPlay || 0) + 1;
-  for (const e of S.ev) if (["lineHigh", "sitDeep", "gegen", "counterGo"].includes(e.type)) g.ev[e.type + ":" + e.team] = (g.ev[e.type + ":" + e.team] || 0) + 1;
-  for (const l of L) { if (/^오늘 상대/.test(l.t || "")) g.first++; for (const [id, re] of [["라인올림", /하프라인 (가까이|근처까지)/], ["되찾기", /잃자마자|되찾으러|다시 뺏으러/], ["내려앉음", /내려앉아 기다|촘촘히 내려/], ["역습패스", /앞으로 길게 찬다|한 번에 넘기는|길게 넘긴다/]]) if (re.test(l.t || "")) g.lines[id] = (g.lines[id] || 0) + 1; }
+  for (const e of S.ev) if (["lineHigh", "sitDeep", "gegen", "counterGo", "keepLong", "boxLoad", "longBall"].includes(e.type)) g.ev[e.type + ":" + e.team] = (g.ev[e.type + ":" + e.team] || 0) + 1;
+  for (const l of L) { if (/^오늘 상대/.test(l.t || "")) g.first++; for (const [id, re] of [["라인올림", /하프라인 (가까이|근처까지)/], ["되찾기", /잃자마자|되찾으러|다시 뺏으러/], ["내려앉음", /내려앉아 기다|촘촘히 내려/], ["역습패스", /앞으로 길게 찬다|한 번에 넘기는|길게 넘긴다/], ["오래돌림", /공을 오래 돌린다|끝없이 이어진다/], ["박스셋", /박스 안에 셋|박스 안으로 .*몰려든다/], ["롱볼", /길게 차 올린다|머리를 노린다/]]) if (re.test(l.t || "")) g.lines[id] = (g.lines[id] || 0) + 1; }
   g.gf += m.score[0]; g.ga += m.score[1];
   finishMatch(s, m);
 }
 const r = v => v.toFixed(1);
 for (const [k, g] of Object.entries(G).sort((a, b) => b[1].games - a[1].games))
-  console.log(`${k.padEnd(8)} ${String(g.games).padStart(3)}경기 | 상대 라인 ${r(g.line / g.f)}m (공이 그 팀 50~70m: ${r(g.lineMid / Math.max(1, g.nMid))}m) 폭 ${r(g.wid / g.f)}m 길이 ${r(g.len / g.f)}m 자기 진영 ${r(g.own / g.f)}명 | 공격 폭 뺏은 직후 ${r(g.aw[0] / Math.max(1, g.an[0]))}m·그 뒤 ${r(g.aw[1] / Math.max(1, g.an[1]))}m 30m 미만 ${r(100 * g.an30 / Math.max(1, g.an[0] + g.an[1]))}% | 득실 ${r(g.gf / g.games)}:${r(g.ga / g.games)} | 첫 줄 ${g.first} | 사건 ${JSON.stringify(g.ev)} 해설 ${JSON.stringify(g.lines)}`);
+  console.log(`${k.padEnd(8)} ${String(g.games).padStart(3)}경기 | 상대 라인 ${r(g.line / g.f)}m (공이 그 팀 50~70m: ${r(g.lineMid / Math.max(1, g.nMid))}m) 폭 ${r(g.wid / g.f)}m 길이 ${r(g.len / g.f)}m 자기 진영 ${r(g.own / g.f)}명 | 공격 폭 뺏은 직후 ${r(g.aw[0] / Math.max(1, g.an[0]))}m·그 뒤 ${r(g.aw[1] / Math.max(1, g.an[1]))}m 30m 미만 ${r(100 * g.an30 / Math.max(1, g.an[0] + g.an[1]))}% | 상대 패스 ${r(g.pn / g.games)}개 평균 ${r(g.pd / Math.max(1, g.pn))}m 30m↑ ${r(100 * g.pl / Math.max(1, g.pn))}% 크로스 ${r(g.pc / g.games)} 공 소유 ${r(g.spell / Math.max(1, g.spn))}초 | 득실 ${r(g.gf / g.games)}:${r(g.ga / g.games)} | 첫 줄 ${g.first} | 사건 ${JSON.stringify(g.ev)} 해설 ${JSON.stringify(g.lines)}`);

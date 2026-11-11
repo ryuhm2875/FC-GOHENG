@@ -193,6 +193,9 @@ export const styleSim = name => STYLE_SIM[styleOf(name).label] || {};
 const STYLE_INTRO = {
   press: ["압박형", "라인을 높이 올리고, 공을 잃으면 바로 달려든다. 뒤가 비는 팀이다."],
   counter: ["역습형", "자기 진영에 내려앉아 기다리다가, 뺏으면 한 번에 앞으로 찬다."],
+  keep: ["점유형", "짧은 패스로 공을 오래 돌린다. 끌려다니면 먼저 지친다."],
+  cross: ["측면·크로스형", "측면으로 넓게 벌려 크로스를 올린다. 공이 측면에 가면 박스 안으로 여럿이 들어온다."],
+  long: ["롱볼형", "뒤에서 공격수 머리로 길게 차 올리고, 떨어지는 공을 노린다."],
 };
 // 하프타임 감독님 말 → 후반 처음 15분 팀 움직임 (data/match.js HALFTIME_TALK 문장 그대로)
 const HT_ORDER = {
@@ -513,9 +516,9 @@ function narrate(state, m, e) {
     case "boxRun":
       if (!quiet() && chance(0.6) && tac(m, "boxRun", 5, 10)) add(fill(pick(SIM_LINES.boxRun), { a: e.by, n: e.n }), e.me ? "me-auto" : kt(e.team));
       break;
-    case "lineHigh": case "sitDeep": case "gegen": case "counterGo": {
+    case "lineHigh": case "sitDeep": case "gegen": case "counterGo": case "keepLong": case "boxLoad": case "longBall": {
       const pool = SIM_LINES[e.type + (e.team === "us" ? "Us" : "Them")];
-      if (pool && !quiet() && tac(m, e.type + e.team, e.type === "gegen" ? 3 : e.type === "counterGo" ? 4 : 2, e.type === "gegen" ? 40 : e.type === "counterGo" ? 20 : 90))
+      if (pool && !quiet() && tac(m, e.type + e.team, e.type === "gegen" || e.type === "longBall" ? 3 : e.type === "counterGo" ? 4 : 2, e.type === "gegen" || e.type === "longBall" ? 40 : e.type === "counterGo" ? 20 : 90))
         add(fill(pick(pool), { a: e.a || e.by, b: e.b || e.to }), e.by === m.me ? "me-auto" : kt(e.team));
       break;
     }

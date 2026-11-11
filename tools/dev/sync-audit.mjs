@@ -60,6 +60,10 @@ const RULES = [
     test: c => [c.dfHi >= 42, `수비수 넷 평균 ${fm(c.dfHi)}m(자기 골문에서)`] },
   { id: "sitDeep", name: "내려앉음", re: /내려앉아 기다|촘촘히 내려섰/, win: [4, 2],
     test: c => [c.own8 >= 8, `자기 진영 최다 ${c.own8}명`] },
+  { id: "keepLong", name: "오래 돌림", re: /공을 오래 돌린다|짧은 패스가 끝없이|짧은 패스로 공을 지킨다/, win: [4, 1],
+    test: c => [c.possAge >= 12, `점유 ${fm(c.possAge)}초`] },
+  { id: "boxLoad", name: "박스에 셋", re: /박스 안에 셋|박스 안으로 .*몰려든다|박스 안에서 기다린다/, win: [3, 2],
+    test: c => [c.box3 >= 3, `박스 안 최다 ${c.box3}명`] },
   { id: "fb", name: "측면 수비에게", re: /(측면 수비|풀백)(에게| .{1,6}에게)/, not: /손짓|걸|막혔|묶/, win: [3, 5],
     test: c => any(c.legsAny, l => l.to && !l.turnover && /^(LB|RB)$/.test(l.to.role)) },
 ];
@@ -142,10 +146,11 @@ for (let k = 0; k < N; k++) {
         if (f.h >= 0 && f.play) { const ht = teamOf(f.h); let n8 = 0, d1 = 99; P.forEach((p, pi) => { if (p.team !== ht) { const d = Math.hypot(f.px[pi] - f.x, f.py[pi] - f.y); if (d <= 8) n8++; d1 = Math.min(d1, d); } });
           if (n8 > c.minPress.n8 || (n8 === c.minPress.n8 && d1 < c.minPress.d1)) c.minPress = { n8, d1 }; }
       }
-      c.dfHi = 0; c.own8 = 0;
+      c.dfHi = 0; c.own8 = 0; c.box3 = 0;
       for (let i = i0; i <= i1; i++) { const f = T[i]; let sx = 0, n = 0, o = 0;
         P.forEach((p, pi) => { if (p.team !== team || p.pos === "GK") return; const x = team === "us" ? f.px[pi] : 105 - f.px[pi]; if (p.pos === "DF") { sx += x; n++; } if (x < 52.5) o++; });
-        if (n) c.dfHi = Math.max(c.dfHi, sx / n); c.own8 = Math.max(c.own8, o); }
+        if (n) c.dfHi = Math.max(c.dfHi, sx / n); c.own8 = Math.max(c.own8, o);
+        let bx3 = 0; P.forEach((p, pi) => { if (p.team !== team || p.pos === "GK") return; const x = team === "us" ? f.px[pi] : 105 - f.px[pi], y = team === "us" ? f.py[pi] : 68 - f.py[pi]; if (x > 88.5 && Math.abs(y - 34) < 20) bx3++; }); c.box3 = Math.max(c.box3, bx3); }
       const ic = at(l.ts); let lastCh = -99; for (const t of changes) if (t <= l.ts + 2) lastCh = t;
       c.possAge = l.ts - lastCh;
       { const j0 = at(Math.max(lastCh, l.ts - 4)), j1 = at(Math.max(lastCh, l.ts - 4) + 5); const hh = T[Math.min(T.length - 1, at(l.ts))].h; const tm = hh >= 0 ? teamOf(hh) : team; c.adv5 = Math.abs(T[j1].x - T[j0].x) * 1; }
@@ -153,7 +158,7 @@ for (let k = 0; k < N; k++) {
       add(R.id + (src === "pick" ? (l.fail ? ":선택지(실패 결과)" : ":선택지") : ""), ok, `[${pos} #${SEED + k} ${l.minute}' ${l.k}] "${l.t.slice(0, 58)}" → ${why}${src === "pick" && l.res ? `  (결과: ${l.res})` : ""}`);
     }
   };
-  for (const l of L) { if (l.silent || !l.t || l.ts == null || l.amb || SKIP_K.test(l.k || "") || l.k === "moment" || l.k === "me" || l.t.startsWith("▶")) continue;   /* moment·me = 내 장면의 상황 설명(deep-audit이 봄) */ lineN++; judge(l, "line"); }
+  for (const l of L) { if (l.silent || !l.t || l.ts == null || l.amb || SKIP_K.test(l.k || "") || l.k === "moment" || l.k === "me" || l.t.startsWith("▶") || l.t.startsWith("오늘 상대") || /^후반엔 /.test(l.t)) continue;   /* moment·me = 내 장면의 상황 설명(deep-audit이 봄) */ lineN++; judge(l, "line"); }
   for (const p of picks) { if (!p.t) continue; pickN++;
     const after = L.filter(l => l.ts != null && l.ts >= p.ts && l.ts <= p.ts + 6 && /^me-(bad|good|auto)/.test(l.k || ""));
     p.fail = after.some(l => l.k === "me-bad"); p.res = after.map(l => l.t).join(" / ").slice(0, 60);
