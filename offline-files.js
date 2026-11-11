@@ -2,7 +2,7 @@
 self.OFFLINE_FILES = [
   ["index.html","5d5bda3868"],
   ["manifest.webmanifest","989936b74c"],
-  ["css/fc.css","9c8ac1e0cf"],
+  ["css/fc.css","eef2d9f1b0"],
   ["css/fc26.css","bdb90b30ae"],
   ["css/polish.css","f9a8c27e6c"],
   ["css/style.css","0eae8b16ab"],
@@ -28,7 +28,7 @@ self.OFFLINE_FILES = [
   ["js/engine/team.js","9135c63504"],
   ["js/engine/traits.js","4b5e58ed33"],
   ["js/engine/week.js","c285e715ba"],
-  ["js/main.js","6b4d3fa45c"],
+  ["js/main.js","b32705ae2d"],
   ["js/net/fb.js","08bb7a880a"],
   ["js/net/online.js","fe636b060f"],
   ["js/rng.js","0c6689a4aa"],
@@ -177,6 +177,6 @@ self.OFFLINE_FILES = [
   ["assets/img/npc_jn_coach.webp","06f10f0b24"],
   ["assets/img/npc_mom.webp","f669f041c3"],
   ["assets/img/npc_teacher.webp","d0ce060841"],
-  ["assets/img/title.webp","77bf067dac"],
-  ["assets/img/title_m.webp","893af6e3f7"]
+  ["assets/img/title.webp","e3a869560d"],
+  ["assets/img/title_m.webp","40dcab3f32"]
 ];

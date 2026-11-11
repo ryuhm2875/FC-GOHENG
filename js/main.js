@@ -196,10 +196,10 @@ function renderTitle(app) {
   const auto = readSlot("auto");
   const cont = auto && !auto.state.finished;
   app.root.innerHTML = `<main class="fc-title" id="ft">
-    <div class="ft-bg"><picture><source media="(orientation: portrait) and (max-width: 760px)" srcset="assets/img/title_m.webp"><img src="assets/img/title.webp" data-name="title" alt="" onerror="__bgFallback(this)"></picture><span class="ft-streak s1"></span><span class="ft-streak s2"></span><span class="ft-streak s3"></span></div>
+    <div class="ft-bg"><picture><source media="(orientation: portrait)" srcset="assets/img/title_m.webp"><img src="assets/img/title.webp" data-name="title" alt="" onerror="__bgFallback(this)"></picture><span class="ft-streak s1"></span><span class="ft-streak s2"></span><span class="ft-streak s3"></span></div>
     <div class="ft-brand">
       <img class="ft-logo" src="assets/img/logo.png" alt="고흥FC 엠블럼">
-      <div class="ft-words"><span class="ft-kicker">GOHEUNG FC U-15</span><h1 class="ft-name">DREAM<br>PROJECT</h1><p class="ft-ko">고흥FC 드림 프로젝트</p></div>
+      <div class="ft-words"><span class="ft-kicker">GOHEUNG FC U-15</span><h1 class="ft-name">DREAM <br class="ft-br">PROJECT</h1><p class="ft-ko">고흥FC 드림 프로젝트</p></div>
     </div>
     <button class="ft-press" id="press">화면을 눌러 시작</button>
     <nav class="ft-menu" id="menu" hidden>
