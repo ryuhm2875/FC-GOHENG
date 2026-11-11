@@ -167,74 +167,74 @@ body::before {
 .sheet { background: linear-gradient(180deg, rgba(28,38,92,.96), rgba(12,17,44,.98)); border: 1px solid var(--line); border-top: 3px solid var(--kit); }
 .sheet h2 { letter-spacing: .01em; }
 
-/* ── 타이틀 ───────────────────────── */
-.fc-title { position: relative; min-height: 100dvh; overflow: hidden; display: grid; grid-template-rows: 1fr auto auto auto;
-  padding: 28px max(20px, 6vw) calc(28px + env(safe-area-inset-bottom, 0px)); cursor: pointer; }
-.ft-bg { position: absolute; inset: 0; z-index: -1;
-  background: radial-gradient(80% 60% at 70% 20%, rgba(255,107,26,.38), transparent 60%), radial-gradient(70% 60% at 10% 90%, rgba(45,63,209,.5), transparent 60%), #05070F; }
-.ft-bg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: .55; animation: kenburns 20s ease-out forwards; }
-.ft-bg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(5,7,15,.1) 30%, rgba(5,7,15,.92) 100%); }
+/* ── 타이틀 (§48: 가운데 정렬로 다시 설계) ──────────
+   PC·휴대폰 그림은 같은 장면(아이·골대·섬에서 오르는 로켓). 로고 묶음은 위쪽 하늘 가운데, 로켓보다 위.
+   "화면을 눌러 시작"과 메뉴는 아래 가운데. 메뉴를 열면 아래를 어둡게 해서 글이 그림에 묻히지 않게 */
+.fc-title { position: relative; min-height: 100dvh; overflow: hidden; display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: calc(max(5dvh, 44px) + env(safe-area-inset-top, 0px)) max(20px, 5vw) calc(18px + env(safe-area-inset-bottom, 0px)); cursor: pointer; }
+.ft-bg { position: absolute; inset: 0; z-index: -1; background: #05070F; }
+.ft-bg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 60%; animation: kenburns 24s ease-out forwards; }
+.ft-bg::after { content: ""; position: absolute; inset: 0; transition: background .5s;
+  background: linear-gradient(180deg, rgba(5,7,15,.62) 0%, rgba(5,7,15,.28) 24%, rgba(5,7,15,0) 42%, rgba(5,7,15,0) 70%, rgba(5,7,15,.45) 88%, rgba(5,7,15,.75) 100%); }
+.fc-title.open .ft-bg::after {
+  background: linear-gradient(180deg, rgba(5,7,15,.62) 0%, rgba(5,7,15,.3) 24%, rgba(5,7,15,.25) 40%, rgba(5,7,15,.72) 62%, rgba(5,7,15,.9) 100%); }
 .ft-streak { position: absolute; z-index: 1; width: 160%; height: 2px; left: -30%; background: linear-gradient(90deg, transparent, rgba(255,178,63,.9), transparent);
   transform: rotate(-18deg); filter: blur(.5px); animation: streak 6s linear infinite; opacity: 0; }
 .ft-streak.s1 { top: 30%; } .ft-streak.s2 { top: 52%; animation-delay: 2s; height: 1px; } .ft-streak.s3 { top: 72%; animation-delay: 4s; }
-@keyframes streak { 0% { opacity: 0; transform: rotate(-18deg) translateX(-30%); } 15% { opacity: 1; } 60% { opacity: 0; transform: rotate(-18deg) translateX(30%); } 100% { opacity: 0; } }
-.ft-brand { align-self: end; display: flex; align-items: flex-end; gap: 18px; position: relative; z-index: 2; animation: rise .9s ease-out both; }
-.ft-logo { width: clamp(84px, 16vw, 130px); filter: drop-shadow(0 12px 30px rgba(0,0,0,.6)); }
-.ft-kicker { font-family: var(--fc); font-style: italic; font-weight: 800; letter-spacing: .2em; color: var(--kit-2); font-size: 14px; }
-.ft-name { margin: 2px 0 4px; font-family: var(--fc); font-style: italic; font-weight: 800; font-size: clamp(54px, 13vw, 120px); line-height: .86; letter-spacing: -.01em;
-  background: linear-gradient(180deg, #fff 30%, #FFC48A 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
-.ft-ko { margin: 0; font-family: var(--display); font-size: clamp(16px, 4vw, 22px); color: var(--chalk); }
-.ft-press { justify-self: center; margin-top: 34px; background: none; border: 0; color: #fff; font-family: var(--display); font-size: 18px; letter-spacing: .1em;
-  animation: pulse 1.6s ease-in-out infinite; position: relative; z-index: 2; }
-.ft-menu { display: grid; gap: 10px; margin-top: 28px; position: relative; z-index: 2; max-width: 520px; width: 100%; justify-self: start; animation: rise .4s ease-out both; }
-.ft-tile { display: grid; gap: 2px; text-align: left; padding: 14px 20px; border: 0; color: #fff;
-  background: linear-gradient(90deg, rgba(255,255,255,.12), rgba(255,255,255,.03)); border-left: 4px solid rgba(255,255,255,.4);
-  clip-path: polygon(0 0, 100% 0, calc(100% - 14px) 100%, 0 100%); transition: transform .15s, background .15s; }
-.ft-tile:hover, .ft-tile:focus-visible { transform: translateX(6px); background: linear-gradient(90deg, rgba(255,107,26,.5), rgba(255,107,26,.08)); border-left-color: var(--kit-2); }
-.ft-tile.main { background: var(--grad-kit); border-left-color: #fff; }
-.ft-t { font-family: var(--display); font-size: 20px; }
-.ft-s { font-size: 13px; opacity: .85; }
-.ft-foot { margin: 22px 0 0; font-size: 12px; color: var(--dim); position: relative; z-index: 2; }
-@media (min-width: 900px) {
-  .fc-title { grid-template-columns: 1.2fr 1fr; grid-template-rows: 1fr auto; column-gap: 40px; }
-  .ft-brand { grid-column: 1; grid-row: 1; min-width: 0; }
-  .ft-name { font-size: clamp(54px, 7vw, 120px); }                 /* 메뉴 칸을 침범하지 않게 왼쪽 칸 너비에 맞춤 */
-  .ft-press { grid-column: 2; grid-row: 1; align-self: end; }
-  .ft-menu { grid-column: 2; grid-row: 1; align-self: end; margin: 0; }
-  .ft-foot { grid-column: 1 / -1; }
+@keyframes streak { 0% { opacity: 0; transform: rotate(-18deg) translateX(-30%); } 15% { opacity: .6; } 60% { opacity: 0; transform: rotate(-18deg) translateX(30%); } 100% { opacity: 0; } }
+
+/* 로고 묶음: 엠블럼 + 글자, 묶음 전체를 가운데에 */
+.ft-brand { display: flex; align-items: center; justify-content: center; gap: clamp(12px, 2vw, 22px); position: relative; z-index: 2; text-align: left; animation: rise .9s ease-out both; }
+.ft-logo { width: clamp(64px, 9vw, 112px); flex: none; filter: drop-shadow(0 10px 24px rgba(0,0,0,.55)); }
+.ft-words { min-width: 0; }
+.ft-kicker { font-family: var(--fc); font-style: italic; font-weight: 800; letter-spacing: .22em; color: var(--kit-2); font-size: clamp(11px, 1.2vw, 14px); text-shadow: 0 1px 8px rgba(0,0,0,.6); }
+.ft-name { margin: 2px 0 4px; font-family: var(--fc); font-style: italic; font-weight: 800; font-size: clamp(44px, 6.4vw, 96px); line-height: .9; letter-spacing: -.01em;
+  background: linear-gradient(180deg, #fff 40%, #FFD9B8); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 4px 18px rgba(0,0,0,.55)); }
+.ft-br { display: none; }
+.ft-ko { margin: 0; font-family: var(--display); font-size: clamp(14px, 1.6vw, 20px); color: var(--chalk); letter-spacing: .04em; text-shadow: 0 1px 8px rgba(0,0,0,.7); }
+
+/* 시작 안내는 로고 바로 아래 하늘에(아이·공을 가리지 않게). 메뉴·로그인 정보·만든 사람은 아래 가운데 */
+.ft-press { margin-top: clamp(14px, 3.5dvh, 36px); background: none; border: 0; color: #fff; font-family: var(--display); font-size: clamp(16px, 1.6vw, 19px); letter-spacing: .14em;
+  padding: 10px 22px; text-shadow: 0 2px 12px rgba(0,0,0,.8); animation: pulse 1.6s ease-in-out infinite; position: relative; z-index: 2; }
+.ft-menu { margin-top: auto; display: grid; gap: 10px; width: min(440px, 100%); position: relative; z-index: 2; animation: rise .4s ease-out both; }
+.ft-tile { position: relative; display: grid; margin: 0; max-width: none;   /* style.css의 .main(margin auto)이 "새 커리어" 칸을 좁히던 것 막음 */
+  gap: 2px; text-align: left; padding: 14px 44px 14px 20px; color: #fff; border-radius: 14px;
+  background: rgba(14,20,46,.58); border: 1px solid rgba(255,255,255,.14); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.25); transition: background .15s, border-color .15s, transform .15s; }
+.ft-tile::after { content: "›"; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); font-size: 24px; opacity: .6; }
+.ft-tile:hover, .ft-tile:focus-visible { background: rgba(255,107,26,.28); border-color: rgba(255,178,63,.7); transform: translateY(-1px); outline: none; }
+.ft-tile.main { background: var(--grad-kit); border-color: rgba(255,255,255,.35); }
+.ft-tile.main:hover, .ft-tile.main:focus-visible { filter: brightness(1.08); }
+.fc-title .ft-tile:active { transform: scale(.98); }
+.ft-t { font-family: var(--display); font-size: 19px; }
+.ft-s { font-size: 13px; opacity: .82; }
+.fc-title .ft-user { position: static; margin: 14px 0 0; display: flex; flex-wrap: wrap; justify-content: center; text-shadow: 0 1px 6px rgba(0,0,0,.8); }
+.fc-title:not(.open) .ft-user { margin-top: auto; }
+.fc-title:not(.open):not(:has(.ft-user)) .ft-foot { margin-top: auto; }
+.ft-foot { margin: 10px 0 0; font-size: 12px; color: rgba(255,255,255,.55); position: relative; z-index: 2; text-shadow: 0 1px 6px rgba(0,0,0,.8); }
+.fc-title.open { overflow-y: auto; height: 100dvh; }
+
+/* 세로 화면(휴대폰·세로 태블릿): 세로 그림, 이름은 두 줄 */
+@media (orientation: portrait) {
+  .ft-bg img { object-position: 50% 100%; }
+  .fc-title { padding-top: calc(max(8dvh, 64px) + env(safe-area-inset-top, 0px)); }   /* 오른쪽 위 소리·전체 화면 버튼 아래로 */
+  .ft-br { display: inline; }
+  .ft-name { font-size: clamp(40px, 11.5vw, 72px); }
+  .ft-logo { width: clamp(60px, 16vw, 104px); }
+  .ft-kicker { font-size: clamp(10px, 2.8vw, 14px); }
+  .ft-ko { font-size: clamp(14px, 3.8vw, 20px); }
 }
-/* 휴대폰 세로: 세로 그림(title_m). 로고는 하늘 쪽 위에, 아이·그림자·골대가 있는 아래는 비워 둠. 메뉴를 열면 아래를 어둡게 */
-@media (orientation: portrait) and (max-width: 760px) {
-  .fc-title { grid-template-rows: auto auto auto 1fr auto; align-content: start; padding-top: calc(15dvh + env(safe-area-inset-top, 0px)); }
-  .ft-brand { align-self: start; }
-  .ft-bg img { opacity: .9; object-position: 50% 100%; animation: none; }
-  .ft-bg::after { background: linear-gradient(180deg, rgba(5,7,15,.35) 0%, rgba(5,7,15,.45) 30%, rgba(5,7,15,.05) 55%, rgba(5,7,15,0) 75%, rgba(5,7,15,.35) 100%); transition: background .5s; }
-  .fc-title.open .ft-bg::after { background: linear-gradient(180deg, rgba(5,7,15,.4) 0%, rgba(5,7,15,.55) 35%, rgba(5,7,15,.82) 60%, rgba(5,7,15,.92) 100%); }
-  .ft-press { margin-top: 26px; text-shadow: 0 2px 10px rgba(0,0,0,.7); }
-  /* 로그인 정보(관리자·로그아웃)와 "made by"는 맨 아래 두 줄로. 겹치거나 잘리지 않게 화면 흐름 안에 둠 */
-  .fc-title .ft-user { position: static; grid-row: 5; align-self: end; justify-self: center; margin: 18px 0 0; max-width: 100%; flex-wrap: wrap; justify-content: center; }
-  .ft-foot { grid-row: 6; align-self: end; justify-self: center; margin-top: 10px; text-shadow: 0 1px 6px rgba(0,0,0,.8); }
-  /* 메뉴를 열기 전에는 "화면을 눌러 시작" 바로 아래(하늘 쪽)에 두어 아이·그림자를 가리지 않게 */
-  .fc-title:not(.open) .ft-user { grid-row: 3; align-self: start; margin-top: 16px; }
-  .ft-logo { width: clamp(70px, 19vw, 96px); }
-  .ft-brand { gap: 12px; }
-  .ft-name { font-size: clamp(40px, 12.4vw, 64px); }
-  /* 메뉴를 열면 위 여백을 줄이고, 작은 휴대폰에서는 스크롤로 끝까지 */
-  .fc-title.open { padding-top: calc(7dvh + env(safe-area-inset-top, 0px)); overflow-y: auto; height: 100dvh; }
-  .fc-title.open .ft-menu { margin-top: 18px; }
-}
-/* 키가 작은 휴대폰(예: 320×568, 375×667): 메뉴를 열어도 한 화면에 들어오게 촘촘히 */
-@media (orientation: portrait) and (max-width: 760px) and (max-height: 700px) {
-  .fc-title.open { padding-top: calc(max(4dvh, 52px) + env(safe-area-inset-top, 0px)); }
-  .fc-title.open .ft-logo { width: 62px; }
-  .fc-title.open .ft-name { font-size: clamp(34px, 10.5vw, 48px); }
-  .fc-title.open .ft-menu { gap: 7px; margin-top: 12px; }
-  .fc-title.open .ft-tile { padding: 9px 16px; }
+/* 키가 작은 화면: 메뉴를 열어도 한 화면에 들어오게 촘촘히 */
+@media (max-height: 700px) {
+  .fc-title.open { padding-top: calc(58px + env(safe-area-inset-top, 0px)); }
+  .fc-title.open .ft-menu { gap: 7px; }
+  .fc-title.open .ft-tile { padding: 9px 40px 9px 16px; }
   .fc-title.open .ft-t { font-size: 17px; }
   .fc-title.open .ft-s { font-size: 12px; }
-  .fc-title.open .ft-user { margin-top: 10px; }
-  .fc-title.open .ft-foot { margin-top: 6px; }
-  .ft-tile { padding: 12px 18px; }
+}
+@media (max-height: 460px) {     /* 가로로 눕힌 휴대폰 */
+  .fc-title.open .ft-brand { display: none; }
+  .ft-logo { width: 52px; } .ft-name { font-size: 38px; }
 }
 
 /* ── 도입부 덧칠 ─────────────────── */
