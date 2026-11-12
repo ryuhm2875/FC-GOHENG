@@ -815,11 +815,14 @@ function momentCtx(state, m, evs) {
   if (M.pos === "FW" && H.team === "us" && ["DF", "GK"].includes(H.pos) && M.x > 56 && M.x - H.x > 24 && dist2(H, M) < 62 && (SCENES[m.want?.sit.id]?.longIn || (m.detailKey === "target" && relax && chance(0.12)))) return { cat: "mate", poss: "us", holder: H, longIn: true };   // 타깃형은 가끔 저절로, 다른 공격수는 머리로 흘려 주는 장면을 기다릴 때
   // 공격수: 측면 깊은 곳 동료의 땅볼 크로스(흘려 보내기 장면) / 박스 앞 동료의 중거리 슈팅(골키퍼 앞 장면)을 기다릴 때
   { const ws = SCENES[m.want?.sit.id];
-    if (ws?.callIn === "oppCross" && H.team === "them" && H.ri && H.pos !== "GK") { const c = oppCrossAt(S, H, M); if (c) return { cat: "defair", poss: "them", holder: c.r, crosser: H, callIn: "oppCross", tp: c.tp }; }   // 상대 측면 크로스: 연출에서 실제로 올림
-    if (ws?.callIn && ws.callIn !== "oppCross" && H.team === "us" && !H.me && H.pos !== "GK") { const tp = callInAt(ws.callIn, S, H, M); if (tp) return { cat: "air", poss: "us", holder: H, callIn: ws.callIn, tp }; }   // 동료가 나를 보고 길게 차 주는 장면 (뒷공간·반대편 전환): 연출에서 실제로 차 줌
+    if ((ws?.callIn === "oppCross" || ws?.callIn === "oppLong") && H.team === "them" && H.ri && (H.pos !== "GK" || ws.callIn === "oppLong")) { const c = ws.callIn === "oppLong" ? oppLongAt(S, H, M) : oppCrossAt(S, H, M); if (c) return { cat: "defair", poss: "them", holder: c.r, crosser: H, callIn: ws.callIn, forId: m.want.sit.id, tp: c.tp }; }   // 상대 측면 크로스: 연출에서 실제로 올림
+    if (ws?.callIn && !ws.callIn.startsWith("opp") && H.team === "us" && !H.me && H.pos !== "GK") { const tp = callInAt(ws.callIn, S, H, M); if (tp) return { cat: ws.callIn === "wing" ? "recv" : "air", poss: "us", holder: H, callIn: ws.callIn, forId: m.want.sit.id, tp, ground: ws.callIn === "wing" }; }
+    if (M.pos === "MF" && ws?.restMate && H.team === "us" && !H.me && H.pos !== "DF" && H.pos !== "GK" && H.x > 76 && H.x < 92 && Math.abs(H.y - 34) < 14 && M.x > 46 && M.x < H.x - 8 && dist2(H, M) < 42) return { cat: "mate", poss: "us", holder: H };   // 박스 앞에서 동료가 공을 잡았고 나는 그 뒤 (뒤를 받치는 장면)
+    if (ws?.callIn === "cross" && H.team === "us" && !H.me && H.pos !== "GK") { const tp = crossInAt(ws, H, M); if (tp) return { cat: ws.crossTo[2] ? "air" : "recv", poss: "us", holder: H, callIn: "cross", forId: m.want.sit.id, tp, ground: !ws.crossTo[2] }; }   // 측면 깊은 곳 동료가 박스 안의 나에게 실제로 크로스   // 동료가 나를 보고 길게 차 주는 장면 (뒷공간·반대편 전환): 연출에서 실제로 차 줌
     if (M.pos === "FW" && ws && H.team === "us" && H.pos !== "GK" && !H.me) {
       if (ws.dummy && H.x > 76 && Math.abs(H.y - 34) > 12 && M.x > 72 && dist2(H, M) < 38) return { cat: "mate", poss: "us", holder: H, dummy: true };
       if (ws.screen && H.x > 76 && H.x < 88 && Math.abs(H.y - 34) < 15 && M.x > 80 && Math.abs(M.y - 34) < 14 && dist2(H, M) < 36) return { cat: "mate", poss: "us", holder: H, screen: true };
+      if (ws.wingMate && H.x > 68 && H.x < 92 && Math.abs(H.y - 34) > 17.5 && M.x > 74 && Math.abs(M.y - 34) < 14 && dist2(H, M) < 42) return { cat: "mate", poss: "us", holder: H };   // 측면에서 몰고 들어오는 동료 (미끼 움직임 장면)
       if (ws.bylineMate && (ws.bylineMate === true ? H.x > 88 && Math.abs(H.y - 34) > 13 && M.x > 74 && dist2(H, M) < 32 : H.x > ws.bylineMate && Math.abs(H.y - 34) > 15 && M.x > 62 && dist2(H, M) < 42)) return { cat: "mate", poss: "us", holder: H };   // 측면 골라인 앞 동료 (컷백·니어포스트 장면)
       if (s_boxTurn(ws) && H.x > 60 && H.x < 90 && M.x > 89.5 && Math.abs(M.y - 34) < 11 && dist2(H, M) < 32) return { cat: "mate", poss: "us", holder: H };   // 박스 안의 나에게 동료가 줌
     }
@@ -851,8 +854,35 @@ function callInAt(kind, S, H, M) {
     if (ri(S, "them", p => Math.hypot(p.x - M.x, p.y - M.y) < 4).length) return null;   // 바로 옆에 상대가 붙어 있으면 아님
     return tp;
   }
+  if (kind === "wing") {                                           // 측면에 벌려 선 나에게 가까운 동료가 땅볼로 (측면 1 대 1 장면)
+    const sg = M.y < 34 ? -1 : 1, w = Math.abs(M.y - 34);
+    if (w < 13 || M.x < 62 || M.x > 84 || d < 10 || d > 32 || H.x > M.x + 6) return null;
+    if (ri(S, "them", p => Math.hypot(p.x - M.x, p.y - M.y) < 3).length) return null;
+    return [clamp(M.x + 4, 72, 84), 34 + sg * clamp(w + 4, 24, 28)];
+  }
   return null;
 }
+// 상대가 자기 진영에서 공을 가졌고, 내 근처에 상대 공격수가 있음 → 우리 둘 사이로 길게 찬 공 (공중볼 다툼)
+function oppLongAt(S, H, M) {
+  if (M.pos !== "DF" || H.x < 50 || H.x > 92 || M.x < 14 || M.x > 44) return null;
+  const r = ri(S, "them", p => p !== H && p.pos === "FW" && Math.hypot(p.x - M.x, p.y - M.y) < 13 && p.x < M.x + 9).sort((a, b) => Math.hypot(a.x - M.x, a.y - M.y) - Math.hypot(b.x - M.x, b.y - M.y))[0];
+  if (!r) return null;
+  const tp = [(r.x + M.x) / 2, (r.y + M.y) / 2], dh = Math.hypot(tp[0] - H.x, tp[1] - H.y);
+  if (dh < 28 || dh > 62) return null;
+  return { r, tp };
+}
+
+// 측면 깊은 곳(가운데에서 17m↑)의 동료가 박스 안의 나에게 크로스를 올릴 수 있는 모양인지. 되면 공이 갈 자리
+// crossTo: [x, 가운데에서 y(+는 크로스 올리는 쪽·니어, −는 먼 쪽), 띄우는지, 동료가 최소 이만큼 깊이]
+function crossInAt(ws, H, M) {
+  const [x, dy, , minX] = ws.crossTo, sg = H.y < 34 ? -1 : 1, tp = [x, 34 + sg * dy];
+  if (M.pos !== "FW" || H.x < minX || Math.abs(H.y - 34) < 17 || M.x < 68) return null;
+  const dm = Math.hypot(M.x - tp[0], M.y - tp[1]), dh = Math.hypot(H.x - tp[0], H.y - tp[1]);
+  if (dm > 21 || dh < 12 || dh > 44) return null;                                      // 내가 2.5초 안에 닿는 자리, 너무 짧거나 긴 크로스는 아님
+  return tp;
+}
+// 내가 측면 깊은 곳에서 공을 가졌음 → 연출에서 엔드라인 앞까지 몰고 감 (각 없는 슈팅 장면)
+const selfBylineOk = (S, M) => S.holder === M && M.x > 80 && Math.abs(M.y - 34) > 17.5 && Math.abs(M.y - 34) < 27;
 
 // 상대가 우리 진영 측면 깊은 곳에서 공을 가졌고, 박스 안에 내가 막을 상대 공격수가 있음 → 그 선수 머리 쪽으로 크로스 (df_cross)
 function oppCrossAt(S, H, M) {
@@ -998,7 +1028,7 @@ const holderOk = (ctx, s, S, m) => { const sc = SCENES[s.id];
   const them = (s.poss || "us") === "them";
   if (!!sc?.arrive !== !!ctx.arrive && (sc?.arrive || (S && ctx.holder && Math.hypot(ctx.holder.x - meOf(S).x, ctx.holder.y - meOf(S).y) > 22))) return false;   // 2선 침투 장면은 그 상황에서만 (그 상황에서 다른 장면은 가까울 때만)
   if (!!sc?.race !== !!ctx.race && (sc?.race || (S && ctx.holder && Math.hypot(ctx.holder.x - meOf(S).x, ctx.holder.y - meOf(S).y) > 16))) return false;   // 뒷공간 경주도 마찬가지
-  if (sc?.side && S) { const M = meOf(S), y = (sc.holder || them ? ctx.holder : M)?.y ?? S.ball.y; if (Math.abs(y - 34) < sc.side) return false; }
+  if (sc?.side && S && !ctx.callIn) { const M = meOf(S), y = (sc.holder || them ? ctx.holder : M)?.y ?? S.ball.y; if (Math.abs(y - 34) < sc.side) return false; }
   if (sc?.counter && S && S.t - (S.wonAt ?? -99) > (sc.even ? 12 : 8)) return false;
   if (s.detail && m?.detail?.side && S) {                                             // 왼쪽 윙어·풀백의 장면은 실제로 왼쪽에서 (오른쪽도 마찬가지)
     const y = (sc?.holder && !sc.farSide || them ? ctx.holder : meOf(S))?.y ?? S.ball.y;
@@ -1006,7 +1036,7 @@ const holderOk = (ctx, s, S, m) => { const sc = SCENES[s.id];
   }
   if (!!sc?.dummy !== !!ctx.dummy || !!sc?.screen !== !!ctx.screen) return false;     // 공격수 흘려 보내기·골키퍼 앞 장면은 그 상황에서만 (그 상황에서는 그 장면만)
   if (S && sc && !newSceneOk(ctx, sc, S, m)) return false;                             // 현대 축구 장면들의 경기장 조건 (아래)
-  if (ctx.callIn && sc?.callIn !== ctx.callIn) return false;                         // 길게 차 주는 상황은 그 장면만
+  if (ctx.callIn && (sc?.callIn !== ctx.callIn || ctx.forId !== s.id)) return false;                         // 길게 차 주는 상황은 그 장면만
   if (S && m && !ctx.callIn && !textOk(ctx, s, sc, S, m)) return false;                              // 장면 문장이 말하는 모양이 실제로 있을 때만 (해설과 바둑알이 어긋나지 않게)
   if (sc?.farSide && S && (!ctx.holder || (ctx.holder.y < 34) === (meOf(S).y < 34))) return false;   // 반대편 측면 동료가 공을 가졌을 때만
   if (sc?.overlap) {                                                                  // 오버래핑: 같은 쪽 측면 동료가 상대 진영에서 공을 잡았고 나는 그 뒤·바깥에 있을 때만
@@ -1019,7 +1049,7 @@ const holderOk = (ctx, s, S, m) => { const sc = SCENES[s.id];
     let se = null; for (let i = S.ev.length - 1; i >= 0 && S.ev[i].t > S.t - 6; i--) if (S.ev[i].type === "shotEnd") { se = S.ev[i]; break; }
     if (!se || se.team !== sc.after || !["save", "post", "block"].includes(se.result) || (sc.after === "us" && se.me)) return false;
   }
-  if (sc?.tight != null && m && sceneDist(m, s) > sc.tight) return false;            // "박스 안"처럼 자리가 분명한 장면은 그 자리에서만
+  if (sc?.tight != null && m && sceneDist(m, s) > sc.tight && !(sc.selfByline && S && selfBylineOk(S, meOf(S)))) return false;            // "박스 안"처럼 자리가 분명한 장면은 그 자리에서만
   if (!sc || sc.holder !== "df") return true;
   if (!["DF", "GK"].includes(ctx.holder?.pos)) return false;
   if (sc.mark2 && ctx.holder.pos === "DF" && !["LCB", "RCB"].includes(ctx.holder.role)) return false;   // "센터백 두 명" 장면은 센터백(이나 골키퍼)이 공을 가졌을 때만
@@ -1053,9 +1083,10 @@ function pickSituation(state, m, ctx) {
 function wantFits(m, want, ctx) {
   const s = want.sit;
   if ((s.poss || "us") !== ctx.poss || !holderOk(ctx, s, m.sim, m)) return false;
+  if (ctx.callIn) return true;                                                     // 동료가 차 주는 장면은 공이 떨어질 자리가 장면 자리 (연출)
   const c = ctxFits(ctx, want.cat), wait = m.minute - want.t0;
   if (c < (wait < 1.5 ? 1 : wait < 3 ? 0.5 : 0.3)) return false;                    // 처음엔 딱 맞는 상황만, 기다릴수록 비슷한 상황도
-  if (want.cat.includes(":") || ctx.callIn) return true;                           // 길게 차 주는 장면은 공이 떨어질 자리가 장면 자리 (연출)
+  if (want.cat.includes(":") || SCENES[s.id]?.selfByline && selfBylineOk(m.sim, meOf(m.sim))) return true;   // 엔드라인까지는 연출에서 몰고 감                           // 길게 차 주는 장면은 공이 떨어질 자리가 장면 자리 (연출)
   return geoFit(m, s) >= Math.max(0.12, 0.3 * Math.max(0, 1 - wait / 3));         // 아무리 오래 기다려도 장면 자리에서 13m 안
 }
 // 개발용: wantFits가 어디서 막히는지 (ctx 없음 / 공 가진 쪽 / 공 가진 선수·경기장 조건 / 상황 종류 / 자리)
@@ -1079,8 +1110,8 @@ function wantPatience(m, want, ctx) {
   if (want.cat.includes(":")) return 6;
   const pt = SCENES[want.sit.id]?.patience; if (pt) return pt;                      // 경기장 모양이 드물게 생기는 장면은 조금 더 기다림 (data/scenes.js patience)
   // 미드필더는 장면 종류가 많고 자리 조건이 있으므로 기다리지 않고 지금 상황에 맞는 장면으로 (선택 상황이 많아지게). 상대 공 장면으로만 조금 기다림
-  if (m.myPos === "MF") return (want.sit.poss || "us") === ctx.poss ? 0.5 : (want.sit.poss || "us") === "us" ? 5 : 1;
-  if ((want.sit.poss || "us") === ctx.poss) return 3;
+  if (m.myPos === "MF") return (want.sit.poss || "us") === ctx.poss ? 2 : (want.sit.poss || "us") === "us" ? 5 : 1;
+  if ((want.sit.poss || "us") === ctx.poss) return m.myPos === "FW" ? 4 : 3;      // 공격수는 장면 모양(측면 깊은 곳 동료·크로스)이 드물게 생기므로 조금 더
   return 4.5;
 }
 // 세트피스 장면을 기다리는데 오래 안 나오면, 그럴듯한 순간에 경기장에서 만들어 줌 (코너킥, 박스 앞 반칙, 스로인…)
@@ -1222,6 +1253,9 @@ function startMoment(state, m, sit, ctx, lines, ts) {
     moves.push([holder, Math.max(holder.x, 97.5), 34 + sg * 18.5, 7.4, "carry"]);
     moves.push([M, Math.max(M.x, 85), 34 + sg * 4, 8.4]);
   }
+  if (sc.selfByline && S.holder === M && selfBylineOk(S, M) && M.x < 96) {   // 각 없는 슈팅: 내가 엔드라인 앞까지 몰고 감
+    moves.push([M, 98.5, 34 + (M.y < 34 ? -1 : 1) * clamp(Math.abs(M.y - 34), 17.5, 20), 7.4, "carry"]);
+  }
   if (sc.underlap && holder?.team === "us") {              // 측면 동료의 안쪽 뒤로
     moves.push([M, holder.x - 6, 34 + (holder.y - 34) * 0.5, 8.4]);
   }
@@ -1285,11 +1319,11 @@ function startMoment(state, m, sit, ctx, lines, ts) {
     hint.dur = Math.max(hint.dur || 0, 1.2);
   }
   if (moves.length) hint.moves = moves;
-  if (ctx.callIn === "oppCross" && ctx.crosser && S.holder === ctx.crosser && !S.ball.fl && holder) {   // 상대 크로스: 측면 상대가 박스로 올리고, 나는 그 공격수에게 붙어 공중볼 다툼
+  if (ctx.crosser && S.holder === ctx.crosser && !S.ball.fl && holder) {   // 상대 크로스: 측면 상대가 박스로 올리고, 나는 그 공격수에게 붙어 공중볼 다툼
     const tp = ctx.tp;
     M.ov = OVs(tp[0] - 1, tp[1] + (M.y < tp[1] ? -0.8 : 0.8), 8.6);
     holder.ov = OVs(tp[0] + 0.6, tp[1], 8.4);
-    passTo(S, ctx.crosser, holder, tp, { force: true, air: true, cross: true });
+    passTo(S, ctx.crosser, holder, tp, { force: true, air: true, kind: "long" });
     if (S.ball.fl) { const need = Math.max(Math.hypot(holder.x - tp[0], holder.y - tp[1]), Math.hypot(M.x - tp[0], M.y - tp[1])) / 8 + 0.1; if (S.ball.fl.T < need) S.ball.fl.T = need; }
     hint.meGap = 1.2;
     m.staging.waitRecv = S.t + 4.5; m.staging.hint = hint; m.staging.recvBy = holder; m.staging.mustRecv = true;
@@ -1305,7 +1339,7 @@ function startMoment(state, m, sit, ctx, lines, ts) {
       tp = [clamp(M.x + 3, 30, 58), 34 + (M.y < 34 ? -1 : 1) * 9];
       M.ov = OVs(tp[0] - 0.6, tp[1], 8.4);
     }
-    passTo(S, passer2, D, tp, ctx.longIn || ctx.callIn ? { force: true, air: true, kind: "long" } : { force: true, kind: "ground" });   // 타깃형: 나를 보고 길게
+    passTo(S, passer2, D, tp, ctx.callIn && (ctx.ground || ctx.callIn === "cross") ? (ctx.ground ? { force: true, noOff: true, kind: "ground" } : { force: true, air: true, noOff: true, kind: "long" }) : ctx.longIn || ctx.callIn ? { force: true, air: true, kind: "long" } : { force: true, kind: "ground" });   // 타깃형: 나를 보고 길게
     if (S.ball.fl) { const need = Math.hypot(D.x - S.ball.fl.x1, D.y - S.ball.fl.y1) / 8 + 0.1; if (S.ball.fl.T < need) S.ball.fl.T = need; }
     m.staging.waitRecv = S.t + (sc.invert ? 5.5 : 4); m.staging.hint = hint; m.staging.recvBy = D; m.staging.mustRecv = !!ctx.longIn || !!sc.invert || !!ctx.callIn;   // 공이 실제로 와야 하는 장면
     if (D === M && ctx.longIn) L(fill(pick(["{mate|이/가} 나를 보고 길게 찬다.", "{mate|이/가} 고개를 들더니 나에게 길게 올려 준다."]), { ...sv, mate: passer2.name }), "me", { toMe: true });
