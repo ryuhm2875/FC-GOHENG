@@ -27,12 +27,17 @@
 // down   : 방금 공을 뺏긴 가까운 상대({opp})가 그 자리에 쓰러져 있음 (7m 안에 상대가 있을 때만)
 
 // lure: 이 장면을 기다리는 동안 그 모양을 만드는 공격 패턴(data/match.js PLAYS)을 더 고름 (내 장면은 우리 팀, 상대 공 장면은 상대 팀). lureSide: 내 쪽 측면으로
-// bylineMate: 공격수 장면. 동료가 측면 골라인 앞(x 88↑)에서 공을 가졌고 내가 박스 근처면 장면 상황으로 봄
+// bylineMate: 공격수 장면. 동료가 측면 골라인 앞(x 88↑, 숫자면 그 x↑)에서 공을 가졌고 내가 박스 근처면 장면 상황으로 봄
+// callIn: 동료가 나를 보고 길게 차 주는 장면. behind(수비 뒤로, 골키퍼가 나옴)·switch(반대편에서 긴 대각선). 모양이 맞으면 연출에서 실제로 차 주고, 받은 뒤 장면 문장
+// callIn "cross" + crossTo [x, 가운데에서 y(+니어·−먼 쪽), 띄우는지, 동료 최소 x]: 측면 깊은 곳 동료가 박스 안의 나에게 실제로 크로스
+// callIn "wing": 측면에 벌려 선 나에게 가까운 동료가 땅볼로. "oppLong": 상대가 자기 진영에서 나와 상대 공격수 사이로 길게. restMate: 박스 앞 동료 뒤를 받치는 자리(조금 멀어도)
+// selfByline: 내가 측면 깊은 곳에서 공을 잡으면 연출에서 엔드라인 앞까지 몰고 감. wingMate: 측면에서 몰고 들어오는 동료가 조금 멀어도 장면 상황
+// bylineRun: 장면 연출에서 동료가 박스 모서리 안쪽 골라인 앞까지 몰고 들어가고, 나는 박스 바깥 페널티 지점 쪽으로 뛰어듦 (컷백)
 export const SCENES = {
   // ── 공격수 ──
   fw_1v1: { at: [[80, 86], [26, 42]], from: "pass", giver: "mf", runs: [["fw", 9, -9, 7.6]], press: 1, pressGap: 3 },
   fw_through: { at: [[86, 93], [26, 42]], line: -4, from: "through", giver: "mf", src: [-24, -4], runs: [["oppdf", -1, -2.5, 8.4]], press: 0 },
-  fw_cross: { at: [[92, 97], [28, 40]], from: "cross", runs: [["fw", 2, -7, 7.6]], press: 1, pressGap: 1.2, pack: true },
+  fw_cross: { lure: ["wing", "wingdribble"], callIn: "cross", crossTo: [93.5, 1, true, 68], patience: 4, at: [[92, 97], [28, 40]], from: "cross", runs: [["fw", 2, -7, 7.6]], press: 1, pressGap: 1.2, pack: true },
   fw_hold: { at: [[74, 82], [26, 42]], from: "pass", giver: "df", src: [-24, -6], press: 1, pressGap: 1.4 },
   mf_open_lane: { at: [[46, 62], [18, 50]], from: "pass", press: 0, clear: true },
   fw_press_cb: { at: [[66, 80], [22, 46]], from: "oppHold", meGap: 5 },
@@ -46,10 +51,10 @@ export const SCENES = {
     pre: [["me", 21, 2], ["oppdf", 21.5, -14], ["oppdf", 21.5, -5], ["oppdf", 21.5, 4], ["oppdf", 21.5, 13]], press: 1, pressGap: 4 },
   fw_volley: { tight: 5, at: [[80, 86], [28, 40]], from: "loose", src: [12, -2], press: 0 },
   fw_last: { at: [[80, 86], [26, 42]], from: "pass", giver: "mf", press: 2, block: { them: "low" } },
-  fw_gk_out: { line: -5, from: "long", giver: "df", gk: [6, 0], runs: [["oppdf", -4, 3, 8.4]], press: 0 },
-  fw_near_post: { from: "lowcross", src: [3, 26], runs: [["oppdf", 1, -3, 8]], press: 0, pack: true },
-  fw_far_post: { from: "cross", src: [2, -38], press: 1, pressGap: 1.4, pack: true },
-  fw_tight_angle: { tight: 4, from: "carry", src: [-12, 3], v: 6.6, press: 1, pressGap: 1.4, gkNear: true },
+  fw_gk_out: { callIn: "behind", patience: 4, line: -5, from: "long", giver: "df", gk: [6, 0], runs: [["oppdf", -4, 3, 8.4]], press: 0 },
+  fw_near_post: { lure: ["wing", "wingdribble"], callIn: "cross", crossTo: [98, 4, false, 84], patience: 4, from: "lowcross", src: [3, 26], runs: [["oppdf", 1, -3, 8]], press: 0, pack: true },
+  fw_far_post: { lure: ["wing", "wingdribble"], callIn: "cross", crossTo: [96.5, -5.5, true, 68], patience: 4, from: "cross", src: [2, -38], press: 1, pressGap: 1.4, pack: true },
+  fw_tight_angle: { selfByline: true, tight: 4, from: "carry", src: [-12, 3], v: 6.6, press: 1, pressGap: 1.4, gkNear: true },
   fw_corner_flag: { from: "carry", src: [-14, -3], v: 6.4, press: 1, pressGap: 1.2 },
   fw_chase: { at: [[62, 70], [24, 44]], from: "loose", src: [-42, 0], pre: [["me", -9, 1.5], ["opp", -8.5, -1.5]], runs: [["opp", -0.5, -1.2, 8.2]], press: 0 },
   fw_keeper_1v1: { line: -7, from: "carry", src: [-15, 0], v: 8, gk: [7, 0], runs: [["oppdf", -6, 2, 8.4]], press: 0 },
@@ -57,15 +62,15 @@ export const SCENES = {
   fw_solo_run: { counter: true, at: [[46, 54], [24, 44]], from: "turn", block: { them: "high" }, press: 0, clear: true },
   fw_gk_short: { from: "oppGk", meGap: 5, block: { us: "high" } },
   fw_mindgame: { at: [[84, 92], [24, 44]], from: "oppHold", meGap: 1.1 },
-  fw_slide_finish: { from: "lowcross", src: [-5, -36], press: 1, pressGap: 1.6, pack: true },
+  fw_slide_finish: { lure: ["wing", "wingdribble"], callIn: "cross", crossTo: [99, -4.5, false, 80], patience: 4, from: "lowcross", src: [-5, -36], press: 1, pressGap: 1.6, pack: true },
   fw_near_run: { lure: ["wingdribble", "wing"], patience: 4, bylineMate: true, at: [[96, 101], [6, 12]], from: "carry", holder: "mate", src: [-14, -3], pre: [["me", -14, -16]], runs: [["me", 1, -19, 8.4]], press: 1, pressGap: 1.4 },
   fw_flow_storm: { tight: 6, at: [[78, 85], [26, 42]], from: "pass", giver: "mf", block: { them: "low" }, press: 1, pressGap: 3 },
   fw_after_concede: { at: [[50, 58], [24, 44]], from: "pass", giver: "df", press: 1, pressGap: 3 },
-  fw_decoy: { side: 14, at: [[78, 86], [8, 15]], from: "carry", holder: "mate", src: [-14, 2], pre: [["me", 15, -21], ["oppdf", 16.5, -19], ["oppdf", 16, -24]], press: 1, pressGap: 2.4 },
+  fw_decoy: { lure: ["wingdribble", "wing"], wingMate: true, patience: 4, side: 14, at: [[78, 86], [8, 15]], from: "carry", holder: "mate", src: [-14, 2], pre: [["me", 15, -21], ["oppdf", 16.5, -19], ["oppdf", 16, -24]], press: 1, pressGap: 2.4 },
   keeper_rush: { at: [[84, 90], [28, 40]], line: -4, from: "long", giver: "df", gk: [4, 0], press: 0 },
   rebound_box: { after: "us", at: [[90, 96], [28, 40]], from: "save", pack: true, press: 0 },
   elder_shout: { at: [[84, 88], [15, 21]], from: "pass", giver: "mf", press: 1, pressGap: 3 },
-  fw_cutback_arrive: { lure: ["wingdribble", "wing"], patience: 4, bylineMate: true, tight: 11, at: [[98, 101], [8, 14]], from: "carry", holder: "mate", src: [-13, -3], pre: [["me", -17, -17]], press: 1, pressGap: 1.4, pack: true },
+  fw_cutback_arrive: { lure: ["wingdribble", "wing"], patience: 4, bylineMate: 74, bylineRun: true, tight: 4, at: [[74, 101], [2, 16]], from: "carry", holder: "mate", src: [-13, -3], pre: [["me", -17, -17]], press: 1, pressGap: 1.4, pack: true },
   fw_press_curve: { at: [[86, 94], [18, 28]], from: "oppGk", meGap: 7, block: { us: "high" } },
   fw_false_nine: { at: [[50, 58], [26, 42]], from: "pass", giver: "df", src: [-18, -4], pre: [["oppdf", 1.6, 0]], runs: [["wing", 30, 4, 8.4]], press: 0 },
 
@@ -90,7 +95,7 @@ export const SCENES = {
   mf_backpass_steal: { from: "backpass", src: [-10, 0], runs: [["me", 0, 0, 8.6]], gk: [7, 0], mePress: false },
   mf_split: { from: "pass", giver: "df", press: 2, pressGap: 4 },
   mf_quick_fk: { from: "kicker", runs: [["fw", 22, 4, 7.6]], press: 0 },
-  mf_switch_receive: { at: [[70, 80], [5, 12]], from: "long", giver: "df", src: [-40, -42], press: 1, pressGap: 3 },
+  mf_switch_receive: { callIn: "switch", patience: 2, at: [[70, 80], [5, 12]], from: "long", giver: "df", src: [-40, -42], press: 1, pressGap: 3 },
   mf_late_run: { lure: ["wing", "wingdribble", "cutback"], patience: 4, at: [[78, 84], [28, 40]], from: "lowcross", giver: "mate", src: [20, 30], press: 0 },
   mf_rally: { from: "pass", giver: "df", press: 1, pressGap: 3.4 },
   mf_shield_wing: { side: 16, at: [[48, 60], [4, 10]], from: "oppCarry", src: [15, 0], meGap: 3 },
@@ -101,18 +106,18 @@ export const SCENES = {
   mf_counterpress: { at: [[56, 66], [22, 46]], from: "oppHold", meGap: 2.4, press: 1 },
   mf_advantage: { at: [[74, 82], [24, 44]], from: "carry", src: [-10, 0], v: 6, pre: [["opp", -2, 2]], press: 1, pressGap: 3 },
   mf_halfspace_turn: { at: [[64, 72], [14, 22]], from: "pass", giver: "fb", src: [-10, 8], runs: [["mate", 14, 10, 8.4], ["fw", 18, -6, 7.6]], press: 1, pressGap: 2.6, block: { them: "mid" } },
-  mf_rest_defense: { tight: 5, at: [[80, 88], [24, 44]], from: "pass", holder: "mate", giver: "mf", pre: [["me", -26, -6], ["oppfw", -28, -10]], block: { them: "low" }, press: 1, pressGap: 3 },
+  mf_rest_defense: { restMate: true, patience: 2, tight: 5, at: [[80, 88], [24, 44]], from: "pass", holder: "mate", giver: "mf", pre: [["me", -26, -6], ["oppfw", -28, -10]], block: { them: "low" }, press: 1, pressGap: 3 },
   mf_drop_between: { at: [[18, 24], [26, 42]], from: "gk", holder: "df", pre: [["me", 12, 1]], press: 2, pressGap: 3, mark2: true, block: { them: "high" } },
 
   // ── 수비수 ──
   df_1v1: { at: [[26, 36], [22, 46]], from: "oppCarry", src: [15, 0], v: 7.8, meGap: 3 },
-  df_cross: { lure: ["wing", "overlap", "wingdribble"], patience: 4, air: true, at: [[8, 14], [28, 40]], from: "oppCross", meGap: 1, pack: "them" },
+  df_cross: { callIn: "oppCross", lure: ["wing", "overlap", "wingdribble"], patience: 4, air: true, at: [[8, 14], [28, 40]], from: "oppCross", meGap: 1, pack: "them" },
   df_build: { at: [[10, 16], [18, 50]], from: "gk", press: 1, pressGap: 4, block: { them: "high" } },
   df_through: { at: [[34, 42], [24, 44]], from: "oppPass", src: [14, -6], runs: [["oppfw", -16, 2, 8.6]], mePress: false },
   df_corner: { at: [[94, 99], [28, 40]], from: "corner", pack: true },
   df_longshot: { at: [[80, 85], [26, 42]], from: "loose", src: [10, -3], pack: true, press: 1, pressGap: 4 },
   att_corner_head: { at: [[94, 99], [29, 39]], from: "corner", pack: true },
-  skill_wing: { side: 16, at: [[72, 84], [5, 11]], from: "pass", giver: "fb", src: [-14, 0], press: 1, pressGap: 3.4 },
+  skill_wing: { callIn: "wing", patience: 2, side: 16, at: [[72, 84], [5, 11]], from: "pass", giver: "fb", src: [-14, 0], press: 1, pressGap: 3.4 },
   df_slide_counter: { counter: true, at: [[42, 52], [22, 46]], from: "oppCarry", src: [16, 0], v: 7.8, meGap: 3.6 },
   freekick: { at: [[76, 82], [26, 42]], from: "fk" },
   penalty: { at: [[94, 94], [34, 34]], from: "pk" },
@@ -135,7 +140,7 @@ export const SCENES = {
   df_split_pass: { at: [[14, 22], [20, 48]], from: "gk", press: 2, pressGap: 5, block: { them: "high" } },
   df_keeper_call: { tight: 1.5, from: "oppLong", runs: [["gk", -1, 0, 8]], meGap: 1 },
   df_fullback_duel: { side: 14, at: [[30, 42], [4, 10]], from: "oppCarry", src: [14, 0], v: 8, meGap: 3 },
-  df_aerial_long: { air: true, from: "oppLong", src: [70, 0], meGap: 0.8 },
+  df_aerial_long: { callIn: "oppLong", air: true, from: "oppLong", src: [70, 0], meGap: 0.8 },
   df_line_step: { from: "oppHold", pre: [["oppfw", -12, -7], ["oppfw", -12.5, 5]], mePress: false },
   df_ace_mark: { at: [[28, 38], [22, 46]], from: "oppCarry", src: [9, 0], v: 5, meGap: 3.4 },
   df_storm_hold: { from: "oppCross", pack: "them", meGap: 1 },

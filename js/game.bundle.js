@@ -5393,12 +5393,17 @@ __m["data/scenes.js"] = (function () {
 // down   : 방금 공을 뺏긴 가까운 상대({opp})가 그 자리에 쓰러져 있음 (7m 안에 상대가 있을 때만)
 
 // lure: 이 장면을 기다리는 동안 그 모양을 만드는 공격 패턴(data/match.js PLAYS)을 더 고름 (내 장면은 우리 팀, 상대 공 장면은 상대 팀). lureSide: 내 쪽 측면으로
-// bylineMate: 공격수 장면. 동료가 측면 골라인 앞(x 88↑)에서 공을 가졌고 내가 박스 근처면 장면 상황으로 봄
+// bylineMate: 공격수 장면. 동료가 측면 골라인 앞(x 88↑, 숫자면 그 x↑)에서 공을 가졌고 내가 박스 근처면 장면 상황으로 봄
+// callIn: 동료가 나를 보고 길게 차 주는 장면. behind(수비 뒤로, 골키퍼가 나옴)·switch(반대편에서 긴 대각선). 모양이 맞으면 연출에서 실제로 차 주고, 받은 뒤 장면 문장
+// callIn "cross" + crossTo [x, 가운데에서 y(+니어·−먼 쪽), 띄우는지, 동료 최소 x]: 측면 깊은 곳 동료가 박스 안의 나에게 실제로 크로스
+// callIn "wing": 측면에 벌려 선 나에게 가까운 동료가 땅볼로. "oppLong": 상대가 자기 진영에서 나와 상대 공격수 사이로 길게. restMate: 박스 앞 동료 뒤를 받치는 자리(조금 멀어도)
+// selfByline: 내가 측면 깊은 곳에서 공을 잡으면 연출에서 엔드라인 앞까지 몰고 감. wingMate: 측면에서 몰고 들어오는 동료가 조금 멀어도 장면 상황
+// bylineRun: 장면 연출에서 동료가 박스 모서리 안쪽 골라인 앞까지 몰고 들어가고, 나는 박스 바깥 페널티 지점 쪽으로 뛰어듦 (컷백)
 const SCENES = {
   // ── 공격수 ──
   fw_1v1: { at: [[80, 86], [26, 42]], from: "pass", giver: "mf", runs: [["fw", 9, -9, 7.6]], press: 1, pressGap: 3 },
   fw_through: { at: [[86, 93], [26, 42]], line: -4, from: "through", giver: "mf", src: [-24, -4], runs: [["oppdf", -1, -2.5, 8.4]], press: 0 },
-  fw_cross: { at: [[92, 97], [28, 40]], from: "cross", runs: [["fw", 2, -7, 7.6]], press: 1, pressGap: 1.2, pack: true },
+  fw_cross: { lure: ["wing", "wingdribble"], callIn: "cross", crossTo: [93.5, 1, true, 68], patience: 4, at: [[92, 97], [28, 40]], from: "cross", runs: [["fw", 2, -7, 7.6]], press: 1, pressGap: 1.2, pack: true },
   fw_hold: { at: [[74, 82], [26, 42]], from: "pass", giver: "df", src: [-24, -6], press: 1, pressGap: 1.4 },
   mf_open_lane: { at: [[46, 62], [18, 50]], from: "pass", press: 0, clear: true },
   fw_press_cb: { at: [[66, 80], [22, 46]], from: "oppHold", meGap: 5 },
@@ -5412,10 +5417,10 @@ const SCENES = {
     pre: [["me", 21, 2], ["oppdf", 21.5, -14], ["oppdf", 21.5, -5], ["oppdf", 21.5, 4], ["oppdf", 21.5, 13]], press: 1, pressGap: 4 },
   fw_volley: { tight: 5, at: [[80, 86], [28, 40]], from: "loose", src: [12, -2], press: 0 },
   fw_last: { at: [[80, 86], [26, 42]], from: "pass", giver: "mf", press: 2, block: { them: "low" } },
-  fw_gk_out: { line: -5, from: "long", giver: "df", gk: [6, 0], runs: [["oppdf", -4, 3, 8.4]], press: 0 },
-  fw_near_post: { from: "lowcross", src: [3, 26], runs: [["oppdf", 1, -3, 8]], press: 0, pack: true },
-  fw_far_post: { from: "cross", src: [2, -38], press: 1, pressGap: 1.4, pack: true },
-  fw_tight_angle: { tight: 4, from: "carry", src: [-12, 3], v: 6.6, press: 1, pressGap: 1.4, gkNear: true },
+  fw_gk_out: { callIn: "behind", patience: 4, line: -5, from: "long", giver: "df", gk: [6, 0], runs: [["oppdf", -4, 3, 8.4]], press: 0 },
+  fw_near_post: { lure: ["wing", "wingdribble"], callIn: "cross", crossTo: [98, 4, false, 84], patience: 4, from: "lowcross", src: [3, 26], runs: [["oppdf", 1, -3, 8]], press: 0, pack: true },
+  fw_far_post: { lure: ["wing", "wingdribble"], callIn: "cross", crossTo: [96.5, -5.5, true, 68], patience: 4, from: "cross", src: [2, -38], press: 1, pressGap: 1.4, pack: true },
+  fw_tight_angle: { selfByline: true, tight: 4, from: "carry", src: [-12, 3], v: 6.6, press: 1, pressGap: 1.4, gkNear: true },
   fw_corner_flag: { from: "carry", src: [-14, -3], v: 6.4, press: 1, pressGap: 1.2 },
   fw_chase: { at: [[62, 70], [24, 44]], from: "loose", src: [-42, 0], pre: [["me", -9, 1.5], ["opp", -8.5, -1.5]], runs: [["opp", -0.5, -1.2, 8.2]], press: 0 },
   fw_keeper_1v1: { line: -7, from: "carry", src: [-15, 0], v: 8, gk: [7, 0], runs: [["oppdf", -6, 2, 8.4]], press: 0 },
@@ -5423,15 +5428,15 @@ const SCENES = {
   fw_solo_run: { counter: true, at: [[46, 54], [24, 44]], from: "turn", block: { them: "high" }, press: 0, clear: true },
   fw_gk_short: { from: "oppGk", meGap: 5, block: { us: "high" } },
   fw_mindgame: { at: [[84, 92], [24, 44]], from: "oppHold", meGap: 1.1 },
-  fw_slide_finish: { from: "lowcross", src: [-5, -36], press: 1, pressGap: 1.6, pack: true },
+  fw_slide_finish: { lure: ["wing", "wingdribble"], callIn: "cross", crossTo: [99, -4.5, false, 80], patience: 4, from: "lowcross", src: [-5, -36], press: 1, pressGap: 1.6, pack: true },
   fw_near_run: { lure: ["wingdribble", "wing"], patience: 4, bylineMate: true, at: [[96, 101], [6, 12]], from: "carry", holder: "mate", src: [-14, -3], pre: [["me", -14, -16]], runs: [["me", 1, -19, 8.4]], press: 1, pressGap: 1.4 },
   fw_flow_storm: { tight: 6, at: [[78, 85], [26, 42]], from: "pass", giver: "mf", block: { them: "low" }, press: 1, pressGap: 3 },
   fw_after_concede: { at: [[50, 58], [24, 44]], from: "pass", giver: "df", press: 1, pressGap: 3 },
-  fw_decoy: { side: 14, at: [[78, 86], [8, 15]], from: "carry", holder: "mate", src: [-14, 2], pre: [["me", 15, -21], ["oppdf", 16.5, -19], ["oppdf", 16, -24]], press: 1, pressGap: 2.4 },
+  fw_decoy: { lure: ["wingdribble", "wing"], wingMate: true, patience: 4, side: 14, at: [[78, 86], [8, 15]], from: "carry", holder: "mate", src: [-14, 2], pre: [["me", 15, -21], ["oppdf", 16.5, -19], ["oppdf", 16, -24]], press: 1, pressGap: 2.4 },
   keeper_rush: { at: [[84, 90], [28, 40]], line: -4, from: "long", giver: "df", gk: [4, 0], press: 0 },
   rebound_box: { after: "us", at: [[90, 96], [28, 40]], from: "save", pack: true, press: 0 },
   elder_shout: { at: [[84, 88], [15, 21]], from: "pass", giver: "mf", press: 1, pressGap: 3 },
-  fw_cutback_arrive: { lure: ["wingdribble", "wing"], patience: 4, bylineMate: true, tight: 11, at: [[98, 101], [8, 14]], from: "carry", holder: "mate", src: [-13, -3], pre: [["me", -17, -17]], press: 1, pressGap: 1.4, pack: true },
+  fw_cutback_arrive: { lure: ["wingdribble", "wing"], patience: 4, bylineMate: 74, bylineRun: true, tight: 4, at: [[74, 101], [2, 16]], from: "carry", holder: "mate", src: [-13, -3], pre: [["me", -17, -17]], press: 1, pressGap: 1.4, pack: true },
   fw_press_curve: { at: [[86, 94], [18, 28]], from: "oppGk", meGap: 7, block: { us: "high" } },
   fw_false_nine: { at: [[50, 58], [26, 42]], from: "pass", giver: "df", src: [-18, -4], pre: [["oppdf", 1.6, 0]], runs: [["wing", 30, 4, 8.4]], press: 0 },
 
@@ -5456,7 +5461,7 @@ const SCENES = {
   mf_backpass_steal: { from: "backpass", src: [-10, 0], runs: [["me", 0, 0, 8.6]], gk: [7, 0], mePress: false },
   mf_split: { from: "pass", giver: "df", press: 2, pressGap: 4 },
   mf_quick_fk: { from: "kicker", runs: [["fw", 22, 4, 7.6]], press: 0 },
-  mf_switch_receive: { at: [[70, 80], [5, 12]], from: "long", giver: "df", src: [-40, -42], press: 1, pressGap: 3 },
+  mf_switch_receive: { callIn: "switch", patience: 2, at: [[70, 80], [5, 12]], from: "long", giver: "df", src: [-40, -42], press: 1, pressGap: 3 },
   mf_late_run: { lure: ["wing", "wingdribble", "cutback"], patience: 4, at: [[78, 84], [28, 40]], from: "lowcross", giver: "mate", src: [20, 30], press: 0 },
   mf_rally: { from: "pass", giver: "df", press: 1, pressGap: 3.4 },
   mf_shield_wing: { side: 16, at: [[48, 60], [4, 10]], from: "oppCarry", src: [15, 0], meGap: 3 },
@@ -5467,18 +5472,18 @@ const SCENES = {
   mf_counterpress: { at: [[56, 66], [22, 46]], from: "oppHold", meGap: 2.4, press: 1 },
   mf_advantage: { at: [[74, 82], [24, 44]], from: "carry", src: [-10, 0], v: 6, pre: [["opp", -2, 2]], press: 1, pressGap: 3 },
   mf_halfspace_turn: { at: [[64, 72], [14, 22]], from: "pass", giver: "fb", src: [-10, 8], runs: [["mate", 14, 10, 8.4], ["fw", 18, -6, 7.6]], press: 1, pressGap: 2.6, block: { them: "mid" } },
-  mf_rest_defense: { tight: 5, at: [[80, 88], [24, 44]], from: "pass", holder: "mate", giver: "mf", pre: [["me", -26, -6], ["oppfw", -28, -10]], block: { them: "low" }, press: 1, pressGap: 3 },
+  mf_rest_defense: { restMate: true, patience: 2, tight: 5, at: [[80, 88], [24, 44]], from: "pass", holder: "mate", giver: "mf", pre: [["me", -26, -6], ["oppfw", -28, -10]], block: { them: "low" }, press: 1, pressGap: 3 },
   mf_drop_between: { at: [[18, 24], [26, 42]], from: "gk", holder: "df", pre: [["me", 12, 1]], press: 2, pressGap: 3, mark2: true, block: { them: "high" } },
 
   // ── 수비수 ──
   df_1v1: { at: [[26, 36], [22, 46]], from: "oppCarry", src: [15, 0], v: 7.8, meGap: 3 },
-  df_cross: { lure: ["wing", "overlap", "wingdribble"], patience: 4, air: true, at: [[8, 14], [28, 40]], from: "oppCross", meGap: 1, pack: "them" },
+  df_cross: { callIn: "oppCross", lure: ["wing", "overlap", "wingdribble"], patience: 4, air: true, at: [[8, 14], [28, 40]], from: "oppCross", meGap: 1, pack: "them" },
   df_build: { at: [[10, 16], [18, 50]], from: "gk", press: 1, pressGap: 4, block: { them: "high" } },
   df_through: { at: [[34, 42], [24, 44]], from: "oppPass", src: [14, -6], runs: [["oppfw", -16, 2, 8.6]], mePress: false },
   df_corner: { at: [[94, 99], [28, 40]], from: "corner", pack: true },
   df_longshot: { at: [[80, 85], [26, 42]], from: "loose", src: [10, -3], pack: true, press: 1, pressGap: 4 },
   att_corner_head: { at: [[94, 99], [29, 39]], from: "corner", pack: true },
-  skill_wing: { side: 16, at: [[72, 84], [5, 11]], from: "pass", giver: "fb", src: [-14, 0], press: 1, pressGap: 3.4 },
+  skill_wing: { callIn: "wing", patience: 2, side: 16, at: [[72, 84], [5, 11]], from: "pass", giver: "fb", src: [-14, 0], press: 1, pressGap: 3.4 },
   df_slide_counter: { counter: true, at: [[42, 52], [22, 46]], from: "oppCarry", src: [16, 0], v: 7.8, meGap: 3.6 },
   freekick: { at: [[76, 82], [26, 42]], from: "fk" },
   penalty: { at: [[94, 94], [34, 34]], from: "pk" },
@@ -5501,7 +5506,7 @@ const SCENES = {
   df_split_pass: { at: [[14, 22], [20, 48]], from: "gk", press: 2, pressGap: 5, block: { them: "high" } },
   df_keeper_call: { tight: 1.5, from: "oppLong", runs: [["gk", -1, 0, 8]], meGap: 1 },
   df_fullback_duel: { side: 14, at: [[30, 42], [4, 10]], from: "oppCarry", src: [14, 0], v: 8, meGap: 3 },
-  df_aerial_long: { air: true, from: "oppLong", src: [70, 0], meGap: 0.8 },
+  df_aerial_long: { callIn: "oppLong", air: true, from: "oppLong", src: [70, 0], meGap: 0.8 },
   df_line_step: { from: "oppHold", pre: [["oppfw", -12, -7], ["oppfw", -12.5, 5]], mePress: false },
   df_ace_mark: { at: [[28, 38], [22, 46]], from: "oppCarry", src: [9, 0], v: 5, meGap: 3.4 },
   df_storm_hold: { from: "oppCross", pack: "them", meGap: 1 },
@@ -8065,10 +8070,15 @@ function momentCtx(state, m, evs) {
   if (M.pos === "FW" && H.team === "us" && ["DF", "GK"].includes(H.pos) && M.x > 56 && M.x - H.x > 24 && dist2(H, M) < 62 && (SCENES[m.want?.sit.id]?.longIn || (m.detailKey === "target" && relax && chance(0.12)))) return { cat: "mate", poss: "us", holder: H, longIn: true };   // 타깃형은 가끔 저절로, 다른 공격수는 머리로 흘려 주는 장면을 기다릴 때
   // 공격수: 측면 깊은 곳 동료의 땅볼 크로스(흘려 보내기 장면) / 박스 앞 동료의 중거리 슈팅(골키퍼 앞 장면)을 기다릴 때
   { const ws = SCENES[m.want?.sit.id];
+    if ((ws?.callIn === "oppCross" || ws?.callIn === "oppLong") && H.team === "them" && H.ri && (H.pos !== "GK" || ws.callIn === "oppLong")) { const c = ws.callIn === "oppLong" ? oppLongAt(S, H, M) : oppCrossAt(S, H, M); if (c) return { cat: "defair", poss: "them", holder: c.r, crosser: H, callIn: ws.callIn, forId: m.want.sit.id, tp: c.tp }; }   // 상대 측면 크로스: 연출에서 실제로 올림
+    if (ws?.callIn && !ws.callIn.startsWith("opp") && H.team === "us" && !H.me && H.pos !== "GK") { const tp = callInAt(ws.callIn, S, H, M); if (tp) return { cat: ws.callIn === "wing" ? "recv" : "air", poss: "us", holder: H, callIn: ws.callIn, forId: m.want.sit.id, tp, ground: ws.callIn === "wing" }; }
+    if (M.pos === "MF" && ws?.restMate && H.team === "us" && !H.me && H.pos !== "DF" && H.pos !== "GK" && H.x > 76 && H.x < 92 && Math.abs(H.y - 34) < 14 && M.x > 46 && M.x < H.x - 8 && dist2(H, M) < 42) return { cat: "mate", poss: "us", holder: H };   // 박스 앞에서 동료가 공을 잡았고 나는 그 뒤 (뒤를 받치는 장면)
+    if (ws?.callIn === "cross" && H.team === "us" && !H.me && H.pos !== "GK") { const tp = crossInAt(ws, H, M); if (tp) return { cat: ws.crossTo[2] ? "air" : "recv", poss: "us", holder: H, callIn: "cross", forId: m.want.sit.id, tp, ground: !ws.crossTo[2] }; }   // 측면 깊은 곳 동료가 박스 안의 나에게 실제로 크로스   // 동료가 나를 보고 길게 차 주는 장면 (뒷공간·반대편 전환): 연출에서 실제로 차 줌
     if (M.pos === "FW" && ws && H.team === "us" && H.pos !== "GK" && !H.me) {
       if (ws.dummy && H.x > 76 && Math.abs(H.y - 34) > 12 && M.x > 72 && dist2(H, M) < 38) return { cat: "mate", poss: "us", holder: H, dummy: true };
       if (ws.screen && H.x > 76 && H.x < 88 && Math.abs(H.y - 34) < 15 && M.x > 80 && Math.abs(M.y - 34) < 14 && dist2(H, M) < 36) return { cat: "mate", poss: "us", holder: H, screen: true };
-      if (ws.bylineMate && H.x > 88 && Math.abs(H.y - 34) > 13 && M.x > 74 && dist2(H, M) < 32) return { cat: "mate", poss: "us", holder: H };   // 측면 골라인 앞 동료 (컷백·니어포스트 장면)
+      if (ws.wingMate && H.x > 68 && H.x < 92 && Math.abs(H.y - 34) > 17.5 && M.x > 74 && Math.abs(M.y - 34) < 14 && dist2(H, M) < 42) return { cat: "mate", poss: "us", holder: H };   // 측면에서 몰고 들어오는 동료 (미끼 움직임 장면)
+      if (ws.bylineMate && (ws.bylineMate === true ? H.x > 88 && Math.abs(H.y - 34) > 13 && M.x > 74 && dist2(H, M) < 32 : H.x > ws.bylineMate && Math.abs(H.y - 34) > 15 && M.x > 62 && dist2(H, M) < 42)) return { cat: "mate", poss: "us", holder: H };   // 측면 골라인 앞 동료 (컷백·니어포스트 장면)
       if (s_boxTurn(ws) && H.x > 60 && H.x < 90 && M.x > 89.5 && Math.abs(M.y - 34) < 11 && dist2(H, M) < 32) return { cat: "mate", poss: "us", holder: H };   // 박스 안의 나에게 동료가 줌
     }
     if (M.pos === "MF" && ws?.underlap && H.team === "us" && H.pos !== "GK" && !H.me && H.x > 50 && H.x < 90 && Math.abs(H.y - 34) > 16.5 && dist2(H, M) < 32) return { cat: "mate", poss: "us", holder: H };   // 측면 동료 옆으로 뛰어드는 장면
@@ -8077,6 +8087,66 @@ function momentCtx(state, m, evs) {
   // 동료가 내 가까이에서 공을 가졌을 때 (골키퍼가 잡았을 때는 조금 멀어도). 그 동료가 나에게 주며 장면이 이어짐
   if (H.team === "us" && dist2(H, M) < (H.pos === "GK" ? 26 : relax ? 22 : 15)) return { cat: "mate", poss: "us", holder: H };
   return null;
+}
+
+// 동료가 나에게 길게 차 줄 수 있는 모양인지. 되면 공이 떨어질 자리 [x, y]
+// behind: 공격수가 상대 마지막 수비와 나란히(오프사이드 아님) 서 있고 뒤가 비어 있음 → 수비 뒤로 넘겨 줌 (골키퍼가 뛰쳐나오는 장면)
+// switch: 공 반대편 측면으로 내가 벌려 뛰고, 동료가 그쪽으로 긴 대각선 패스
+function callInAt(kind, S, H, M) {
+  const d = dist2(H, M);
+  if (kind === "behind") {
+    if (H.x < 20 || H.x > 75 || M.x - H.x < 3 || M.x < 54 || Math.abs(M.y - 34) > 17 || d > 55) return null;
+    const dfs = ri(S, "them", p => p.pos === "DF"); if (dfs.length < 2) return null;
+    const last = Math.max(...dfs.map(p => p.x));
+    if (last > 87 || M.x < last - 10 || M.x > last + 1) return null;                // 뒤에 공간이 있고, 나는 마지막 수비 근처(오프사이드 아님)
+    return [clamp(last + 7, 84, 92), M.y + (34 - M.y) * 0.4];
+  }
+  if (kind === "switch") {
+    const sg = Math.abs(H.y - 34) < 4 ? (M.y < 34 ? -1 : 1) : H.y < 34 ? 1 : -1;   // 공 반대편 측면 (공이 가운데면 내 쪽)
+    const tp = [clamp(M.x + 5, 55, 86), 34 + sg * clamp(Math.max(0, (M.y - 34) * sg) + 10, 16, 26)];   // 받으러 반대편 측면으로 벌려 뛰며 받음
+    if (H.x < 12 || H.x > M.x + 20 || M.x < 40 || M.x > 84 || d < 15 || d > 58) return null;
+    if (Math.abs(tp[1] - M.y) > 22 || Math.hypot(tp[0] - H.x, tp[1] - H.y) < 28) return null;   // 22m 넘게 옆으로 뛰어야 하거나, 28m가 안 되는 짧은 공이면 아님
+    if (ri(S, "them", p => Math.hypot(p.x - M.x, p.y - M.y) < 4).length) return null;   // 바로 옆에 상대가 붙어 있으면 아님
+    return tp;
+  }
+  if (kind === "wing") {                                           // 측면에 벌려 선 나에게 가까운 동료가 땅볼로 (측면 1 대 1 장면)
+    const sg = M.y < 34 ? -1 : 1, w = Math.abs(M.y - 34);
+    if (w < 13 || M.x < 62 || M.x > 84 || d < 10 || d > 32 || H.x > M.x + 6) return null;
+    if (ri(S, "them", p => Math.hypot(p.x - M.x, p.y - M.y) < 3).length) return null;
+    return [clamp(M.x + 4, 72, 84), 34 + sg * clamp(w + 4, 24, 28)];
+  }
+  return null;
+}
+// 상대가 자기 진영에서 공을 가졌고, 내 근처에 상대 공격수가 있음 → 우리 둘 사이로 길게 찬 공 (공중볼 다툼)
+function oppLongAt(S, H, M) {
+  if (M.pos !== "DF" || H.x < 50 || H.x > 92 || M.x < 14 || M.x > 44) return null;
+  const r = ri(S, "them", p => p !== H && p.pos === "FW" && Math.hypot(p.x - M.x, p.y - M.y) < 13 && p.x < M.x + 9).sort((a, b) => Math.hypot(a.x - M.x, a.y - M.y) - Math.hypot(b.x - M.x, b.y - M.y))[0];
+  if (!r) return null;
+  const tp = [(r.x + M.x) / 2, (r.y + M.y) / 2], dh = Math.hypot(tp[0] - H.x, tp[1] - H.y);
+  if (dh < 28 || dh > 62) return null;
+  return { r, tp };
+}
+
+// 측면 깊은 곳(가운데에서 17m↑)의 동료가 박스 안의 나에게 크로스를 올릴 수 있는 모양인지. 되면 공이 갈 자리
+// crossTo: [x, 가운데에서 y(+는 크로스 올리는 쪽·니어, −는 먼 쪽), 띄우는지, 동료가 최소 이만큼 깊이]
+function crossInAt(ws, H, M) {
+  const [x, dy, , minX] = ws.crossTo, sg = H.y < 34 ? -1 : 1, tp = [x, 34 + sg * dy];
+  if (M.pos !== "FW" || H.x < minX || Math.abs(H.y - 34) < 17 || M.x < 68) return null;
+  const dm = Math.hypot(M.x - tp[0], M.y - tp[1]), dh = Math.hypot(H.x - tp[0], H.y - tp[1]);
+  if (dm > 21 || dh < 12 || dh > 44) return null;                                      // 내가 2.5초 안에 닿는 자리, 너무 짧거나 긴 크로스는 아님
+  return tp;
+}
+// 내가 측면 깊은 곳에서 공을 가졌음 → 연출에서 엔드라인 앞까지 몰고 감 (각 없는 슈팅 장면)
+const selfBylineOk = (S, M) => S.holder === M && M.x > 80 && Math.abs(M.y - 34) > 17.5 && Math.abs(M.y - 34) < 27;
+
+// 상대가 우리 진영 측면 깊은 곳에서 공을 가졌고, 박스 안에 내가 막을 상대 공격수가 있음 → 그 선수 머리 쪽으로 크로스 (df_cross)
+function oppCrossAt(S, H, M) {
+  if (M.pos !== "DF" || H.x > 36 || Math.abs(H.y - 34) < 14 || M.x > 24 || Math.abs(M.y - 34) > 15) return null;
+  const r = ri(S, "them", p => p !== H && (p.pos === "FW" || p.pos === "MF") && p.x < 26 && Math.abs(p.y - 34) < 14 && Math.hypot(p.x - M.x, p.y - M.y) < 12).sort((a, b) => Math.hypot(a.x - M.x, a.y - M.y) - Math.hypot(b.x - M.x, b.y - M.y))[0];
+  if (!r) return null;
+  const tp = [clamp((r.x + M.x) / 2, 7, 15), clamp(r.y + (34 - r.y) * 0.3, 27, 41)];       // 박스 안, 나와 그 선수 사이 (페널티 지점 앞)
+  if (Math.hypot(tp[0] - H.x, tp[1] - H.y) > 40) return null;
+  return { r, tp };
 }
 
 // 지금 나올 수 있는 장면 (포지션, 능력치, 날씨, 경기 흐름, 시간, 점수 조건)
@@ -8213,7 +8283,7 @@ const holderOk = (ctx, s, S, m) => { const sc = SCENES[s.id];
   const them = (s.poss || "us") === "them";
   if (!!sc?.arrive !== !!ctx.arrive && (sc?.arrive || (S && ctx.holder && Math.hypot(ctx.holder.x - meOf(S).x, ctx.holder.y - meOf(S).y) > 22))) return false;   // 2선 침투 장면은 그 상황에서만 (그 상황에서 다른 장면은 가까울 때만)
   if (!!sc?.race !== !!ctx.race && (sc?.race || (S && ctx.holder && Math.hypot(ctx.holder.x - meOf(S).x, ctx.holder.y - meOf(S).y) > 16))) return false;   // 뒷공간 경주도 마찬가지
-  if (sc?.side && S) { const M = meOf(S), y = (sc.holder || them ? ctx.holder : M)?.y ?? S.ball.y; if (Math.abs(y - 34) < sc.side) return false; }
+  if (sc?.side && S && !ctx.callIn) { const M = meOf(S), y = (sc.holder || them ? ctx.holder : M)?.y ?? S.ball.y; if (Math.abs(y - 34) < sc.side) return false; }
   if (sc?.counter && S && S.t - (S.wonAt ?? -99) > (sc.even ? 12 : 8)) return false;
   if (s.detail && m?.detail?.side && S) {                                             // 왼쪽 윙어·풀백의 장면은 실제로 왼쪽에서 (오른쪽도 마찬가지)
     const y = (sc?.holder && !sc.farSide || them ? ctx.holder : meOf(S))?.y ?? S.ball.y;
@@ -8221,7 +8291,8 @@ const holderOk = (ctx, s, S, m) => { const sc = SCENES[s.id];
   }
   if (!!sc?.dummy !== !!ctx.dummy || !!sc?.screen !== !!ctx.screen) return false;     // 공격수 흘려 보내기·골키퍼 앞 장면은 그 상황에서만 (그 상황에서는 그 장면만)
   if (S && sc && !newSceneOk(ctx, sc, S, m)) return false;                             // 현대 축구 장면들의 경기장 조건 (아래)
-  if (S && m && !textOk(ctx, s, sc, S, m)) return false;                              // 장면 문장이 말하는 모양이 실제로 있을 때만 (해설과 바둑알이 어긋나지 않게)
+  if (ctx.callIn && (sc?.callIn !== ctx.callIn || ctx.forId !== s.id)) return false;                         // 길게 차 주는 상황은 그 장면만
+  if (S && m && !ctx.callIn && !textOk(ctx, s, sc, S, m)) return false;                              // 장면 문장이 말하는 모양이 실제로 있을 때만 (해설과 바둑알이 어긋나지 않게)
   if (sc?.farSide && S && (!ctx.holder || (ctx.holder.y < 34) === (meOf(S).y < 34))) return false;   // 반대편 측면 동료가 공을 가졌을 때만
   if (sc?.overlap) {                                                                  // 오버래핑: 같은 쪽 측면 동료가 상대 진영에서 공을 잡았고 나는 그 뒤·바깥에 있을 때만
     const H = ctx.holder, M = S && meOf(S);
@@ -8233,7 +8304,7 @@ const holderOk = (ctx, s, S, m) => { const sc = SCENES[s.id];
     let se = null; for (let i = S.ev.length - 1; i >= 0 && S.ev[i].t > S.t - 6; i--) if (S.ev[i].type === "shotEnd") { se = S.ev[i]; break; }
     if (!se || se.team !== sc.after || !["save", "post", "block"].includes(se.result) || (sc.after === "us" && se.me)) return false;
   }
-  if (sc?.tight != null && m && sceneDist(m, s) > sc.tight) return false;            // "박스 안"처럼 자리가 분명한 장면은 그 자리에서만
+  if (sc?.tight != null && m && sceneDist(m, s) > sc.tight && !(sc.selfByline && S && selfBylineOk(S, meOf(S)))) return false;            // "박스 안"처럼 자리가 분명한 장면은 그 자리에서만
   if (!sc || sc.holder !== "df") return true;
   if (!["DF", "GK"].includes(ctx.holder?.pos)) return false;
   if (sc.mark2 && ctx.holder.pos === "DF" && !["LCB", "RCB"].includes(ctx.holder.role)) return false;   // "센터백 두 명" 장면은 센터백(이나 골키퍼)이 공을 가졌을 때만
@@ -8267,9 +8338,10 @@ function pickSituation(state, m, ctx) {
 function wantFits(m, want, ctx) {
   const s = want.sit;
   if ((s.poss || "us") !== ctx.poss || !holderOk(ctx, s, m.sim, m)) return false;
+  if (ctx.callIn) return true;                                                     // 동료가 차 주는 장면은 공이 떨어질 자리가 장면 자리 (연출)
   const c = ctxFits(ctx, want.cat), wait = m.minute - want.t0;
   if (c < (wait < 1.5 ? 1 : wait < 3 ? 0.5 : 0.3)) return false;                    // 처음엔 딱 맞는 상황만, 기다릴수록 비슷한 상황도
-  if (want.cat.includes(":")) return true;
+  if (want.cat.includes(":") || SCENES[s.id]?.selfByline && selfBylineOk(m.sim, meOf(m.sim))) return true;   // 엔드라인까지는 연출에서 몰고 감                           // 길게 차 주는 장면은 공이 떨어질 자리가 장면 자리 (연출)
   return geoFit(m, s) >= Math.max(0.12, 0.3 * Math.max(0, 1 - wait / 3));         // 아무리 오래 기다려도 장면 자리에서 13m 안
 }
 // 개발용: wantFits가 어디서 막히는지 (ctx 없음 / 공 가진 쪽 / 공 가진 선수·경기장 조건 / 상황 종류 / 자리)
@@ -8293,8 +8365,8 @@ function wantPatience(m, want, ctx) {
   if (want.cat.includes(":")) return 6;
   const pt = SCENES[want.sit.id]?.patience; if (pt) return pt;                      // 경기장 모양이 드물게 생기는 장면은 조금 더 기다림 (data/scenes.js patience)
   // 미드필더는 장면 종류가 많고 자리 조건이 있으므로 기다리지 않고 지금 상황에 맞는 장면으로 (선택 상황이 많아지게). 상대 공 장면으로만 조금 기다림
-  if (m.myPos === "MF") return (want.sit.poss || "us") === ctx.poss ? 0.5 : (want.sit.poss || "us") === "us" ? 5 : 1;
-  if ((want.sit.poss || "us") === ctx.poss) return 3;
+  if (m.myPos === "MF") return (want.sit.poss || "us") === ctx.poss ? 2 : (want.sit.poss || "us") === "us" ? 5 : 1;
+  if ((want.sit.poss || "us") === ctx.poss) return m.myPos === "FW" ? 4 : 3;      // 공격수는 장면 모양(측면 깊은 곳 동료·크로스)이 드물게 생기므로 조금 더
   return 4.5;
 }
 // 세트피스 장면을 기다리는데 오래 안 나오면, 그럴듯한 순간에 경기장에서 만들어 줌 (코너킥, 박스 앞 반칙, 스로인…)
@@ -8338,7 +8410,7 @@ function startMoment(state, m, sit, ctx, lines, ts) {
   const last = S.chain[S.chain.length - 1];
   if (last && last.team === "us" && !last.me && last.ri) passer = last;            // 방금 나에게 공을 준 동료 (공이 오는 문장에만)
   if (ctx.cat === "mate" && holder?.team === "us" && sc.holder === "df" && holder.pos === "GK") mateP = nearestP(S, "us", holder, p => p.pos === "DF" && !p.me && p.ri);   // 골키퍼가 수비수에게 주며 시작
-  else if (ctx.cat === "mate" && holder?.team === "us") mateP = holder;
+  else if ((ctx.cat === "mate" || ctx.callIn) && holder?.team === "us") mateP = holder;
   else if (ctx.cat === "set:corner" || ctx.cat === "set:throw" || ctx.cat === "set:cornerKick") mateP = ctx.set?.taker && ctx.set.taker !== M ? ctx.set.taker : nearestP(S, "us", { x: 96, y: 34 }, p => !p.me && p.ri && p.pos !== "GK");
   else if (poss === "us") {
     // 같이 공격할 동료: 내 앞쪽(또는 나란히)에 있는 공격수·미드필더 중 가까운 선수. 없으면 방금 패스한 동료
@@ -8391,7 +8463,10 @@ function startMoment(state, m, sit, ctx, lines, ts) {
     const o = nearIn("them", M, () => true);
     if (o) { sv.opp = o.name; m.staging.oppP = o; o.ov = OVs(o.x, o.y, 0.3); }
   }
-  if (sc.gk && poss === "us") {                            // 골키퍼와 1 대 1: 앞을 막던 수비는 이미 제쳐서 내 뒤에서 쫓아옴
+  if (sc.gk && poss === "us" && ctx.callIn === "behind") {   // 수비 뒤로 넘어온 공: 나란히 서 있던 수비가 공을 받은 내 뒤에서 쫓아옴
+    const [tx, ty] = ctx.tp;
+    for (const p of ri(S, "them", p => p.x > M.x - 4 && Math.abs(p.y - ty) < 16)) moves.push([p, tx - range(2, 4), clamp(p.y + (ty - p.y) * 0.6 + (p.y < ty ? -1.5 : 1.5), 3, 65), 8.4]);
+  } else if (sc.gk && poss === "us") {                            // 골키퍼와 1 대 1: 앞을 막던 수비는 이미 제쳐서 내 뒤에서 쫓아옴
     for (const p of ri(S, "them", p => p.x > M.x - 1 && Math.abs(p.y - M.y) < (p.x - M.x) * 0.6 + 6 && p.x < M.x + 14)) moves.push([p, M.x - range(2, 4), clamp(p.y + (p.y < M.y ? -1.5 : 1.5), 3, 65), 8.4]);
   }                                        // 장면 연출 동안 움직일 선수 [선수, x, y, 속도] (다 오면 선택지)
   if (sc.scan || sc.tri) {                                 // 흘려 보낼 동료(옆·뒤) / 삼각형을 만드는 동료
@@ -8427,6 +8502,14 @@ function startMoment(state, m, sit, ctx, lines, ts) {
     if (w) { sv.wing = w.name; moves.push([w, 88.5, 34 + (holder.y < 34 ? 2 : -2), 8.4]); }
     moves.push([M, 96.5, 34 + (holder.y < 34 ? -5 : 5), 8.4]);   // 나는 니어포스트 앞
     moves.push([holder, Math.max(holder.x, 97.5), holder.y < 34 ? 15.5 : 52.5, 7.4, "carry"]);   // 측면 동료는 박스 모서리 안쪽 골라인 쪽 깊은 곳까지 몰고 들어감
+  }
+  if (sc.bylineRun && holder?.team === "us" && !holder.me) {   // 컷백: 측면 동료가 박스 모서리 안쪽 골라인 앞까지 몰고 들어가고, 나는 박스 바깥 페널티 지점 쪽으로
+    const sg = holder.y < 34 ? -1 : 1;
+    moves.push([holder, Math.max(holder.x, 97.5), 34 + sg * 18.5, 7.4, "carry"]);
+    moves.push([M, Math.max(M.x, 85), 34 + sg * 4, 8.4]);
+  }
+  if (sc.selfByline && S.holder === M && selfBylineOk(S, M) && M.x < 96) {   // 각 없는 슈팅: 내가 엔드라인 앞까지 몰고 감
+    moves.push([M, 98.5, 34 + (M.y < 34 ? -1 : 1) * clamp(Math.abs(M.y - 34), 17.5, 20), 7.4, "carry"]);
   }
   if (sc.underlap && holder?.team === "us") {              // 측면 동료의 안쪽 뒤로
     moves.push([M, holder.x - 6, 34 + (holder.y - 34) * 0.5, 8.4]);
@@ -8491,19 +8574,31 @@ function startMoment(state, m, sit, ctx, lines, ts) {
     hint.dur = Math.max(hint.dur || 0, 1.2);
   }
   if (moves.length) hint.moves = moves;
+  if (ctx.crosser && S.holder === ctx.crosser && !S.ball.fl && holder) {   // 상대 크로스: 측면 상대가 박스로 올리고, 나는 그 공격수에게 붙어 공중볼 다툼
+    const tp = ctx.tp;
+    M.ov = OVs(tp[0] - 1, tp[1] + (M.y < tp[1] ? -0.8 : 0.8), 8.6);
+    holder.ov = OVs(tp[0] + 0.6, tp[1], 8.4);
+    passTo(S, ctx.crosser, holder, tp, { force: true, air: true, kind: "long" });
+    if (S.ball.fl) { const need = Math.max(Math.hypot(holder.x - tp[0], holder.y - tp[1]), Math.hypot(M.x - tp[0], M.y - tp[1])) / 8 + 0.1; if (S.ball.fl.T < need) S.ball.fl.T = need; }
+    hint.meGap = 1.2;
+    m.staging.waitRecv = S.t + 4.5; m.staging.hint = hint; m.staging.recvBy = holder; m.staging.mustRecv = true;
+    S.bias = null;
+    return;
+  }
   // 내가 받아야 하는 장면인데 동료가 공을 갖고 있으면: 그 동료가 실제로 나에게 패스한 뒤 장면 시작
   const passer2 = S.holder, D = stageHolder;                 // D: 장면이 말하는 공 가진 선수
-  if (!setPiece && poss === "us" && D && passer2 && passer2 !== D && passer2.team === "us" && !S.ball.fl && Math.hypot(passer2.x - D.x, passer2.y - D.y) < (ctx.longIn ? 60 : 45)) {
+  if (!setPiece && poss === "us" && D && passer2 && passer2 !== D && passer2.team === "us" && !S.ball.fl && Math.hypot(passer2.x - D.x, passer2.y - D.y) < (ctx.longIn || ctx.callIn ? 60 : 45)) {
     let tp = [clamp(D.x + (D === M ? 1 : 0), 2, 103), D.y];
+    if (ctx.callIn && D === M) { tp = ctx.tp; M.ov = OVs(tp[0] - 0.6, tp[1], 8.6); }   // 공이 떨어질 자리로 뛰어감
     if (sc.invert && D === M) {                               // 인버티드 풀백: 내가 안쪽(미드필더 자리)으로 좁혀 들어가며 받음
       tp = [clamp(M.x + 3, 30, 58), 34 + (M.y < 34 ? -1 : 1) * 9];
       M.ov = OVs(tp[0] - 0.6, tp[1], 8.4);
     }
-    passTo(S, passer2, D, tp, ctx.longIn ? { force: true, air: true, kind: "long" } : { force: true, kind: "ground" });   // 타깃형: 나를 보고 길게
+    passTo(S, passer2, D, tp, ctx.callIn && (ctx.ground || ctx.callIn === "cross") ? (ctx.ground ? { force: true, noOff: true, kind: "ground" } : { force: true, air: true, noOff: true, kind: "long" }) : ctx.longIn || ctx.callIn ? { force: true, air: true, kind: "long" } : { force: true, kind: "ground" });   // 타깃형: 나를 보고 길게
     if (S.ball.fl) { const need = Math.hypot(D.x - S.ball.fl.x1, D.y - S.ball.fl.y1) / 8 + 0.1; if (S.ball.fl.T < need) S.ball.fl.T = need; }
-    m.staging.waitRecv = S.t + (sc.invert ? 5.5 : 4); m.staging.hint = hint; m.staging.recvBy = D; m.staging.mustRecv = !!ctx.longIn || !!sc.invert;   // 공이 실제로 와야 하는 장면
+    m.staging.waitRecv = S.t + (sc.invert ? 5.5 : 4); m.staging.hint = hint; m.staging.recvBy = D; m.staging.mustRecv = !!ctx.longIn || !!sc.invert || !!ctx.callIn;   // 공이 실제로 와야 하는 장면
     if (D === M && ctx.longIn) L(fill(pick(["{mate|이/가} 나를 보고 길게 찬다.", "{mate|이/가} 고개를 들더니 나에게 길게 올려 준다."]), { ...sv, mate: passer2.name }), "me", { toMe: true });
-    else if (D === M && !lines.some(l => l.toMe)) {
+    else if (D === M && !ctx.callIn && !lines.some(l => l.toMe)) {
       const pool = TO_ME[zone] || TO_ME.mid, t = pick(pool.filter(x => /\{mate/.test(x)));
       if (t) L(fill(t, { ...sv, mate: passer2.name }), "me", { toMe: true });
     }
