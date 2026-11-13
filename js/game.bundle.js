@@ -15113,19 +15113,24 @@ function shooting(area, status, ctl, e, done, lv = 1, tall = false) {
 // 좌표: 가로 160 × 세로 96
 function passPitch() {
   // 잔디: 세로 줄무늬 + 가로 줄무늬를 겹친 체크 무늬, 네 귀퉁이 조명탑의 빛 웅덩이
-  const stripes = Array.from({ length: 10 }, (_, i) => `<rect x="${i * 16}" y="0" width="16" height="96" fill="${i % 2 ? "#1A7C44" : "#1F8C4D"}"/>`).join("");
+  // 시간대(방과 후 노을·저녁 조명·주말 오전)에 따라 잔디색과 빛이 달라짐 (드리블·수비·스프린트 훈련과 같은 팔레트)
+  const P = pal(), night = TOD === "night";
+  const stripes = Array.from({ length: 10 }, (_, i) => `<rect x="${i * 16}" y="0" width="16" height="96" fill="${night ? (i % 2 ? "#1A7C44" : "#1F8C4D") : P.grass[i % 2]}"/>`).join("");
   const cross = Array.from({ length: 6 }, (_, i) => i % 2 ? `<rect x="0" y="${i * 16}" width="160" height="16" fill="rgba(255,255,255,.035)"/>` : "").join("");
   return `<defs>${COMMON_DEFS}
       <radialGradient id="psPool" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="rgba(255,248,215,.2)"/><stop offset="1" stop-color="rgba(255,248,215,0)"/></radialGradient>
       <radialGradient id="psFlood" cx=".5" cy=".46" r=".7"><stop offset="0" stop-color="rgba(255,250,225,.14)"/><stop offset="1" stop-color="rgba(255,250,225,0)"/></radialGradient>
-      <radialGradient id="psVig" cx=".5" cy=".5" r=".72"><stop offset=".5" stop-color="rgba(0,0,0,0)"/><stop offset="1" stop-color="rgba(2,6,20,.62)"/></radialGradient>
+      <radialGradient id="psVig" cx=".5" cy=".5" r=".72"><stop offset=".5" stop-color="rgba(0,0,0,0)"/><stop offset="1" stop-color="rgba(2,6,20,${night ? .62 : .3})"/></radialGradient>
+      <linearGradient id="psSun" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${TOD === "pm" ? "rgba(255,196,120,.26)" : "rgba(255,255,240,.16)"}"/><stop offset=".6" stop-color="rgba(255,255,255,0)"/></linearGradient>
+      <pattern id="schTurf" width="2.6" height="2.6" patternUnits="userSpaceOnUse"><circle cx=".6" cy=".8" r=".16" fill="rgba(255,255,255,.06)"/><circle cx="1.9" cy="2" r=".14" fill="rgba(0,0,0,.08)"/></pattern>
       <pattern id="psNet" width="1.4" height="1.4" patternUnits="userSpaceOnUse"><path d="M0 0 L1.4 1.4 M1.4 0 L0 1.4" stroke="rgba(255,255,255,.5)" stroke-width=".18"/></pattern>
       <filter id="psSoft"><feGaussianBlur stdDeviation=".7"/></filter>
     </defs>
-    ${stripes}${cross}
-    <rect width="160" height="96" fill="url(#psFlood)"/>
+    ${stripes}${cross}<rect width="160" height="96" fill="url(#schTurf)"/>
+    ${night ? `<rect width="160" height="96" fill="url(#psFlood)"/>
     <ellipse cx="6" cy="6" rx="62" ry="44" fill="url(#psPool)"/><ellipse cx="154" cy="6" rx="62" ry="44" fill="url(#psPool)"/>
-    <ellipse cx="6" cy="90" rx="62" ry="44" fill="url(#psPool)"/><ellipse cx="154" cy="90" rx="62" ry="44" fill="url(#psPool)"/>
+    <ellipse cx="6" cy="90" rx="62" ry="44" fill="url(#psPool)"/><ellipse cx="154" cy="90" rx="62" ry="44" fill="url(#psPool)"/>`
+    : `<rect width="160" height="96" fill="${P.warm}"/><rect width="160" height="96" fill="url(#psSun)"/>`}
     <g fill="none" stroke="rgba(255,255,255,.7)" stroke-width=".55">
       <rect x="3" y="3" width="154" height="90"/><path d="M80 3 V93"/><circle cx="80" cy="48" r="13"/>
       <rect x="3" y="26" width="20" height="44"/><rect x="137" y="26" width="20" height="44"/>
@@ -15184,6 +15189,8 @@ function passing(area, status, ctl, e, done, lv = 1, tall = false) {
   const lines = area.querySelector("#lines"), fx = area.querySelector("#fx"), pball = area.querySelector("#pball"), pspin = area.querySelector("#pspin"),
     pshadow = area.querySelector("#pshadow"), tbar = area.querySelector("#tbar"), nx = area.querySelector("#nx");
   let nextN = 1, mistakes = 0, start = performance.now(), timer, last = { x: 80, y: 48 }, ended = false;
+  const markNext = () => area.querySelectorAll("[data-n]").forEach(g => g.classList.toggle("next", +g.dataset.n === nextN));   // 다음에 누를 동료 발밑에 고리
+  markNext();
   const foeEls = [...area.querySelectorAll("[data-foe]")];
   // 공: 누를 때마다 목표를 줄 세우고, 앞 패스가 도착하면 다음으로 출발
   const ball = { x: 80, y: 48.5, from: null, to: null, t0: 0, dur: 0, peak: 0, spin: 0, queue: [] };
@@ -15208,6 +15215,7 @@ function passing(area, status, ctl, e, done, lv = 1, tall = false) {
       if (u >= 1) {
         fx.insertAdjacentHTML("beforeend", `<circle class="mgp-ring" cx="${ball.to.x.toFixed(1)}" cy="${ball.to.y.toFixed(1)}" r="6"/>`);
         const r = fx.lastElementChild; setTimeout(() => r.remove(), 520);
+        const got = ball.to.el; if (got) { got.classList.add("got"); setTimeout(() => got.classList.remove("got"), 320); }   // 받은 동료가 공을 잡아 세움
         ball.to = null; kick(now);
       }
     }
@@ -15252,9 +15260,12 @@ function passing(area, status, ctl, e, done, lv = 1, tall = false) {
       g.classList.add("ok");
       [...lines.children].forEach(l => l.classList.add("old"));
       lines.insertAdjacentHTML("beforeend", `<line x1="${last.x.toFixed(1)}" y1="${last.y.toFixed(1)}" x2="${s.x.toFixed(1)}" y2="${s.y.toFixed(1)}" class="mgp-glow"/><line x1="${last.x.toFixed(1)}" y1="${last.y.toFixed(1)}" x2="${s.x.toFixed(1)}" y2="${s.y.toFixed(1)}" class="mgp-trail"/>`);
-      ball.queue.push(tall ? { x: s.x + 8.6, y: s.y - 3.4 } : { x: s.x + 3.4, y: s.y + 8.6 });   // 받는 선수의 발밑
-      last = s; nextN++; nx.textContent = nextN <= 6 ? `다음 ${nextN}` : "완료";
-      if (nextN > 6) finish();
+      ball.queue.push(tall ? { x: s.x + 8.6, y: s.y - 3.4, el: g } : { x: s.x + 3.4, y: s.y + 8.6, el: g });   // 받는 선수의 발밑
+      { const [tx, ty] = tall ? [s.x - 19, s.y] : [s.x, s.y - 19], word = mistakes ? "좋아!" : ["착!", "착!", "좋아!", "빠르다!", "하나 더!", "완벽!"][nextN - 1];
+        fx.insertAdjacentHTML("beforeend", `<g transform="translate(${tx.toFixed(1)},${ty.toFixed(1)})${tall ? " rotate(-90)" : ""}"><text class="mgp-pop good" x="0" y="0">${word}</text></g>`);
+        const t = fx.lastElementChild; setTimeout(() => t.remove(), 720); }
+      last = s; nextN++; nx.textContent = nextN <= 6 ? `다음 ${nextN}` : "완료"; markNext();
+      if (nextN > 6) { if (!mistakes) burst(fx, s.x, s.y, { n: 16, colors: ["#FFC93C", "#FFFFFF", "#FF6B1A"], spread: 13, size: .9 }); finish(); }
     } else if (!g.classList.contains("ok")) { mistakes++; flash(g, "", 0, 0); }
   }));
   foeEls.forEach(g => g.addEventListener("pointerdown", () => {
@@ -15644,9 +15655,25 @@ function weightScene(tall = false) {
   const bricks = Array.from({ length: 9 }, (_, r) => Array.from({ length: 12 }, (_, c) =>
     `<rect x="${c * 14 + (r % 2) * 7 - 7}" y="${r * 7 + 2}" width="13.2" height="6.2" rx=".6" fill="rgba(255,255,255,${(0.025 + ((r * 7 + c * 3) % 5) * 0.006).toFixed(3)})"/>`).join("")).join("");
   const p = wtPose(1);
+  // 학교 체력단련실 창문: 시간대(방과 후 노을·저녁·주말 오전)에 따라 바깥 하늘과 들어오는 빛이 달라짐
+  const P = pal(), night = TOD === "night", wx = tall ? 5 : 1.5, ww = tall ? 17 : 11.5, wy = 20, wh = 25;
+  const win = `<g transform="translate(${wx},${wy})">
+      <rect x="-.8" y="-.8" width="${ww + 1.6}" height="${wh + 1.6}" rx=".6" fill="#2B3355"/>
+      <rect width="${ww}" height="${wh}" fill="url(#wtSky)"/>
+      ${night ? `<circle cx="${ww * 0.68}" cy="6" r="1.7" fill="#E8EEFF" opacity=".9"/><circle cx="${ww * 0.68 + 0.8}" cy="5.6" r="1.5" fill="${P.sky[1]}"/>`
+        : `<circle cx="${ww * (TOD === "pm" ? 0.3 : 0.7)}" cy="${TOD === "pm" ? 14.5 : 6}" r="${TOD === "pm" ? 2.6 : 2}" fill="${TOD === "pm" ? "#FFB45A" : "#FFF6D0"}" opacity=".95"/>`}
+      <path d="M0 ${wh - 7} Q${ww * 0.25} ${wh - 12} ${ww * 0.5} ${wh - 8.5} T${ww} ${wh - 9} V${wh} H0 Z" fill="${P.far}"/>
+      <rect y="${wh - 5.2}" width="${ww}" height="1.6" fill="${P.sea}"/>
+      <path d="M0 ${wh - 3.6} Q${ww * 0.5} ${wh - 5.4} ${ww} ${wh - 3.2} V${wh} H0 Z" fill="${P.near}"/>
+      <path d="M${ww / 2} 0 V${wh} M0 ${wh * 0.45} H${ww}" stroke="#2B3355" stroke-width=".7"/>
+      <rect width="${ww}" height="${wh}" fill="rgba(255,255,255,.05)"/>
+    </g>
+    ${night ? "" : `<path d="M${wx} ${wy + wh} L${wx + ww} ${wy + wh} L${wx + ww + 30} ${WT.H} L${wx + 6} ${WT.H} Z" fill="${TOD === "pm" ? "rgba(255,190,120,.09)" : "rgba(255,250,225,.08)"}"/>
+    <rect width="160" height="${WT.H}" fill="${TOD === "pm" ? "rgba(255,150,70,.06)" : "rgba(210,235,255,.07)"}"/>`}`;
   return `<svg viewBox="${WT.VB}" class="mg-svg mgw">
     <defs>
       <linearGradient id="wtWall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0B1030"/><stop offset="1" stop-color="#1A2350"/></linearGradient>
+      <linearGradient id="wtSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${P.sky[0]}"/><stop offset=".6" stop-color="${P.sky[1]}"/><stop offset="1" stop-color="${P.sky[2]}"/></linearGradient>
       <radialGradient id="wtSpot" cx=".44" cy="0" r=".9"><stop offset="0" stop-color="rgba(255,236,200,.32)"/><stop offset=".5" stop-color="rgba(255,236,200,.08)"/><stop offset="1" stop-color="rgba(255,236,200,0)"/></radialGradient>
       <linearGradient id="wtSteel" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5C6680"/><stop offset=".5" stop-color="#C9D1DE"/><stop offset="1" stop-color="#5C6680"/></linearGradient>
       <radialGradient id="wtPlate" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#3A3F52"/><stop offset="1" stop-color="#14161F"/></radialGradient>
@@ -15663,6 +15690,7 @@ function weightScene(tall = false) {
     <rect width="160" height="${WT.H}" fill="url(#wtWall)"/>${bricks}
     <rect x="0" y="9" width="160" height="5" fill="#FF6B1A" opacity=".85"/><rect x="0" y="14" width="160" height="1.2" fill="#1F2C8F"/>
     <text x="${WT.BX}" y="12.9" class="mgw-banner">GOHEUNG FC · STRENGTH</text>
+    ${win}
     <!-- 거울과 벽 소품 -->
     <rect x="96" y="22" width="${tall ? 22 : 58}" height="40" rx="1" fill="url(#wtMirror)" stroke="#2B3355" stroke-width=".8"/>
     <path d="M100 24 L106 24 L98 60 L96 60 Z M110 24 L113 24 L105 60 L102 60 Z" fill="rgba(255,255,255,.05)"/>
@@ -15764,7 +15792,7 @@ function weight(area, status, ctl, e, done, lv = 1, tall = false) {
   const tol = (1.6 + e * 1.4) * (lv >= 4 ? 0.8 : 1);                // LV.4 판정 범위 좁아짐
   let dur = baseDur;
   const nextDur = () => { dur = lv >= 3 ? baseDur * (0.75 + Math.random() * 0.5) : baseDur; };   // LV.3부터 속도가 매번 바뀜
-  let rep = 0, score = 0, t0 = performance.now(), raf, lock = false, rLogic = 26;
+  let rep = 0, score = 0, t0 = performance.now(), raf, lock = false, rLogic = 26, streak = 0;   // streak: 연속 '완벽' 횟수
   // 자세: q를 목표로 부드럽게 따라감 (스프링). 들어 올릴 때는 결과에 따라 빠르기·흔들림이 다름
   let q = 1, qv = 0, qTarget = 1, stiff = 60, tilt = 0, tiltV = 0, shakeUntil = 0, lift = null;
   const loop = now => {
@@ -15806,14 +15834,15 @@ function weight(area, status, ctl, e, done, lv = 1, tall = false) {
     dots[rep].className = pts === 2 ? "top" : pts === 1 ? "hit" : "miss";
     rep++;
     ptsEl.textContent = `${score}점`;
-    status.innerHTML = `<b class="${pts ? "up" : "down"}">${pts === 2 ? "완벽!" : pts === 1 ? "좋아" : "자세가 무너졌다"}</b>`;
+    streak = pts === 2 ? streak + 1 : 0;
+    status.innerHTML = `<b class="${pts ? "up" : "down"}">${pts === 2 ? (streak >= 2 ? `완벽! ${streak}번 연속` : "완벽!") : pts === 1 ? "좋아" : "자세가 무너졌다"}</b>`;
     ring.classList.add(pts === 2 ? "perfect" : pts === 1 ? "good" : "miss");
     lift = { pts, t: performance.now() };
     if (pts) { tiltV = pts === 2 ? 70 : 30; chalk(wtPose(q)); } else shakeUntil = performance.now() + 380;
     if (pts === 2) {
       const pb = wtZ(wtPose(1).bar);
       fx.insertAdjacentHTML("beforeend", `<circle class="mg-shock" cx="${WT.CX}" cy="${WT.CY}" r="${(10 * WT.K).toFixed(1)}"/><circle class="mg-shock" cx="${pb[0].toFixed(1)}" cy="${pb[1].toFixed(1)}" r="7"/>`);
-      burst(fx, pb[0], pb[1] - 4, { n: 14, spread: 14 });
+      burst(fx, pb[0], pb[1] - 4, { n: 14 + Math.min(3, streak - 1) * 5, spread: 14 + Math.min(3, streak - 1) * 3 });   // 연속으로 완벽하면 더 크게
       const sh = [...fx.querySelectorAll(".mg-shock")]; setTimeout(() => sh.forEach(x => x.remove()), 650);
     }
     if (pts >= 1) {
@@ -16424,7 +16453,7 @@ __m["js/ui/pitch.js"] = (function () {
 // 좌표는 엔진 기준(우리 팀이 오른쪽 +x로 공격, 105×68). 후반 진영 교체는 그릴 때만 뒤집음
 // frame: Float32Array [시뮬레이션 시각, 공 x, 공 y, 공 높이, 선수0 x, 선수0 y, 선수1 x, ...] (players와 같은 순서)
 
-function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false }) {
+function createPitch({ svg, players, dotEls, ballEl, shadowEl, trailEl = null, calm = false }) {
   const N = players.length;
   // 처음 그릴 때 쓴 CSS 위치는 지우고 SVG transform 속성으로 (아이폰 사파리에서 더 부드러움)
   for (const p of players) { const el = dotEls[p.id]; if (el) el.style.transform = ""; }
@@ -16448,7 +16477,26 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false }) {
     put(shadowEl, `translate(${x.toFixed(2)} ${(y + 0.7).toFixed(2)}) scale(${Math.max(0.5, 1 - z * 0.07).toFixed(3)})`);
     const op = Math.max(0.25, 1 - z * 0.1).toFixed(2);
     if (shadowEl._o !== op) { shadowEl._o = op; shadowEl.setAttribute("opacity", op); }
+    // 공 가진 선수: 공이 낮고 1.7m 안에 있는 가장 가까운 바둑알의 고리를 밝힘 (그림만, 판정과 무관)
+    let hk = -1, hd = 1.7 * 1.7;
+    if (z < 0.8) for (let k = 0; k < N; k++) { const dx = pos[4 + k * 2] - pos[1], dy = pos[5 + k * 2] - pos[2], d = dx * dx + dy * dy; if (d < hd) { hd = d; hk = k; } }
+    if (hk !== hasK) { if (hasK >= 0) dotEls[players[hasK].id]?.classList.remove("has"); if (hk >= 0) dotEls[players[hk].id]?.classList.add("has"); hasK = hk; }
+    // 공 꼬리: 빠르게 날아가는 공(패스·슈팅) 뒤에 0.28초 동안 지나온 길을 옅게
+    if (trailEl) {
+      const by = y - z, lastT = trail.length ? trail[trail.length - 1] : null;
+      if (lastT && (S.clock < lastT[2] || Math.hypot(x - lastT[0], by - lastT[1]) > 6)) trail.length = 0;   // 이어지지 않는 장면(진영 교체·건너뛰기)
+      if (!lastT || S.clock > lastT[2]) trail.push([x, by, S.clock]);
+      while (trail.length && trail[0][2] < S.clock - 0.28) trail.shift();
+      let d = "", o = "0";
+      if (trail.length > 2) {
+        const a = trail[0], dt = S.clock - a[2], sp = dt > 0.05 ? Math.hypot(x - a[0], by - a[1]) / dt : 0;
+        if (sp > 13) { d = "M" + trail.map(q => `${q[0].toFixed(1)} ${q[1].toFixed(1)}`).join("L"); o = Math.min(0.5, 0.15 + (sp - 13) / 40).toFixed(2); }
+      }
+      if (trailEl._d !== d) { trailEl._d = d; trailEl.setAttribute("d", d); }
+      if (trailEl._o !== o) { trailEl._o = o; trailEl.setAttribute("opacity", o); }
+    }
   }
+  let hasK = -1; const trail = [];
   // 시각 t의 모습 (앞뒤 기록 사이를 이어서)
   function sample(t) {
     const B = S.buf;
@@ -16582,15 +16630,31 @@ function pitchSvg(players, kit) {
     <g class="lines"><rect x="1" y="1" width="103" height="66"/><line x1="52.5" y1="1" x2="52.5" y2="67"/>
       <circle cx="52.5" cy="34" r="9.15"/><rect x="1" y="13.85" width="16.5" height="40.3"/><rect x="87.5" y="13.85" width="16.5" height="40.3"/>
       <rect x="1" y="24.85" width="5.5" height="18.3"/><rect x="98.5" y="24.85" width="5.5" height="18.3"/>
-      <rect x="-1" y="30.3" width="2" height="7.4" class="goal"/><rect x="104" y="30.3" width="2" height="7.4" class="goal"/></g>
+      <rect x="-1" y="30.3" width="2" height="7.4" class="goal"/><rect x="104" y="30.3" width="2" height="7.4" class="goal"/>
+      <path d="M17.5 26.7 A9.15 9.15 0 0 1 17.5 41.3"/><path d="M87.5 26.7 A9.15 9.15 0 0 0 87.5 41.3"/>
+      <path d="M1 2 A1 1 0 0 0 2 1"/><path d="M103 1 A1 1 0 0 0 104 2"/><path d="M2 67 A1 1 0 0 0 1 66"/><path d="M104 66 A1 1 0 0 0 103 67"/>
+      <circle cx="52.5" cy="34" r=".45" class="spot"/><circle cx="12" cy="34" r=".45" class="spot"/><circle cx="93" cy="34" r=".45" class="spot"/></g>
     <g class="netfx"></g>
     <ellipse class="bshadow" rx="1.25" ry=".55" style="transform:translate(52.5px,34.7px)"/>
     ${players.map(p => `<g class="dot ${p.team} ${p.pos === "GK" ? "gk" : ""} ${p.me ? "me" : ""}" data-id="${p.id}" style="transform:translate(${p.x}px,${p.y}px)">
-      <circle r="4" class="ring"/><circle r="2.3" class="body"/><text y="0.75" class="no">${p.number}</text><text y="-4.3" class="tag">나</text></g>`).join("")}
+      <circle r="2.3" class="pop"/><circle r="4" class="ring"/><circle r="2.3" class="body"/><text y="0.75" class="no">${p.number}</text><text y="-4.3" class="tag">나</text><text y="-3.3" class="nm"></text></g>`).join("")}
+    <path class="btrail" d=""/>
     <g class="ball" style="transform:translate(52.5px,34px)"><circle r="1.2"/></g>
   </svg>`;
 }
 
+// 축구 낱말 풀이: 선택 창에 어려운 말이 나오면 한 줄로 풀어 줌. 낱말마다 세 번까지만 (게임을 켜 둔 동안)
+const GLOSS = [["컷백", "골라인 근처까지 들어간 뒤, 뒤쪽 동료에게 짧게 내주는 패스"], ["니어포스트", "공과 가까운 쪽 골대"], ["탈압박", "달려드는 상대를 벗겨 내고 빠져나오는 것"],
+  ["오버래핑", "측면 동료의 바깥쪽을 뒤에서 앞질러 달려 나가는 움직임"], ["언더래핑", "측면 동료의 안쪽으로 파고드는 움직임"], ["세컨드볼", "서로 다툰 뒤에 흘러나온 공"],
+  ["빌드업", "뒤에서부터 패스로 차근차근 공격을 만들어 가는 것"], ["하프스페이스", "측면과 가운데 사이의 통로"], ["원투 패스", "주고 나서 바로 다시 받는 패스"]];
+const glossSeen = new Map();
+function glossOf(pd) {
+  const all = [pd.text, ...pd.choices.map(c => c.label)].join(" ");
+  const g = GLOSS.find(([w]) => all.includes(w) && (glossSeen.get(w) || 0) < 3);
+  if (!g) return "";
+  glossSeen.set(g[0], (glossSeen.get(g[0]) || 0) + 1);
+  return `<p class="mo-gloss"><b>${g[0]}</b> ${g[1]}</p>`;
+}
 const LINE_CLASS = { info: "", us: "us", them: "them", "goal-us": "goal", "goal-me": "goal mine", "goal-them": "goal against",
   me: "me", "me-auto": "me auto", "me-good": "me good", "me-bad": "me bad", whistle: "whistle", coach: "coach", stat: "stat", card: "card" };
 const ICON = { "goal-us": "⚽ ", "goal-me": "⚽ ", "goal-them": "", card: "🟨 ", whistle: "", stat: "📊 " };
@@ -16630,7 +16694,7 @@ function showMatch(app, m, onDone) {
   const svg = root.querySelector(".pitch");
   const flash = root.querySelector("#flash");
   const dotEls = Object.fromEntries([...svg.querySelectorAll(".dot")].map(el => [el.dataset.id, el]));
-  const ballEl = svg.querySelector(".ball"), shadowEl = svg.querySelector(".bshadow"), netFx = svg.querySelector(".netfx");
+  const ballEl = svg.querySelector(".ball"), shadowEl = svg.querySelector(".bshadow"), netFx = svg.querySelector(".netfx"), trailEl = svg.querySelector(".btrail");
   // 세로 화면: 전광판·선택지 높이를 빼고 남은 만큼만 경기장을 키움 (중계 줄은 최소 64px 남김)
   const pitchWrap = root.querySelector("#pitch"), boardEl = root.querySelector(".board");
   const narrow = () => innerWidth < 900 && !(matchMedia("(orientation: landscape) and (max-height: 620px)").matches);
@@ -16653,7 +16717,31 @@ function showMatch(app, m, onDone) {
   const SX = x => (flipped ? 105 - x : x);
   // 움직임 줄이기(윈도우 '애니메이션 효과' 끔, 안드로이드 '애니메이션 삭제', 아이폰 '동작 줄이기')를 켜 둬도 경기장은 그대로 움직임.
   // 바둑알 움직임이 경기 자체라서. 골 장면 화면 확대·내 선수 고리 깜빡임 같은 꾸밈만 끔 (HANDOFF §46)
-  const pitch = createPitch({ svg, players, dotEls, ballEl, shadowEl, calm: false });
+  const pitch = createPitch({ svg, players, dotEls, ballEl, shadowEl, trailEl, calm: false });
+  // 문장에 이름이 나온 선수: 바둑알 위에 이름표를 잠깐 띄움 (글과 화면을 이어 줌). 한 번에 셋까지, 나는 '나' 표시가 있어 뺌
+  const saying = [];                                                    // 지금 이름표가 떠 있는 바둑알 (오래된 것부터)
+  const unsay = el => { el.classList.remove("say"); clearTimeout(el._say); const i = saying.indexOf(el); if (i >= 0) saying.splice(i, 1); };
+  function nameTags(text, ms = 2400) {
+    if (!text) return;
+    const hit = players.filter(tok => !tok.me && tok.name && tok.name.length >= 2 && text.includes(tok.name));
+    if (!hit.length || hit.length > 3) return;                          // 명단처럼 이름이 줄줄이 나오는 줄은 건너뜀
+    for (const tok of hit) {
+      const el = dotEls[tok.id], nm = el?.querySelector(".nm"); if (!nm || el.classList.contains("me")) continue;
+      unsay(el); saying.push(el); while (saying.length > 3) unsay(saying[0]);   // 한 번에 셋까지만 (빠르게 보기에서 줄이 몰려도)
+      nm.textContent = tok.name;
+      el.classList.add("say"); svg.insertBefore(el, trailEl);          // 이름표가 다른 바둑알에 가리지 않게 위로
+      el._say = setTimeout(() => unsay(el), ms);
+    }
+    raiseMe();
+  }
+  // 내 선택의 결과: 내 바둑알에서 고리가 퍼짐 (성공 초록, 실패 빨강)
+  function mePop(good) {
+    const t = players.find(x => x.me), el = t && dotEls[t.id]; if (!el) return;
+    el.classList.remove("pop-good", "pop-bad"); void el.getBoundingClientRect();
+    el.classList.add(good ? "pop-good" : "pop-bad");
+    clearTimeout(el._pop); el._pop = setTimeout(() => el.classList.remove("pop-good", "pop-bad"), 900);
+    if (!good) buzz(25);
+  }
   m.record = true;
   pitch.load([frameNow(m.sim)]);
   // 골 장면: 골문 쪽으로 화면이 살짝 다가가고, 골망이 출렁임
@@ -16776,6 +16864,8 @@ function showMatch(app, m, onDone) {
     }
     if (l.injuredOff) { const tok = players.find(x => x.me); if (tok) swapToken(tok, l.injuredOff, false); }
     addLine(l);
+    if (!l.silent) nameTags(l.t);
+    if (l.k === "me-good" || l.k === "me-bad") mePop(l.k === "me-good");
     if (l.score) shown = l.score.slice();
     if (l.minute != null) shownMin = l.minute;
     if (l.half2 || (l.minute != null && l.minute > HALF_MIN)) setHalf(true);   // 후반 킥오프 문장부터 진영 교체
@@ -16884,8 +16974,9 @@ function showMatch(app, m, onDone) {
   function showMoment() {
     const pd = m.pending;
     shownMin = m.minute; updateBoard();
+    nameTags(pd.text, 6000);
     ctl.innerHTML = `<div class="moment" role="group" aria-label="선택">
-      <p class="mo-text"><span class="num">${pd.so ? "PK" : `${m.minute}'`}</span> ${esc(pd.text)}</p>
+      <p class="mo-text"><span class="num">${pd.so ? "PK" : `${m.minute}'`}</span> ${esc(pd.text)}</p>${glossOf(pd)}
       <div class="mo-choices">${pd.choices.map((c, i) => `<button class="mo-btn" data-c="${i}">
         <span>${c.signature ? `<b class="sigb">★ 특기</b> ` : ""}${esc(c.label)}${c.follow ? ` <b class="follow">지시</b>` : ""}${c.timing ? ` <b class="tmark" title="타이밍 버튼">⏱</b>` : ""}</span><span class="lv ${c.level === "높음" ? "hi" : c.level === "보통" ? "mid" : "lo"}">${c.level}</span></button>`).join("")}</div>
       <button class="linkbtn" data-autopick>알아서 하기</button>

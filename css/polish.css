@@ -623,4 +623,33 @@ body:has(#modal-root .backdrop) .fs-btn { opacity: 0; pointer-events: none; }
 .mg-shoot .gk-arm { transform-box: view-box; transition: transform .22s cubic-bezier(.2,.8,.3,1); }
 .mg-shoot .gk-arm[data-side="L"] { transform-origin: -4.6px -23.2px; }
 .mg-shoot .gk-arm[data-side="R"] { transform-origin: 4.6px -23.2px; }
-@media (prefers-reduced-motion: reduce) { 
+@media (prefers-reduced-motion: reduce) { .mg-shoot .gk-arm { transition: none; } }
+
+/* ── 경기장 꾸밈 (HANDOFF §56): 이름표, 공 가진 선수, 공 꼬리, 내 선택 결과 고리, 경기장 선 ── */
+.pitch .lines .spot { fill: rgba(255, 255, 255, .8); stroke: none; }
+.pitch .btrail { fill: none; stroke: #fff; stroke-width: .55; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.pitch .dot .nm { display: none; font: 800 2.3px var(--body, sans-serif); text-anchor: middle; fill: #fff; stroke: rgba(8, 20, 12, .85); stroke-width: .55; paint-order: stroke; pointer-events: none; }
+.pitch .dot.say .nm { display: block; animation: nmIn .25s ease-out; }
+.pitch .dot.them.say .nm { fill: #FFE1DA; }
+.pitch .dot.say .ring { stroke: rgba(255, 255, 255, .9); stroke-width: .5; }
+.pitch .dot.has:not(.me) .ring { stroke: rgba(255, 255, 255, .75); stroke-width: .45; }
+.pitch .dot.me.say .ring, .pitch .dot.me.has .ring { stroke: #FFC93C; }
+@keyframes nmIn { from { opacity: 0; transform: translateY(1px); } to { opacity: 1; transform: none; } }
+.pitch .dot .pop, .pitch .dot.me .pop { fill: none !important; stroke: none; pointer-events: none; }
+.pitch .dot.pop-good .pop { stroke: #5BE38A; animation: mePop .8s ease-out forwards; }
+.pitch .dot.pop-bad .pop { stroke: #FF6A5A; animation: mePop .8s ease-out forwards; }
+.pitch .dot .pop { transform-box: fill-box; transform-origin: center; }
+@keyframes mePop { from { transform: scale(1); stroke-width: .9; opacity: .95; } to { transform: scale(3.6); stroke-width: .12; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pitch .dot.say .nm, .pitch .dot.pop-good .pop, .pitch .dot.pop-bad .pop { animation: none; } .pitch .dot.pop-good .pop, .pitch .dot.pop-bad .pop { opacity: 0; } }
+
+/* ── 패스 훈련 (HANDOFF §56): 다음 차례 고리, 받는 동료, 성공 문구 ── */
+.mgp-mate.next > circle:first-child { fill: rgba(255, 201, 60, .14); stroke: #FFC93C; stroke-width: .6; stroke-dasharray: 3 2; animation: mgpnext 1.1s ease-in-out infinite; }
+@keyframes mgpnext { 50% { fill: rgba(255, 201, 60, .28); stroke-width: 1; } }
+.mgp-mate.got .mgp-body { animation: mgpgot .3s ease-out; }
+@keyframes mgpgot { 40% { transform: translateY(-1.6px) scale(1.06); } }
+.mgp-pop.good { fill: #FFD75A; font-size: 5.6px; }
+@media (prefers-reduced-motion: reduce) { .mgp-mate.next > circle:first-child, .mgp-mate.got .mgp-body { animation: none; } }
+
+/* ── 축구 낱말 풀이 (선택 창) ── */
+.mo-gloss { margin: 2px 0 6px; font-size: 12.5px; line-height: 1.35; color: var(--mute, #9aa3b5); word-break: keep-all; }
+.mo-gloss b { color: var(--kit, #FF6B1A); font-weight: 700; margin-right: 4px; }

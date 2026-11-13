@@ -3,7 +3,7 @@
 // 좌표는 엔진 기준(우리 팀이 오른쪽 +x로 공격, 105×68). 후반 진영 교체는 그릴 때만 뒤집음
 // frame: Float32Array [시뮬레이션 시각, 공 x, 공 y, 공 높이, 선수0 x, 선수0 y, 선수1 x, ...] (players와 같은 순서)
 
-export function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = false }) {
+export function createPitch({ svg, players, dotEls, ballEl, shadowEl, trailEl = null, calm = false }) {
   const N = players.length;
   // 처음 그릴 때 쓴 CSS 위치는 지우고 SVG transform 속성으로 (아이폰 사파리에서 더 부드러움)
   for (const p of players) { const el = dotEls[p.id]; if (el) el.style.transform = ""; }
@@ -27,7 +27,26 @@ export function createPitch({ svg, players, dotEls, ballEl, shadowEl, calm = fal
     put(shadowEl, `translate(${x.toFixed(2)} ${(y + 0.7).toFixed(2)}) scale(${Math.max(0.5, 1 - z * 0.07).toFixed(3)})`);
     const op = Math.max(0.25, 1 - z * 0.1).toFixed(2);
     if (shadowEl._o !== op) { shadowEl._o = op; shadowEl.setAttribute("opacity", op); }
+    // 공 가진 선수: 공이 낮고 1.7m 안에 있는 가장 가까운 바둑알의 고리를 밝힘 (그림만, 판정과 무관)
+    let hk = -1, hd = 1.7 * 1.7;
+    if (z < 0.8) for (let k = 0; k < N; k++) { const dx = pos[4 + k * 2] - pos[1], dy = pos[5 + k * 2] - pos[2], d = dx * dx + dy * dy; if (d < hd) { hd = d; hk = k; } }
+    if (hk !== hasK) { if (hasK >= 0) dotEls[players[hasK].id]?.classList.remove("has"); if (hk >= 0) dotEls[players[hk].id]?.classList.add("has"); hasK = hk; }
+    // 공 꼬리: 빠르게 날아가는 공(패스·슈팅) 뒤에 0.28초 동안 지나온 길을 옅게
+    if (trailEl) {
+      const by = y - z, lastT = trail.length ? trail[trail.length - 1] : null;
+      if (lastT && (S.clock < lastT[2] || Math.hypot(x - lastT[0], by - lastT[1]) > 6)) trail.length = 0;   // 이어지지 않는 장면(진영 교체·건너뛰기)
+      if (!lastT || S.clock > lastT[2]) trail.push([x, by, S.clock]);
+      while (trail.length && trail[0][2] < S.clock - 0.28) trail.shift();
+      let d = "", o = "0";
+      if (trail.length > 2) {
+        const a = trail[0], dt = S.clock - a[2], sp = dt > 0.05 ? Math.hypot(x - a[0], by - a[1]) / dt : 0;
+        if (sp > 13) { d = "M" + trail.map(q => `${q[0].toFixed(1)} ${q[1].toFixed(1)}`).join("L"); o = Math.min(0.5, 0.15 + (sp - 13) / 40).toFixed(2); }
+      }
+      if (trailEl._d !== d) { trailEl._d = d; trailEl.setAttribute("d", d); }
+      if (trailEl._o !== o) { trailEl._o = o; trailEl.setAttribute("opacity", o); }
+    }
   }
+  let hasK = -1; const trail = [];
   // 시각 t의 모습 (앞뒤 기록 사이를 이어서)
   function sample(t) {
     const B = S.buf;
