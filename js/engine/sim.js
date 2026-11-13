@@ -676,6 +676,12 @@ export function kickLoose(S, from, x, y, T) {
   emit(S, "pass", { from: from.name, to: "", team: from.team, kind: "through", me: from.me, toMe: false, silent: true });
   launch(S, clamp(x, 1, 104), clamp(y, 1, 67), { T, kind: "pass", then: S2 => landLoose(S2) });
 }
+// 붙어 있던 수비(by)가 발을 뻗어 공을 라인 밖으로 차 냄: 공이 실제로 라인을 넘은 뒤 스로인·코너킥 (세트피스 장면을 기다릴 때)
+export function pokeOut(S, by, x, y) {
+  S.last = by; S.lastTeam = by.team; S.lastClear = null;
+  for (const q of S.P) if (q.ov && (q.ov.recv || q.ov.carry)) q.ov = null;
+  launch(S, x, y, { kind: "pass", then: S2 => landLoose(S2) });
+}
 // 공이 땅에 떨어짐: 밖이면 경기 재개, 아니면 흘러 있는 공
 function landLoose(S) {
   const b = S.ball;
