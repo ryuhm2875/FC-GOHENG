@@ -1061,3 +1061,13 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
 - sync-audit 300 다섯 시드: 6.9·6.8·7.3·7.1·6.9% (평균 7.0%)
 - moment-audit 60 "공이 멀리서 붙음" 2 → 1건. shape-audit 20 그대로. restart-audit 60 이상 없음. uiplay FW·MF·DF 엔딩까지 오류 0
 - deep-audit 60: mf_throwin "상대 진영에서 스로인"인데 공 x41이 1건 나와 우리 스로인 만들기를 x 56↑로 제한(고친 뒤 deep-audit은 다시 안 돌림). "이름 나온 선수가 공과 멂" them 2 → 3건
+
+## 55. 자주 나오는 장면의 문장 늘리기 + 같은 문장 연달아 안 나오게 (2026-11-13, 사용자: "같은 장면, 말만 달라도 다른 재미. 다양하게, 뻔하지 않게, 문장도 신경 써서")
+- 배경: §53~54로 "미리 고른 장면이 그대로"는 14 → 20%가 됐지만 학생이 느끼는 숫자(직전 3경기에서 본 장면 44~48%, 상위 5개 비율)는 거의 그대로. 대신 고르는 장면이 몇 가지로 몰리는 게 더 큰 원인이라, 그 장면들의 글을 늘리는 쪽으로 방향을 바꿈. 최근 본 장면 피하기(RECENT_K 0.6)는 §51에 이미 있고 더 세게 하면 장면 수가 줄어 그대로 둠
+- **장면 문장 +2개씩, 15장면** (대신 고른 장면 상위): fw_counterpress, fw_press_cb, fw_false_nine, fw_solo_run, fw_drop_deep / mf_scan_turn, mf_open_lane, mf_track_runner, mf_press, mf_space / df_race, df_long_assist, df_carry_out, df_shield_out, df_cover
+- **결과 문장 +1개씩(성공·실패), 6장면 17선택지**: fw_counterpress, fw_press_cb, mf_scan_turn, mf_open_lane, df_race, df_long_assist. 결과 문장은 actOf·playKind·CARRY_RE가 낱말로 동작을 정하므로, 원래 문장의 핵심 구절은 그대로 두고 앞에 한 문장(판단·속마음)을 붙이는 식으로 씀
+- **`tools/dev/add-texts.mjs`**: 새 문장이 원래 문장과 똑같은 정규식에 걸리는지(장면 문장: textOk·deep-audit / 결과 문장: actOf 주변·sync-audit), 원래 없던 이름표를 쓰지 않는지 확인한 뒤에만 data/match.js에 덧붙임. 이번에 넣은 문장은 `add-texts.sample.json`. 걸렸던 낱말 예: 틈·못·막·걸·길게·옆으로·패스·잡았·백패스·당했 → 다른 말로 바꿈
+- **`pickFresh`** (match.js): 장면 문장·결과 문장을 고를 때 그 장면(선택지·성패)에서 지난번에 쓴 문장은 빼고 고름. 모듈 안 Map이라 게임을 켜 둔 동안만 기억, 저장 형식 그대로
+- 점검: sync-audit 300 다섯 시드 6.9·6.8·7.3·7.1·6.9%(평균 7.0%, §54와 같음). deep-audit 60 새 항목 없음
+- 다음: 나머지 9장면의 결과 문장, 그다음 순위 장면(mf_intercept, mf_counter_launch, df_1v1, mf_backpass_steal)의 장면 문장도 같은 도구로
+- 밸런스 240: 득점 2.25/실점 1.09, FW 7.65·MF 7.15·DF 7.17, 경기당 내 순간 6.67 (§54와 같은 수준, §52 기준 ±2% 안). uiplay FW·MF·DF 엔딩까지 오류 0
