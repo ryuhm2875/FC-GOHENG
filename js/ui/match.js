@@ -42,15 +42,31 @@ function pitchSvg(players, kit) {
     <g class="lines"><rect x="1" y="1" width="103" height="66"/><line x1="52.5" y1="1" x2="52.5" y2="67"/>
       <circle cx="52.5" cy="34" r="9.15"/><rect x="1" y="13.85" width="16.5" height="40.3"/><rect x="87.5" y="13.85" width="16.5" height="40.3"/>
       <rect x="1" y="24.85" width="5.5" height="18.3"/><rect x="98.5" y="24.85" width="5.5" height="18.3"/>
-      <rect x="-1" y="30.3" width="2" height="7.4" class="goal"/><rect x="104" y="30.3" width="2" height="7.4" class="goal"/></g>
+      <rect x="-1" y="30.3" width="2" height="7.4" class="goal"/><rect x="104" y="30.3" width="2" height="7.4" class="goal"/>
+      <path d="M17.5 26.7 A9.15 9.15 0 0 1 17.5 41.3"/><path d="M87.5 26.7 A9.15 9.15 0 0 0 87.5 41.3"/>
+      <path d="M1 2 A1 1 0 0 0 2 1"/><path d="M103 1 A1 1 0 0 0 104 2"/><path d="M2 67 A1 1 0 0 0 1 66"/><path d="M104 66 A1 1 0 0 0 103 67"/>
+      <circle cx="52.5" cy="34" r=".45" class="spot"/><circle cx="12" cy="34" r=".45" class="spot"/><circle cx="93" cy="34" r=".45" class="spot"/></g>
     <g class="netfx"></g>
     <ellipse class="bshadow" rx="1.25" ry=".55" style="transform:translate(52.5px,34.7px)"/>
     ${players.map(p => `<g class="dot ${p.team} ${p.pos === "GK" ? "gk" : ""} ${p.me ? "me" : ""}" data-id="${p.id}" style="transform:translate(${p.x}px,${p.y}px)">
-      <circle r="4" class="ring"/><circle r="2.3" class="body"/><text y="0.75" class="no">${p.number}</text><text y="-4.3" class="tag">나</text></g>`).join("")}
+      <circle r="2.3" class="pop"/><circle r="4" class="ring"/><circle r="2.3" class="body"/><text y="0.75" class="no">${p.number}</text><text y="-4.3" class="tag">나</text><text y="-3.3" class="nm"></text></g>`).join("")}
+    <path class="btrail" d=""/>
     <g class="ball" style="transform:translate(52.5px,34px)"><circle r="1.2"/></g>
   </svg>`;
 }
 
+// 축구 낱말 풀이: 선택 창에 어려운 말이 나오면 한 줄로 풀어 줌. 낱말마다 세 번까지만 (게임을 켜 둔 동안)
+const GLOSS = [["컷백", "골라인 근처까지 들어간 뒤, 뒤쪽 동료에게 짧게 내주는 패스"], ["니어포스트", "공과 가까운 쪽 골대"], ["탈압박", "달려드는 상대를 벗겨 내고 빠져나오는 것"],
+  ["오버래핑", "측면 동료의 바깥쪽을 뒤에서 앞질러 달려 나가는 움직임"], ["언더래핑", "측면 동료의 안쪽으로 파고드는 움직임"], ["세컨드볼", "서로 다툰 뒤에 흘러나온 공"],
+  ["빌드업", "뒤에서부터 패스로 차근차근 공격을 만들어 가는 것"], ["하프스페이스", "측면과 가운데 사이의 통로"], ["원투 패스", "주고 나서 바로 다시 받는 패스"]];
+const glossSeen = new Map();
+function glossOf(pd) {
+  const all = [pd.text, ...pd.choices.map(c => c.label)].join(" ");
+  const g = GLOSS.find(([w]) => all.includes(w) && (glossSeen.get(w) || 0) < 3);
+  if (!g) return "";
+  glossSeen.set(g[0], (glossSeen.get(g[0]) || 0) + 1);
+  return `<p class="mo-gloss"><b>${g[0]}</b> ${g[1]}</p>`;
+}
 const LINE_CLASS = { info: "", us: "us", them: "them", "goal-us": "goal", "goal-me": "goal mine", "goal-them": "goal against",
   me: "me", "me-auto": "me auto", "me-good": "me good", "me-bad": "me bad", whistle: "whistle", coach: "coach", stat: "stat", card: "card" };
 const ICON = { "goal-us": "⚽ ", "goal-me": "⚽ ", "goal-them": "", card: "🟨 ", whistle: "", stat: "📊 " };
@@ -90,7 +106,7 @@ export function showMatch(app, m, onDone) {
   const svg = root.querySelector(".pitch");
   const flash = root.querySelector("#flash");
   const dotEls = Object.fromEntries([...svg.querySelectorAll(".dot")].map(el => [el.dataset.id, el]));
-  const ballEl = svg.querySelector(".ball"), shadowEl = svg.querySelector(".bshadow"), netFx = svg.querySelector(".netfx");
+  const ballEl = svg.querySelector(".ball"), shadowEl = svg.querySelector(".bshadow"), netFx = svg.querySelector(".netfx"), trailEl = svg.querySelector(".btrail");
   // 세로 화면: 전광판·선택지 높이를 빼고 남은 만큼만 경기장을 키움 (중계 줄은 최소 64px 남김)
   const pitchWrap = root.querySelector("#pitch"), boardEl = root.querySelector(".board");
   const narrow = () => innerWidth < 900 && !(matchMedia("(orientation: landscape) and (max-height: 620px)").matches);
@@ -113,7 +129,31 @@ export function showMatch(app, m, onDone) {
   const SX = x => (flipped ? 105 - x : x);
   // 움직임 줄이기(윈도우 '애니메이션 효과' 끔, 안드로이드 '애니메이션 삭제', 아이폰 '동작 줄이기')를 켜 둬도 경기장은 그대로 움직임.
   // 바둑알 움직임이 경기 자체라서. 골 장면 화면 확대·내 선수 고리 깜빡임 같은 꾸밈만 끔 (HANDOFF §46)
-  const pitch = createPitch({ svg, players, dotEls, ballEl, shadowEl, calm: false });
+  const pitch = createPitch({ svg, players, dotEls, ballEl, shadowEl, trailEl, calm: false });
+  // 문장에 이름이 나온 선수: 바둑알 위에 이름표를 잠깐 띄움 (글과 화면을 이어 줌). 한 번에 셋까지, 나는 '나' 표시가 있어 뺌
+  const saying = [];                                                    // 지금 이름표가 떠 있는 바둑알 (오래된 것부터)
+  const unsay = el => { el.classList.remove("say"); clearTimeout(el._say); const i = saying.indexOf(el); if (i >= 0) saying.splice(i, 1); };
+  function nameTags(text, ms = 2400) {
+    if (!text) return;
+    const hit = players.filter(tok => !tok.me && tok.name && tok.name.length >= 2 && text.includes(tok.name));
+    if (!hit.length || hit.length > 3) return;                          // 명단처럼 이름이 줄줄이 나오는 줄은 건너뜀
+    for (const tok of hit) {
+      const el = dotEls[tok.id], nm = el?.querySelector(".nm"); if (!nm || el.classList.contains("me")) continue;
+      unsay(el); saying.push(el); while (saying.length > 3) unsay(saying[0]);   // 한 번에 셋까지만 (빠르게 보기에서 줄이 몰려도)
+      nm.textContent = tok.name;
+      el.classList.add("say"); svg.insertBefore(el, trailEl);          // 이름표가 다른 바둑알에 가리지 않게 위로
+      el._say = setTimeout(() => unsay(el), ms);
+    }
+    raiseMe();
+  }
+  // 내 선택의 결과: 내 바둑알에서 고리가 퍼짐 (성공 초록, 실패 빨강)
+  function mePop(good) {
+    const t = players.find(x => x.me), el = t && dotEls[t.id]; if (!el) return;
+    el.classList.remove("pop-good", "pop-bad"); void el.getBoundingClientRect();
+    el.classList.add(good ? "pop-good" : "pop-bad");
+    clearTimeout(el._pop); el._pop = setTimeout(() => el.classList.remove("pop-good", "pop-bad"), 900);
+    if (!good) buzz(25);
+  }
   m.record = true;
   pitch.load([frameNow(m.sim)]);
   // 골 장면: 골문 쪽으로 화면이 살짝 다가가고, 골망이 출렁임
@@ -236,6 +276,8 @@ export function showMatch(app, m, onDone) {
     }
     if (l.injuredOff) { const tok = players.find(x => x.me); if (tok) swapToken(tok, l.injuredOff, false); }
     addLine(l);
+    if (!l.silent) nameTags(l.t);
+    if (l.k === "me-good" || l.k === "me-bad") mePop(l.k === "me-good");
     if (l.score) shown = l.score.slice();
     if (l.minute != null) shownMin = l.minute;
     if (l.half2 || (l.minute != null && l.minute > HALF_MIN)) setHalf(true);   // 후반 킥오프 문장부터 진영 교체
@@ -344,8 +386,9 @@ export function showMatch(app, m, onDone) {
   function showMoment() {
     const pd = m.pending;
     shownMin = m.minute; updateBoard();
+    nameTags(pd.text, 6000);
     ctl.innerHTML = `<div class="moment" role="group" aria-label="선택">
-      <p class="mo-text"><span class="num">${pd.so ? "PK" : `${m.minute}'`}</span> ${esc(pd.text)}</p>
+      <p class="mo-text"><span class="num">${pd.so ? "PK" : `${m.minute}'`}</span> ${esc(pd.text)}</p>${glossOf(pd)}
       <div class="mo-choices">${pd.choices.map((c, i) => `<button class="mo-btn" data-c="${i}">
         <span>${c.signature ? `<b class="sigb">★ 특기</b> ` : ""}${esc(c.label)}${c.follow ? ` <b class="follow">지시</b>` : ""}${c.timing ? ` <b class="tmark" title="타이밍 버튼">⏱</b>` : ""}</span><span class="lv ${c.level === "높음" ? "hi" : c.level === "보통" ? "mid" : "lo"}">${c.level}</span></button>`).join("")}</div>
       <button class="linkbtn" data-autopick>알아서 하기</button>
