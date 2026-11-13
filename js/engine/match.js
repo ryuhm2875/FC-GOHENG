@@ -2094,7 +2094,7 @@ function scriptSteps(state, m, pd, c, out, R, tail, outTpl) {
     const H0 = S.holder;
     if (H0 && H0.team === "us" && !H0.me && H0.pos !== "GK") { steps.push({ do: "pass", from: H0, to: M, lead: 0.4, main: ["shot", "tapIn"].includes(out) }); holder = M; }
   }
-  const shootKind = { shot: "shot", chip: "shot", tapIn: "shot", longShot: "long", acro: "head", head: "head" };
+  const shootKind = { shot: "shot", chip: "chip", tapIn: "shot", longShot: "long", acro: "head", head: "head" };   // chip: 골키퍼 키를 넘기는 공은 높이 떠서 천천히 (sim shoot의 chip)
   const shotOut = ["shot", "chip", "tapIn", "longShot", "acro", "head"].includes(out) || (out === "miss" && isShotChoice(c));
   if (out === "miss" && CLEAR_FIRST.test(outTpl)) {
     // "수비가 먼저 걷어 낸다"처럼 슈팅 전에 막힌 결과: 슈팅 없이, 나에게 오던 공(코너킥·컷백·크로스)이나 내 공을 상대가 먼저 걷어 냄
@@ -2131,7 +2131,7 @@ function scriptSteps(state, m, pd, c, out, R, tail, outTpl) {
     let mainDone = ran && out !== "miss" || ot;
     if (!setKind && mv === "drib") { const o = nearestP(S, "them", { x: M.x + 6, y: M.y }, p => p.ri && p.pos !== "GK"); steps.push({ do: "carry", by: M, dist: 8, dy: /안으로|안쪽으로/.test(c.label + outTpl) ? (M.y < 34 ? 4 : -4) : o ? (o.y > M.y ? -3.5 : 3.5) : 0, beat: true, v: 7.8, main: out !== "miss" && !mainDone }); mainDone = mainDone || out !== "miss"; }
     if (!setKind && !(arrive && ran)) approach(M, out === "longShot" || c.win === "longShot" ? 25 : out === "head" || out === "tapIn" ? 9 : mv === "first" ? 22 : ran ? 11 : 17, out !== "miss" && !mainDone, { gkOut: ran || ["chip", "tapIn"].includes(out) });
-    const kind = setKind === "pk" ? "pk" : ctx.cat === "set:fkShot" ? "fk" : R?.kind === "head" || out === "head" || out === "acro" || (c.stats["phys.jump"] || 0) >= 0.5 ? "head" : shootKind[out] || (R?.kind ?? "shot");
+    const kind = setKind === "pk" ? "pk" : ctx.cat === "set:fkShot" ? "fk" : R?.kind === "head" || out === "head" || out === "acro" || (c.stats["phys.jump"] || 0) >= 0.5 ? "head" : c.win === "chip" && shotOut ? "chip" : shootKind[out] || (R?.kind ?? "shot");
     shotBy(M, R?.res || (out === "miss" ? "wide" : "save"), kind);
     if (out === "miss" || setKind) steps[steps.length - 1].main = !steps.some(x => x.main);
     steps.push(emit);

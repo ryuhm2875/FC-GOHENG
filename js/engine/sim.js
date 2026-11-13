@@ -1362,9 +1362,10 @@ function styleWatch(S) {
   }
 }
 function record(S) {
-  const f = new Float32Array(4 + S.P.length * 2);
+  const n = S.P.length, f = new Float32Array(5 + n * 2);
   f[0] = S.t; f[1] = S.ball.x; f[2] = S.ball.y; f[3] = S.ball.z;
-  for (let i = 0; i < S.P.length; i++) { f[4 + i * 2] = S.P[i].x; f[5 + i * 2] = S.P[i].y; }
+  for (let i = 0; i < n; i++) { f[4 + i * 2] = S.P[i].x; f[5 + i * 2] = S.P[i].y; }
+  f[4 + n * 2] = S.holder ? S.P.indexOf(S.holder) : -1;            // 맨 끝: 공 가진 선수 번호(없으면 -1). 화면의 이름표·고리용 (앞쪽 자리는 그대로)
   S.rec.push(f);
 }
 export function frameNow(S) { const r = S.rec; S.rec = []; record(S); const f = S.rec[0]; S.rec = r; return f; }

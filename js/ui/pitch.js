@@ -1,7 +1,7 @@
 // 경기장 그리기: 경기 엔진의 경기장 시뮬레이션(engine/sim.js)이 기록한 장면(frames)을 그대로 재생합니다.
 // 선수와 공의 움직임은 모두 시뮬레이션이 정하고, 여기서는 0.1초 간격의 기록 사이를 부드럽게 이어 그리기만 함.
 // 좌표는 엔진 기준(우리 팀이 오른쪽 +x로 공격, 105×68). 후반 진영 교체는 그릴 때만 뒤집음
-// frame: Float32Array [시뮬레이션 시각, 공 x, 공 y, 공 높이, 선수0 x, 선수0 y, 선수1 x, ...] (players와 같은 순서)
+// frame: Float32Array [시뮬레이션 시각, 공 x, 공 y, 공 높이, 선수0 x, 선수0 y, 선수1 x, ..., 공 가진 선수 번호(-1 없음)] (players와 같은 순서)
 
 export function createPitch({ svg, players, dotEls, ballEl, shadowEl, trailEl = null, calm = false }) {
   const N = players.length;
@@ -27,10 +27,18 @@ export function createPitch({ svg, players, dotEls, ballEl, shadowEl, trailEl = 
     put(shadowEl, `translate(${x.toFixed(2)} ${(y + 0.7).toFixed(2)}) scale(${Math.max(0.5, 1 - z * 0.07).toFixed(3)})`);
     const op = Math.max(0.25, 1 - z * 0.1).toFixed(2);
     if (shadowEl._o !== op) { shadowEl._o = op; shadowEl.setAttribute("opacity", op); }
-    // 공 가진 선수: 공이 낮고 1.7m 안에 있는 가장 가까운 바둑알의 고리를 밝힘 (그림만, 판정과 무관)
-    let hk = -1, hd = 1.7 * 1.7;
-    if (z < 0.8) for (let k = 0; k < N; k++) { const dx = pos[4 + k * 2] - pos[1], dy = pos[5 + k * 2] - pos[2], d = dx * dx + dy * dy; if (d < hd) { hd = d; hk = k; } }
-    if (hk !== hasK) { if (hasK >= 0) dotEls[players[hasK].id]?.classList.remove("has"); if (hk >= 0) dotEls[players[hk].id]?.classList.add("has"); hasK = hk; }
+    // 공 가진 선수: 엔진이 기록한 선수(프레임 맨 끝)의 고리를 밝히고 이름을 띄움. 이름은 공이 떠난 뒤 0.6초 더 보임(원터치 패스도 읽히게). 나는 '나' 표시가 있어 이름은 뺌
+    const hk = S.buf.length ? Math.round(S.buf[S.i][4 + N * 2] ?? -1) : -1;
+    if (hk !== hasK) {
+      if (hasK >= 0) dotEls[players[hasK].id]?.classList.remove("has");
+      if (hk >= 0 && hk < N) {
+        const el = dotEls[players[hk].id];
+        if (el) { el.classList.add("has"); if (nameK >= 0 && nameK !== hk) dotEls[players[nameK].id]?.classList.remove("hold");
+          const nm = el.querySelector(".nm"); if (nm && !players[hk].me) { nm.textContent = players[hk].name || ""; el.classList.add("hold"); nameK = hk; } else nameK = -1; }
+      } else nameOff = S.clock + 0.6;
+      hasK = hk;
+    }
+    if (hasK < 0 && nameK >= 0 && (S.clock >= nameOff || S.clock < nameOff - 0.7)) { dotEls[players[nameK].id]?.classList.remove("hold"); nameK = -1; }
     // 공 꼬리: 빠르게 날아가는 공(패스·슈팅) 뒤에 0.28초 동안 지나온 길을 옅게
     if (trailEl) {
       const by = y - z, lastT = trail.length ? trail[trail.length - 1] : null;
@@ -46,7 +54,7 @@ export function createPitch({ svg, players, dotEls, ballEl, shadowEl, trailEl = 
       if (trailEl._o !== o) { trailEl._o = o; trailEl.setAttribute("opacity", o); }
     }
   }
-  let hasK = -1; const trail = [];
+  let hasK = -1, nameK = -1, nameOff = 0; const trail = [];
   // 시각 t의 모습 (앞뒤 기록 사이를 이어서)
   function sample(t) {
     const B = S.buf;

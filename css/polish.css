@@ -629,8 +629,9 @@ body:has(#modal-root .backdrop) .fs-btn { opacity: 0; pointer-events: none; }
 .pitch .lines .spot { fill: rgba(255, 255, 255, .8); stroke: none; }
 .pitch .btrail { fill: none; stroke: #fff; stroke-width: .55; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 .pitch .dot .nm { display: none; font: 800 2.3px var(--body, sans-serif); text-anchor: middle; fill: #fff; stroke: rgba(8, 20, 12, .85); stroke-width: .55; paint-order: stroke; pointer-events: none; }
-.pitch .dot.say .nm { display: block; animation: nmIn .25s ease-out; }
-.pitch .dot.them.say .nm { fill: #FFE1DA; }
+.pitch .dot.say .nm, .pitch .dot.hold .nm { display: block; }
+.pitch .dot.say .nm { animation: nmIn .25s ease-out; }
+.pitch .dot.them.say .nm, .pitch .dot.them.hold .nm { fill: #FFD9CF; }
 .pitch .dot.say .ring { stroke: rgba(255, 255, 255, .9); stroke-width: .5; }
 .pitch .dot.has:not(.me) .ring { stroke: rgba(255, 255, 255, .75); stroke-width: .45; }
 .pitch .dot.me.say .ring, .pitch .dot.me.has .ring { stroke: #FFC93C; }

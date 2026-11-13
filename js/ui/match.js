@@ -130,7 +130,7 @@ export function showMatch(app, m, onDone) {
   // 움직임 줄이기(윈도우 '애니메이션 효과' 끔, 안드로이드 '애니메이션 삭제', 아이폰 '동작 줄이기')를 켜 둬도 경기장은 그대로 움직임.
   // 바둑알 움직임이 경기 자체라서. 골 장면 화면 확대·내 선수 고리 깜빡임 같은 꾸밈만 끔 (HANDOFF §46)
   const pitch = createPitch({ svg, players, dotEls, ballEl, shadowEl, trailEl, calm: false });
-  // 문장에 이름이 나온 선수: 바둑알 위에 이름표를 잠깐 띄움 (글과 화면을 이어 줌). 한 번에 셋까지, 나는 '나' 표시가 있어 뺌
+  // 선택 창이 뜰 때: 문장에 이름이 나온 선수의 바둑알 위에 이름표를 띄움 (한 번에 셋까지, 나는 '나' 표시가 있어 뺌). 평소에는 공 가진 선수 이름만 뜸 (pitch.js)
   const saying = [];                                                    // 지금 이름표가 떠 있는 바둑알 (오래된 것부터)
   const unsay = el => { el.classList.remove("say"); clearTimeout(el._say); const i = saying.indexOf(el); if (i >= 0) saying.splice(i, 1); };
   function nameTags(text, ms = 2400) {
@@ -276,7 +276,6 @@ export function showMatch(app, m, onDone) {
     }
     if (l.injuredOff) { const tok = players.find(x => x.me); if (tok) swapToken(tok, l.injuredOff, false); }
     addLine(l);
-    if (!l.silent) nameTags(l.t);
     if (l.k === "me-good" || l.k === "me-bad") mePop(l.k === "me-good");
     if (l.score) shown = l.score.slice();
     if (l.minute != null) shownMin = l.minute;

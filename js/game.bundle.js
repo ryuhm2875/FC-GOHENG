@@ -6952,9 +6952,10 @@ function styleWatch(S) {
   }
 }
 function record(S) {
-  const f = new Float32Array(4 + S.P.length * 2);
+  const n = S.P.length, f = new Float32Array(5 + n * 2);
   f[0] = S.t; f[1] = S.ball.x; f[2] = S.ball.y; f[3] = S.ball.z;
-  for (let i = 0; i < S.P.length; i++) { f[4 + i * 2] = S.P[i].x; f[5 + i * 2] = S.P[i].y; }
+  for (let i = 0; i < n; i++) { f[4 + i * 2] = S.P[i].x; f[5 + i * 2] = S.P[i].y; }
+  f[4 + n * 2] = S.holder ? S.P.indexOf(S.holder) : -1;            // 맨 끝: 공 가진 선수 번호(없으면 -1). 화면의 이름표·고리용 (앞쪽 자리는 그대로)
   S.rec.push(f);
 }
 function frameNow(S) { const r = S.rec; S.rec = []; record(S); const f = S.rec[0]; S.rec = r; return f; }
@@ -9355,7 +9356,7 @@ function scriptSteps(state, m, pd, c, out, R, tail, outTpl) {
     const H0 = S.holder;
     if (H0 && H0.team === "us" && !H0.me && H0.pos !== "GK") { steps.push({ do: "pass", from: H0, to: M, lead: 0.4, main: ["shot", "tapIn"].includes(out) }); holder = M; }
   }
-  const shootKind = { shot: "shot", chip: "shot", tapIn: "shot", longShot: "long", acro: "head", head: "head" };
+  const shootKind = { shot: "shot", chip: "chip", tapIn: "shot", longShot: "long", acro: "head", head: "head" };   // chip: 골키퍼 키를 넘기는 공은 높이 떠서 천천히 (sim shoot의 chip)
   const shotOut = ["shot", "chip", "tapIn", "longShot", "acro", "head"].includes(out) || (out === "miss" && isShotChoice(c));
   if (out === "miss" && CLEAR_FIRST.test(outTpl)) {
     // "수비가 먼저 걷어 낸다"처럼 슈팅 전에 막힌 결과: 슈팅 없이, 나에게 오던 공(코너킥·컷백·크로스)이나 내 공을 상대가 먼저 걷어 냄
@@ -9392,7 +9393,7 @@ function scriptSteps(state, m, pd, c, out, R, tail, outTpl) {
     let mainDone = ran && out !== "miss" || ot;
     if (!setKind && mv === "drib") { const o = nearestP(S, "them", { x: M.x + 6, y: M.y }, p => p.ri && p.pos !== "GK"); steps.push({ do: "carry", by: M, dist: 8, dy: /안으로|안쪽으로/.test(c.label + outTpl) ? (M.y < 34 ? 4 : -4) : o ? (o.y > M.y ? -3.5 : 3.5) : 0, beat: true, v: 7.8, main: out !== "miss" && !mainDone }); mainDone = mainDone || out !== "miss"; }
     if (!setKind && !(arrive && ran)) approach(M, out === "longShot" || c.win === "longShot" ? 25 : out === "head" || out === "tapIn" ? 9 : mv === "first" ? 22 : ran ? 11 : 17, out !== "miss" && !mainDone, { gkOut: ran || ["chip", "tapIn"].includes(out) });
-    const kind = setKind === "pk" ? "pk" : ctx.cat === "set:fkShot" ? "fk" : R?.kind === "head" || out === "head" || out === "acro" || (c.stats["phys.jump"] || 0) >= 0.5 ? "head" : shootKind[out] || (R?.kind ?? "shot");
+    const kind = setKind === "pk" ? "pk" : ctx.cat === "set:fkShot" ? "fk" : R?.kind === "head" || out === "head" || out === "acro" || (c.stats["phys.jump"] || 0) >= 0.5 ? "head" : c.win === "chip" && shotOut ? "chip" : shootKind[out] || (R?.kind ?? "shot");
     shotBy(M, R?.res || (out === "miss" ? "wide" : "save"), kind);
     if (out === "miss" || setKind) steps[steps.length - 1].main = !steps.some(x => x.main);
     steps.push(emit);
@@ -16451,7 +16452,7 @@ __m["js/ui/pitch.js"] = (function () {
 // 경기장 그리기: 경기 엔진의 경기장 시뮬레이션(engine/sim.js)이 기록한 장면(frames)을 그대로 재생합니다.
 // 선수와 공의 움직임은 모두 시뮬레이션이 정하고, 여기서는 0.1초 간격의 기록 사이를 부드럽게 이어 그리기만 함.
 // 좌표는 엔진 기준(우리 팀이 오른쪽 +x로 공격, 105×68). 후반 진영 교체는 그릴 때만 뒤집음
-// frame: Float32Array [시뮬레이션 시각, 공 x, 공 y, 공 높이, 선수0 x, 선수0 y, 선수1 x, ...] (players와 같은 순서)
+// frame: Float32Array [시뮬레이션 시각, 공 x, 공 y, 공 높이, 선수0 x, 선수0 y, 선수1 x, ..., 공 가진 선수 번호(-1 없음)] (players와 같은 순서)
 
 function createPitch({ svg, players, dotEls, ballEl, shadowEl, trailEl = null, calm = false }) {
   const N = players.length;
@@ -16477,10 +16478,18 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, trailEl = null, c
     put(shadowEl, `translate(${x.toFixed(2)} ${(y + 0.7).toFixed(2)}) scale(${Math.max(0.5, 1 - z * 0.07).toFixed(3)})`);
     const op = Math.max(0.25, 1 - z * 0.1).toFixed(2);
     if (shadowEl._o !== op) { shadowEl._o = op; shadowEl.setAttribute("opacity", op); }
-    // 공 가진 선수: 공이 낮고 1.7m 안에 있는 가장 가까운 바둑알의 고리를 밝힘 (그림만, 판정과 무관)
-    let hk = -1, hd = 1.7 * 1.7;
-    if (z < 0.8) for (let k = 0; k < N; k++) { const dx = pos[4 + k * 2] - pos[1], dy = pos[5 + k * 2] - pos[2], d = dx * dx + dy * dy; if (d < hd) { hd = d; hk = k; } }
-    if (hk !== hasK) { if (hasK >= 0) dotEls[players[hasK].id]?.classList.remove("has"); if (hk >= 0) dotEls[players[hk].id]?.classList.add("has"); hasK = hk; }
+    // 공 가진 선수: 엔진이 기록한 선수(프레임 맨 끝)의 고리를 밝히고 이름을 띄움. 이름은 공이 떠난 뒤 0.6초 더 보임(원터치 패스도 읽히게). 나는 '나' 표시가 있어 이름은 뺌
+    const hk = S.buf.length ? Math.round(S.buf[S.i][4 + N * 2] ?? -1) : -1;
+    if (hk !== hasK) {
+      if (hasK >= 0) dotEls[players[hasK].id]?.classList.remove("has");
+      if (hk >= 0 && hk < N) {
+        const el = dotEls[players[hk].id];
+        if (el) { el.classList.add("has"); if (nameK >= 0 && nameK !== hk) dotEls[players[nameK].id]?.classList.remove("hold");
+          const nm = el.querySelector(".nm"); if (nm && !players[hk].me) { nm.textContent = players[hk].name || ""; el.classList.add("hold"); nameK = hk; } else nameK = -1; }
+      } else nameOff = S.clock + 0.6;
+      hasK = hk;
+    }
+    if (hasK < 0 && nameK >= 0 && (S.clock >= nameOff || S.clock < nameOff - 0.7)) { dotEls[players[nameK].id]?.classList.remove("hold"); nameK = -1; }
     // 공 꼬리: 빠르게 날아가는 공(패스·슈팅) 뒤에 0.28초 동안 지나온 길을 옅게
     if (trailEl) {
       const by = y - z, lastT = trail.length ? trail[trail.length - 1] : null;
@@ -16496,7 +16505,7 @@ function createPitch({ svg, players, dotEls, ballEl, shadowEl, trailEl = null, c
       if (trailEl._o !== o) { trailEl._o = o; trailEl.setAttribute("opacity", o); }
     }
   }
-  let hasK = -1; const trail = [];
+  let hasK = -1, nameK = -1, nameOff = 0; const trail = [];
   // 시각 t의 모습 (앞뒤 기록 사이를 이어서)
   function sample(t) {
     const B = S.buf;
@@ -16718,7 +16727,7 @@ function showMatch(app, m, onDone) {
   // 움직임 줄이기(윈도우 '애니메이션 효과' 끔, 안드로이드 '애니메이션 삭제', 아이폰 '동작 줄이기')를 켜 둬도 경기장은 그대로 움직임.
   // 바둑알 움직임이 경기 자체라서. 골 장면 화면 확대·내 선수 고리 깜빡임 같은 꾸밈만 끔 (HANDOFF §46)
   const pitch = createPitch({ svg, players, dotEls, ballEl, shadowEl, trailEl, calm: false });
-  // 문장에 이름이 나온 선수: 바둑알 위에 이름표를 잠깐 띄움 (글과 화면을 이어 줌). 한 번에 셋까지, 나는 '나' 표시가 있어 뺌
+  // 선택 창이 뜰 때: 문장에 이름이 나온 선수의 바둑알 위에 이름표를 띄움 (한 번에 셋까지, 나는 '나' 표시가 있어 뺌). 평소에는 공 가진 선수 이름만 뜸 (pitch.js)
   const saying = [];                                                    // 지금 이름표가 떠 있는 바둑알 (오래된 것부터)
   const unsay = el => { el.classList.remove("say"); clearTimeout(el._say); const i = saying.indexOf(el); if (i >= 0) saying.splice(i, 1); };
   function nameTags(text, ms = 2400) {
@@ -16864,7 +16873,6 @@ function showMatch(app, m, onDone) {
     }
     if (l.injuredOff) { const tok = players.find(x => x.me); if (tok) swapToken(tok, l.injuredOff, false); }
     addLine(l);
-    if (!l.silent) nameTags(l.t);
     if (l.k === "me-good" || l.k === "me-bad") mePop(l.k === "me-good");
     if (l.score) shown = l.score.slice();
     if (l.minute != null) shownMin = l.minute;
