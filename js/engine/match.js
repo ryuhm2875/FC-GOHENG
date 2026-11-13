@@ -18,7 +18,7 @@ import { turnInfo } from "./calendar.js";
 import { oppLineup, noteOpp } from "./opponents.js";
 import { nemesisOf, nemesisAfter } from "./nemesis.js";
 import { SCENES } from "../../data/scenes.js";
-import { createSim, step as simStep, DT, RATE, HALF_T, playT, kickoffSetup, soSetup, soKick, soReady, soSetResult, soCancelNext, setScript, stageStart, minuteOf, meOf, gkOf, setRestart, passTo, kickLoose } from "./sim.js";
+import { createSim, step as simStep, DT, RATE, HALF_T, playT, kickoffSetup, soSetup, soKick, soReady, soSetResult, soCancelNext, setScript, stageStart, minuteOf, meOf, gkOf, setRestart, passTo, kickLoose, pokeOut } from "./sim.js";
 
 export const LENGTH = 70;
 export const MY_SLOT = { FW: 0, MF: 1, DF: 1 };        // 경기장에서 내가 서는 자리 (포지션 안 순서). 세부 포지션이 정해지면 그 자리
@@ -808,6 +808,8 @@ function momentCtx(state, m, evs) {
   const reach = relax ? 16 : 8.5 + Math.min(1, wait / 3) * (m.want?.sit.poss === "them" ? 14 : 0);      // 상대 공을 기다린 지 오래되면 조금 멀어도
   if (H.team === "them" && H.ri && dist2(H, M) < reach && (M.pos !== "FW" ? H.x < 60 || dist2(H, M) < 8.5 : H.x > 66 || relax)) return { cat: "def", poss: "them", holder: H };
   // 미드필더: 측면 깊은 곳의 동료가 공을 가졌고 내가 상대 진영에 있으면 박스로 늦게 뛰어드는 장면
+  { const wb = SCENES[m.want?.sit.id]?.bylineMate;                 // 미드필더: 동료가 측면을 파고드는 사이 박스 바깥으로 늦게 뛰어드는 장면
+    if (M.pos === "MF" && typeof wb === "number" && H.team === "us" && !H.me && H.pos !== "GK" && H.x > wb && Math.abs(H.y - 34) > 15 && M.x > 48 && M.x < H.x + 6 && dist2(H, M) < 50) return { cat: "mate", poss: "us", holder: H, byline: true }; }
   if (M.pos === "MF" && H.team === "us" && H.pos !== "GK" && H.x > 84 && Math.abs(H.y - 34) > 15 && M.x > 55 && dist2(H, M) < (m.detail?.group === "winger" ? 56 : 40)) return { cat: "mate", poss: "us", holder: H, arrive: true };   // 윙어는 반대편 측면에서도 (먼 쪽 포스트)
   // 수비수: 상대가 중원에서 공을 잡았고 상대 공격수가 우리 수비 라인에 붙어 있으면 뒷공간 경주 장면
   if (M.pos === "DF" && (SCENES[m.want?.sit.id]?.race || (relax && chance(0.04))) && H.team === "them" && H.ri && H.x > 38 && H.x < 70 && M.x < H.x && dist2(H, M) < 32 && S.P.some(p => p.team === "them" && p.pos === "FW" && p.x < H.x - 8 && Math.abs(p.x - M.x) < 10)) return { cat: "def", poss: "them", holder: H, race: true };
@@ -823,7 +825,7 @@ function momentCtx(state, m, evs) {
       if (ws.dummy && H.x > 76 && Math.abs(H.y - 34) > 12 && M.x > 72 && dist2(H, M) < 38) return { cat: "mate", poss: "us", holder: H, dummy: true };
       if (ws.screen && H.x > 76 && H.x < 88 && Math.abs(H.y - 34) < 15 && M.x > 80 && Math.abs(M.y - 34) < 14 && dist2(H, M) < 36) return { cat: "mate", poss: "us", holder: H, screen: true };
       if (ws.wingMate && H.x > 68 && H.x < 92 && Math.abs(H.y - 34) > 17.5 && M.x > 74 && Math.abs(M.y - 34) < 14 && dist2(H, M) < 42) return { cat: "mate", poss: "us", holder: H };   // 측면에서 몰고 들어오는 동료 (미끼 움직임 장면)
-      if (ws.bylineMate && (ws.bylineMate === true ? H.x > 88 && Math.abs(H.y - 34) > 13 && M.x > 74 && dist2(H, M) < 32 : H.x > ws.bylineMate && Math.abs(H.y - 34) > 15 && M.x > 62 && dist2(H, M) < 42)) return { cat: "mate", poss: "us", holder: H };   // 측면 골라인 앞 동료 (컷백·니어포스트 장면)
+      if (ws.bylineMate && (ws.bylineMate === true ? H.x > 88 && Math.abs(H.y - 34) > 13 && M.x > 74 && dist2(H, M) < 32 : H.x > ws.bylineMate && Math.abs(H.y - 34) > 15 && M.x > 62 && dist2(H, M) < 42)) return { cat: "mate", poss: "us", holder: H, byline: ws.bylineMate !== true };   // 측면 골라인 앞 동료 (컷백·니어포스트 장면)
       if (s_boxTurn(ws) && H.x > 60 && H.x < 90 && M.x > 89.5 && Math.abs(M.y - 34) < 11 && dist2(H, M) < 32) return { cat: "mate", poss: "us", holder: H };   // 박스 안의 나에게 동료가 줌
     }
     if (M.pos === "MF" && ws?.underlap && H.team === "us" && H.pos !== "GK" && !H.me && H.x > 50 && H.x < 90 && Math.abs(H.y - 34) > 16.5 && dist2(H, M) < 32) return { cat: "mate", poss: "us", holder: H };   // 측면 동료 옆으로 뛰어드는 장면
@@ -1037,7 +1039,7 @@ const holderOk = (ctx, s, S, m) => { const sc = SCENES[s.id];
   if (!!sc?.dummy !== !!ctx.dummy || !!sc?.screen !== !!ctx.screen) return false;     // 공격수 흘려 보내기·골키퍼 앞 장면은 그 상황에서만 (그 상황에서는 그 장면만)
   if (S && sc && !newSceneOk(ctx, sc, S, m)) return false;                             // 현대 축구 장면들의 경기장 조건 (아래)
   if (ctx.callIn && (sc?.callIn !== ctx.callIn || ctx.forId !== s.id)) return false;                         // 길게 차 주는 상황은 그 장면만
-  if (S && m && !ctx.callIn && !textOk(ctx, s, sc, S, m)) return false;                              // 장면 문장이 말하는 모양이 실제로 있을 때만 (해설과 바둑알이 어긋나지 않게)
+  if (S && m && !ctx.callIn && !(ctx.byline && sc?.bylineRun) && !textOk(ctx, s, sc, S, m)) return false;   // 연출이 문장대로 자리를 만드는 장면은 문장 검사를 건너뜀                              // 장면 문장이 말하는 모양이 실제로 있을 때만 (해설과 바둑알이 어긋나지 않게)
   if (sc?.farSide && S && (!ctx.holder || (ctx.holder.y < 34) === (meOf(S).y < 34))) return false;   // 반대편 측면 동료가 공을 가졌을 때만
   if (sc?.overlap) {                                                                  // 오버래핑: 같은 쪽 측면 동료가 상대 진영에서 공을 잡았고 나는 그 뒤·바깥에 있을 때만
     const H = ctx.holder, M = S && meOf(S);
@@ -1083,7 +1085,7 @@ function pickSituation(state, m, ctx) {
 function wantFits(m, want, ctx) {
   const s = want.sit;
   if ((s.poss || "us") !== ctx.poss || !holderOk(ctx, s, m.sim, m)) return false;
-  if (ctx.callIn) return true;                                                     // 동료가 차 주는 장면은 공이 떨어질 자리가 장면 자리 (연출)
+  if (ctx.callIn || ctx.byline && SCENES[s.id]?.bylineRun) return true;            // 동료가 차 주는 장면·측면 동료가 파고드는 장면은 공이 떨어질 자리가 장면 자리 (연출)
   const c = ctxFits(ctx, want.cat), wait = m.minute - want.t0;
   if (c < (wait < 1.5 ? 1 : wait < 3 ? 0.5 : 0.3)) return false;                    // 처음엔 딱 맞는 상황만, 기다릴수록 비슷한 상황도
   if (want.cat.includes(":") || SCENES[s.id]?.selfByline && selfBylineOk(m.sim, meOf(m.sim))) return true;   // 엔드라인까지는 연출에서 몰고 감                           // 길게 차 주는 장면은 공이 떨어질 자리가 장면 자리 (연출)
@@ -1126,6 +1128,21 @@ function makeSetPiece(m, want) {
   if ((cat === "set:fkShot" || cat === "set:fkKick") && H?.team === "us" && touching && b.x > 66 && b.x < 86 && Math.abs(b.y - 34) < 15) {
     ev("foul", { by: near.name, team: "them", victim: H.name, victimMe: H.me, card: false, pen: false });
     return setRestart(S, "fk", "us", H.x, H.y);
+  }
+  // 스로인·코너킥: 라인 가까이에서 몸을 붙인 수비가 공을 실제로 라인 밖으로 차 냄 (기다리는 장면 하나에 한 번만)
+  if (!want.madeOut && H && !H.me && H.pos !== "GK") {
+    const M = meOf(S), sideY = b.y < 34 ? -0.6 : 68.6, nearTouch = b.y < 9 || b.y > 59, close = near && Math.hypot(near.x - H.x, near.y - H.y) < 4;   // 발을 뻗으면 닿는 거리
+    const poke = (by, x, y) => { want.madeOut = true; pokeOut(S, by, x, y); };
+    if (H.team === "us" && close) {
+      if (cat === "set:throw" && nearTouch && b.x > 56 && b.x < 96 && M.pos !== "FW" && Math.hypot(M.x - b.x, M.y - b.y) < 18) return poke(near, b.x + range(-1, 2), sideY);
+      if ((cat === "set:corner" || cat === "set:cornerKick") && b.x > 90 && Math.abs(b.y - 34) > 10) return poke(near, 105.6, b.y + (b.y < 34 ? -1.5 : 1.5));
+    } else if (H.team === "them") {
+      const mate = nearestP(S, "us", H, p => !p.me && p.ri && p.pos !== "GK");
+      if (mate && Math.hypot(mate.x - H.x, mate.y - H.y) < 4) {
+        if (cat === "defset:corner" && b.x < 15 && Math.abs(b.y - 34) > 10) return poke(mate, -0.6, b.y + (b.y < 34 ? -1.5 : 1.5));
+        if (cat === "defset:throw" && nearTouch && b.x < 30 && b.x > 3) return poke(mate, b.x + range(-2, 1), sideY);
+      }
+    }
   }
   if (cat === "set:pk" && H?.team === "us" && touching && b.x > 89 && Math.abs(b.y - 34) < 18) {
     ev("foul", { by: near.name, team: "them", victim: H.name, victimMe: H.me, card: false, pen: true });
@@ -1250,8 +1267,9 @@ function startMoment(state, m, sit, ctx, lines, ts) {
   }
   if (sc.bylineRun && holder?.team === "us" && !holder.me) {   // 컷백: 측면 동료가 박스 모서리 안쪽 골라인 앞까지 몰고 들어가고, 나는 박스 바깥 페널티 지점 쪽으로
     const sg = holder.y < 34 ? -1 : 1;
-    moves.push([holder, Math.max(holder.x, 97.5), 34 + sg * 18.5, 7.4, "carry"]);
-    moves.push([M, Math.max(M.x, 85), 34 + sg * 4, 8.4]);
+    const [hx, hy, mx, my] = sc.bylineRun === true ? [97.5, 18.5, 85, 4] : sc.bylineRun;   // [동료 x, 동료 가운데에서 y, 내 x, 내 가운데에서 y(공 쪽)]
+    moves.push([holder, Math.max(holder.x, hx), 34 + sg * hy, 7.4, "carry"]);
+    moves.push([M, Math.max(M.x, mx), 34 + sg * my, 8.4]);
   }
   if (sc.selfByline && S.holder === M && selfBylineOk(S, M) && M.x < 96) {   // 각 없는 슈팅: 내가 엔드라인 앞까지 몰고 감
     moves.push([M, 98.5, 34 + (M.y < 34 ? -1 : 1) * clamp(Math.abs(M.y - 34), 17.5, 20), 7.4, "carry"]);

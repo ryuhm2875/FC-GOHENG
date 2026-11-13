@@ -96,7 +96,7 @@ export const SCENES = {
   mf_split: { from: "pass", giver: "df", press: 2, pressGap: 4 },
   mf_quick_fk: { from: "kicker", runs: [["fw", 22, 4, 7.6]], press: 0 },
   mf_switch_receive: { callIn: "switch", patience: 2, at: [[70, 80], [5, 12]], from: "long", giver: "df", src: [-40, -42], press: 1, pressGap: 3 },
-  mf_late_run: { lure: ["wing", "wingdribble", "cutback"], patience: 4, at: [[78, 84], [28, 40]], from: "lowcross", giver: "mate", src: [20, 30], press: 0 },
+  mf_late_run: { lure: ["wing", "wingdribble", "cutback"], patience: 4, bylineMate: 66, bylineRun: [92, 22, 80, 3], at: [[70, 101], [2, 19]], from: "carry", holder: "mate", press: 1, pressGap: 1.6 },
   mf_rally: { from: "pass", giver: "df", press: 1, pressGap: 3.4 },
   mf_shield_wing: { side: 16, at: [[48, 60], [4, 10]], from: "oppCarry", src: [15, 0], meGap: 3 },
   mf_hold_lead: { at: [[44, 56], [24, 44]], from: "pass", giver: "df", block: { them: "high" }, press: 3, pressGap: 2.2 },
@@ -208,7 +208,7 @@ export const SCENES = {
   fw_screen: { screen: true, patience: 5, holder: "mate", at: [[76, 87], [20, 48]], from: "pass", press: 1, pressGap: 3 },
   // 2026-11-06 추가
   fw_layoff_third: { at: [[60, 72], [24, 44]], from: "pass", giver: "df", src: [-24, -3], runs: [["mf", -2, 5, 7.6]], press: 1, pressGap: 1.2 },
-  fw_blindside: { lure: ["wingdribble", "cutback", "overlap"], patience: 4, from: "lowcross", src: [-4, -30], runs: [["oppdf", 1, -2, 7.6]], press: 1, pressGap: 1.6, pack: true },
+  fw_blindside: { lure: ["wingdribble", "cutback", "overlap"], patience: 4, bylineMate: 74, bylineRun: [97.5, 18.5, 91, 2], at: [[74, 101], [2, 16]], from: "carry", holder: "mate", runs: [["oppdf", 1, -2, 7.6]], press: 1, pressGap: 1.6, pack: true },
   mf_counter_delay: { counter: true, at: [[44, 62], [16, 52]], from: "oppCarry", meGap: 5 },
   mf_press_trigger: { side: 16, at: [[56, 72], [3, 12]], from: "oppPass", giver: "oppdf", src: [6, -14], meGap: 7 },
   df_bait_press: { at: [[14, 24], [22, 46]], from: "pass", giver: "df", src: [-2, 14], press: 1, pressGap: 9, block: { them: "high" } },
