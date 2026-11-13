@@ -927,6 +927,9 @@ const FREQ_DAMP = {
 };
 // 최근 세 경기에서 본 장면은 덜 고름 (게임을 켜 둔 동안만 기억: 저장 파일에는 안 들어감)
 const RECENT_N = 3, RECENT_K = 0.6;
+// 같은 장면이 다시 나와도 지난번과 다른 문장으로 (장면 문장·결과 문장). 게임을 켜 둔 동안만 기억, 저장에는 안 들어감
+const LAST_TXT = new Map();
+function pickFresh(key, arr) { const last = LAST_TXT.get(key), c = arr.length > 1 ? arr.filter(t => t !== last) : arr, t = pick(c.length ? c : arr); LAST_TXT.set(key, t); return t; }
 function recentOf(state) {
   if (!Object.prototype.hasOwnProperty.call(state, "_recentSc")) Object.defineProperty(state, "_recentSc", { value: [], writable: true, enumerable: false });   // enumerable:false → JSON 저장에서 빠짐
   return state._recentSc;
@@ -1417,7 +1420,7 @@ function finishStaging(state, m) {
   const choices = list.map(c => { const p = prob(state, m, c); return { label: lab(c.label), p, signature: !!c.signature,
     level: p >= 0.65 ? "높음" : p >= 0.4 ? "보통" : "낮음", timing: timingOf(c), follow: !!(m.talk?.tag && choiceTag(c) === m.talk.tag) }; });
   const texts = noWing ? sit.text.filter(t => !/\{wing/.test(t)) : sit.text;
-  m.pending = { sit, list, vars: sv, text: fill(pick(texts.length ? texts : sit.text), sv), choices, ball: [S.ball.x, S.ball.y], ctx };
+  m.pending = { sit, list, vars: sv, text: fill(pickFresh("s:" + sit.id, texts.length ? texts : sit.text), sv), choices, ball: [S.ball.x, S.ball.y], ctx };
 }
 
 // 경기 시작 줄
@@ -1745,7 +1748,7 @@ export function resolve(state, m, ci, timing = null) {
   const head = [{ t: pd.text, k: "me", minute: min, ts, fast: true },
                 { t: `▶ ${c.label}${timing ? ` ${{ perfect: "(완벽한 타이밍!)", good: "(좋은 타이밍)", miss: "(타이밍이 어긋났다)" }[timing]}` : ""}`, k: "me", minute: min, ts }];
   // 결과 문장은 경기장에서 그 동작이 끝나는 순간에 나옴 (대본 안에 넣음, scriptFor). 문장 틀은 동작을 고르는 데도 씀
-  const outTpl = pick(ok ? c.winText : c.loseText);
+  const outTpl = pickFresh(`r:${pd.sit.id}:${ci}:${ok ? 1 : 0}`, ok ? c.winText : c.loseText);
   { const a0 = (pd.sit.poss || "us") === "us" && /\{mate/.test(outTpl) ? actOf(outTpl, out, "us") : null;
     if (["passNear", "passWide", "passSwitch", "passBack"].includes(a0)) { const M0 = meOf(S), t = M0 && passTarget(S, M0, a0, SP(m, v.mate, "us")); if (t && !t.me && t.pos !== "GK") v.mate = t.name; } }
   // 패스 선택: 문장이 말하는 패스 종류에 맞는 동료가 받음 (문장의 {mate}도 그 동료)
