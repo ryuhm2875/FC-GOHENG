@@ -26,6 +26,29 @@
   <div id="app"></div>
   <div id="modal-root"></div>
   <div id="toast" role="status" aria-live="polite"></div>
+  <!-- 오프닝 영상: 게임을 켤 때마다 소리 없이 13초. 누르거나 아무 키나 누르면 건너뜀 -->
+  <div id="intro-splash" style="position:fixed;inset:0;z-index:9999;background:#000;transition:opacity .4s">
+    <video id="intro-video" src="assets/video/intro.mp4" muted autoplay playsinline preload="auto"
+           style="width:100%;height:100%;object-fit:contain;display:block"></video>
+    <button type="button" id="intro-skip" style="position:absolute;right:16px;bottom:16px;padding:8px 14px;border:1px solid rgba(255,255,255,.5);border-radius:999px;background:rgba(0,0,0,.45);color:#fff;font:inherit;font-size:14px;cursor:pointer">건너뛰기</button>
+  </div>
+  <script>
+    (function () {
+      var box = document.getElementById("intro-splash"), v = document.getElementById("intro-video"), gone = false;
+      function done() {
+        if (gone) return; gone = true;
+        box.style.opacity = "0"; box.style.pointerEvents = "none";
+        setTimeout(function () { if (v) v.pause(); box.remove(); }, 450);
+      }
+      if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) { box.remove(); return; }
+      v.addEventListener("ended", done);
+      v.addEventListener("error", done);
+      box.addEventListener("click", done);
+      document.addEventListener("keydown", done, { once: true });
+      var p = v.play(); if (p && p.catch) p.catch(done);
+      setTimeout(done, 16000); // 무슨 일이 있어도 16초 뒤엔 게임 화면으로
+    })();
+  </script>
   <script>
     // 인터넷 주소(GitHub Pages)로 열면 js/main.js를, 파일을 더블클릭해서 열면 한 파일로 묶은 js/game.bundle.js를 씁니다.
     (function () {

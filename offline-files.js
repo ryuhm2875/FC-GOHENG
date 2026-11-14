@@ -1,6 +1,6 @@
 // 자동 생성 파일입니다 (node tools/bundle.mjs). 오프라인 모드에서 미리 받아 둘 파일 목록과 내용 지문
 self.OFFLINE_FILES = [
-  ["index.html","5d5bda3868"],
+  ["index.html","559e825aef"],
   ["manifest.webmanifest","989936b74c"],
   ["css/fc.css","eef2d9f1b0"],
   ["css/fc26.css","bdb90b30ae"],
