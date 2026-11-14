@@ -480,7 +480,7 @@ export const EVENTS_MORE = [
       { label: "못 본 척한다", fx: { rel: { junior: -4 } },
         result: "그날 {junior}의 어깨가 유난히 처져 보였다." },
     ] },
-  { id: "c_captain_worry", bg: "bg_home", who: "narr", when: { grades: [1, 2] },
+  { id: "c_captain_worry", bg: "bg_locker", who: "narr", when: { grades: [1, 2] },
     text: "훈련이 끝났는데 주장 형이 벤치에 혼자 앉아 있다. \"요즘 애들이 내 말을 안 듣는 것 같다.\"",
     choices: [
       { label: "옆에 앉아 끝까지 들어 준다", fx: { s: { "mental.teamwork": 1 }, morale: 1 },
@@ -661,7 +661,7 @@ export const EVENTS_MORE = [
       { label: "짧은 편지를 써서 구두 옆에 둔다", fx: { morale: 4, s: { "student.attitude": 0.5 } },
         result: "저녁에 보니 편지가 아빠 지갑 속에 들어가 있었다." },
     ] },
-  { id: "f_sibling_ball", bg: "ev_rival", family: true, who: "narr",
+  { id: "f_sibling_ball", bg: "ev_kids", family: true, who: "narr",
     text: "동생이 공을 들고 와서 축구를 가르쳐 달라고 한다.",
     choices: [
       { label: "인사이드 패스부터 가르친다", fx: { s: { "tech.pass": 0.4, "mental.teamwork": 0.5 } },

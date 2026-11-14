@@ -443,7 +443,7 @@ function goalNote(m, team, min, ts) {
   const note = pick(N[kind][team === "us" ? 0 : 1]);
   if (a < b) m.trailed.us = true;
   if (b < a) m.trailed.them = true;
-  return { t: `${note} ${TEAM_NAME} ${a} : ${b} ${m.fx.opponent.name}`, k: "stat", minute: min, ts };
+  return { t: `${note} ${m.fx.usName || TEAM_NAME} ${a} : ${b} ${m.fx.opponent.name}`, k: "stat", minute: min, ts };
 }
 
 // ── 경기장 ↔ 중계 ───────────────────
@@ -452,7 +452,7 @@ const SP = (m, name, team) => (name ? m.sim.P.find(p => p.name === name && (!tea
 const ownX = (team, x) => (team === "us" ? x : 105 - x);
 const PLAY_BY = Object.fromEntries(PLAYS.map(p => [p.id, p]));
 const FIN_KIND = { shot: "shot", head: "header", long: "long", fk: "fk", pk: "pk", chip: "chip" };
-const ambFor = (m, ev) => AMBIENT.filter(a => a.ev === ev && (!a.wx || a.wx.includes(m.weather || "clear")) && (m.tplUse?.[a.t] || 0) < 2
+const ambFor = (m, ev) => AMBIENT.filter(a => a.ev === ev && !(m.fx.jn && a.home) && (!a.wx || a.wx.includes(m.weather || "clear")) && (m.tplUse?.[a.t] || 0) < 2
   && m.sim.t - (m.tplT?.[a.t] ?? -99) > 40);                     // 같은 경기에서 두 번까지, 그것도 한참 떨어져서
 // 문장 고르기: 같은 묶음에서 이번 경기에 덜 쓴 문장부터 (같은 문장이 되풀이되지 않게)
 function fresh(m, arr) {
@@ -696,7 +696,7 @@ function timedEvent(state, m, ev, ts) {
   const L = (t, k = "info", extra = {}) => out.push({ t, k, minute: min, ts, ...extra });
   if (ev.type === "ambient") {
     const dead = S.phase === "dead", recycle = S.poss === "them" && S.ball.x > 60;
-    const fit = AMBIENT.filter(x => (!x.ev || (x.ev === "dead" && dead) || (x.ev === "themRecycle" && recycle)) && !x.card
+    const fit = AMBIENT.filter(x => !(m.fx.jn && x.home) && (!x.ev || (x.ev === "dead" && dead) || (x.ev === "themRecycle" && recycle)) && !x.card
       && (!x.wx || x.wx.includes(m.weather || "clear")) && (!x.sky || x.sky === m.sky) && (!x.early || min < 15) && (!x.late || min >= 58) && (!x.min || min >= x.min) && !m.used[`amb${AMBIENT.indexOf(x)}`]
       && (!x.after || AMBIENT.some((y, i) => y.t.startsWith(x.after) && m.used[`amb${i}`])));
     if (!fit.length) return out;
@@ -1557,7 +1557,7 @@ export function next(state, m) {
     m.half = 2; m.half2Pending = true; m.minute = HALF;
     const [a, b] = m.score;
     const mood = a > b ? "winning" : a === b ? "drawing" : "losing";
-    L(`전반 종료. ${TEAM_NAME} ${a} : ${b} ${m.fx.opponent.name}`, "whistle", { poss: null, htWhistle: true });
+    L(`전반 종료. ${m.fx.usName || TEAM_NAME} ${a} : ${b} ${m.fx.opponent.name}`, "whistle", { poss: null, htWhistle: true });
     L(statLine(m), "stat");
     const htSay = pick(m.fx.jn ? JN_TALK.team[mood] : HALFTIME_TALK[mood]);
     L(`${staffOf(m, "coach")}: "${htSay}"`, "coach");
