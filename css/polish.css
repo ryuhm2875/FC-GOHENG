@@ -632,6 +632,9 @@ body:has(#modal-root .backdrop) .fs-btn { opacity: 0; pointer-events: none; }
 .pitch .dot.say .nm, .pitch .dot.hold .nm { display: block; }
 .pitch .dot.say .nm { animation: nmIn .25s ease-out; }
 .pitch .dot.them.say .nm, .pitch .dot.them.hold .nm { fill: #FFD9CF; }
+/* 우리 골키퍼: 등번호 글자색(어두운 색)이 이름표에까지 먹지 않게 */
+.pitch .dot.us.gk .nm { fill: #fff; }
+.pitch .dot.them.gk.say .nm, .pitch .dot.them.gk.hold .nm { fill: #FFD9CF; }
 .pitch .dot.say .ring { stroke: rgba(255, 255, 255, .9); stroke-width: .5; }
 .pitch .dot.has:not(.me) .ring { stroke: rgba(255, 255, 255, .75); stroke-width: .45; }
 .pitch .dot.me.say .ring, .pitch .dot.me.has .ring { stroke: #FFC93C; }

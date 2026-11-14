@@ -507,7 +507,7 @@ export const EVENTS_MORE = [
         result: "{assistant}님이 카드를 지갑에 넣고 다니신다는 걸 나중에 알았다." },
     ] },
   { id: "c_jinx", bg: "ev_note", who: "narr", cond: matchWeek,
-    text: "경기 전날 밤, 지난번에 골을 넣은 날 신었던 양말을 찾느라 서랍을 다 뒤집었다.",
+    text: s => `경기 전날 밤, ${s.record.goals > 0 ? "지난번에 골을 넣은 날" : "지난번에 몸이 유난히 가벼웠던 날"} 신었던 양말을 찾느라 서랍을 다 뒤집었다.`,
     choices: [
       { label: "끝까지 찾아낸다", fx: { s: { "mental.confidence": 0.5 }, morale: 2 },
         result: "빨래 바구니 맨 밑에서 나왔다. 엄마에게 혼나면서도 마음은 든든했다." },
@@ -566,7 +566,7 @@ export const EVENTS_MORE = [
       { label: "선배에게 먼저 조언을 구한다", fx: { s: { "mental.focus": 0.5 }, rel: { mentor: 4 } },
         result: "{mentor} 선배가 상대 공격수 버릇 세 가지를 적어 줬다. \"내 자리 잘 지켜라. 뺏지는 말고.\"" },
     ] },
-  { id: "c_homework_video", bg: "ev_video", who: "assistant",
+  { id: "c_homework_video", bg: "ev_video", who: "assistant", cond: s => lastMatch(s)?.minutes > 0,
     text: "숙제다. 지난 경기 영상에서 네가 나온 장면 다섯 개를 찾아서 잘한 점, 아쉬운 점을 적어 와라.",
     choices: [
       { label: "꼼꼼히 적어 간다", fx: { s: { "mental.focus": 1 }, coach: 1 },
@@ -709,7 +709,7 @@ export const EVENTS_MORE = [
     })),
   },
   { id: "goal_jn_call", bg: "ev_selection", fixed: true, who: "coach",
-    text: s => `전남 대표 선발전 명단이 나왔다. 네 이름이 있다. ${s.calendar.grade === 3 ? (s.jnCup?.grade === 2 ? "작년에 전남 마크 달았다고 자리가 정해진 건 아니다. 3학년 선발전은 훨씬 세다. 처음 온 놈처럼 해라." : goalsOf(s).jnCalled?.[2] ? "작년에 한 번 와 본 자리다. 이번엔 붙어야지." : "3학년이 돼서 처음 불렸다. 늦었다고 생각하지 마라.") : "2학년은 몇 명 없다."} 다음 주에 목포에서 테스트다. 어떻게 준비할 거냐.`,
+    text: s => `전남 대표 선발전에 부를 후보 명단이 나왔다. 네 이름이 있다. 아직 뽑힌 건 아니다. ${s.calendar.grade === 3 ? (s.jnCup?.grade === 2 ? "작년에 전남 대표였다고 자리가 정해진 건 아니다. 3학년 선발전은 훨씬 세다. 처음 온 놈처럼 해라." : goalsOf(s).jnCalled?.[2] ? "작년에 한 번 떨어져 본 자리다. 이번엔 붙어야지." : "3학년이 돼서 처음 불렸다. 늦었다고 생각하지 마라.") : "2학년은 몇 명 없다."} 다음 주에 목포에서 테스트다. 어떻게 준비할 거냐.`,
     choices: [
       { label: "남은 일주일, 개인 훈련을 더 한다", fx: { fatigue: 6, s: { "position": 0.3 } }, act: s => { const G = goalsOf(s); (G.jnCalled ||= {})[s.calendar.grade] = true; s.flags.jnBoost = (s.flags.jnBoost || 0) + 2; },
         result: "\"좋다. 대신 테스트 전날엔 쉬어라. 다리가 무거우면 보여 줄 것도 못 보여 준다.\"" },
@@ -726,10 +726,10 @@ export const EVENTS_MORE = [
     choices: [
       { label: "고개 숙여 인사한다", fx: { morale: 2 },
         act: s => { const G = goalsOf(s); (G.jnResult ||= {})[s.calendar.grade] = true; if (G.jnOutcome) { achieve(s, "jn"); s.flags.jnSelected = true; s.player.condition.morale = Math.min(100, s.player.condition.morale + 6); if (turnInfo(s)?.month === 4) startJnCup(s); } },
-        result: s => s.flags.jnSelected ? "\"고흥에서 전남 대표라. 오늘은 실컷 자랑해도 된다.\" 감독님 목소리가 평소보다 조금 높았다." : "\"떨어진 날 어떻게 하는지가 다음 기회를 정한다.\" 감독님이 등을 두드려 주셨다." },
+        result: s => goalsOf(s).jnOutcome ? "\"고흥에서 전남 대표라. 오늘은 실컷 자랑해도 된다.\" 감독님 목소리가 평소보다 조금 높았다." : "\"떨어진 날 어떻게 하는지가 다음 기회를 정한다.\" 감독님이 등을 두드려 주셨다." },
       { label: "\"부족한 게 뭐였는지 알고 싶습니다\"", fx: { s: { "mental.focus": 0.5 } },
         act: s => { const G = goalsOf(s); (G.jnResult ||= {})[s.calendar.grade] = true; if (G.jnOutcome) { achieve(s, "jn"); s.flags.jnSelected = true; if (turnInfo(s)?.month === 4) startJnCup(s); } },
-        result: s => s.flags.jnSelected ? "\"붙은 날에도 그걸 묻는구나. 그래서 붙은 거다.\"" : `"선발 점수 기준이 ${JN_NEED[s.calendar.grade]}${"013678".includes(String(JN_NEED[s.calendar.grade]).at(-1)) ? "이었다" : "였다"}. 너는 ${goalsOf(s).jnLast ?? Math.round(jnScore(s))}. 경기 평점과 능력치, 둘 다 조금씩 모자랐다."` },
+        result: s => goalsOf(s).jnOutcome ? "\"붙은 날에도 그걸 묻는구나. 그래서 붙은 거다.\"" : `"선발 점수 기준이 ${JN_NEED[s.calendar.grade]}${"013678".includes(String(JN_NEED[s.calendar.grade]).at(-1)) ? "이었다" : "였다"}. 너는 ${goalsOf(s).jnLast ?? Math.round(jnScore(s))}. 경기 평점과 능력치, 둘 다 조금씩 모자랐다."` },
     ] },
   { id: "goal_award", bg: "ev_award", fixed: true, who: "narr",
     text: s => `고흥군 체육회 시상식. 사회자가 이름을 부른다. "올해의 우수선수상, 고흥FC ${s.player.name}!" 올해 경기 최우수 선수로 뽑힌 게 ${s.record.matches.filter(m => m.grade === s.calendar.grade && m.mom).length}번이었다.`,
