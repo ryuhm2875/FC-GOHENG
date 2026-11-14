@@ -123,7 +123,7 @@ export const EVENTS_STORY = [
       { mark: "mom_reply", label: "엄마한테 답장을 써서 냉장고에 붙인다", fx: { morale: 5, s: { "mental.teamwork": 0.3 } },
         result: "'3학년엔 선발로 뛰는 거 보여 줄게요.' 다음 날 아침, 그 쪽지 옆에 하트 자석이 하나 더 붙어 있었다." },
     ] },
-  { id: "p_admission", family: true, once: true, date: [[10, 3]], when: { grades: [3] }, bg: "ev_dinner", who: "dad",
+  { id: "p_admission", family: true, once: true, date: [[10, 3]], when: { grades: [3] }, bg: "ev_home_talk", who: "dad",
     text: "저녁 식탁. 진학 이야기가 나왔다. 엄마는 공부도 놓지 않을 학교를, 아빠는 네가 가고 싶은 곳을 말하라고 한다. 두 분이 동시에 나를 본다.",
     choices: [
       { label: "축구를 제일 잘할 수 있는 곳에 가고 싶다고 말한다", fx: { morale: 4, s: { "mental.competitive": 0.6 } },
@@ -190,7 +190,7 @@ export const EVENTS_STORY = [
         act: s => { const r = person(s, "rival")?.name || "라이벌"; bond(s, 0.05, `킥오프 직전, ${r}${bat(r) ? "이" : "가"} 내 등을 두 번 두드린다. 그 새벽의 신호다.`, 4); },
         result: "\"너도 만만치 않았거든.\" 공을 주고받는 소리가 해 질 때까지 이어졌다." },
     ] },
-  { id: "pay_mom_reply", once: true, family: true, bg: "ev_lunchbox", who: "narr",
+  { id: "pay_mom_reply", once: true, family: true, bg: "ev_note", who: "narr",
     trigger: s => { const i = turnInfo(s); return marked(s, "mom_reply", 10) && i?.grade === 3 && [11, 12].includes(i.month); },
     text: "엄마 지갑에서 코팅된 종이 한 장이 떨어졌다. 2학년 겨울, 냉장고에 붙여 두었던 내 답장이다. 글씨가 삐뚤빼뚤하다.",
     choices: [

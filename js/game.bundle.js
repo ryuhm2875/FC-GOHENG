@@ -10523,7 +10523,7 @@ const EVENTS_MORE = [
       { label: "오늘은 양보한다", fx: { s: { "student.attitude": 0.5 }, morale: -1 },
         result: "교실로 돌아오는 길에 반 친구들이 투덜댔다. 그래도 다툼은 없었다." },
     ] },
-  { id: "a_bday_party", bg: "ev_hallway", who: "friend", needs: "friend",
+  { id: "a_bday_party", bg: "ev_classroom", who: "friend", needs: "friend",
     text: "토요일 저녁에 내 생일 파티 하는데 꼭 와야 돼. …근데 그 시간에 자율 훈련 있잖아. 난 빠질 건데, 너는?",
     choices: [
       { label: "파티에 간다", fx: { morale: 4, coach: -1, rel: { friend: 8 } },
@@ -10723,7 +10723,7 @@ const EVENTS_MORE = [
       { label: "휴대폰을 끄고 훈련장으로 간다", fx: { s: { "mental.focus": 1 }, coach: 1 },
         result: "영상 속 골은 이미 지난 일이다. 다음 골을 연습했다." },
     ] },
-  { id: "c_transfer_offer", bg: "ev_scout", who: "narr", when: { grades: [2] }, once: true, cond: s => s.relations.coach >= 50,
+  { id: "c_transfer_offer", bg: "ev_night_call", who: "narr", when: { grades: [2] }, once: true, cond: s => s.relations.coach >= 50,
     text: "광주의 한 중학교 감독님에게서 연락이 왔다. \"우리 학교로 오면 바로 주전이다. 생각해 봐라.\"",
     choices: [
       { label: "고흥에 남겠다고 정중히 말씀드린다", fx: { coach: 3, s: { "mental.teamwork": 1 }, morale: 2 },
@@ -11133,7 +11133,7 @@ const EVENTS_STORY = [
       { mark: "mom_reply", label: "엄마한테 답장을 써서 냉장고에 붙인다", fx: { morale: 5, s: { "mental.teamwork": 0.3 } },
         result: "'3학년엔 선발로 뛰는 거 보여 줄게요.' 다음 날 아침, 그 쪽지 옆에 하트 자석이 하나 더 붙어 있었다." },
     ] },
-  { id: "p_admission", family: true, once: true, date: [[10, 3]], when: { grades: [3] }, bg: "ev_dinner", who: "dad",
+  { id: "p_admission", family: true, once: true, date: [[10, 3]], when: { grades: [3] }, bg: "ev_home_talk", who: "dad",
     text: "저녁 식탁. 진학 이야기가 나왔다. 엄마는 공부도 놓지 않을 학교를, 아빠는 네가 가고 싶은 곳을 말하라고 한다. 두 분이 동시에 나를 본다.",
     choices: [
       { label: "축구를 제일 잘할 수 있는 곳에 가고 싶다고 말한다", fx: { morale: 4, s: { "mental.competitive": 0.6 } },
@@ -11200,7 +11200,7 @@ const EVENTS_STORY = [
         act: s => { const r = person(s, "rival")?.name || "라이벌"; bond(s, 0.05, `킥오프 직전, ${r}${bat(r) ? "이" : "가"} 내 등을 두 번 두드린다. 그 새벽의 신호다.`, 4); },
         result: "\"너도 만만치 않았거든.\" 공을 주고받는 소리가 해 질 때까지 이어졌다." },
     ] },
-  { id: "pay_mom_reply", once: true, family: true, bg: "ev_lunchbox", who: "narr",
+  { id: "pay_mom_reply", once: true, family: true, bg: "ev_note", who: "narr",
     trigger: s => { const i = turnInfo(s); return marked(s, "mom_reply", 10) && i?.grade === 3 && [11, 12].includes(i.month); },
     text: "엄마 지갑에서 코팅된 종이 한 장이 떨어졌다. 2학년 겨울, 냉장고에 붙여 두었던 내 답장이다. 글씨가 삐뚤빼뚤하다.",
     choices: [
@@ -11645,7 +11645,7 @@ const EVENTS = [
       { label: "제가 했습니다 (대신 혼난다)", fx: { coach: -1, rel: { mentor: 12 }, s: { "mental.teamwork": 1 } }, result: "운동장 다섯 바퀴. 다음 날 선배가 몰래 음료수를 줬다." },
       { label: "사실대로 말한다", fx: { coach: 1, rel: { mentor: -10 } }, result: "감독님은 고개를 끄덕이셨다. 선배와는 한동안 어색했다." },
     ] },
-  { id: "junior_slump", bg: "ev_boots", who: "junior", needs: "junior",
+  { id: "junior_slump", bg: "ev_bench", who: "junior", needs: "junior",
     text: "형… 저 축구 그만둘까 봐요. 경기도 못 나가고 엄마도 공부하래요.",
     choices: [
       { mark: "junior_cared", label: "내 중1 얘기를 해 준다", fx: { rel: { junior: 12 }, s: { "mental.teamwork": 1, "student.attitude": 0.5 }, fatigue: 2 }, result: "{junior|이/가} 한참 듣더니 \"내일도 나올게요\" 했다." },
@@ -11727,20 +11727,20 @@ const EVENTS = [
       { label: "괜찮다고 한다", fx: { morale: 1 }, result: "경기 끝나고 전화를 했다. 아빠는 점수를 이미 알고 있었다. 단톡방을 보고 있었던 거다." },
       { label: "서운하다고 말한다", fx: { morale: -3 }, result: "아빠가 한참 말이 없었다. 다음 주 경기엔 맨 앞줄에 계셨다.", fxAfter: { morale: 6 } },
     ] },
-  { id: "mom_worry", bg: "ev_lunchbox", who: "mom", cond: s => s.player.stats.student.academic < 45,
+  { id: "mom_worry", bg: "ev_home_talk", who: "mom", cond: s => s.player.stats.student.academic < 45,
     text: "성적표 봤어. 축구도 좋지만… 엄마는 네가 공부를 아예 놓을까 봐 무서워.",
     choices: [
       { label: "주 1회는 꼭 공부하겠다고 약속한다", fx: { s: { "student.academic": 2 }, morale: 2 }, result: "엄마가 손가락을 걸자고 했다. 좀 유치했지만 걸었다." },
       { label: "축구로 성공하면 된다고 한다", fx: { morale: -4, s: { "mental.competitive": 0.5 } }, result: "엄마는 대답 대신 설거지를 시작했다." },
     ] },
-  { id: "allowance", bg: "ev_lunchbox", who: "mom",
+  { id: "allowance", bg: "ev_home_talk", who: "mom",
     text: "이번 달 용돈이다. 아껴 써라.",
     choices: [
       { label: "닭가슴살과 단백질 음료를 산다", fx: { s: { "phys.strength": 0.6 }, morale: -1 }, result: "맛은 없다. 근데 형들이 다 이렇게 했다더라." },
       { label: "친구들과 PC방에 간다", fx: { morale: 6, fatigue: -4, rel: { friend: 4 } }, result: "오랜만에 크게 웃었다." },
       { label: "축구 영상 강의를 결제한다", fx: { s: { "mental.focus": 1, "tech.pass": 0.4 } }, result: "패스 각도 강의를 세 번 돌려 봤다." },
     ] },
-  { id: "sibling_exam", bg: "ev_lunchbox", date: [[11, 3]], who: "narr", once: true, when: { months: [11] },
+  { id: "sibling_exam", bg: "ev_home_talk", date: [[11, 3]], who: "narr", once: true, when: { months: [11] },
     text: "이번 주는 고3 누나의 수능이다. 집안 분위기가 무겁다. 엄마가 이번 주엔 조용히 지내 달라고 했다.",
     choices: [
       { label: "누나 도시락 심부름을 한다", fx: { morale: 4, s: { "student.attitude": 1 } }, result: "수능 끝나고 누나가 축구화 끈을 사 줬다." },
@@ -17285,7 +17285,7 @@ const BG_STANDIN = {
   ev_meeting: "bg_locker", ev_halftime: "bg_locker", ev_jn_halftime: "ev_halftime", ev_fight: "ev_classroom", ev_hallway: "ev_classroom",
   ev_cram: "ev_classroom", ev_groupwork: "ev_classroom", ev_newspaper: "ev_office", ev_award: "ev_festival",
   ev_selection: "bg_field_day", ev_scout: "bg_stadium",
-  ev_rival: "bg_field_day", ev_breakwater: "bg_sea", ev_dorm_night: "ev_retreat", ev_lineup: "bg_field_day", ev_lunchbox: "bg_home", ev_dadcar: "bg_sea", ev_stands_mom: "bg_stadium", ev_injury_home: "bg_home", ev_note: "bg_home", ev_jn_camp: "ev_selection", ev_medal: "ev_welcome", ev_launch: "bg_sea", ev_bridge: "bg_sea", ev_ssukseom: "bg_sea", ev_bus_sunset: "bg_sea",
+  ev_rival: "bg_field_day", ev_breakwater: "bg_sea", ev_dorm_night: "ev_retreat", ev_lineup: "bg_field_day", ev_lunchbox: "bg_home", ev_dadcar: "bg_sea", ev_stands_mom: "bg_stadium", ev_injury_home: "bg_home", ev_note: "bg_home", ev_jn_camp: "ev_selection", ev_medal: "ev_welcome", ev_launch: "bg_sea", ev_bridge: "bg_sea", ev_ssukseom: "bg_sea", ev_bus_sunset: "bg_sea", ev_home_talk: "ev_birthday_home",
 };
 window.__bgFallback = el => {
   const name = el.dataset.name, alt = BG_STANDIN[name];
