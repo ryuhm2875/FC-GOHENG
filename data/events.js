@@ -43,13 +43,13 @@ export const EVENTS = [
       { label: "허리를 낮추고 줄을 어깨에 감는다", req: { "phys.strength": 60 }, fx: { s: { "phys.strength": 0.5, "mental.teamwork": 0.5 }, morale: 3, teacher: 1 },
         result: "웨이트로 다진 허리가 버텼다. 첫 당김에 상대편이 한 걸음 끌려왔다. 반 아이들이 내 이름을 연호한다." },
     ] },
-  { id: "phone_confiscated", school: true, who: "teacher", cond: s => s.player.stats.student.attitude < 60,
+  { id: "phone_confiscated", bg: "ev_doze", school: true, who: "teacher", cond: s => s.player.stats.student.attitude < 60,
     text: "수업 중에 하이라이트 영상을 보다가 {teacher}께 걸렸다. \"휴대폰은 종례 때 찾아가.\"",
     choices: [
       { label: "죄송합니다. 반성문 쓰겠습니다", fx: { s: { "student.attitude": 1.5 } }, result: "반성문 한 장. 선생님이 \"다음엔 쉬는 시간에 봐\" 하며 휴대폰을 돌려주셨다." },
       { label: "축구 공부였다고 말한다", fx: { s: { "student.attitude": -2 }, morale: -3 }, result: "변명이 통하지 않았다. 감독님 귀에도 들어갔다.", fxAfter: { coach: -2 } },
     ] },
-  { id: "class_president", date: [[3, 3]], school: true, who: "teacher", when: { months: [3] }, once: true, cond: s => s.player.stats.student.attitude >= 50,
+  { id: "class_president", bg: "ev_vote", date: [[3, 3]], school: true, who: "teacher", when: { months: [3] }, once: true, cond: s => s.player.stats.student.attitude >= 50,
     text: "반장 선거에 너를 추천하는 애들이 있더라. 운동하면서 할 수 있겠니?",
     choices: [
       { label: "해 보겠습니다", fx: { s: { "student.attitude": 3, "mental.teamwork": 1 }, fatigue: 5 }, result: "반장이 됐다. 아침 조회를 맡게 됐다. 바쁘지만 뿌듯하다." },
@@ -124,13 +124,13 @@ export const EVENTS = [
       { label: "\"그 자리, 훈련에서 다시 가져간다\"", req: { "mental.confidence": 62 }, fx: { s: { "mental.competitive": 0.6 }, morale: 2, rel: { rival: 3 } },
         result: "{rival|이/가} 피식 웃었다. \"그 말 기다렸다.\" 그날 훈련은 둘 다 평소보다 한 시간 늦게 끝났다." },
     ] },
-  { id: "rival_injury", who: "narr", needs: "rival", once: true,
+  { id: "rival_injury", bg: "ev_ankle", who: "narr", needs: "rival", once: true,
     text: "{rival|이/가} 훈련 중 발목을 접질렸다. 일주일은 못 뛴다고 한다.",
     choices: [
       { label: "병원에 찾아간다", fx: { rel: { rival: 15, friend: 3 }, s: { "mental.teamwork": 1 } }, result: "\"빨리 나아서 와라. 너 없으니까 훈련이 재미없다.\" 내 말에 {rival|이/가} 피식 웃었다." },
       { label: "이번이 기회라고 생각한다", fx: { s: { "mental.competitive": 1 }, coach: 1, rel: { rival: -5 } }, result: "그 주 훈련에서 유난히 많이 뛰었다. 마음 한쪽이 조금 불편했다." },
     ] },
-  { id: "mentor_tip", who: "mentor", needs: "mentor", cond: s => s.relations.people?.mentor?.value >= 55,
+  { id: "mentor_tip", bg: "ev_bench", who: "mentor", needs: "mentor", cond: s => s.relations.people?.mentor?.value >= 55,
     text: "너 공 받기 전에 어깨 너머로 한 번 봐라. 그거 하나로 달라진다. 나도 작년에 감독님한테 배운 거다.",
     choices: [
       { label: "그 자리에서 따라 해 본다", fx: { s: { "tech.firstTouch": 1, "mental.focus": 1 }, rel: { mentor: 5 } }, result: "고개를 한 번 돌렸을 뿐인데 다음 패스가 보였다." },
@@ -152,7 +152,7 @@ export const EVENTS = [
       { mark: "junior_cared", label: "\"오늘부터 나랑 같이 남아서 하자\"", req: { "rel.junior": 60 }, fx: { s: { "mental.teamwork": 0.6 }, fatigue: 3, rel: { junior: 5 } },
         result: "그날부터 훈련 끝나고 30분씩 같이 공을 찼다. 일주일 뒤 {junior|이/가} 먼저 말했다. \"형, 내일도 남을 거죠?\"" },
     ] },
-  { id: "junior_ask", who: "junior", needs: "junior",
+  { id: "junior_ask", bg: "ev_kids", who: "junior", needs: "junior",
     text: "형, 저 왼발 슈팅 좀 봐 주시면 안 돼요? 10분만요.",
     choices: [
       { mark: "junior_coach", label: "30분 봐 준다", fx: { rel: { junior: 8 }, s: { "tech.shoot": 0.5, "mental.teamwork": 0.5 }, fatigue: 5 }, result: "가르치다 보니 내 자세도 고쳐졌다." },
@@ -254,7 +254,7 @@ export const EVENTS = [
       { label: "\"컨디션이 안 좋았어요\"", fx: { coach: -3, morale: 2 }, result: "\"컨디션은 네가 만드는 거다.\" 감독님 목소리가 한 톤 낮아졌다." },
       { label: "다음 경기에서 보여 드리겠다고 한다", fx: { coach: 1, morale: -1, s: { "mental.competitive": 1.5 } }, result: "\"말은 쉽다. 훈련장에서 보자.\" 그래도 감독님 입꼬리가 아주 조금 올라간 것 같았다." },
     ] },
-  { id: "co_scold_elem", urgent: true, who: "coach",
+  { id: "co_scold_elem", bg: "ev_laps", urgent: true, who: "coach",
     cond: s => { const m = s.record.matches.at(-1); return m && m.turn >= s.calendar.turn - 1 && m.elementary && m.result !== "승" && !(m.reason || "").includes("부상"); },
     text: "{coach}: \"동생들한테 그 결과는 아니지. 다들 운동장 열 바퀴부터 돌고 와.\" 동기들이 한숨을 쉰다.",
     choices: [
@@ -284,7 +284,7 @@ export const EVENTS = [
       { label: "같이 본다", fx: { morale: 5, s: { "mental.confidence": 1.5 } }, result: "좋은 장면을 연달아 보니 어깨가 펴졌다. \"이게 네 기준이다. 여기서 내려가지 마라.\"" },
       { label: "실수한 장면도 보여 달라고 한다", fx: { coach: 2, s: { "mental.focus": 1.5 } }, result: "코치님이 잠깐 놀라시더니 실수 장면 두 개를 골라 주셨다. 고칠 게 분명해졌다." },
     ] },
-  { id: "co_bench_talk", urgent: true, who: "coach",
+  { id: "co_bench_talk", bg: "ev_bench", urgent: true, who: "coach",
     cond: s => { const ms = s.record.matches.filter(m => m.grade === s.calendar.grade).slice(-3); return ms.length === 3 && ms[2].turn >= s.calendar.turn - 1 && ms.every(m => ["bench", "out"].includes(m.status) && !m.reason); },
     text: "감독님께서 운동장 벤치 옆으로 부르셨다. \"세 경기째 너를 못 넣어 줬다. 서운하지?\"",
     choices: [
@@ -314,7 +314,7 @@ export const EVENTS = [
       { label: "자신 있게 칼을 잡는다", fx: { morale: 4, s: { "student.academic": 1 } }, result: "양파가 조금 굵었지만 맛은 괜찮았다. 선생님이 \"축구부 손맛 좋네\" 하셨다." },
       { label: "설거지 담당을 맡는다", fx: { s: { "student.attitude": 1.5 }, rel: { friend: 2 } }, result: "조원들이 요리하는 동안 묵묵히 설거지를 했다. 점수는 조원들이 챙겨 줬다." },
     ] },
-  { id: "s_little", who: "narr",
+  { id: "s_little", bg: "ev_kids", who: "narr",
     text: "훈련 끝나고 운동장을 나서는데, 초등학생 몇 명이 공을 들고 다가온다. \"형, 축구부죠? 슈팅 한 번만 보여 주세요!\"",
     choices: [
       { mark: "kids", label: "몇 개 차 주고 같이 놀아 준다", fx: { morale: 6, fatigue: 3, s: { "mental.teamwork": 1 } }, result: "해가 질 때까지 공을 찼다. 꼬마들이 내 등번호를 외우고 갔다." },
@@ -326,7 +326,7 @@ export const EVENTS = [
       { label: "바로 솔직하게 말한다", fx: { morale: -2, s: { "student.attitude": 1 } }, result: "엄마는 한숨을 쉬셨지만 혼내지는 않으셨다. \"대신 이번 달 용돈에서 반 낸다.\"" },
       { label: "케이스로 가리고 버틴다", fx: { morale: -3 }, result: "사흘 만에 들켰다. 엄마는 액정보다 거짓말에 더 화를 내셨다." },
     ] },
-  { id: "s_vote", date: [[3, 4]], cool: 70, school: true, who: "narr", when: { months: [3, 9] },
+  { id: "s_vote", bg: "ev_vote", date: [[3, 4]], cool: 70, school: true, who: "narr", when: { months: [3, 9] },
     text: "학급 체육부장을 뽑는다. 누군가 \"축구부가 해야지!\" 하며 내 이름을 칠판에 적었다.",
     choices: [
       { label: "맡겠다고 한다", fx: { s: { "mental.teamwork": 1, "student.attitude": 1 }, fatigue: 3, teacher: 2 }, result: "체육 시간마다 준비물을 챙기느라 바빠졌다. 그래도 반 아이들과 훨씬 가까워졌다." },
@@ -344,7 +344,7 @@ export const EVENTS = [
       { label: "축구 선수의 꿈을 솔직하게 쓴다", fx: { teacher: 4, s: { "student.academic": 1, "mental.focus": 1 } }, result: "선생님이 빨간 펜으로 한 줄 남기셨다. \"꿈을 이렇게 구체적으로 쓴 글은 처음이다.\"" },
       { label: "축구 말고 다른 꿈도 함께 쓴다", fx: { teacher: 3, s: { "student.academic": 1.5 } }, result: "쓰다 보니 축구 말고도 해 보고 싶은 게 있었다. 선생님은 그 부분에 밑줄을 그어 주셨다." },
     ] },
-  { id: "t_doze", who: "teacher", school: true, cond: s => s.player.condition.fatigue >= 55,
+  { id: "t_doze", bg: "ev_doze", who: "teacher", school: true, cond: s => s.player.condition.fatigue >= 55,
     text: "5교시 국어 시간. 눈꺼풀이 자꾸 내려온다. {teacher}께서 내 책상 옆을 지나가시다 멈추셨다.",
     choices: [
       { label: "벌떡 일어나 뒤에 서서 듣는다", fx: { teacher: 3, s: { "student.attitude": 1 }, fatigue: 2 }, result: "\"그래, 그 정신이면 됐다.\" 반 아이들이 킥킥 웃었다." },
@@ -551,7 +551,7 @@ export const EVENTS = [
       { label: "답을 적는다", fx: { teacher: 6, s: { "student.attitude": 1 } }, result: "\"수업 시간에도 크게 말해 볼게요.\" 다음 날 일기장에 웃는 얼굴이 그려져 있었다." },
       { label: "그냥 넘긴다", fx: {}, result: "일기장을 덮었다. 선생님은 다음 주에도 한 줄을 남기셨다." },
     ] },
-  { id: "t_sixth", who: "teacher", school: true, weight: 1.3, cond: s => s.player.condition.fatigue >= 55,
+  { id: "t_sixth", bg: "ev_doze", who: "teacher", school: true, weight: 1.3, cond: s => s.player.condition.fatigue >= 55,
     text: "6교시 국어 시간. 새벽 훈련 때문에 눈꺼풀이 무겁다. {teacher}께서 시를 읽고 계신다.",
     choices: [
       { label: "허벅지를 꼬집으며 버틴다", fx: { s: { "student.academic": 1, "mental.focus": 0.5 }, fatigue: 2, teacher: 2 }, result: "끝까지 버텼다. 선생님이 지나가며 책상을 톡 두드리셨다. 칭찬인지 경고인지 모르겠다." },
@@ -597,13 +597,13 @@ export const EVENTS = [
       { label: "공부 계획을 말한다", fx: { s: { "student.academic": 1.5 }, morale: 4, teacher: 5 }, result: "선생님이 문제집 한 권을 꺼내 주셨다. \"다 풀면 가져와.\" 다리 대신 머리를 쓰는 몇 주가 됐다." },
       { label: "모르겠다고 한다", fx: { morale: 2, teacher: 2 }, result: "\"모르는 게 당연해. 근데 가만히 있지는 마.\" 선생님이 어깨를 두드리셨다." },
     ] },
-  { id: "t_report", who: "teacher", weight: 3, cond: s => !!s.lastExam && s.calendar.turn - s.lastExam.turn <= 2 && s.lastExam.score < 50,
+  { id: "t_report", bg: "ev_counsel", who: "teacher", weight: 3, cond: s => !!s.lastExam && s.calendar.turn - s.lastExam.turn <= 2 && s.lastExam.score < 50,
     text: "시험 성적표가 나왔다. {teacher}께서 교무실로 부르신다. \"축구 그만두라는 얘기 아니다. 둘 다 하라는 거다.\"",
     choices: [
       { label: "같이 계획을 짠다", fx: { s: { "student.academic": 2.5, "student.attitude": 1 }, teacher: 6, fatigue: 3 }, result: "훈련 없는 저녁 두 번은 공부하기로 했다. 선생님이 달력에 동그라미를 쳐 주셨다." },
       { label: "고개만 끄덕인다", fx: { teacher: -2 }, result: "고개만 끄덕이고 교무실을 나왔다. 문을 닫고 나서야 한숨이 나왔다." },
     ] },
-  { id: "t_counsel", fixed: true, who: "teacher",
+  { id: "t_counsel", bg: "ev_counsel", fixed: true, who: "teacher",
     text: s => {
       const st = s.player.stats.student;
       return st.attitude >= 65 && st.academic >= 55
