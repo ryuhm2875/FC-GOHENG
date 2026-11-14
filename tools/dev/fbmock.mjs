@@ -3,7 +3,7 @@
 import http from "node:http";
 
 const PORT = +(process.argv[2] || 8790);
-const ADMIN = "ryubongdoo@gmail.com";
+const ADMIN = "admin@test.local";          // 시험용 가짜 관리자 (실제 판단은 UID: 브라우저에서 ADMIN_UID 를 "u_admin" 으로 두고 시험)
 const users = new Map();          // email → { pw, uid }
 const tokens = new Map();         // token → email
 const docs = new Map();           // "coll/id" → { fields, updateTime }
