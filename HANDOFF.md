@@ -520,7 +520,7 @@ FW 7.83 · 1.69골 · MOM 47.6% / MF 7.07 · 도움 0.83 · MOM 18.7% / DF 6.99 
 
 ## 24. 학번 로그인·관리자 페이지·플레이 기록 (2026-10-23, 사용자: "학생들에게 배포. 학번·비밀번호, 내가 설정하는 관리자 페이지. 어떤 이벤트에서 무엇을 골랐는지, 경기 중 도전적·안정적 성향 통계. 게임을 막을 수도 있게")
 
-Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부름 (`js/net/fb.js`). 관리자 이메일 ryubongdoo@gmail.com (`ADMIN_EMAIL`, `firestore.rules`의 isAdmin 두 곳을 같이 바꿔야 함).
+Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부름 (`js/net/fb.js`). 관리자는 이메일이 아니라 Firebase UID로 판단 (`js/net/fb.js`의 `ADMIN_UID`, `firestore.rules`의 isAdmin 두 곳을 같이 바꿔야 함). 공개 저장소에 이메일을 남기지 않기 위함.
 
 - **학생 계정**: Firebase Auth 이메일/비밀번호. 이메일은 `학번.열쇠@fc.goheung`, 비밀번호는 `fcg-` + 학생 비밀번호 (Firebase 6자 제한 때문에 4자리도 되게). 열쇠는 무작위 6자로 `fcg_login/{학번}.key`에 있음. 무료 요금제에선 남의 비밀번호를 못 바꾸므로, 비밀번호 바꾸기 = 새 열쇠로 계정을 새로 만들고 key를 바꿈 (옛 계정은 규칙에서 막힘). 기록은 학번에 묶여 있어 그대로.
 - **데이터**: `fcg_config/main` {open, message, quiet{on,from,to,message}} · `fcg_login/{학번}` {key, blocked} (누구나 읽음) · `fcg_students/{학번}` {name, created / play, now, lastSeen} · `fcg_saves/{학번}` {enc:"gz64", data, at, summary}. 권한은 `firestore.rules`.

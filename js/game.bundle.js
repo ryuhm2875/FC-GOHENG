@@ -13533,8 +13533,10 @@ const FB = {
   apiKey: "AIzaSyBtADZsLk0dYmm5ZNmnapoVMHIpj2vtRRA",
   projectId: "fcgoheung",
 };
-// 관리자(선생님) 계정 이메일. 바꾸면 firestore.rules 의 같은 이메일도 바꿔야 합니다.
-const ADMIN_EMAIL = "ryubongdoo@gmail.com";
+// 관리자(선생님) 계정의 Firebase UID (Firebase 콘솔 > Authentication > 사용자 UID).
+// 공개 저장소에 이메일을 남기지 않으려고 이메일 대신 UID로 확인합니다. 바꾸면 firestore.rules 의 isAdmin()도 같이 바꿔야 합니다.
+const ADMIN_UID = "__ADMIN_UID__";
+const isAdmin = a => !!a?.uid && a.uid === ADMIN_UID;
 // 학생 계정은 '학번.열쇠@fc.goheung' 모양의 가짜 이메일로 만듭니다 (학생은 학번만 입력)
 const STUDENT_DOMAIN = "fc.goheung";
 const studentEmail = (sid, key) => `${sid}.${key}@${STUDENT_DOMAIN}`;
@@ -13691,13 +13693,13 @@ function inQuiet(q, at = Date.now()) {
   return a < b ? t >= a && t < b : t >= a || t < b;
 }
 
-return { FB, ADMIN_EMAIL, STUDENT_DOMAIN, studentEmail, studentPassword, FbError, signIn, signUp, refresh, authMessage, toFs, fromFs, getDoc, setDoc, delDoc, listDocs, newKey, pack, unpack, inQuiet };
+return { FB, ADMIN_UID, isAdmin, STUDENT_DOMAIN, studentEmail, studentPassword, FbError, signIn, signUp, refresh, authMessage, toFs, fromFs, getDoc, setDoc, delDoc, listDocs, newKey, pack, unpack, inQuiet };
 })();
 (__fix["js/net/fb.js"] || []).forEach(f => f());
 
 // ── js/net/online.js
 __m["js/net/online.js"] = (function () {
-const {ADMIN_EMAIL, studentEmail, studentPassword, signIn, signUp, refresh, getDoc, setDoc, authMessage, pack, unpack, inQuiet, newKey} = __m["js/net/fb.js"];
+const {isAdmin, studentEmail, studentPassword, signIn, signUp, refresh, getDoc, setDoc, authMessage, pack, unpack, inQuiet, newKey} = __m["js/net/fb.js"];
 const {rawAuto, putRawAuto} = __m["js/state.js"];
 const {setUserNS} = __m["js/userkey.js"];
 const {turnInfo, label} = __m["js/engine/calendar.js"];
@@ -13752,8 +13754,8 @@ async function login(id, pw) {
   if (!id || !pw) throw new Error("학번과 비밀번호를 입력해 주세요.");
   try {
     if (id.includes("@")) {
-      if (id.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) throw new Error("학번으로 로그인해 주세요.");
       const a = await signIn(id, pw);
+      if (!isAdmin(a)) throw new Error("학번으로 로그인해 주세요.");
       sess = { ...a, admin: true, sid: null, name: "선생님" };
     } else {
       const lg = await getDoc(`fcg_login/${encodeURIComponent(id)}`);

@@ -4,7 +4,7 @@
 //   fcg_login/{학번}      { key, blocked }                                       누구나 읽음, 관리자만 씀
 //   fcg_students/{학번}   { name, created, ...관리자 칸 / play, now, lastSeen (학생이 씀) }
 //   fcg_saves/{학번}      { enc, data, at, summary }                             자기 것만
-import { ADMIN_EMAIL, studentEmail, studentPassword, signIn, signUp, refresh, getDoc, setDoc, authMessage, pack, unpack, inQuiet, newKey } from "./fb.js";
+import { isAdmin, studentEmail, studentPassword, signIn, signUp, refresh, getDoc, setDoc, authMessage, pack, unpack, inQuiet, newKey } from "./fb.js";
 import { rawAuto, putRawAuto } from "../state.js";
 import { setUserNS } from "../userkey.js";
 import { turnInfo, label } from "../engine/calendar.js";
@@ -45,8 +45,8 @@ export async function login(id, pw) {
   if (!id || !pw) throw new Error("학번과 비밀번호를 입력해 주세요.");
   try {
     if (id.includes("@")) {
-      if (id.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) throw new Error("학번으로 로그인해 주세요.");
       const a = await signIn(id, pw);
+      if (!isAdmin(a)) throw new Error("학번으로 로그인해 주세요.");
       sess = { ...a, admin: true, sid: null, name: "선생님" };
     } else {
       const lg = await getDoc(`fcg_login/${encodeURIComponent(id)}`);

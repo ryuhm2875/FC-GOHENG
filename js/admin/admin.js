@@ -1,5 +1,5 @@
 // 관리자 페이지: 학생 계정, 게임 스위치, 반 통계, 학생별 기록
-import { ADMIN_EMAIL, studentEmail, studentPassword, signIn, signUp, refresh, getDoc, setDoc, delDoc, listDocs, newKey, authMessage, inQuiet } from "../net/fb.js";
+import { isAdmin, studentEmail, studentPassword, signIn, signUp, refresh, getDoc, setDoc, delDoc, listDocs, newKey, authMessage, inQuiet } from "../net/fb.js";
 import { ACTION_MAP, CATEGORIES } from "../../data/actions.js";
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -14,7 +14,7 @@ const readSess = () => {
     const own = JSON.parse(sessionStorage.getItem(SK) || "null");
     if (own) return own;
     const game = JSON.parse(localStorage.getItem("gfc_session") || "null");
-    return game?.admin && String(game.email || "").toLowerCase() === ADMIN_EMAIL.toLowerCase() ? game : null;
+    return game?.admin && isAdmin(game) ? game : null;
   } catch { return null; }
 };
 const writeSess = s => { try { s ? sessionStorage.setItem(SK, JSON.stringify(s)) : sessionStorage.removeItem(SK); } catch { /* 이번만 */ } };
@@ -32,20 +32,21 @@ function renderLogin(msg = "") {
     <h1 class="dp big">DREAM<br>PROJECT</h1>
     <p class="lg-sub">드림 프로젝트 관리자</p>
     <form class="card">
-      <label class="fl"><span>이메일</span><input type="email" name="email" value="${esc(ADMIN_EMAIL)}" autocomplete="username"></label>
+      <label class="fl"><span>이메일</span><input type="email" name="email" autocomplete="username"></label>
       <label class="fl"><span>비밀번호</span><input type="password" name="pw" autocomplete="current-password"></label>
       <button class="btn kit wide" type="submit">로그인</button>
       <p class="msg err">${esc(msg)}</p>
     </form>
   </div>`;
   const f = $("form", app);
-  f.pw.focus();
+  f.email.focus();
   f.addEventListener("submit", async e => {
     e.preventDefault();
     const b = $("button", f); b.disabled = true;
     try {
-      if (f.email.value.trim().toLowerCase() !== ADMIN_EMAIL.toLowerCase()) throw new Error("관리자 계정이 아닙니다.");
-      sess = await signIn(f.email.value.trim(), f.pw.value);
+      const a = await signIn(f.email.value.trim(), f.pw.value);
+      if (!isAdmin(a)) throw new Error("관리자 계정이 아닙니다.");
+      sess = a;
       writeSess(sess);
       await loadAll(); render();
     } catch (err) { $(".msg", app).textContent = /INVALID|EMAIL_NOT_FOUND/.test(err.code || "") ? "이메일 또는 비밀번호가 맞지 않습니다." : friendly(err); b.disabled = false; }

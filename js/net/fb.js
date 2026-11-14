@@ -4,8 +4,10 @@ export const FB = {
   apiKey: "AIzaSyBtADZsLk0dYmm5ZNmnapoVMHIpj2vtRRA",
   projectId: "fcgoheung",
 };
-// 관리자(선생님) 계정 이메일. 바꾸면 firestore.rules 의 같은 이메일도 바꿔야 합니다.
-export const ADMIN_EMAIL = "ryubongdoo@gmail.com";
+// 관리자(선생님) 계정의 Firebase UID (Firebase 콘솔 > Authentication > 사용자 UID).
+// 공개 저장소에 이메일을 남기지 않으려고 이메일 대신 UID로 확인합니다. 바꾸면 firestore.rules 의 isAdmin()도 같이 바꿔야 합니다.
+export const ADMIN_UID = "__ADMIN_UID__";
+export const isAdmin = a => !!a?.uid && a.uid === ADMIN_UID;
 // 학생 계정은 '학번.열쇠@fc.goheung' 모양의 가짜 이메일로 만듭니다 (학생은 학번만 입력)
 export const STUDENT_DOMAIN = "fc.goheung";
 export const studentEmail = (sid, key) => `${sid}.${key}@${STUDENT_DOMAIN}`;
