@@ -206,7 +206,7 @@ export function showMatch(app, m, onDone) {
   function soCard() {
     const wrap = root.querySelector("#pitch");
     if (!wrap || wrap.querySelector(".so-card")) return;
-    wrap.insertAdjacentHTML("beforeend", `<div class="so-card" aria-hidden="true"><img src="assets/img/ev_shootout.webp" alt="" onerror="this.parentNode.remove()"><b>승부차기</b></div>`);
+    wrap.insertAdjacentHTML("beforeend", `<div class="so-card" aria-hidden="true"><img src="assets/img/${fx.jn ? "ev_jn_shootout" : "ev_shootout"}.webp" alt="" onerror="this.onerror=null;this.src='assets/img/ev_shootout.webp'"><b>승부차기</b></div>`);
     const el = wrap.querySelector(".so-card");
     const bye = () => el.remove();
     el.addEventListener("animationend", bye); el.addEventListener("click", bye);
@@ -355,7 +355,7 @@ export function showMatch(app, m, onDone) {
     ${fx.school ? `<div class="alert gold">🎓 오늘 ${esc(fx.school.name)}(${tierLabel(fx.school.tier)}) ${esc(fx.school.coach)}님이 직접 보러 오셨습니다. 상대는 고등학생이라 몸싸움이 버겁습니다.</div>` : ""}
     ${m.oppAce ? `<div class="alert">👀 주목할 상대: ${m.oppAce.pos} ${m.oppAce.number}번 ${esc(m.oppAce.name)} (${m.oppAce.grade}학년${m.oppAce.trait ? `, ${esc(m.oppAce.trait)}` : ""})</div>`
       : m.oppAceAbsent ? `<div class="alert">${esc(fillText("상대 에이스 {a|이/가} 오늘은 나오지 않습니다.", { a: m.oppAceAbsent }))}</div>` : ""}
-    ${fx.jn ? `<div class="alert gold">🎽 전남 대표로 나선 전국소년체전 ${esc(fx.round)}. 도내 여러 학교에서 뽑힌 선수들과 함께 뜁니다. 감독은 김 감독님이 맡으셨습니다.</div>` : ""}
+    ${fx.jn ? `<div class="alert gold">🎽 전남 대표로 나선 전국소년체전 ${esc(fx.round)}. 도내 여러 학교에서 뽑힌 선수들과 함께 뜁니다. 감독은 ${esc(staffOf({ fx }, "coach"))}님이 맡으셨습니다.</div>` : ""}
     ${fx.ko ? `<div class="alert gold">지면 탈락입니다. 비기면 승부차기.</div>` : ""}
     ${fx.elementary ? `<div class="alert gold">🧒 오늘은 초등학교 팀과의 연습경기. 이겨야 본전, 지면 한동안 놀림감이다.</div>` : ""}
     <div class="power"><span>우리 전력</span><div class="pw"><i style="width:${barPct(m.ours)}%"></i></div>
@@ -461,7 +461,7 @@ export function showMatch(app, m, onDone) {
     };
     if (!t) return startBtn();
     // 라커룸: 감독님이 나를 따로 불러서 하는 말과 내 대답 (경기장 자리에 라커룸 그림)
-    root.querySelector("#pitch").insertAdjacentHTML("beforeend", `<div class="ht-scene" aria-hidden="true"><img src="assets/img/ev_halftime.webp" data-name="ev_halftime" alt="" onerror="__bgFallback(this)"></div>`);
+    root.querySelector("#pitch").insertAdjacentHTML("beforeend", `<div class="ht-scene" aria-hidden="true"><img src="assets/img/${m.fx.jn ? "ev_jn_halftime" : "ev_halftime"}.webp" data-name="${m.fx.jn ? "ev_jn_halftime" : "ev_halftime"}" alt="" onerror="__bgFallback(this)"></div>`);
     const face = `<div class="talk-face">${img(m.fx.jn ? "npc_jn_coach" : "npc_coach", "")}</div>`;
     ctl.innerHTML = `<div class="ht-talk ${t.mood}">
       <div class="ht-tag">${{ praise: "하프타임 · 칭찬", scold: "하프타임 · 쓴소리", calm: "하프타임 · 주문", off: "하프타임 · 교체" }[t.mood]}</div>

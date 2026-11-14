@@ -62,7 +62,7 @@ export const EVENTS_ORIGIN = [
       { label: "벤치로 가서 정강이를 문지른다", fx: { fatigue: -3, morale: -3, coach: -1 },
         result: "{assistant}님이 다가와 쭈그려 앉으셨다. \"아프냐, 아니면 자존심이 상했냐.\" 대답을 못 했다." },
     ] },
-  { id: "o_ace_text", cond: is("ace"), once: true, priority: 1, trigger: weeks([5, 3], [5, 4], [5, 5], [6, 1], [6, 2]), when: { grades: [2] }, bg: "bg_home", who: "narr",
+  { id: "o_ace_text", cond: is("ace"), once: true, priority: 1, trigger: weeks([5, 3], [5, 4], [5, 5], [6, 1], [6, 2]), when: { grades: [2] }, bg: "ev_night_phone", who: "narr",
     text: s => {
       const p = s.player.position;
       const recent = s.record.matches.filter(m => m.official).slice(-8).reduce((a, m) => a + (m.goals || 0), 0);
@@ -124,7 +124,7 @@ export const EVENTS_ORIGIN = [
     ] },
 
   // ── 클럽에서 떨어지고 온 아이 ────────────────
-  { id: "o_cl_dm", cond: is("club"), once: true, priority: 1, trigger: weeks([5, 2], [5, 3], [5, 4], [5, 5], [6, 1]), when: { grades: [1] }, bg: "bg_home", who: "narr",
+  { id: "o_cl_dm", cond: is("club"), once: true, priority: 1, trigger: weeks([5, 2], [5, 3], [5, 4], [5, 5], [6, 1]), when: { grades: [1] }, bg: "ev_night_phone", who: "narr",
     text: "밤 11시. 휴대폰이 울렸다. 광주 클럽에서 같이 뛰던 도윤재. 테스트에 붙은 그 녀석이다. 새 유니폼을 입고 인조 잔디 위에 서 있는 사진 한 장.\n\n\"우리 이번 주 리그 첫 경기 ㅎㅎ 너는 고흥 어때?\"",
     choices: [
       { mark: "cl_friend", label: "\"축하해. 나도 잘 지내\" 답장한다", fx: { s: { "mental.teamwork": 1 }, morale: -1 },

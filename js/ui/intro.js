@@ -7,7 +7,7 @@ const AUTO_MS = 4300;
 // 배경 그림: .webp → .png → 없으면 색 그라데이션만
 // 아직 그림 파일이 없는 장면은 비슷한 기존 그림으로 대신 보여 줌 (나중에 같은 이름의 .webp를 넣으면 그 그림이 나옴)
 const BG_STANDIN = {
-  ev_meeting: "bg_locker", ev_halftime: "bg_locker", ev_fight: "ev_classroom", ev_hallway: "ev_classroom",
+  ev_meeting: "bg_locker", ev_halftime: "bg_locker", ev_jn_halftime: "ev_halftime", ev_fight: "ev_classroom", ev_hallway: "ev_classroom",
   ev_cram: "ev_classroom", ev_groupwork: "ev_classroom", ev_newspaper: "ev_office", ev_award: "ev_festival",
   ev_selection: "bg_field_day", ev_scout: "bg_stadium",
   ev_rival: "bg_field_day", ev_breakwater: "bg_sea", ev_dorm_night: "ev_retreat", ev_lineup: "bg_field_day", ev_lunchbox: "bg_home", ev_dadcar: "bg_sea", ev_stands_mom: "bg_stadium", ev_injury_home: "bg_home", ev_note: "bg_home", ev_jn_camp: "ev_selection", ev_medal: "ev_welcome", ev_launch: "bg_sea", ev_bridge: "bg_sea", ev_ssukseom: "bg_sea", ev_bus_sunset: "bg_sea",
