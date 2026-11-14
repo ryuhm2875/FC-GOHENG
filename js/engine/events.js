@@ -12,6 +12,7 @@ import { chance, weighted, clamp, rand, pick } from "../rng.js";
 import { injure } from "./injury.js";
 import { isBirthdayWeek } from "./birthday.js";
 import { fixedGoalEvent, achieve } from "./goals.js";
+import { JN_WEEK } from "./jn.js";
 
 const EVENT_CHANCE = 0.42;                            // 한 주에 무작위 이벤트가 나올 확률
 const SECOND_CHANCE = 0.18;                          // 이벤트가 있는 주에 하나가 더 나올 확률
@@ -131,6 +132,10 @@ export function rollEvent(state) {
   let first = primaryEvent(state, info);
   if (!first && dated.length) first = dated.shift();
   let second = null;
+  // 소년체전 주간엔 전남 대표로 집·학교를 떠나 있음: 전남 관련 이벤트만 (교실·집 이벤트가 끼지 않게)
+  const away = state.jnCup?.alive && state.jnCup.grade === info.grade && info.month === JN_WEEK.month && info.week === JN_WEEK.week && !state.player.condition.injury;
+  if (away && first && !/^(jn_|goal_jn)/.test(first)) first = null;
+  if (away) { if (first) state.pendingEvent = { id: first }; return; }
   if (first) {
     second = dated.find(id => id !== first) || null;
     if (!second && chance(SECOND_CHANCE)) second = randomEvent(state, info, first);

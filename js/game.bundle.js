@@ -3465,7 +3465,7 @@ const SITUATIONS = [
     text: ["반대편 측면에서 크로스가 올라오려 한다. 내 등 뒤 먼 쪽 포스트로 {opp|이/가} 슬금슬금 빠진다."],
     choices: [
       { label: "몸을 반쯤 열어 공과 사람을 같이 본다", stats: { "mental.focus": 0.6, "phys.jump": 0.4 }, diff: -1, win: "win", lose: "danger",
-        winText: ["몸을 반쯤 열어 공과 {opp}를 한눈에 뒀다. 날아온 크로스를 먼저 머리로 걷어 냈다."], loseText: ["공을 보는 사이 {opp|이/가} 등 뒤에서 뛰어올랐다!"] },
+        winText: ["몸을 반쯤 열어 공과 {opp|을/를} 한눈에 뒀다. 날아온 크로스를 먼저 머리로 걷어 냈다."], loseText: ["공을 보는 사이 {opp|이/가} 등 뒤에서 뛰어올랐다!"] },
       { label: "그 상대에게 바짝 붙어 같이 뛴다", stats: { "phys.strength": 0.6, "phys.jump": 0.4 }, diff: 1, win: "win", lose: "danger", physical: true,
         winText: ["어깨를 붙이고 같이 뛰었다. {opp|이/가} 제대로 뛰어오르지 못한다. 공은 골라인 밖으로 나갔다."], loseText: ["붙었지만 크로스가 우리 둘 머리 위로 넘어 뒤로 떨어진다!"] },
       { label: "골키퍼와 소리쳐 정리한다", stats: { "mental.teamwork": 0.7, "mental.focus": 0.3 }, diff: -3, win: "win", lose: "danger",
@@ -4672,10 +4672,12 @@ const {chance} = __m["js/rng.js"];
 const {isBirthdayWeek} = __m["js/engine/birthday.js"];
 const {chatText} = __m["js/engine/life.js"];
 const {aceOf, aceAbsent} = __m["js/engine/opponents.js"];
+const {JN_WEEK} = __m["js/engine/jn.js"];
 const {ACE_TALK, COACH_TALK} = __m["data/messages.js"];
 const {LEAGUE_OPPONENTS, NATIONAL_OPPONENTS, HIGH_SCHOOLS, ELEMENTARY_OPPONENTS} = __m["data/world.js"];
 // 메시지 만들기: 경기 전 미팅, 경기 후 피드백, 주간 조언.
 // 모든 문장은 지금 게임 속 숫자(능력치, 순위, 피로, 학업)를 넣어 만듭니다.
+
 
 
 
@@ -5098,7 +5100,14 @@ function noFixtureLeft(state) {
 
 // 전남 대표 경기를 고흥에서 지켜본 친구들 단톡방
 function jnChat(state, res) {
-  const win = res.result === "승";
+  const win = res.result === "승" || !!res.shootout?.win;          // 승부차기로 이긴 것도 이긴 것
+  if (res.round === "결승") return chatText(state, pick(win ? [
+    "{mate}: 금메달!!!!! 전남 금메달이다 미쳤다 ㅋㅋㅋㅋ\n\n{mentor}: 고흥에서 나간 놈이 전국 금메달 걸고 온다. 잘했다",
+    "{friend}: 반 단톡도 난리남 ㅋㅋ 쌤이 교무실에서 소리 지르셨대\n\n{mate2}: 돌아오는 날 다 같이 교문에서 기다리자.",
+  ] : [
+    "{mate}: 은메달도 메달이다!!! 전국 2등이다 2등\n\n{mentor}: 결승까지 간 거 아무나 못 한다. 고개 들고 와라",
+    "{mate2}: 결승 끝까지 봤어. 진 건 아쉽지만 정말 잘 뛰었어.\n\n{friend}: 은메달 만져 보게 해 줘라 ㅋㅋ",
+  ]));
   return chatText(state, pick(win ? [
     "{mate}: 소년체전 중계 봤냐??? {name} 전남 유니폼 입은거 실화냐 ㅋㅋㅋ\n\n{mentor}: 고흥 이름 걸고 뛰는 거다. 잘했다",
     "{friend}: 반애들 다같이 봄 ㅋㅋㅋ 쌤도 보심\n\n{mate}: 다음 경기도 이겨라!!!!",
@@ -5132,6 +5141,9 @@ function weeklyAdvice(state, rep) {
   };
   const s = p.stats.student;
   const hist = state.history || [];
+  // 소년체전 주간: 전남 대표로 집을 떠나 있으니 고흥 일상 문자(엄마·담임·코치 조언, 일상 메시지)는 보내지 않음
+  const nowInfo = turnInfo(state), jc = state.jnCup;
+  if (jc && nowInfo && nowInfo.grade === jc.grade && nowInfo.month === JN_WEEK.month && nowInfo.week === JN_WEEK.week && jc.log?.length) return out;
 
   // 시험 예고
   const soon = [1, 2].map(i => turnInfo(state, i - 1)).find(x => x?.exam && !x.exam.free);
@@ -5212,7 +5224,7 @@ function weeklyAdvice(state, rep) {
   const now = turnInfo(state);
   const sk = streakOf(state);
   const recent = state.record.matches.filter(x => x.official).slice(-3);
-  const lastM = state.record.matches.at(-1), fresh = lastM && lastM.turn >= state.calendar.turn - 1;
+  const lastM = state.record.matches.at(-1), fresh = lastM && lastM.turn >= state.calendar.turn - 1 && lastM.compId !== "jn";   // 전남 대표 경기는 고흥 감독님이 맡은 경기가 아님
   const myApps = state.record.matches.filter(x => x.minutes > 0).slice(-5);
   const ctxKey = !now ? null
     : now.grade === 3 && now.month === 12 && now.week >= 2 && !state.flags.lastDaysMail ? "lastDays"
@@ -12169,11 +12181,13 @@ const {chance, weighted, clamp, rand, pick} = __m["js/rng.js"];
 const {injure} = __m["js/engine/injury.js"];
 const {isBirthdayWeek} = __m["js/engine/birthday.js"];
 const {fixedGoalEvent, achieve} = __m["js/engine/goals.js"];
+const {JN_WEEK} = __m["js/engine/jn.js"];
 // 이벤트 엔진: 한 주가 끝나면 조건에 맞는 이벤트를 하나 골라 두고, 화면에서 선택을 받아 반영합니다.
 
 
 
 const _bat = w => { const c = String(w).charCodeAt(String(w).length - 1); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 !== 0; };
+
 
 
 
@@ -12301,6 +12315,10 @@ function rollEvent(state) {
   let first = primaryEvent(state, info);
   if (!first && dated.length) first = dated.shift();
   let second = null;
+  // 소년체전 주간엔 전남 대표로 집·학교를 떠나 있음: 전남 관련 이벤트만 (교실·집 이벤트가 끼지 않게)
+  const away = state.jnCup?.alive && state.jnCup.grade === info.grade && info.month === JN_WEEK.month && info.week === JN_WEEK.week && !state.player.condition.injury;
+  if (away && first && !/^(jn_|goal_jn)/.test(first)) first = null;
+  if (away) { if (first) state.pendingEvent = { id: first }; return; }
   if (first) {
     second = dated.find(id => id !== first) || null;
     if (!second && chance(SECOND_CHANCE)) second = randomEvent(state, info, first);

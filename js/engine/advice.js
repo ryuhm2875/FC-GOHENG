@@ -16,6 +16,7 @@ import { chance } from "../rng.js";
 import { isBirthdayWeek } from "./birthday.js";
 import { chatText } from "./life.js";
 import { aceOf, aceAbsent } from "./opponents.js";
+import { JN_WEEK } from "./jn.js";
 import { ACE_TALK, COACH_TALK } from "../../data/messages.js";
 import { LEAGUE_OPPONENTS, NATIONAL_OPPONENTS, HIGH_SCHOOLS, ELEMENTARY_OPPONENTS } from "../../data/world.js";
 
@@ -423,7 +424,14 @@ function noFixtureLeft(state) {
 
 // 전남 대표 경기를 고흥에서 지켜본 친구들 단톡방
 function jnChat(state, res) {
-  const win = res.result === "승";
+  const win = res.result === "승" || !!res.shootout?.win;          // 승부차기로 이긴 것도 이긴 것
+  if (res.round === "결승") return chatText(state, pick(win ? [
+    "{mate}: 금메달!!!!! 전남 금메달이다 미쳤다 ㅋㅋㅋㅋ\n\n{mentor}: 고흥에서 나간 놈이 전국 금메달 걸고 온다. 잘했다",
+    "{friend}: 반 단톡도 난리남 ㅋㅋ 쌤이 교무실에서 소리 지르셨대\n\n{mate2}: 돌아오는 날 다 같이 교문에서 기다리자.",
+  ] : [
+    "{mate}: 은메달도 메달이다!!! 전국 2등이다 2등\n\n{mentor}: 결승까지 간 거 아무나 못 한다. 고개 들고 와라",
+    "{mate2}: 결승 끝까지 봤어. 진 건 아쉽지만 정말 잘 뛰었어.\n\n{friend}: 은메달 만져 보게 해 줘라 ㅋㅋ",
+  ]));
   return chatText(state, pick(win ? [
     "{mate}: 소년체전 중계 봤냐??? {name} 전남 유니폼 입은거 실화냐 ㅋㅋㅋ\n\n{mentor}: 고흥 이름 걸고 뛰는 거다. 잘했다",
     "{friend}: 반애들 다같이 봄 ㅋㅋㅋ 쌤도 보심\n\n{mate}: 다음 경기도 이겨라!!!!",
@@ -457,6 +465,9 @@ export function weeklyAdvice(state, rep) {
   };
   const s = p.stats.student;
   const hist = state.history || [];
+  // 소년체전 주간: 전남 대표로 집을 떠나 있으니 고흥 일상 문자(엄마·담임·코치 조언, 일상 메시지)는 보내지 않음
+  const nowInfo = turnInfo(state), jc = state.jnCup;
+  if (jc && nowInfo && nowInfo.grade === jc.grade && nowInfo.month === JN_WEEK.month && nowInfo.week === JN_WEEK.week && jc.log?.length) return out;
 
   // 시험 예고
   const soon = [1, 2].map(i => turnInfo(state, i - 1)).find(x => x?.exam && !x.exam.free);
@@ -537,7 +548,7 @@ export function weeklyAdvice(state, rep) {
   const now = turnInfo(state);
   const sk = streakOf(state);
   const recent = state.record.matches.filter(x => x.official).slice(-3);
-  const lastM = state.record.matches.at(-1), fresh = lastM && lastM.turn >= state.calendar.turn - 1;
+  const lastM = state.record.matches.at(-1), fresh = lastM && lastM.turn >= state.calendar.turn - 1 && lastM.compId !== "jn";   // 전남 대표 경기는 고흥 감독님이 맡은 경기가 아님
   const myApps = state.record.matches.filter(x => x.minutes > 0).slice(-5);
   const ctxKey = !now ? null
     : now.grade === 3 && now.month === 12 && now.week >= 2 && !state.flags.lastDaysMail ? "lastDays"
