@@ -653,7 +653,7 @@ export const EVENTS_MORE = [
       { label: "훈련 끝나고 약을 사 간다", fx: { fatigue: 2, s: { "student.attitude": 0.5 } },
         result: "약국 문 닫기 직전에 뛰어 들어갔다. 엄마가 약봉지를 받고 웃으셨다." },
     ] },
-  { id: "f_dad_night", bg: "ev_boots", family: true, who: "narr", cond: s => s.calendar.turn > 15,
+  { id: "f_dad_night", bg: "ev_home_talk", family: true, who: "narr", cond: s => s.calendar.turn > 15,
     text: "새벽에 야근하고 들어온 아빠가 식탁 위에 상자 하나를 올려 두셨다. 새 축구화다.",
     choices: [
       { label: "아빠 출근 전에 고맙다고 말씀드린다", fx: { morale: 5 },

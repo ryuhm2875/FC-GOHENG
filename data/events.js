@@ -152,7 +152,7 @@ export const EVENTS = [
       { mark: "junior_cared", label: "\"오늘부터 나랑 같이 남아서 하자\"", req: { "rel.junior": 60 }, fx: { s: { "mental.teamwork": 0.6 }, fatigue: 3, rel: { junior: 5 } },
         result: "그날부터 훈련 끝나고 30분씩 같이 공을 찼다. 일주일 뒤 {junior|이/가} 먼저 말했다. \"형, 내일도 남을 거죠?\"" },
     ] },
-  { id: "junior_ask", bg: "ev_kids", who: "junior", needs: "junior",
+  { id: "junior_ask", bg: "ev_lifting", who: "junior", needs: "junior",
     text: "형, 저 왼발 슈팅 좀 봐 주시면 안 돼요? 10분만요.",
     choices: [
       { mark: "junior_coach", label: "30분 봐 준다", fx: { rel: { junior: 8 }, s: { "tech.shoot": 0.5, "mental.teamwork": 0.5 }, fatigue: 5 }, result: "가르치다 보니 내 자세도 고쳐졌다." },
