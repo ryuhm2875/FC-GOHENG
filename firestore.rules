@@ -6,7 +6,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isAdmin() {
-      return request.auth != null && request.auth.uid == '__ADMIN_UID__';
+      return request.auth != null && request.auth.uid == 'hagCnEPjGZdp0a5WHAT8UZbSy173';
     }
     // 학생 본인인지: 로그인한 계정의 이메일이 '학번.열쇠@fc.goheung' 이고, 차단되지 않았을 때
     function isMe(sid) {

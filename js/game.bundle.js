@@ -13535,7 +13535,7 @@ const FB = {
 };
 // 관리자(선생님) 계정의 Firebase UID (Firebase 콘솔 > Authentication > 사용자 UID).
 // 공개 저장소에 이메일을 남기지 않으려고 이메일 대신 UID로 확인합니다. 바꾸면 firestore.rules 의 isAdmin()도 같이 바꿔야 합니다.
-const ADMIN_UID = "__ADMIN_UID__";
+const ADMIN_UID = "hagCnEPjGZdp0a5WHAT8UZbSy173";
 const isAdmin = a => !!a?.uid && a.uid === ADMIN_UID;
 // 학생 계정은 '학번.열쇠@fc.goheung' 모양의 가짜 이메일로 만듭니다 (학생은 학번만 입력)
 const STUDENT_DOMAIN = "fc.goheung";
