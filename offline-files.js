@@ -64,7 +64,7 @@ self.OFFLINE_FILES = [
   ["data/roster.js","9bcaa3ae82"],
   ["data/scenes.js","15d858db7e"],
   ["data/story.js","4c7e766292"],
-  ["data/world.js","844e268cbe"],
+  ["data/world.js","70f2d8cb58"],
   ["assets/img/bg_field_day.webp","a48436b6dd"],
   ["assets/img/bg_home.webp","dfe105081e"],
   ["assets/img/bg_locker.webp","56151b4ae6"],
