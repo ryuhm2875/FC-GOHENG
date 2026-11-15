@@ -259,6 +259,8 @@ function runExam(state, info, chosen) {
   const tier = score >= 85 ? "상위권" : score >= 70 ? "중상위권" : score >= 55 ? "중위권" : score >= 40 ? "중하위권" : "하위권";
   if (score >= 70) state.relations.coach = clamp(state.relations.coach + 1, 0, 100);
   if (score >= 85) state.record.topExams = (state.record.topExams || 0) + 1;
+  state.record.examSum = (state.record.examSum || 0) + Math.round(score);   // 랭킹 '평균 시험 점수'
+  state.record.examN = (state.record.examN || 0) + 1;
   state.relations.teacher = clamp((state.relations.teacher ?? 50) + (score >= 70 ? 3 : score < 40 ? -2 : 0) + (studied ? 1 : 0), 0, 100);
   state.lastExam = { tier: score >= 85 ? "상위권" : score >= 70 ? "중상위권" : score >= 55 ? "중위권" : score >= 40 ? "중하위권" : "하위권", score, turn: state.calendar.turn };
   const comment = {

@@ -13263,6 +13263,8 @@ function runExam(state, info, chosen) {
   const tier = score >= 85 ? "상위권" : score >= 70 ? "중상위권" : score >= 55 ? "중위권" : score >= 40 ? "중하위권" : "하위권";
   if (score >= 70) state.relations.coach = clamp(state.relations.coach + 1, 0, 100);
   if (score >= 85) state.record.topExams = (state.record.topExams || 0) + 1;
+  state.record.examSum = (state.record.examSum || 0) + Math.round(score);   // 랭킹 '평균 시험 점수'
+  state.record.examN = (state.record.examN || 0) + 1;
   state.relations.teacher = clamp((state.relations.teacher ?? 50) + (score >= 70 ? 3 : score < 40 ? -2 : 0) + (studied ? 1 : 0), 0, 100);
   state.lastExam = { tier: score >= 85 ? "상위권" : score >= 70 ? "중상위권" : score >= 55 ? "중위권" : score >= 40 ? "중하위권" : "하위권", score, turn: state.calendar.turn };
   const comment = {
@@ -13715,9 +13717,107 @@ return { FB, ADMIN_UID, isAdmin, STUDENT_DOMAIN, studentEmail, studentPassword, 
 })();
 (__fix["js/net/fb.js"] || []).forEach(f => f());
 
+// ── js/engine/rank.js
+__m["js/engine/rank.js"] = (function () {
+
+// 랭킹: 엔딩을 본 선수 한 명(한 판)마다 기록 한 장. 게임과 관리자 페이지가 함께 씀 (다른 모듈을 부르지 않음)
+// 부문을 더하거나 빼려면 RANK_TABS 만 고치면 됩니다. key 는 서버 기록 칸 이름이라 한 번 정하면 바꾸지 마세요.
+//   unit: 숫자 뒤에 붙는 말, dec: 소수 자리, min: 이 경기 수 이상 뛴 선수만 (평균 부문)
+
+const RANK_TABS = [
+  { id: "fw", label: "공격수", icon: "⚽", cats: [
+    { key: "goals", label: "득점왕", desc: "3년 총 골", unit: "골" },
+    { key: "clutch", label: "극장골", desc: "경기 막판 결승골·동점골 수", unit: "골" },
+  ] },
+  { id: "mf", label: "미드필더", icon: "🎯", cats: [
+    { key: "assists", label: "도움왕", desc: "3년 총 도움", unit: "도움" },
+    { key: "engine", label: "엔진", desc: "경기당 공에 관여한 횟수 평균 (10경기 이상)", unit: "회", dec: 1 },
+    { key: "both", label: "공수 겸장", desc: "도움 + 가로채기·태클 성공", unit: "회" },
+  ] },
+  { id: "df", label: "수비수", icon: "🛡️", cats: [
+    { key: "wall", label: "통곡의 벽", desc: "가로채기·태클 성공 횟수", unit: "회" },
+    { key: "clean", label: "클린시트", desc: "60분 이상 뛴 무실점 경기 수", unit: "경기" },
+  ] },
+  { id: "all", label: "누구나", icon: "⭐", cats: [
+    { key: "rating", label: "평점왕", desc: "평균 평점 (10경기 이상)", unit: "", dec: 2 },
+    { key: "mom", label: "MOM", desc: "경기 최우수 선수 횟수", unit: "회" },
+    { key: "minutes", label: "철인", desc: "3년 총 출전 시간", unit: "분" },
+  ] },
+  { id: "school", label: "학교생활", icon: "📚", cats: [
+    { key: "exam", label: "평균 시험 점수", desc: "정기고사 평균", unit: "점", dec: 1 },
+    { key: "top", label: "상위권", desc: "시험 85점 이상 받은 횟수", unit: "회" },
+    { key: "academic", label: "학업", desc: "졸업할 때 학업 능력치", unit: "" },
+    { key: "attitude", label: "생활태도", desc: "졸업할 때 생활태도 점수", unit: "" },
+    { key: "teacher", label: "담임 선생님", desc: "담임 선생님과의 관계 점수", unit: "" },
+  ] },
+  { id: "etc", label: "기타", icon: "😂", cats: [
+    { key: "injury", label: "최다 부상", desc: "다쳐서 쉰 주 수", unit: "주" },
+    { key: "bench", label: "최다 벤치", desc: "명단에 들고 못 뛴 경기 수", unit: "경기" },
+    { key: "susp", label: "성적 결장", desc: "성적 때문에 출전 정지된 경기 수", unit: "경기" },
+  ] },
+];
+const RANK_CATS = RANK_TABS.flatMap(t => t.cats.map(c => ({ ...c, tab: t.id })));
+const catOf = key => RANK_CATS.find(c => c.key === key);
+
+const MIN_GAMES = 10;
+const avg = (a, d) => a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length * 10 ** d) / 10 ** d : null;
+
+// 한 판의 부문별 값 (해당 없으면 null → 그 부문 순위에서 빠짐)
+function rankStats(state) {
+  const r = state.record || {}, p = state.player || {}, st = p.stats?.student || {};
+  const ms = r.matches || [];
+  const played = ms.filter(m => (m.minutes || 0) > 0);
+  const stops = played.reduce((a, m) => a + (m.stops || 0), 0);
+  const ratings = (r.ratings || []).filter(x => typeof x === "number");
+  const inv = played.filter(m => typeof m.involved === "number").map(m => m.involved);
+  return {
+    goals: r.goals || 0,
+    clutch: r.clutchGoals || 0,
+    assists: r.assists || 0,
+    engine: inv.length >= MIN_GAMES ? avg(inv, 1) : null,
+    both: (r.assists || 0) + stops,
+    wall: stops,
+    clean: played.filter(m => m.minutes >= 60 && m.ga === 0).length,
+    rating: ratings.length >= MIN_GAMES ? avg(ratings, 2) : null,
+    mom: r.mom || 0,
+    minutes: played.reduce((a, m) => a + (m.minutes || 0), 0),
+    exam: r.examN ? Math.round(r.examSum / r.examN * 10) / 10 : null,
+    top: r.topExams || 0,
+    academic: Math.round(st.academic ?? 0),
+    attitude: Math.round(st.attitude ?? 0),
+    teacher: Math.round(state.relations?.teacher ?? 50),
+    injury: r.injuryWeeks || 0,
+    bench: ms.filter(m => m.status === "bench" && !m.minutes).length,
+    susp: ms.filter(m => m.reason?.includes("학업")).length,
+  };
+}
+
+// 한 부문의 순위표. rows: [{ id, s: {...}, hidden }] → [{ row, value, place }] (같은 값은 같은 등수)
+function rankList(rows, key, { withHidden = false } = {}) {
+  const list = rows
+    .filter(x => (withHidden || !x.hidden) && typeof x.s?.[key] === "number")
+    .map(row => ({ row, value: row.s[key] }))
+    .sort((a, b) => b.value - a.value || String(a.row.at || "").localeCompare(String(b.row.at || "")));
+  let place = 0, last = null, n = 0;
+  for (const x of list) {                                   // 숨긴 기록은 등수에서 빼고 셈
+    if (x.row.hidden) { x.place = null; continue; }
+    n++;
+    if (x.value !== last) { place = n; last = x.value; }
+    x.place = place;
+  }
+  return list;
+}
+
+const fmtVal = (c, v) => `${typeof v === "number" ? (c.dec ? v.toFixed(c.dec) : v.toLocaleString("ko-KR")) : "-"}${c.unit || ""}`;
+
+return { RANK_TABS, RANK_CATS, catOf, rankStats, rankList, fmtVal };
+})();
+(__fix["js/engine/rank.js"] || []).forEach(f => f());
+
 // ── js/net/online.js
 __m["js/net/online.js"] = (function () {
-const {isAdmin, studentEmail, studentPassword, signIn, signUp, refresh, getDoc, setDoc, authMessage, pack, unpack, inQuiet, newKey} = __m["js/net/fb.js"];
+const {isAdmin, studentEmail, studentPassword, signIn, signUp, refresh, getDoc, setDoc, listDocs, authMessage, pack, unpack, inQuiet, newKey} = __m["js/net/fb.js"];
+const {rankStats} = __m["js/engine/rank.js"];
 const {rawAuto, putRawAuto} = __m["js/state.js"];
 const {setUserNS} = __m["js/userkey.js"];
 const {turnInfo, label} = __m["js/engine/calendar.js"];
@@ -13732,6 +13832,9 @@ const {ENDINGS} = __m["data/endings.js"];
 //   fcg_login/{학번}      { key, blocked }                                       누구나 읽음, 관리자만 씀
 //   fcg_students/{학번}   { name, created, ...관리자 칸 / play, now, lastSeen (학생이 씀) }
 //   fcg_saves/{학번}      { enc, data, at, summary }                             자기 것만
+//   fcg_rank/{기록}       { uid, run, name, pos, grade, ending, at, s: {부문: 값}, hidden }   로그인한 사람 누구나 읽음 (학번 없음)
+//   fcg_rank_who/{기록}   { sid }                                                  누구 기록인지: 본인과 관리자만
+
 
 
 
@@ -13834,6 +13937,7 @@ async function afterLogin() {
   }
   if (doc) { play = normPlay(doc.play); sess.name = doc.name || ""; writeSess(sess); }
   await pullSave().catch(() => false);
+  sendRank().catch(() => {});                       // 못 보낸 랭킹 기록이 있으면 지금
 }
 
 // ── 입장 확인 ─────────────────────────
@@ -13870,6 +13974,7 @@ async function resume() {
       if (e.status === 400 || e.status === 401) { logout(); return false; }   // 로그인 만료
     }
     await pullSave().catch(() => false);
+    sendRank().catch(() => {});                       // 못 보낸 랭킹 기록이 있으면 지금
   }
   return true;
 }
@@ -14031,7 +14136,64 @@ async function flush() {
   return flushing;
 }
 
-return { session, isStudent, login, SID_RE, signupOpen, signup, logout, checkAccess, resume, watch, pushSave, bandOf, track, flush };
+// ── 랭킹 ─────────────────────────────
+// 엔딩을 본 선수 한 명마다 한 장. 인터넷이 안 되면 이 기기에 모아 두었다가 다음에 다시 보냄
+const RANK_Q = "gfc_rank_q";
+const readQ = () => { try { return JSON.parse(localStorage.getItem(RANK_Q) || "[]"); } catch { return []; } };
+const writeQ = q => { try { localStorage.setItem(RANK_Q, JSON.stringify(q)); } catch { /* 이번만 */ } };
+const RANK_SENT = "gfc_rank_sent";
+const readSent = () => { try { return JSON.parse(localStorage.getItem(RANK_SENT) || "[]"); } catch { return []; } };
+const markSent = id => { try { localStorage.setItem(RANK_SENT, JSON.stringify([...readSent(), id].slice(-200))); } catch { /* 이번만 */ } };
+const uidOf = () => {
+  if (sess?.uid) return sess.uid;
+  try { return JSON.parse(atob(sess.idToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).user_id; } catch { return ""; }
+};
+const exists = e => e?.status === 409 || /ALREADY_EXISTS|FAILED_PRECONDITION/.test(e?.code || "");
+
+function queueRank(state, ending) {
+  if (!sess?.sid || !state.runId || !ending) return;
+  const uid = uidOf();
+  if (!uid) return;
+  const id = `${uid.slice(0, 10)}_${state.runId}`;
+  const q = readQ();
+  if (q.some(x => x.id === id) || readSent().includes(id)) return;
+  const p = state.player;
+  q.push({ id, sid: sess.sid, doc: { uid, run: state.runId, name: p.name, pos: p.position, grade: ending.grade, ending: ending.title, at: new Date().toISOString(), s: rankStats(state), hidden: false } });
+  writeQ(q);
+}
+
+let sendingRank = null;
+function sendRank() {
+  if (!sess?.sid) return Promise.resolve(0);
+  if (sendingRank) return sendingRank;
+  sendingRank = (async () => {
+    let sent = 0;
+    for (const x of readQ()) {
+      if (x.sid !== sess.sid) continue;                                   // 다른 학번으로 로그인해 둔 기록은 그 학번일 때
+      try {
+        const t = await token();
+        await setDoc(`fcg_rank_who/${x.id}`, { sid: x.sid }, t, null, { mustNotExist: true }).catch(e => { if (!exists(e)) throw e; });
+        await setDoc(`fcg_rank/${x.id}`, { ...x.doc, at: new Date(x.doc.at) }, t, null, { mustNotExist: true }).catch(e => { if (!exists(e)) throw e; });
+        writeQ(readQ().filter(y => y.id !== x.id));
+        markSent(x.id);
+        sent++;
+      } catch (e) { console.warn("랭킹 전송 실패", e); break; }
+    }
+    return sent;
+  })().finally(() => { sendingRank = null; });
+  return sendingRank;
+}
+
+// 랭킹 전체 (숨긴 기록 빼고). mine: 내 기록 id 목록
+async function loadRank() {
+  if (!sess) throw new Error("로그인 필요");
+  await sendRank().catch(() => {});
+  const rows = await listDocs("fcg_rank", await token());
+  const uid = uidOf();
+  return { rows: rows.filter(r => !r.hidden), mine: new Set(rows.filter(r => r.uid === uid).map(r => r.id)), waiting: readQ().filter(x => x.sid === sess.sid).length };
+}
+
+return { session, isStudent, login, SID_RE, signupOpen, signup, logout, checkAccess, resume, watch, pushSave, bandOf, track, flush, queueRank, sendRank, loadRank };
 })();
 (__fix["js/net/online.js"] || []).forEach(f => f());
 
@@ -18326,7 +18488,7 @@ return { readHall, readAch, addHallCard, checkAchievements, hallModal };
 // ── js/ui/career.js
 __m["js/ui/career.js"] = (function () {
 const {ENDINGS, GRADE_INFO} = __m["data/endings.js"];
-const {track, flush, pushSave} = __m["js/net/online.js"];
+const {track, flush, pushSave, queueRank, sendRank} = __m["js/net/online.js"];
 const {schoolOptions, chooseSchool, decideEnding, markEnding, seenEndings, teacherLetter, detailOptions, chooseDetail} = __m["js/engine/career.js"];
 const {DETAIL_POS} = __m["data/player.js"];
 const {turnInfo} = __m["js/engine/calendar.js"];
@@ -18525,6 +18687,7 @@ function showEnding(app) {
   try { addHallCard(state, ending, c); } catch (e) { console.warn(e); }   // 기록실에 선수 카드
   app.saveTo("auto");
   track("ending", { state }); flush(); pushSave(true);
+  try { queueRank(state, ending); sendRank().then(n => { if (n) app.toast("🏆 랭킹에 기록이 올라갔습니다."); }).catch(() => {}); } catch (e) { console.warn(e); }
   const g = GRADE_INFO[ending.grade];
   const p = state.player;
   const recap = [
@@ -18580,6 +18743,90 @@ function galleryModal() {
 return { crest, admissionModal, detailModal, nationalModal, showEnding, galleryModal };
 })();
 (__fix["js/ui/career.js"] || []).forEach(f => f());
+
+// ── js/ui/rank.js
+__m["js/ui/rank.js"] = (function () {
+const {RANK_TABS, rankList, fmtVal} = __m["js/engine/rank.js"];
+const {GRADE_INFO} = __m["data/endings.js"];
+const {loadRank, session} = __m["js/net/online.js"];
+const {openModal} = __m["js/ui/modals.js"];
+const {esc} = __m["js/ui/util.js"];
+// 랭킹 화면: 엔딩을 본 모든 선수의 기록을 부문별로 (서버, 로그인한 사람만)
+
+
+
+
+
+const TOP = 10;
+let tabId = "fw", catKey = "goals";          // 이번에 열었던 부문을 다음에도
+const MEDAL = ["🥇", "🥈", "🥉"];
+
+function rankModal() {
+  let data = null, err = "";
+  const tab = () => RANK_TABS.find(t => t.id === tabId) || RANK_TABS[0];
+  const cat = () => tab().cats.find(c => c.key === catKey) || tab().cats[0];
+
+  const row = (x, mine) => {
+    const r = x.row, g = GRADE_INFO[r.grade] || {};
+    return `<li class="rk-row${mine ? " mine" : ""}${x.place <= 3 ? ` p${x.place}` : ""}">
+      <span class="rk-place num">${x.place <= 3 ? MEDAL[x.place - 1] : x.place}</span>
+      <span class="rk-who">
+        <span class="rk-name"><b>${esc(r.name)}</b>${r.pos ? `<span class="pos-tag ${esc(r.pos)}">${esc(r.pos)}</span>` : ""}${mine ? `<span class="rk-me">내 선수</span>` : ""}</span>
+        <span class="rk-end mute">${r.grade ? `<span class="gal-grade ${g.cls || ""}">${esc(g.label || r.grade)}</span>` : ""}${esc(r.ending || "")}</span>
+      </span>
+      <span class="rk-val num">${esc(fmtVal(cat(), x.value))}</span>
+    </li>`;
+  };
+
+  const board = () => {
+    if (err) return `<p class="rk-empty">${esc(err)}</p>`;
+    if (!data) return `<p class="rk-empty mute">불러오는 중…</p>`;
+    const list = rankList(data.rows, cat().key);
+    if (!list.length) return `<p class="rk-empty mute">아직 이 부문에 오른 선수가 없습니다.<br>3년을 마치고 엔딩을 보면 기록이 올라갑니다.</p>`;
+    const top = list.slice(0, TOP);
+    const best = list.find(x => data.mine.has(x.row.id));
+    const myLine = best
+      ? (best.place <= TOP && top.includes(best) ? "" : `<div class="rk-mybest"><span class="mute">내 최고 순위</span>${row(best, true).replace("<li", "<div").replace("</li>", "</div>")}</div>`)
+      : `<p class="rk-mybest none mute">아직 이 부문에 내 선수가 없습니다.</p>`;
+    return `<ol class="rk-list">${top.map(x => row(x, data.mine.has(x.row.id))).join("")}</ol>${myLine}
+      <p class="rk-count mute">이 부문 ${list.length}명 중 상위 ${Math.min(TOP, list.length)}명</p>`;
+  };
+
+  const body = () => `<button class="close" data-close aria-label="닫기">×</button>
+    <span class="eyebrow">RANKING</span><h2>랭킹</h2>
+    <div class="tabs rk-tabs" role="tablist">${RANK_TABS.map(t => `<button role="tab" data-tab="${t.id}" aria-selected="${t.id === tab().id}"><span aria-hidden="true">${t.icon}</span> ${esc(t.label)}</button>`).join("")}</div>
+    <div class="rk-cats">${tab().cats.map(c => `<button class="rk-cat" data-cat="${c.key}" aria-pressed="${c.key === cat().key}">${esc(c.label)}</button>`).join("")}</div>
+    <p class="rk-desc mute">${esc(cat().desc)}</p>
+    <div class="rk-board">${board()}</div>
+    <p class="mute rk-foot">엔딩을 본 선수마다 기록이 한 장씩 올라갑니다. 랭킹에는 게임 속 선수 이름만 보입니다.${data?.waiting ? ` · 아직 못 보낸 내 기록 ${data.waiting}장 (인터넷이 되면 자동으로)` : ""}</p>`;
+
+  openModal(body(), (el, close) => {
+    const draw = () => {
+      const sheet = el.querySelector(".sheet");
+      if (!sheet) return;                                   // 그새 닫혔으면
+      sheet.innerHTML = body();
+      wire();
+    };
+    const wire = () => {
+      el.querySelectorAll("[data-close]").forEach(x => x.addEventListener("click", close));
+      el.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => {
+        tabId = b.dataset.tab; catKey = tab().cats[0].key; draw();
+        el.querySelector(`[data-tab="${tabId}"]`)?.scrollIntoView({ block: "nearest", inline: "nearest" });
+      }));
+      el.querySelectorAll("[data-cat]").forEach(b => b.addEventListener("click", () => { catKey = b.dataset.cat; draw(); }));
+    };
+    wire();
+    if (!session()) { err = "로그인하면 랭킹을 볼 수 있습니다."; draw(); return; }
+    loadRank().then(d => { data = d; draw(); }).catch(e => {
+      err = e?.code === "NETWORK" ? "인터넷에 연결되어 있지 않습니다." : /PERMISSION|403/.test(e?.code || "") ? "랭킹을 아직 열 수 없습니다. 선생님께 말씀드려 주세요." : "랭킹을 불러오지 못했습니다.";
+      draw();
+    });
+  }, { cls: "rank-modal" });
+}
+
+return { rankModal };
+})();
+(__fix["js/ui/rank.js"] || []).forEach(f => f());
 
 // ── js/ui/login.js
 __m["js/ui/login.js"] = (function () {
@@ -18705,12 +18952,14 @@ const {ask, eventModal, actionPicker, weekReport, mailModal, saveModal, numberMo
 const {esc} = __m["js/ui/util.js"];
 const {admissionModal, nationalModal, detailModal, showEnding, galleryModal} = __m["js/ui/career.js"];
 const {hallModal, checkAchievements} = __m["js/ui/hall.js"];
+const {rankModal} = __m["js/ui/rank.js"];
 const {setScene, enter, preload, SCENES} = __m["js/ui/fx.js"];
 const {sfx} = __m["js/ui/sfx.js"];
 const {bgm} = __m["js/ui/bgm.js"];
 const {login, logout, checkAccess, resume, watch, track, flush, pushSave, session, signup, signupOpen} = __m["js/net/online.js"];
 const {renderLogin, renderSignup, renderLock, renderLoading} = __m["js/ui/login.js"];
 // 진입점: 화면 전환, 저장, 한 주 진행
+
 
 
 
@@ -18916,9 +19165,12 @@ function renderTitle(app) {
     <nav class="ft-menu" id="menu" hidden>
       ${cont ? `<button class="ft-tile main" data-continue><span class="ft-t">이어하기</span><span class="ft-s">${esc(auto.summary)}</span></button>` : ""}
       <button class="ft-tile ${cont ? "" : "main"}" data-new><span class="ft-t">새 커리어</span><span class="ft-s">중학교 1학년, 입단 첫날부터</span></button>
-      <button class="ft-tile" data-loadmenu><span class="ft-t">불러오기</span><span class="ft-s">저장 슬롯, 저장 코드</span></button>
-      <button class="ft-tile" data-gallery><span class="ft-t">엔딩 도감</span><span class="ft-s">지금까지 본 엔딩</span></button>
-      <button class="ft-tile" data-hall><span class="ft-t">기록실</span><span class="ft-s">졸업생 카드와 업적</span></button>
+      <div class="ft-sub">
+        <button class="ft-tile" data-loadmenu><span class="ft-t">불러오기</span><span class="ft-s">저장 슬롯, 저장 코드</span></button>
+        <button class="ft-tile" data-gallery><span class="ft-t">엔딩 도감</span><span class="ft-s">지금까지 본 엔딩</span></button>
+        <button class="ft-tile" data-hall><span class="ft-t">기록실</span><span class="ft-s">졸업생 카드와 업적</span></button>
+        <button class="ft-tile" data-rank><span class="ft-t">랭킹</span><span class="ft-s">모두의 선수 순위</span></button>
+      </div>
     </nav>
     ${session() ? `<p class="ft-user">${esc(session().sid ? `${session().sid}${session().name ? ` ${session().name}` : ""}` : "선생님")}${session().admin ? `<a class="ft-admin" href="admin.html" data-admin>관리자</a>` : ""}<button data-logout>로그아웃</button></p>` : ""}
     <p class="ft-foot">made by 류봉두</p>
@@ -18939,6 +19191,7 @@ function renderTitle(app) {
   r.querySelector("[data-loadmenu]").addEventListener("click", () => saveModal(app, { loadOnly: true }));
   r.querySelector("[data-gallery]").addEventListener("click", () => galleryModal());
   r.querySelector("[data-hall]").addEventListener("click", () => hallModal());
+  r.querySelector("[data-rank]").addEventListener("click", () => rankModal());
   r.querySelector("[data-sound]").addEventListener("click", e => { e.stopPropagation(); app.toggleSound(); });
   r.querySelector("[data-music]").addEventListener("click", e => { e.stopPropagation(); app.toggleMusic(); });
   r.querySelector("[data-admin]")?.addEventListener("click", e => e.stopPropagation());   // 선생님 계정: 관리자 페이지로 (같은 로그인으로 바로)

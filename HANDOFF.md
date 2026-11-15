@@ -1096,3 +1096,12 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
 - **칩슛**: `scriptFor`의 `shootKind.chip`이 "shot"이라 내 장면의 칩슛이 낮고 빠른 슈팅으로 그려졌음 → "chip"(sim shoot: 높이 4.5m, 천천히). 칩 선택지에서 빗나간 경우(out miss, c.win chip)도 같음. 확인(/tmp/diag/chip.mjs 방식): 칩 최고 높이 4.5m·비행 1.7초, 보통 슈팅 0.3m·0.6초
 - 점검: sync-audit 300 다섯 시드 6.9·6.8·7.2·7.2·7.0%(평균 7.0%). deep-audit 60·shape-audit 20 달라진 것 없음. moment-audit "공이 멀리서 붙음" 1건 그대로
 - 밸런스 240: 득점 2.24/실점 1.10, FW 7.63·MF 7.15·DF 7.17 (§55와 같은 수준). uiplay FW·MF·DF 엔딩까지 오류 0
+
+## 58. 랭킹 (2026-11-15, 사용자: "엔딩 봤을 때 기준으로 최다 득점자, 최고 평균 평점, 최다 부상 기간 같은 랭킹")
+- 부문 정의: js/engine/rank.js 의 RANK_TABS (6탭 18부문). key 는 서버 칸 이름이라 바꾸지 말 것. 한 줄 멘트는 사용자가 빼라고 함.
+- 엔딩을 본 선수(한 판)마다 한 장. 학생마다 제한 없음 (사용자 결정). 학생 화면엔 게임 속 선수 이름만, 학번·실명은 관리자 '랭킹' 탭에서만.
+- 서버: fcg_rank/{uid앞10자_runId} (로그인한 누구나 읽음, 학생은 새로 올리기만), fcg_rank_who/{같은 id} {sid} (본인·관리자만). 고치기·숨기기·지우기는 관리자만.
+- 못 보낸 기록은 localStorage gfc_rank_q 에 모았다가 로그인·이어하기 때 다시 보냄. 보낸 id 는 gfc_rank_sent (같은 판 두 번 안 올림).
+- 시험 평균을 위해 record.examSum/examN 을 이번부터 쌓음 (예전 판은 '평균 시험 점수' 부문에서 빠짐).
+- firestore.rules 에 두 모음 규칙 추가 → Firebase 콘솔에 붙여 넣어야 실제로 동작. tools/dev/fbmock.mjs 에도 같은 규칙.
+- 제목 화면: 불러오기·엔딩 도감·기록실·랭킹을 두 칸씩 (가로 휴대폰에서 넘치던 것 해결).

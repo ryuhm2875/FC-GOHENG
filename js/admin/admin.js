@@ -1,6 +1,7 @@
 // 관리자 페이지: 학생 계정, 게임 스위치, 반 통계, 학생별 기록
 import { isAdmin, studentEmail, studentPassword, signIn, signUp, refresh, getDoc, setDoc, delDoc, listDocs, newKey, authMessage, inQuiet } from "../net/fb.js";
 import { ACTION_MAP, CATEGORIES } from "../../data/actions.js";
+import { RANK_TABS, RANK_CATS, catOf, rankList, fmtVal } from "../engine/rank.js";
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -97,7 +98,7 @@ const FAM_LABEL = { pass: "패스", dribble: "드리블·볼 키핑", shoot: "�
 function render() {
   app.innerHTML = `<header class="top">
       <div class="brand"><img src="assets/img/logo.png" alt=""><div><span class="eb">GOHEUNG FC · ADMIN</span><b class="dp">DREAM PROJECT</b></div></div>
-      <nav class="tabs">${[["students", "학생"], ["stats", "반 통계"], ["switch", "게임 스위치"]].map(([k, l]) => `<button data-tab="${k}" ${tab === k ? "aria-current=page" : ""}>${l}</button>`).join("")}</nav>
+      <nav class="tabs">${[["students", "학생"], ["stats", "반 통계"], ["rank", "랭킹"], ["switch", "게임 스위치"]].map(([k, l]) => `<button data-tab="${k}" ${tab === k ? "aria-current=page" : ""}>${l}</button>`).join("")}</nav>
       <div class="hd-right">
         <span class="state ${gameOpen() ? "on" : "off"}"><i></i>${gameOpen() ? "게임 열림" : "게임 닫힘"}</span>
         <button class="btn ghost sm" data-reload>새로고침</button>
@@ -107,7 +108,7 @@ function render() {
     </header>
     <div class="wrap" id="main"></div>`;
   app.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => { tab = b.dataset.tab; render(); }));
-  $("[data-reload]", app).addEventListener("click", async e => { e.target.disabled = true; try { await loadAll(); } catch (err) { alert(friendly(err)); } render(); });
+  $("[data-reload]", app).addEventListener("click", async e => { e.target.disabled = true; rank = null; try { await loadAll(); } catch (err) { alert(friendly(err)); } render(); });
   $("[data-logout]", app).addEventListener("click", () => {
     writeSess(null); sess = null;
     try { const g = JSON.parse(localStorage.getItem("gfc_session") || "null"); if (g?.admin) localStorage.removeItem("gfc_session"); } catch { /* 없음 */ }   // 게임의 선생님 로그인도 함께
@@ -117,6 +118,7 @@ function render() {
   if (tab === "students") studentsTab(main);
   if (tab === "stats") statsTab(main);
   if (tab === "switch") switchTab(main);
+  if (tab === "rank") rankTab(main);
 }
 const gameOpen = () => cfg?.open !== false && !(cfg?.quiet?.on && inQuiet(cfg.quiet));
 
@@ -422,6 +424,84 @@ function switchTab(main) {
     try { await setDoc("fcg_config/main", next, await tok()); cfg = next; render(); const r = $("#s-res"); r.textContent = "저장했습니다."; r.className = "msg ok"; }
     catch (err) { const r = $("#s-res", main); r.textContent = friendly(err); r.className = "msg err"; e.target.disabled = false; }
   });
+}
+
+// ── 랭킹 탭 ───────────────────────────
+// 학생 화면에는 선수 이름만, 여기서는 학번·실명까지. 값 고치기·이름 고치기·숨기기·삭제
+let rank = null, rankCat = "goals", rankHidden = true;
+async function loadRankAdmin() {
+  const t = await tok();
+  const [rows, who] = await Promise.all([listDocs("fcg_rank", t), listDocs("fcg_rank_who", t)]);
+  const sidOf = new Map(who.map(w => [w.id, w.sid]));
+  rank = rows.map(r => ({ ...r, sid: sidOf.get(r.id) || "" }));
+}
+function rankTab(main) {
+  if (!rank) {
+    main.innerHTML = `<div class="card"><p class="empty">랭킹을 불러오는 중…</p></div>`;
+    loadRankAdmin().then(() => render()).catch(err => {
+      main.innerHTML = `<div class="card"><h2>랭킹</h2><p class="msg err">${esc(friendly(err))}</p>
+        <p class="note">처음 쓰는 거라면 Firebase 콘솔의 보안 규칙을 새 firestore.rules 로 바꿔 '게시'했는지 확인해 주세요.</p></div>`;
+    });
+    return;
+  }
+  const c = catOf(rankCat) || RANK_CATS[0];
+  const list = rankList(rank, c.key, { withHidden: rankHidden });
+  const nameOf = sid => students.find(x => x.sid === sid)?.name || "";
+  const date = v => v ? String(v).slice(0, 10) : "";
+  main.innerHTML = `<div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <h2 style="margin:0">랭킹 · 선수 ${rank.length}명</h2>
+        <div class="row" style="gap:10px">
+          <select id="rk-cat">${RANK_TABS.map(t => `<optgroup label="${esc(t.icon + " " + t.label)}">${t.cats.map(x => `<option value="${x.key}" ${x.key === c.key ? "selected" : ""}>${esc(x.label)}</option>`).join("")}</optgroup>`).join("")}</select>
+          <label class="row"><input type="checkbox" id="rk-hid" ${rankHidden ? "checked" : ""}> <span>숨긴 기록도 보기</span></label>
+          <button class="btn sm" id="rk-reload">새로고침</button>
+        </div>
+      </div>
+      <p class="note" style="margin:0 0 10px">${esc(c.desc)} · 이 부문 ${list.length}명</p>
+      ${list.length ? `<div class="scroll"><table>
+        <thead><tr><th>순위</th><th>선수</th><th class="num">기록</th><th>엔딩</th><th>학번</th><th>실명</th><th>날짜</th><th></th></tr></thead>
+        <tbody>${list.map(x => { const r = x.row; return `<tr class="${r.hidden ? "blocked" : ""}">
+          <td class="num">${r.hidden ? "–" : x.place}</td>
+          <td><b>${esc(r.name)}</b> <small class="mute">${esc(r.pos || "")}</small>${r.hidden ? ` <span class="tag off">숨김</span>` : ""}</td>
+          <td class="num"><b>${esc(fmtVal(c, x.value))}</b></td>
+          <td><small>${esc([r.grade, r.ending].filter(Boolean).join(" "))}</small></td>
+          <td>${esc(r.sid || "?")}</td><td>${esc(nameOf(r.sid))}</td><td><small class="mute">${esc(date(r.at))}</small></td>
+          <td><div class="row" style="flex-wrap:nowrap">
+            <button class="btn sm" data-rv="${esc(r.id)}">값</button>
+            <button class="btn sm" data-rn="${esc(r.id)}">이름</button>
+            <button class="btn sm" data-rh="${esc(r.id)}">${r.hidden ? "보이기" : "숨기기"}</button>
+            <button class="btn sm danger" data-rd="${esc(r.id)}">삭제</button></div></td>
+        </tr>`; }).join("")}</tbody></table></div>` : `<p class="empty">아직 이 부문에 오른 선수가 없습니다.</p>`}
+      <p class="note" style="margin-top:10px">학생 화면에는 선수 이름·포지션·엔딩만 보이고, 학번과 실명은 이 화면에서만 보입니다. '숨기기'는 학생 화면의 모든 부문에서 그 선수를 가립니다. '값'은 지금 고른 부문의 숫자만 고칩니다.</p>
+    </div>`;
+  const find = id => rank.find(r => r.id === id);
+  const act = async (b, fn) => { b.disabled = true; try { await fn(); render(); } catch (err) { alert(friendly(err)); b.disabled = false; } };
+  $("#rk-cat", main).addEventListener("change", e => { rankCat = e.target.value; render(); });
+  $("#rk-hid", main).addEventListener("change", e => { rankHidden = e.target.checked; render(); });
+  $("#rk-reload", main).addEventListener("click", () => { rank = null; render(); });
+  main.querySelectorAll("[data-rv]").forEach(b => b.addEventListener("click", () => {
+    const r = find(b.dataset.rv);
+    const v = prompt(`${r.name} · ${c.label}\n새 값을 숫자로 적어 주세요. (비우면 이 부문에서 빠짐)`, r.s?.[c.key] ?? "");
+    if (v === null) return;
+    const n = v.trim() === "" ? null : Number(v);
+    if (n !== null && !Number.isFinite(n)) return alert("숫자로 적어 주세요.");
+    act(b, async () => { await setDoc(`fcg_rank/${r.id}`, { s: { [c.key]: n } }, await tok(), [`s.${c.key}`]); r.s = { ...r.s, [c.key]: n }; });
+  }));
+  main.querySelectorAll("[data-rn]").forEach(b => b.addEventListener("click", () => {
+    const r = find(b.dataset.rn);
+    const v = prompt("학생 화면에 보일 선수 이름", r.name);
+    if (v === null || !v.trim()) return;
+    act(b, async () => { await setDoc(`fcg_rank/${r.id}`, { name: v.trim().slice(0, 20) }, await tok(), ["name"]); r.name = v.trim().slice(0, 20); });
+  }));
+  main.querySelectorAll("[data-rh]").forEach(b => b.addEventListener("click", () => {
+    const r = find(b.dataset.rh);
+    act(b, async () => { await setDoc(`fcg_rank/${r.id}`, { hidden: !r.hidden }, await tok(), ["hidden"]); r.hidden = !r.hidden; });
+  }));
+  main.querySelectorAll("[data-rd]").forEach(b => b.addEventListener("click", () => {
+    const r = find(b.dataset.rd);
+    if (!confirm(`${r.name} (${r.sid || "학번 모름"}) 선수의 랭킹 기록을 모든 부문에서 지울까요?\n되돌릴 수 없습니다.`)) return;
+    act(b, async () => { const t = await tok(); await delDoc(`fcg_rank/${r.id}`, t); await delDoc(`fcg_rank_who/${r.id}`, t).catch(() => {}); rank = rank.filter(x => x.id !== r.id); });
+  }));
 }
 
 // ── 시작 ─────────────────────────────

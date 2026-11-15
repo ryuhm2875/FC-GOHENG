@@ -54,5 +54,23 @@ service cloud.firestore {
     match /fcg_saves/{sid} {
       allow read, write: if isAdmin() || isMe(sid);
     }
+    // 랭킹 기록 주인 (학번): 본인과 관리자만 읽음. 학생은 자기 학번으로 새로 만들기만
+    match /fcg_rank_who/{id} {
+      allow read: if isAdmin() || (request.auth != null && isMe(resource.data.sid));
+      allow create: if isAdmin()
+        || (request.resource.data.keys().hasOnly(['sid']) && isMe(request.resource.data.sid));
+      allow update, delete: if isAdmin();
+    }
+    // 랭킹: 로그인한 사람은 누구나 읽음 (학번·실명 없음). 학생은 자기 기록을 새로 올리기만, 고치기·숨기기·지우기는 관리자만
+    match /fcg_rank/{id} {
+      allow read: if request.auth != null;
+      allow create: if isAdmin()
+        || (request.resource.data.uid == request.auth.uid
+            && request.resource.data.hidden == false
+            && request.resource.data.name is string && request.resource.data.name.size() <= 20
+            && exists(/databases/$(database)/documents/fcg_rank_who/$(id))
+            && isMe(get(/databases/$(database)/documents/fcg_rank_who/$(id)).data.sid));
+      allow update, delete: if isAdmin();
+    }
   }
 }
