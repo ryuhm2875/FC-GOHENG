@@ -322,7 +322,7 @@ export const EVENTS_MORE = [
       { label: "오늘은 양보한다", fx: { s: { "student.attitude": 0.5 }, morale: -1 },
         result: "교실로 돌아오는 길에 반 친구들이 투덜댔다. 그래도 다툼은 없었다." },
     ] },
-  { id: "a_bday_party", bg: "ev_hallway", who: "friend", needs: "friend",
+  { id: "a_bday_party", bg: "ev_classroom", who: "friend", needs: "friend",
     text: "토요일 저녁에 내 생일 파티 하는데 꼭 와야 돼. …근데 그 시간에 자율 훈련 있잖아. 난 빠질 건데, 너는?",
     choices: [
       { label: "파티에 간다", fx: { morale: 4, coach: -1, rel: { friend: 8 } },
@@ -522,7 +522,7 @@ export const EVENTS_MORE = [
       { label: "휴대폰을 끄고 훈련장으로 간다", fx: { s: { "mental.focus": 1 }, coach: 1 },
         result: "영상 속 골은 이미 지난 일이다. 다음 골을 연습했다." },
     ] },
-  { id: "c_transfer_offer", bg: "ev_scout", who: "narr", when: { grades: [2] }, once: true, cond: s => s.relations.coach >= 50,
+  { id: "c_transfer_offer", bg: "ev_night_call", who: "narr", when: { grades: [2] }, once: true, cond: s => s.relations.coach >= 50,
     text: "광주의 한 중학교 감독님에게서 연락이 왔다. \"우리 학교로 오면 바로 주전이다. 생각해 봐라.\"",
     choices: [
       { label: "고흥에 남겠다고 정중히 말씀드린다", fx: { coach: 3, s: { "mental.teamwork": 1 }, morale: 2 },
@@ -653,7 +653,7 @@ export const EVENTS_MORE = [
       { label: "훈련 끝나고 약을 사 간다", fx: { fatigue: 2, s: { "student.attitude": 0.5 } },
         result: "약국 문 닫기 직전에 뛰어 들어갔다. 엄마가 약봉지를 받고 웃으셨다." },
     ] },
-  { id: "f_dad_night", bg: "ev_boots", family: true, who: "narr", cond: s => s.calendar.turn > 15,
+  { id: "f_dad_night", bg: "ev_home_talk", family: true, who: "narr", cond: s => s.calendar.turn > 15,
     text: "새벽에 야근하고 들어온 아빠가 식탁 위에 상자 하나를 올려 두셨다. 새 축구화다.",
     choices: [
       { label: "아빠 출근 전에 고맙다고 말씀드린다", fx: { morale: 5 },
