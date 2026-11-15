@@ -17,6 +17,7 @@ import { ask, eventModal, actionPicker, weekReport, mailModal, saveModal, number
 import { esc } from "./ui/util.js";
 import { admissionModal, nationalModal, detailModal, showEnding, galleryModal } from "./ui/career.js";
 import { hallModal, checkAchievements } from "./ui/hall.js";
+import { rankModal } from "./ui/rank.js";
 import { setScene, enter, preload, SCENES } from "./ui/fx.js";
 import { sfx } from "./ui/sfx.js";
 import { bgm } from "./ui/bgm.js";
@@ -205,9 +206,12 @@ function renderTitle(app) {
     <nav class="ft-menu" id="menu" hidden>
       ${cont ? `<button class="ft-tile main" data-continue><span class="ft-t">이어하기</span><span class="ft-s">${esc(auto.summary)}</span></button>` : ""}
       <button class="ft-tile ${cont ? "" : "main"}" data-new><span class="ft-t">새 커리어</span><span class="ft-s">중학교 1학년, 입단 첫날부터</span></button>
-      <button class="ft-tile" data-loadmenu><span class="ft-t">불러오기</span><span class="ft-s">저장 슬롯, 저장 코드</span></button>
-      <button class="ft-tile" data-gallery><span class="ft-t">엔딩 도감</span><span class="ft-s">지금까지 본 엔딩</span></button>
-      <button class="ft-tile" data-hall><span class="ft-t">기록실</span><span class="ft-s">졸업생 카드와 업적</span></button>
+      <div class="ft-sub">
+        <button class="ft-tile" data-loadmenu><span class="ft-t">불러오기</span><span class="ft-s">저장 슬롯, 저장 코드</span></button>
+        <button class="ft-tile" data-gallery><span class="ft-t">엔딩 도감</span><span class="ft-s">지금까지 본 엔딩</span></button>
+        <button class="ft-tile" data-hall><span class="ft-t">기록실</span><span class="ft-s">졸업생 카드와 업적</span></button>
+        <button class="ft-tile" data-rank><span class="ft-t">랭킹</span><span class="ft-s">모두의 선수 순위</span></button>
+      </div>
     </nav>
     ${session() ? `<p class="ft-user">${esc(session().sid ? `${session().sid}${session().name ? ` ${session().name}` : ""}` : "선생님")}${session().admin ? `<a class="ft-admin" href="admin.html" data-admin>관리자</a>` : ""}<button data-logout>로그아웃</button></p>` : ""}
     <p class="ft-foot">made by 류봉두</p>
@@ -228,6 +232,7 @@ function renderTitle(app) {
   r.querySelector("[data-loadmenu]").addEventListener("click", () => saveModal(app, { loadOnly: true }));
   r.querySelector("[data-gallery]").addEventListener("click", () => galleryModal());
   r.querySelector("[data-hall]").addEventListener("click", () => hallModal());
+  r.querySelector("[data-rank]").addEventListener("click", () => rankModal());
   r.querySelector("[data-sound]").addEventListener("click", e => { e.stopPropagation(); app.toggleSound(); });
   r.querySelector("[data-music]").addEventListener("click", e => { e.stopPropagation(); app.toggleMusic(); });
   r.querySelector("[data-admin]")?.addEventListener("click", e => e.stopPropagation());   // 선생님 계정: 관리자 페이지로 (같은 로그인으로 바로)

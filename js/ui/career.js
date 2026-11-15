@@ -1,6 +1,6 @@
 // 진로 화면: 진학 상담, 국가대표 발표, 엔딩, 엔딩 도감
 import { ENDINGS, GRADE_INFO } from "../../data/endings.js";
-import { track, flush, pushSave } from "../net/online.js";
+import { track, flush, pushSave, queueRank, sendRank } from "../net/online.js";
 import { schoolOptions, chooseSchool, decideEnding, markEnding, seenEndings, teacherLetter, detailOptions, chooseDetail } from "../engine/career.js";
 import { DETAIL_POS } from "../../data/player.js";
 import { turnInfo } from "../engine/calendar.js";
@@ -183,6 +183,7 @@ export function showEnding(app) {
   try { addHallCard(state, ending, c); } catch (e) { console.warn(e); }   // 기록실에 선수 카드
   app.saveTo("auto");
   track("ending", { state }); flush(); pushSave(true);
+  try { queueRank(state, ending); sendRank().then(n => { if (n) app.toast("🏆 랭킹에 기록이 올라갔습니다."); }).catch(() => {}); } catch (e) { console.warn(e); }
   const g = GRADE_INFO[ending.grade];
   const p = state.player;
   const recap = [

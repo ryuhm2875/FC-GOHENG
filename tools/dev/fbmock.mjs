@@ -27,7 +27,8 @@ const val = v => v == null ? null : "stringValue" in v ? v.stringValue : "boolea
 // firestore.rules 를 그대로 옮김
 function allowed(op, coll, id, email, before, after) {
   const isAdmin = email === ADMIN;
-  const isMe = () => { const lg = docs.get(`fcg_login/${id}`); if (!lg || !email) return false; const key = val(lg.fields.key); const blk = val(lg.fields.blocked); return email === `${id}.${key}@fc.goheung` && blk !== true; };
+  const isMeSid = sid => { const lg = docs.get(`fcg_login/${sid}`); if (!lg || !email) return false; const key = val(lg.fields.key); const blk = val(lg.fields.blocked); return email === `${sid}.${key}@fc.goheung` && blk !== true; };
+  const isMe = () => isMeSid(id);
   if (coll === "fcg_config") return op === "read" || op === "list" ? true : isAdmin;
   if (coll === "fcg_login") {
     if (op === "read" || op === "list") return true;
@@ -51,6 +52,22 @@ function allowed(op, coll, id, email, before, after) {
     }
   }
   if (coll === "fcg_saves") return op === "list" ? isAdmin : isAdmin || isMe();
+  if (coll === "fcg_rank_who") {
+    if (op === "list") return isAdmin;
+    if (op === "read") return isAdmin || (!!before && isMeSid(before.sid));
+    if (op === "create") return isAdmin || (Object.keys(after || {}).every(k => k === "sid") && isMeSid(after?.sid));
+    return isAdmin;
+  }
+  if (coll === "fcg_rank") {
+    if (op === "read" || op === "list") return !!email;
+    if (op === "create") {
+      if (isAdmin) return true;
+      const who = docs.get(`fcg_rank_who/${id}`);
+      return !!email && after?.uid === users.get(email)?.uid && after?.hidden === false && typeof after?.name === "string" && after.name.length <= 20
+        && !!who && isMeSid(val(who.fields.sid));
+    }
+    return isAdmin;
+  }
   return false;
 }
 
@@ -109,7 +126,13 @@ const server = http.createServer(async (req, res) => {
         const mask = url.searchParams.getAll("updateMask.fieldPaths");
         if (url.searchParams.get("currentDocument.exists") === "false" && cur) return err(res, 400, "FAILED_PRECONDITION");
         const fields = mask.length ? { ...(cur?.fields || {}) } : {};
-        if (mask.length) for (const f of mask) { if (body.fields?.[f] !== undefined) fields[f] = body.fields[f]; else delete fields[f]; }
+        if (mask.length) for (const f of mask) {
+          const [a, b] = f.split(".");
+          if (!b) { if (body.fields?.[a] !== undefined) fields[a] = body.fields[a]; else delete fields[a]; continue; }
+          const inner = { ...(fields[a]?.mapValue?.fields || {}) }, nv = body.fields?.[a]?.mapValue?.fields?.[b];
+          if (nv !== undefined) inner[b] = nv; else delete inner[b];
+          fields[a] = { mapValue: { fields: inner } };
+        }
         else Object.assign(fields, body.fields || {});
         const after = val({ mapValue: { fields } });
         if (!allowed(cur ? "update" : "create", coll, id, email, curData, after)) { stats.denied++; return err(res, 403, "PERMISSION_DENIED"); }

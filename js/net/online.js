@@ -4,7 +4,10 @@
 //   fcg_login/{학번}      { key, blocked }                                       누구나 읽음, 관리자만 씀
 //   fcg_students/{학번}   { name, created, ...관리자 칸 / play, now, lastSeen (학생이 씀) }
 //   fcg_saves/{학번}      { enc, data, at, summary }                             자기 것만
-import { isAdmin, studentEmail, studentPassword, signIn, signUp, refresh, getDoc, setDoc, authMessage, pack, unpack, inQuiet, newKey } from "./fb.js";
+//   fcg_rank/{기록}       { uid, run, name, pos, grade, ending, at, s: {부문: 값}, hidden }   로그인한 사람 누구나 읽음 (학번 없음)
+//   fcg_rank_who/{기록}   { sid }                                                  누구 기록인지: 본인과 관리자만
+import { isAdmin, studentEmail, studentPassword, signIn, signUp, refresh, getDoc, setDoc, listDocs, authMessage, pack, unpack, inQuiet, newKey } from "./fb.js";
+import { rankStats } from "../engine/rank.js";
 import { rawAuto, putRawAuto } from "../state.js";
 import { setUserNS } from "../userkey.js";
 import { turnInfo, label } from "../engine/calendar.js";
@@ -107,6 +110,7 @@ async function afterLogin() {
   }
   if (doc) { play = normPlay(doc.play); sess.name = doc.name || ""; writeSess(sess); }
   await pullSave().catch(() => false);
+  sendRank().catch(() => {});                       // 못 보낸 랭킹 기록이 있으면 지금
 }
 
 // ── 입장 확인 ─────────────────────────
@@ -143,6 +147,7 @@ export async function resume() {
       if (e.status === 400 || e.status === 401) { logout(); return false; }   // 로그인 만료
     }
     await pullSave().catch(() => false);
+    sendRank().catch(() => {});                       // 못 보낸 랭킹 기록이 있으면 지금
   }
   return true;
 }
@@ -302,4 +307,61 @@ export async function flush() {
     } catch (e) { dirty = true; console.warn("기록 전송 실패", e); }
   })().finally(() => { flushing = null; });
   return flushing;
+}
+
+// ── 랭킹 ─────────────────────────────
+// 엔딩을 본 선수 한 명마다 한 장. 인터넷이 안 되면 이 기기에 모아 두었다가 다음에 다시 보냄
+const RANK_Q = "gfc_rank_q";
+const readQ = () => { try { return JSON.parse(localStorage.getItem(RANK_Q) || "[]"); } catch { return []; } };
+const writeQ = q => { try { localStorage.setItem(RANK_Q, JSON.stringify(q)); } catch { /* 이번만 */ } };
+const RANK_SENT = "gfc_rank_sent";
+const readSent = () => { try { return JSON.parse(localStorage.getItem(RANK_SENT) || "[]"); } catch { return []; } };
+const markSent = id => { try { localStorage.setItem(RANK_SENT, JSON.stringify([...readSent(), id].slice(-200))); } catch { /* 이번만 */ } };
+const uidOf = () => {
+  if (sess?.uid) return sess.uid;
+  try { return JSON.parse(atob(sess.idToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).user_id; } catch { return ""; }
+};
+const exists = e => e?.status === 409 || /ALREADY_EXISTS|FAILED_PRECONDITION/.test(e?.code || "");
+
+export function queueRank(state, ending) {
+  if (!sess?.sid || !state.runId || !ending) return;
+  const uid = uidOf();
+  if (!uid) return;
+  const id = `${uid.slice(0, 10)}_${state.runId}`;
+  const q = readQ();
+  if (q.some(x => x.id === id) || readSent().includes(id)) return;
+  const p = state.player;
+  q.push({ id, sid: sess.sid, doc: { uid, run: state.runId, name: p.name, pos: p.position, grade: ending.grade, ending: ending.title, at: new Date().toISOString(), s: rankStats(state), hidden: false } });
+  writeQ(q);
+}
+
+let sendingRank = null;
+export function sendRank() {
+  if (!sess?.sid) return Promise.resolve(0);
+  if (sendingRank) return sendingRank;
+  sendingRank = (async () => {
+    let sent = 0;
+    for (const x of readQ()) {
+      if (x.sid !== sess.sid) continue;                                   // 다른 학번으로 로그인해 둔 기록은 그 학번일 때
+      try {
+        const t = await token();
+        await setDoc(`fcg_rank_who/${x.id}`, { sid: x.sid }, t, null, { mustNotExist: true }).catch(e => { if (!exists(e)) throw e; });
+        await setDoc(`fcg_rank/${x.id}`, { ...x.doc, at: new Date(x.doc.at) }, t, null, { mustNotExist: true }).catch(e => { if (!exists(e)) throw e; });
+        writeQ(readQ().filter(y => y.id !== x.id));
+        markSent(x.id);
+        sent++;
+      } catch (e) { console.warn("랭킹 전송 실패", e); break; }
+    }
+    return sent;
+  })().finally(() => { sendingRank = null; });
+  return sendingRank;
+}
+
+// 랭킹 전체 (숨긴 기록 빼고). mine: 내 기록 id 목록
+export async function loadRank() {
+  if (!sess) throw new Error("로그인 필요");
+  await sendRank().catch(() => {});
+  const rows = await listDocs("fcg_rank", await token());
+  const uid = uidOf();
+  return { rows: rows.filter(r => !r.hidden), mine: new Set(rows.filter(r => r.uid === uid).map(r => r.id)), waiting: readQ().filter(x => x.sid === sess.sid).length };
 }
