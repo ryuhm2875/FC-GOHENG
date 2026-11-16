@@ -382,6 +382,13 @@ button, a, input, select, label, .slot, .act, .vn-choice, .choice { touch-action
 .meeting .mt-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; }
 .meeting .mt-row .btn { min-width: 110px; }
 .meeting .mt-q { margin: 8px 0 6px; font-size: 13px; }
+.meeting .mt-card { border: 1px solid var(--line, rgba(255,255,255,.14)); border-radius: 12px; padding: 10px 12px; margin: 0 0 12px; background: rgba(0,0,0,.28); font-size: 13px; }
+.meeting .mt-card-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.meeting .mt-card dl { margin: 0; display: grid; gap: 3px; }
+.meeting .mt-card dl > div { display: grid; grid-template-columns: 4.5em 1fr; gap: 8px; }
+.meeting .mt-card dt { color: var(--mute); }
+.meeting .mt-card dd { margin: 0; word-break: keep-all; }
+.meeting .mt-card-note { margin: 6px 0 0; color: var(--mute); font-size: 12px; word-break: keep-all; }
 @media (prefers-reduced-motion: reduce) { .meeting .mt-in { animation: none; } }
 /* ── 하프타임 라커룸 ── */
 .ht-talk .ht-tag { font-size: 12px; font-weight: 700; letter-spacing: .04em; color: var(--kit-2, #ffb74d); margin-bottom: 6px; }

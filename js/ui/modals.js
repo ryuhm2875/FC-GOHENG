@@ -361,20 +361,32 @@ export function meetingModal(app, fx, done) {
         <div class="ev-body"><div class="ev-who">${esc(w.name)}</div><p class="ev-text">"${esc(l.t)}"</p></div></div>`
       : `<p class="mt-nar">${esc(l.t)}</p>`;
   };
+  // 해설(장면) 줄은 뒤따르는 말과 한 화면에: 누르는 횟수를 줄임 (§59)
+  const steps = [];
+  let nar = [];
+  for (const l of sc.lines) { if (WHO[l.who]) { steps.push({ nar, line: l }); nar = []; } else nar.push(l); }
+  if (nar.length) steps.push({ nar, line: null });
+  const card = sc.card;
+  const cardHtml = card ? `<div class="mt-card">
+      <div class="mt-card-h"><b>상대 분석</b><span class="mute">${esc(card.sub)}</span></div>
+      <dl>${card.rows.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl>
+      ${card.note ? `<p class="mt-card-note">${esc(card.note)}</p>` : ""}</div>` : "";
   openModal(`<div class="mt-head"><span class="chip kit">경기 전 미팅</span> <span class="mute">vs ${esc(fx.opponent.name)}</span></div>
+    <div id="mtk">${cardHtml}</div>
     <div id="mtl" aria-live="polite"></div>
     <div class="mt-ctl" id="mtc"></div>`, (el, close) => {
-    const box = el.querySelector("#mtl"), ctl = el.querySelector("#mtc");
+    const box = el.querySelector("#mtl"), ctl = el.querySelector("#mtc"), cardBox = el.querySelector("#mtk");
     const show = () => {
-      box.innerHTML = lineHtml(sc.lines[i]);
-      box.firstElementChild.classList.add("mt-in");
-      ctl.innerHTML = `<div class="mt-row"><button class="linkbtn" data-skip>건너뛰기</button><span class="mute num">${i + 1} / ${sc.lines.length}</span>
-        <button class="btn btn-kit" data-next>${i < sc.lines.length - 1 ? "다음 ▶" : "대답하기"}</button></div>`;
-      ctl.querySelector("[data-next]").addEventListener("click", () => { if (i < sc.lines.length - 1) { i++; show(); } else answer(); });
+      const st = steps[i];
+      box.innerHTML = `<div class="mt-in">${st.nar.map(l => lineHtml(l)).join("")}${st.line ? lineHtml(st.line) : ""}</div>`;
+      ctl.innerHTML = `<div class="mt-row"><button class="linkbtn" data-skip>건너뛰기</button><span class="mute num">${i + 1} / ${steps.length}</span>
+        <button class="btn btn-kit" data-next>${i < steps.length - 1 ? "다음 ▶" : "대답하기"}</button></div>`;
+      ctl.querySelector("[data-next]").addEventListener("click", () => { if (i < steps.length - 1) { i++; show(); } else answer(); });
       ctl.querySelector("[data-skip]").addEventListener("click", answer);
       ctl.querySelector("[data-next]").focus({ preventScroll: true });
     };
     const answer = () => {
+      cardBox.innerHTML = "";                         // 대답할 땐 카드를 접어 선택지 자리를 넓힘
       const last = sc.lines.filter(l => WHO[l.who]).at(-1);
       box.innerHTML = last ? lineHtml(last) : "";
       ctl.innerHTML = `<p class="mt-q mute">뭐라고 대답할까?</p><div class="vn-choices">${sc.choices.map((c, k) => `<button class="vn-choice" style="--i:${k}" data-k="${k}">${esc(c.label)}</button>`).join("")}</div>`;
