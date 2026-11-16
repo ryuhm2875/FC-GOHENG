@@ -10,7 +10,7 @@ const batchim = w => { const c = String(w).charCodeAt(String(w).length - 1); ret
 export const ENDINGS = [
   { id: "legend", grade: "L", title: "레전드", img: "ending_legend",
     cond: c => c.captain && c.wore10 && c.nationalChampion && c.nationalTeam,
-    story: c => `주장 완장, 등번호 10번, 전국대회 우승 트로피, 그리고 태극마크.\n\n고흥대서중 운동장 한쪽 벽에 ${c.name}의 이름이 새겨졌다. 후배들은 지금도 그 앞을 지나며 한 번씩 고개를 든다.\n\n${c.schoolName}에서 시작될 다음 이야기는, 이미 많은 사람이 기다리고 있다.`,
+    story: c => `주장 완장, 등번호 10번, 전국대회 우승 트로피, 그리고 태극마크.\n\n고흥대서중 운동장 한쪽 벽에 ${c.name}의 이름이 새겨졌다. 후배들은 그 앞을 지날 때마다 한 번씩 고개를 든다.\n\n${c.schoolName}에서 시작될 다음 이야기는, 이미 많은 사람이 기다리고 있다.`,
     later: c => `스무 살 겨울, 프로 데뷔전. 등번호는 여전히 10번이다.\n\n경기가 끝나고 휴대폰을 켜니 고흥대서중 축구부 단톡방이 난리가 나 있었다. 이제는 얼굴도 모르는 후배들이 경기 캡처를 올리고 있다.\n\n다음 주말엔 운동장에 들러 공 몇 개 차 주기로 했다.` },
 
   { id: "national", grade: "S", title: "청소년 국가대표", img: "ending_national",

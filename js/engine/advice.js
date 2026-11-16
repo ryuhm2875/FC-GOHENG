@@ -60,7 +60,7 @@ const STYLES = [
   { key: "rough", label: "몸싸움이 거친 팀", stat: "phys.strength", tips: ["부딪힐 때 버티는 쪽이 이긴다. 등지는 플레이를 조심해라.", "넘어져도 바로 일어나라. 아픈 척하면 이 팀은 더 세게 들어온다.", "몸으로 밀리면 공을 빨리 내줘라. 공이 사람보다 빠르다."] },
   { key: "cross", label: "측면 크로스가 많은 팀", stat: "mental.focus", tips: ["양쪽 날개가 빠르다. 크로스 올라오기 전에 박스 안 자리부터 잡아라.", "크로스는 막는 것보다 올라오기 전에 끊는 게 쉽다. 측면에서 한 발 먼저 붙어라.", "반대편 포스트를 비우지 마라. 이 팀 골은 대부분 거기서 나온다."] },
   { key: "low", label: "수비를 내리고 버티는 팀", stat: "tech.pass", tips: ["공은 우리가 오래 잡을 거다. 서두르면 역습 맞는다. 옆으로 흔들다가 한 번에 찔러라.", "박스 앞에 열 명이 서 있을 거다. 중거리 하나가 경기를 연다.", "이런 팀은 한 골 먹으면 무너진다. 선제골이 전부다."] },
-  { key: "ace", label: "에이스 한 명이 끌고 가는 팀", stat: "tech.defense", tips: ["10번 하나만 묶으면 반은 끝난다. 그 선수가 공 잡으면 두 명이 붙어라.", "이 팀 에이스가 왼발잡이다. 오른쪽으로 몰아라.", "에이스 쪽 측면은 내버려 두지 마라. 거기로만 공이 간다."] },
+  { key: "ace", label: "에이스 한 명이 끌고 가는 팀", stat: "tech.defense", tips: ["에이스 하나만 묶으면 반은 끝난다. 그 선수가 공 잡으면 두 명이 붙어라.", "이 팀 에이스가 왼발잡이다. 오른쪽으로 몰아라.", "에이스 쪽 측면은 내버려 두지 마라. 거기로만 공이 간다."] },
 ];
 // 팀 성향은 data/world.js의 style에서 (없는 팀만 이름 해시로)
 const TEAM_STYLE = Object.fromEntries([...LEAGUE_OPPONENTS, ...NATIONAL_OPPONENTS, ...HIGH_SCHOOLS, ...ELEMENTARY_OPPONENTS].filter(t => t.style).map(t => [t.name, t.style]));
@@ -187,7 +187,7 @@ export function meetingScript(state, fx) {
       : lv === "high" ? pick([`이런 경기에선 네 ${josa(st, "이", "가")} 오히려 무기가 된다.`, `네 ${josa(st, "이", "가")} 이 팀한테는 제일 귀찮을 거다. 마음껏 써라.`])
       : pick([`네 ${josa(st, "이", "가")} 얼마나 버텨 주느냐가 관건이다.`, `${josa(st, "은", "는")} 딱 중간이다. 오늘 경기가 그걸 끌어올릴 기회다.`]);
     let tips = style.tips;
-    if (ace) tips = tips.filter(x => !x.includes("왼발잡이")).map(x => x.replace("10번 하나만", `${ace.number}번 ${ace.name} 하나만`));
+    if (ace) tips = tips.filter(x => !x.includes("왼발잡이")).map(x => x.replace("에이스 하나만", `${ace.number}번 ${ace.name} 하나만`));
     const mu = ace ? ACE_TALK.matchup[`${p.position}-${ace.pos}`] : null;
     // 에이스와 맞붙는 자리면 그 조언, 아니면 팀 성향 조언. 둘 다 길게 늘어놓지 않음
     A([...mine, mu?.length ? aceText(state, pick(mu), ace) : pick(tips), stLine].join(" "));

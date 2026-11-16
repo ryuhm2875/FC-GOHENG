@@ -1122,3 +1122,4 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
 - 끝난 파일: events.js · events2 · events3 · events4 · messages.js · advice.js
 - 남은 순서: story.js · goals.js · endings.js → match.js(2,032줄, 해설은 바둑판과 맞물려 있으니 글자만. 라커룸·하프타임·관중부터) → scenes.js
 - 정해진 기준: 학교에 매점 없음, 전교생 40여 명(한 학년 10~15명), 부모님 서술 높임('웃으셨다'), 감독·코치도 서술에서 높임, '휴대폰'·'인조 잔디' 표기, "민첩성 실화냐"처럼 사용자가 재미있다고 한 문장은 살림
+- 6차: story 4곳·endings 1곳, match.js 경기 밖 문장 7곳. 고정 등번호("상대 10번", "9번")는 미팅 카드의 실제 에이스 번호와 어긋날 수 있어 "에이스"로 바꿈(advice 팁, orders.js 포함)
