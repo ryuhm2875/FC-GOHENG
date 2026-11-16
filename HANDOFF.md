@@ -1126,3 +1126,8 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
   - 주의: 결과 문장은 js/engine/match.js actOf()의 정규식으로 바둑알 동작이 정해짐(예: /흘려 ?보냈/, /뒤로/, /막아섰/). 결과 문장을 고칠 땐 actOf 키워드가 바뀌지 않는지 확인
 - scenes.js는 화면 문장 없음(설정·주석뿐)
 - 대사 다듬기 1차 전체 끝 (events·messages·advice·story·goals·endings·match·scenes)
+
+## 60. 저장소 정리 (2026-11-17)
+- 저장소 맨 위에 흩어져 있던 옛날 사본 97개 삭제 (웹 드래그 업로드 때 폴더 밖에 떨어진 파일들. 어디서도 불러 쓰지 않았고, 맨 위 game.bundle.js는 644KB짜리 옛 버전). 맨 위에는 index.html, admin.html, sw.js, offline-files.js, manifest, firestore.rules, README, HANDOFF만 남김
+- 확인: 로컬 서버에서 게임 시작~첫 경기 전 미팅까지 오류 0, 404 0
+- 이제 업로드는 PR로 하므로 파일이 맨 위로 떨어질 일은 없음. 웹에서 직접 올릴 땐 폴더 구조 그대로
