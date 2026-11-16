@@ -7,9 +7,9 @@
 // bg: assets/img/ 안의 배경 그림 이름. 없으면 tone 색으로 대신합니다.
 export const INTRO = [
   // center: 화면 한가운데에 띄움 / type: 작은 글씨를 한 글자씩 찍음
-  { bg: "bg_sea",   tone: "sea",   big: "전라남도 고흥",          small: "조용하고 아름다운 자연이 있는" },
-  { bg: "title",    tone: "dawn",  big: "하늘길이 열리는 곳", small: "그러니 우리의 꿈도 더욱 높이 날 수 있겠지." },
-  { bg: "bg_school", tone: "field", big: "고흥대서중학교",    small: "작지만 큰 꿈을 지닌 학생들이 있다." },
+  { bg: "bg_sea",   tone: "sea",   big: "전라남도 고흥",          small: "바다와 산이 맞닿은 곳" },
+  { bg: "title",    tone: "dawn",  big: "하늘길이 열리는 곳", small: "우리 꿈도 그만큼 높이 날 수 있겠지." },
+  { bg: "bg_school", tone: "field", big: "고흥대서중학교",    small: "작은 학교, 큰 꿈을 품은 아이들이 있다." },
   { bg: "bg_locker", tone: "night", big: "고흥FC U-15",          small: "올봄, 꿈을 품은 유니폼 하나가 새로 걸린다." },
   { bg: null,       tone: "black", big: "3년의 시간",            small: "미래는 네가 만들어 간다.", center: true, type: true },
 ];
@@ -68,7 +68,7 @@ export const TALK = {
     { who: "coach", text: "음." },
   ],
   numberIntro: [
-    { who: "coach", text: "1학년은 30번 뒤로 번호를 준다. 앞 번호는 실력으로 뺏어 가는 거다." },
+    { who: "coach", text: "1학년 번호는 30번부터다. 앞 번호는 실력으로 뺏어 가는 거다." },
   ],
   farewell: [
     { who: "coach", text: "훈련은 평일 방과 후, 주말리그는 주로 토요일이다. 일정표는 늘 확인해 둬라." },
