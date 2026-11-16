@@ -119,22 +119,25 @@ export function meetingScript(state, fx) {
     : fx.elementary ? "운동장 벤치 앞. 초등학생들이 공을 차며 떠드는 소리가 들린다."
     : pick(["라커룸. 화이트보드에 상대 대형이 그려져 있다.", "경기 전 라커룸. 축구화 끈 묶는 소리만 들린다.", `원정 버스에서 내려 라커룸에 모였다. ${STAFF.assistant}님이 마커 뚜껑을 여신다.`, "몸 풀기 전, 다 같이 라커룸에 둘러앉았다."]);
   N(place);
-  A(`${pick(["자, 다들 모여 봐라. 이번 상대 얘기 짧게 한다.", "화이트보드 봐라. 한 번만 설명한다.", "영상 몇 경기 돌려 봤다. 요점만 말한다.", "길게 안 한다. 귀만 열어 둬라."])} ${fx.compLabel}${fx.round ? ` ${fx.round}` : ""}, 상대는 ${fx.opponent.name}.`);
+  // 상대 분석 카드: 사실(유형·전력·에이스·순위·지난 경기)은 카드에, 말은 짧게 (§59)
+  let card = null;
   const lastVs = state.record.matches.slice().reverse().find(x => x.opponent === fx.opponent.name);
-  if (lastVs && fx.comp !== "hs") A(lastVs.result === "승" ? pick([`지난번엔 ${lastVs.gf}:${lastVs.ga}${ro(lastVs.ga)} 이겼다. 저쪽도 그걸 기억하고 나온다.`, "지난 맞대결은 우리가 이겼다. 그래서 더 조심해야 한다. 갚으러 오는 팀이 제일 무섭다."])
-    : lastVs.result === "패" ? pick([`지난번엔 ${lastVs.gf}:${lastVs.ga}${ro(lastVs.ga)} 졌다. 이번엔 갚아 줘야지.`, "지난 맞대결에서 졌던 거, 다들 기억하지? 같은 실수는 두 번 안 한다."])
-    : pick([`지난번엔 ${lastVs.gf}:${lastVs.ga}${ro(lastVs.ga)} 비겼다. 이번엔 결판내자.`, "지난번엔 승부를 못 냈다. 이번엔 한 골 차라도 이기자."]));
+  const lastRow = lastVs && fx.comp !== "hs" ? ["지난 경기", `${lastVs.gf}:${lastVs.ga} ${lastVs.result}`] : null;
+  const lastLine = !lastRow ? null : lastVs.result === "승" ? pick(["지난번엔 우리가 이겼다. 저쪽도 그걸 기억하고 나온다.", "지난 맞대결은 우리가 이겼다. 그래서 더 조심해야 한다. 갚으러 오는 팀이 제일 무섭다."])
+    : lastVs.result === "패" ? pick(["지난번엔 졌다. 이번엔 갚아 줘야지.", "지난 맞대결에서 졌던 거, 다들 기억하지? 같은 실수는 두 번 안 한다."])
+    : pick(["지난번엔 비겼다. 이번엔 결판내자.", "지난번엔 승부를 못 냈다. 이번엔 한 골 차라도 이기자."]);
+  const opener = pick(["자, 다들 모여 봐라. 짧게 한다.", "화이트보드 봐라. 한 번만 설명한다.", "영상 몇 경기 돌려 봤다. 요점만 말한다.", "길게 안 한다. 귀만 열어 둬라."]);
 
   let ace = null;
   if (fx.comp === "hs") {
     const s = fx.school;
     const tierWord = { footballHS: "축구부가 탄탄한 학교", regional: "이 지역에서 손꼽히는 학교", national: "전국대회 단골인 학교", proYouth: "프로 구단 유스팀" }[s.tier];
-    A(`${josa(s.name, "은", "는")} ${ida(tierWord)}. 오늘 ${s.coach}님께서 직접 보러 오셨다.`);
+    A(`${opener} 오늘 상대는 ${s.name}. ${ida(tierWord)}. ${s.coach}님께서 직접 보러 오셨다.`);
     const small = p.body.height < 170 || p.stats.phys.strength < 55;
     A(small ? "고등학생들은 한 뼘은 더 크고 단단하다. 정면으로 부딪히기보다 한 박자 먼저 움직여라."
       : "몸으로 밀릴 정도는 아니다. 오히려 형들한테 네 몸을 보여 줄 기회다.");
   } else if (fx.elementary) {
-    A(pick(["초등학생들이라고 웃지 마라. 쟤들은 지는 걸 모른다.", "작다고 얕보다가 한 골 먹으면, 그 영상 평생 돈다. 알지?"]));
+    A(`${opener} ${pick(["초등학생들이라고 웃지 마라. 쟤들은 지는 걸 모른다.", "작다고 얕보다가 한 골 먹으면, 그 영상 평생 돈다. 알지?"])}`);
   } else {
     const ourStr = teamStrength(state, true) * 0.6 + 50 * 0.4;
     const diff = fx.opponent.strength - ourStr;
@@ -142,36 +145,41 @@ export function meetingScript(state, fx) {
       : diff > 2 ? pick(["만만치 않다. 집중력 싸움이 될 거다.", "조금 앞서는 팀이다. 실점만 늦추면 기회는 온다.", "비슷해 보여도 경험이 많은 팀이다. 흔들리지 마라."])
       : diff > -2 ? pick(["해 볼 만한 상대다. 먼저 실수하는 쪽이 진다.", "딱 우리만 한 팀이다. 누가 더 많이 뛰느냐다.", "50 대 50이다. 세트피스 하나가 갈라 놓을 거다.", "누가 먼저 한 발 더 뛰느냐. 그게 다다."])
       : pick(["우리가 할 것만 하면 된다. 그래도 방심하는 순간 뒤집힌다.", "전력은 우리가 앞선다. 이런 경기를 쉽게 이겨야 강팀이다.", "이겨야 본전인 경기다. 일찍 골 넣고 편하게 가자.", "쉬운 경기라고 생각하는 순간 어려워진다."]);
-    A(`${style.label}이다. ${diffLine}`);
+    const power = diff > 5 ? "한 수 위" : diff > 2 ? "조금 앞섬" : diff > -2 ? "비슷함" : "우리가 앞섬";
+    const rows = [["유형", style.label], ["전력", power]];
+    const more = [], mine = [];
     const a0 = aceOf(state, fx.opponent.name);
     if (a0) {
       const team = fx.opponent.name;
-      if (aceAbsent(state, team, info.turn)) A(aceText(state, pick(ACE_TALK.absent), a0, { team }));
+      if (aceAbsent(state, team, info.turn)) { rows.push(["에이스", `${a0.number}번 ${a0.name} · 결장`]); more.push(aceText(state, pick(ACE_TALK.absent), a0, { team })); }
       else {
         ace = a0;
+        rows.push(["조심", `${ace.number}번 ${ace.name}${ace.trait ? ` · ${ace.trait}` : ""}`]);
         const memo = state.oppMemo?.[ace.name];
-        const parts = [aceText(state, pick(ACE_TALK.intro), ace, { team }), aceText(state, pick(ACE_TALK.trait), ace)];
-        if (memo?.goals >= 1) parts.push(aceText(state, pick(ACE_TALK.scoredBefore), ace, { goals: memo.goals }));
-        else if (memo?.games && memo.grade < state.calendar.grade) parts.push(aceText(state, pick(ACE_TALK.metLastYear), ace));
-        A(parts.join(" "));
+        mine.push(aceText(state, pick(ACE_TALK.intro), ace, { team }));
+        if (memo?.goals >= 1) mine.push(aceText(state, pick(ACE_TALK.scoredBefore), ace, { goals: memo.goals }));
+        else if (memo?.games && memo.grade < state.calendar.grade) mine.push(aceText(state, pick(ACE_TALK.metLastYear), ace));
       }
     }
+    let leagueLine = null;
     if (state.league && fx.comp === "league" && state.league.played > 0) {
-      const rows = sortTable(state.league.table);
-      const them = rows.findIndex(r => r.id === fx.opponent.id);
-      const us = rows.findIndex(r => r.id === US);
-      A(them < us && diff <= -2 ? pick(["순위는 저쪽이 위지만, 전력으로는 밀리지 않는다. 여기서 잡으면 판이 달라진다.", "순위표에선 우리보다 위에 있다. 그래도 붙어 보면 우리가 낫다. 증명하고 와라."])
+      const tbl = sortTable(state.league.table);
+      const them = tbl.findIndex(r => r.id === fx.opponent.id);
+      const us = tbl.findIndex(r => r.id === US);
+      if (them >= 0 && us >= 0) rows.push(["순위", `${them + 1}위 · 우리는 ${us + 1}위`]);
+      leagueLine = them < us && diff <= -2 ? pick(["순위는 저쪽이 위지만, 전력으로는 밀리지 않는다. 여기서 잡으면 판이 달라진다.", "순위표에선 우리보다 위에 있다. 그래도 붙어 보면 우리가 낫다. 증명하고 와라."])
         : them < us ? pick(["순위표에서 우리보다 위에 있는 팀이다. 여기서 잡으면 판이 달라진다.", "우리 위에 있는 팀이다. 승점 3점이 아니라 6점짜리 경기라고 생각해라."])
         : them < 3 ? pick(["요즘 기세가 좋은 팀이다.", "최근에 지는 법을 잊은 팀이다. 그 흐름을 우리가 끊자."])
-        : pick(["순위는 아래지만, 그런 팀이 제일 독하게 나온다.", "순위표만 보고 들어가면 큰코다친다. 아래 있는 팀일수록 물고 늘어진다."]));
+        : pick(["순위는 아래지만, 그런 팀이 제일 독하게 나온다.", "순위표만 보고 들어가면 큰코다친다. 아래 있는 팀일수록 물고 늘어진다."]);
     }
+    if (lastRow) rows.push(lastRow);
+    // 팀 전체에게: 전력 + (에이스 결장 / 순위 / 지난 경기 중 하나). 덧붙일 말이 없을 때만 여는 말
+    const side = more[0] || (leagueLine && lastLine ? pick([leagueLine, lastLine]) : leagueLine || lastLine);
+    A(side ? `${diffLine} ${side}` : `${opener} ${diffLine}`);
+    card = { title: fx.opponent.name, sub: `${fx.compLabel}${fx.round ? ` ${fx.round}` : ""}`, rows };
     // 따로 불러서 하는 이야기
     const an = `${STAFF.assistant}님`;
     N(pick([`미팅이 끝나고 ${an}이 너를 따로 부르신다.`, `다들 일어서는데 ${an}이 네 어깨를 툭 치신다.`, `${an}이 너만 잠깐 남으라고 손짓하신다.`]));
-    if (ace) {
-      const mu = ACE_TALK.matchup[`${p.position}-${ace.pos}`];
-      if (mu?.length) A(aceText(state, pick(mu), ace));
-    }
     const lv = levelWord(getPath(p.stats, style.stat));
     const st = STAT_LABEL[style.stat];
     const isTech = String(style.stat).startsWith("tech.");
@@ -180,9 +188,11 @@ export function meetingScript(state, fx) {
       : pick([`네 ${josa(st, "이", "가")} 얼마나 버텨 주느냐가 관건이다.`, `${josa(st, "은", "는")} 딱 중간이다. 오늘 경기가 그걸 끌어올릴 기회다.`]);
     let tips = style.tips;
     if (ace) tips = tips.filter(x => !x.includes("왼발잡이")).map(x => x.replace("10번 하나만", `${ace.number}번 ${ace.name} 하나만`));
-    A(`${pick(tips)} ${stLine}`);
+    const mu = ace ? ACE_TALK.matchup[`${p.position}-${ace.pos}`] : null;
+    // 에이스와 맞붙는 자리면 그 조언, 아니면 팀 성향 조언. 둘 다 길게 늘어놓지 않음
+    A([...mine, mu?.length ? aceText(state, pick(mu), ace) : pick(tips), stLine].join(" "));
     const city = Object.keys(TRAVEL).find(c => fx.opponent.name.startsWith(c));
-    if (city && fx.comp === "league" && chance(0.4)) A(TRAVEL[city]);
+    if (city && fx.comp === "league" && chance(0.4)) card.note = TRAVEL[city];
   }
 
   // 감독님: 상황에 맞는 한마디
@@ -211,12 +221,13 @@ export function meetingScript(state, fx) {
     C(p.condition.injury ? pick(["넌 이번 주 재활이 먼저다. 벤치 옆에서 경기 흐름이라도 읽어 둬라.", "다친 몸으로 뛰는 건 용기가 아니다. 오늘은 보면서 배워라."])
       : "그리고… 성적 때문에 이번엔 명단에 너를 못 넣는다. 나도 아쉽다. 책상 앞에서 먼저 이기고 와라.");
   } else {
-    C(d.rank <= d.slots ? pick(["오늘도 네 이름 먼저 적었다. 기대에 답해라.", "선발 명단에 네 이름 있다. 그 자리, 당연한 거 아니다.", "처음부터 뛴다. 몸 상태 숨기지 말고 말해라."])
+    const posLine = d.rank <= d.slots ? pick(["오늘도 네 이름 먼저 적었다. 기대에 답해라.", "선발 명단에 네 이름 있다. 그 자리, 당연한 거 아니다.", "처음부터 뛴다. 몸 상태 숨기지 말고 말해라."])
       : d.rank <= d.slots + 2 ? pick(["벤치에서 시작할 수도 있다. 그래도 기회는 언제 올지 모른다. 준비하고 있어라.", "선발은 장담 못 한다. 대신 들어가는 순간 바로 뛸 수 있게 몸은 데워 둬라.", "주전이랑 차이가 거의 없다. 들어가면 보여 줘라."])
-      : pick(["아직은 앞에 선 선수들이 많다. 오늘은 벤치에서 경기 읽는 법부터 배워라.", "이번 주는 명단이 어렵다. 대신 훈련장에서 내 눈을 붙잡아라.", "지금은 순서가 뒤다. 순서는 훈련장에서 바뀐다."]));
+      : pick(["아직은 앞에 선 선수들이 많다. 오늘은 벤치에서 경기 읽는 법부터 배워라.", "이번 주는 명단이 어렵다. 대신 훈련장에서 내 눈을 붙잡아라.", "지금은 순서가 뒤다. 순서는 훈련장에서 바뀐다."]);
     const c = conditionOf(p);
-    if (c.score < 50) C(`요즘 몸이 많이 무거워 보인다.${p.condition.fatigue >= 85 ? " 이 상태면 처음부터 쓰기 어렵다." : ""} 오늘 끝나면 푹 쉬어라.`);
-    else if (c.score >= 85) C(pick(["몸 상태는 지금이 제일 좋다. 이럴 때 보여 줘야 한다.", "요즘 몸이 가볍다는 거 다 보인다. 그 다리로 뛰어라."]));
+    const body = c.score < 50 ? `요즘 몸이 많이 무거워 보인다.${p.condition.fatigue >= 85 ? " 이 상태면 처음부터 쓰기 어렵다." : ""} 오늘 끝나면 푹 쉬어라.`
+      : c.score >= 85 ? pick(["몸 상태는 지금이 제일 좋다. 이럴 때 보여 줘야 한다.", "요즘 몸이 가볍다는 거 다 보인다. 그 다리로 뛰어라."]) : "";
+    C(body ? `${posLine} ${body}` : posLine);   // 명단 얘기와 몸 상태는 한 번에
   }
 
   // 내 대답 (작은 효과: 경기 중 해당 종류 선택 성공률 조금 ↑ 등)
@@ -242,7 +253,7 @@ export function meetingScript(state, fx) {
     ch.push({ label: `${asst}님께 궁금한 걸 여쭤본다`, who: "assist", reply: pick(["좋은 질문이다. 그런 걸 물어보는 선수가 오래 간다.", "그건 경기장에서 직접 확인해 봐라. 대신 하나만 기억해라. 공 받기 전에 한 번 더 봐라."]),
       buff: { tag: null, bonus: 0.01, label: "모든 선택 성공률 +1%p" }, fx: { s: { "mental.focus": 0.3 } } });
   }
-  return { lines: L, choices: ch.slice(0, 3), coach: coachName, assistant: asst };
+  return { lines: L, card, choices: ch.slice(0, 3), coach: coachName, assistant: asst };
 }
 
 // 미팅에서 고른 대답 반영. 경기 중 효과는 state.meetingBuff에 남겨 prepareMatch가 가져감
