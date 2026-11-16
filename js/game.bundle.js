@@ -14367,6 +14367,7 @@ const SOUNDS = {
   good: () => { tone(784, { dur: 0.12, vol: 0.1, type: "triangle" }); tone(1175, { t: 0.09, dur: 0.22, vol: 0.1, type: "triangle" }); },
   bad: () => { tone(392, { dur: 0.14, vol: 0.1, type: "triangle" }); tone(294, { t: 0.12, dur: 0.25, vol: 0.1, type: "triangle" }); },
   up: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, { t: i * 0.07, dur: 0.18, vol: 0.08, type: "triangle" })),
+  stamp: () => { noise({ dur: 0.14, vol: 0.16, freq: 160, q: 0.9 }); tone(120, { dur: 0.14, vol: 0.12, slide: -50 }); },
   kickoff: () => whistle(0, 0.45),
   half: () => { whistle(0, 0.3); whistle(0.4, 0.55); },
   full: () => { whistle(0, 0.28); whistle(0.36, 0.28); whistle(0.72, 0.8); },
@@ -17317,25 +17318,38 @@ function showMatch(app, m, onDone) {
     shown = m.score.slice();
     updateBoard();
     const resCls = { 승: "W", 무: "D", 패: "L" }[res.result];
-    const goals = m.goalsLog.map(g => `<li class="${g.team}">${g.minute}' ${esc(g.name)}${g.assist ? ` <span class="mute">(도움 ${esc(g.assist)})</span>` : ""}</li>`).join("");
-    ctl.innerHTML = `<div class="postmatch">
-      <div class="pm-head"><span class="badge-res ${resCls}">${res.result}</span>
-        <span class="num">${fx.usName ? esc(fx.usName) : TEAM_NAME} ${res.gf} : ${res.ga} ${esc(res.opponent)}</span>
-        ${res.shootout ? `<span class="mute">(승부차기 ${res.shootout.us}:${res.shootout.them})</span>` : ""}</div>
-      ${goals ? `<ul class="pm-goals">${goals}</ul>` : ""}
-      ${res.minutes > 0 ? `<div class="pm-rating">
-          <div class="rt num ${res.rating >= 7.5 ? "hi" : res.rating >= 6.5 ? "mid" : "lo"}">${res.rating.toFixed(1)}</div>
-          <div><div>${STATUS_LABEL[res.status]} ${res.minutes}분${res.goals ? `, ${res.goals}골` : ""}${res.assists ? `, ${res.assists}도움` : ""}</div>
-          <div class="mute" style="font-size:13px">선택 ${m.my.decisions}번 중 ${m.my.successes}번 성공${res.mom ? ` <span class="chip kit">경기 최우수 선수</span>` : ""}${res.subbedOff ? ` <span class="chip">하프타임 교체</span>` : ""}</div></div>
-        </div>` : `<p class="mute">${esc(res.reason || STATUS_LABEL[res.status])}</p>`}
-      ${m.mom ? `<p class="pm-mom">🏅 경기 최우수 선수: ${m.mom.team === "them" ? `${esc(res.opponent)} ` : ""}<b>${esc(m.mom.name)}</b></p>` : ""}
+    const goals = m.goalsLog.map(g => `<li class="${g.team}"><span class="min num">${g.minute}'</span><span>⚽ ${esc(g.name)}${g.assist ? ` <span class="mute">(도움 ${esc(g.assist)})</span>` : ""}</span></li>`).join("");
+    const us = fx.usName || TEAM_NAME, rt = res.rating, rc = rt >= 7.5 ? "hi" : rt >= 6.5 ? "mid" : "lo";
+    const chips = [res.goals ? `<span class="pm-chip g">⚽ ${res.goals}골</span>` : "", res.assists ? `<span class="pm-chip">🅰️ ${res.assists}도움</span>` : "",
+      m.my.decisions ? `<span class="pm-chip">선택 ${m.my.successes}/${m.my.decisions} 성공</span>` : "", res.subbedOff ? `<span class="pm-chip">하프타임 교체</span>` : ""].join("");
+    ctl.innerHTML = `<div class="postmatch pm2 ${resCls}">
+      <div class="pm-hero">
+        <div class="pm-comp">${esc([res.comp, res.round].filter(Boolean).join(" · "))}</div>
+        <div class="pm-score">
+          <div class="pm-tm">${fx.jn ? crest(us, { size: 44 }) : `<img class="pm-logo" src="assets/img/logo.png" alt="">`}<span>${esc(us)}</span></div>
+          <div class="pm-big num"><span class="a">${res.gf}</span><i>:</i><span class="b">${res.ga}</span></div>
+          <div class="pm-tm">${crest(res.opponent, { size: 44 })}<span>${esc(res.opponent)}</span></div>
+        </div>
+        <span class="pm-res">${{ W: "승리", D: "무승부", L: "패배" }[resCls]}</span>
+        ${res.shootout ? `<div class="pm-so mute">승부차기 ${res.shootout.us} : ${res.shootout.them}${res.shootout.win ? " · 승부차기 승리" : ""}</div>` : ""}
+      </div>
+      ${res.minutes > 0 ? `<div class="pm-me">
+          <div class="pm-ring ${rc}" style="--p:${Math.max(0, Math.min(1, (rt - 3) / 7)).toFixed(3)}"><b class="num">${rt.toFixed(1)}</b></div>
+          <div><div class="pm-t1">내 경기</div><div class="pm-t2">${STATUS_LABEL[res.status]} · ${res.minutes}분</div><div class="pm-chips">${chips}</div></div>
+          ${res.mom ? `<div class="pm-stamp" aria-label="경기 최우수 선수"><div>경기 최우수<span>MOM</span></div></div>` : ""}
+        </div>` : `<p class="pm-out">${esc(res.reason || STATUS_LABEL[res.status])}</p>`}
+      ${goals ? `<ul class="pm-goals2">${goals}</ul>` : ""}
+      <div class="pm-foot">
+      ${m.mom && !res.mom ? `<p class="pm-mom">🏅 경기 최우수 선수: ${m.mom.team === "them" ? `${esc(res.opponent)} ` : ""}<b>${esc(m.mom.name)}</b></p>` : ""}
       ${m.teamRatings?.length ? `<details class="pm-team"><summary>우리 팀 평점 보기</summary><ul>${m.teamRatings.map(t => `<li class="${t.me ? "me" : ""}">
         <span class="pos-tag ${t.pos === "GK" ? "" : t.pos}">${t.pos}</span><span class="num">${t.number}</span><span class="nm">${esc(t.name)}${t.name === m.mom?.name && m.mom.team === "us" ? " ★" : ""}</span>
         <b class="rt num ${t.r >= 7.5 ? "hi" : t.r >= 6.5 ? "mid" : "lo"}">${t.r.toFixed(1)}</b></li>`).join("")}</ul></details>` : ""}
       ${res.notes.length ? `<ul class="pm-notes">${res.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
       <p class="mute" style="font-size:13px;margin:0">감독님 면담과 경기 기록은 메시지함에 왔습니다.</p>
       <button class="btn btn-kit btn-wide" data-done>${fx.jn && state.jnCup?.alive && !p.condition.injury ? `다음 경기로 (${["1회전", "준결승", "결승"][state.jnCup.stage]})` : "이번 주 마무리"}</button>
+      </div>
     </div>`;
+    if (res.mom) setTimeout(() => sfx.play("stamp"), 1350);         // 도장이 내려앉는 순간
     ctl.querySelector("[data-done]").addEventListener("click", () => { ro?.disconnect(); removeEventListener("resize", fitPitch); pitch.destroy(); onDone(res); });
     ctl.querySelector("[data-done]").focus({ preventScroll: true });
   }

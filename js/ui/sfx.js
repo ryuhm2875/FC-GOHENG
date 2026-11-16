@@ -60,6 +60,7 @@ const SOUNDS = {
   good: () => { tone(784, { dur: 0.12, vol: 0.1, type: "triangle" }); tone(1175, { t: 0.09, dur: 0.22, vol: 0.1, type: "triangle" }); },
   bad: () => { tone(392, { dur: 0.14, vol: 0.1, type: "triangle" }); tone(294, { t: 0.12, dur: 0.25, vol: 0.1, type: "triangle" }); },
   up: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, { t: i * 0.07, dur: 0.18, vol: 0.08, type: "triangle" })),
+  stamp: () => { noise({ dur: 0.14, vol: 0.16, freq: 160, q: 0.9 }); tone(120, { dur: 0.14, vol: 0.12, slide: -50 }); },
   kickoff: () => whistle(0, 0.45),
   half: () => { whistle(0, 0.3); whistle(0.4, 0.55); },
   full: () => { whistle(0, 0.28); whistle(0.36, 0.28); whistle(0.72, 0.8); },
