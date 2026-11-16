@@ -11058,7 +11058,7 @@ const EVENTS_STORY = [
       "{rival}의 이름이 나보다 한참 위에 있다. {rival|이/가} 내 어깨를 툭 치고 지나간다.")}`,
     choices: [
       { label: "{rival}에게 2학년 때 다시 붙자고 말한다", fx: { s: { "mental.competitive": 1 }, morale: 2, rel: { rival: 4 } },
-        result: "\"1년 동안 네 등만 보고 뛰었다.\" {rival|이/가} 그렇게 말하고는 먼저 웃었다. 나도 그랬다." },
+        result: "\"2학년 때 보자. 그땐 안 봐준다.\" {rival|이/가} 그렇게 말하고는 먼저 웃었다. 나도 따라 웃었다." },
       { label: "종이를 사진으로 찍어 둔다", fx: { s: { "mental.focus": 0.8 } },
         result: "휴대폰 배경화면을 그 사진으로 바꿨다. 2학년이 끝날 때 다시 찍을 생각이다." },
     ] },
@@ -11163,11 +11163,11 @@ const EVENTS_STORY = [
       const last = (s.jnHistory || []).find(h => h.grade === c.grade - 1), again = (c?.squad || []).find(x => x.again && !x.nemesis);
       if (last) return `두 번째 소년체전 소집. 같은 숙소, 같은 강당인데 이번엔 낯설지 않다.${again ? ` 작년에 같은 방을 쓴 ${shortSchool(again.school)}의 ${again.name}|이/가} 멀리서 손을 흔든다.` : ""}`.replace(/(.)\|이\/가\}/, (m0, ch) => { const k = ch.charCodeAt(0) - 0xAC00; return ch + (k >= 0 && k <= 11171 && k % 28 ? "이" : "가"); })
         + (nem ? `\n\n맨 뒷줄엔 올해도 ${shortSchool(nem.school)}의 ${nem.name}. 이번엔 눈이 마주치자 먼저 턱을 들어 인사한다.` : "")
-        + `\n\n${JN_STAFF.coach}님이 명단을 훑다가 멈췄다. "고흥. 이번엔 번호 말고 이름으로 부른다. {given}, 올해는 네가 애들 끌고 가라."`
+        + `\n\n${JN_STAFF.coach}님이 명단을 훑다가 멈추셨다. "고흥. 이번엔 번호 말고 이름으로 부른다. {given}, 올해는 네가 애들 끌고 가라."`
         + (last.medal === "gold" ? " 작년 금메달 얘기는 아무도 꺼내지 않았다. 다들 알고 있으니까." : last.medal ? "" : " 작년 1회전 탈락. 그 얘기를 먼저 꺼낸 건 감독님이었다. \"작년은 작년이다.\"");
       return `전국소년체전 소집 첫날, 숙소 강당. 리그에서 상대 팀 유니폼으로만 보던 얼굴들이 전남 트레이닝복을 입고 서로 눈치만 본다.${two.length === 2 ? ` ${shortSchool(two[0].school)}의 ${two[0].name}, ${shortSchool(two[1].school)}의 ${two[1].name}…` : ""}`
         + (nem ? `\n\n그리고 맨 뒷줄, ${shortSchool(nem.school)}의 ${nem.name}. 눈이 마주쳤다. 둘 다 먼저 고개를 돌렸다. 이번 주는 저 녀석이 같은 편이다.` : "")
-        + `\n\n${JN_STAFF.coachFrom}에서 온 ${JN_STAFF.coach}님이 화이트보드 앞에 섰다. 말이 짧다. "학교는 잊어라. 이번 주는 전부 전남이다. 내일까지 옆 사람 이름 다 외워 와라."`;
+        + `\n\n${JN_STAFF.coachFrom}에서 온 ${JN_STAFF.coach}님이 화이트보드 앞에 서셨다. 말씀이 짧다. "학교는 잊어라. 이번 주는 전부 전남이다. 내일까지 옆 사람 이름 다 외워 와라."`;
     },
     choices: [
       { label: "먼저 다가가 이름부터 묻는다", fx: { s: { "mental.teamwork": 0.6 }, morale: 3 },
@@ -11216,7 +11216,7 @@ const EVENTS_STORY = [
     text: "엄마 지갑에서 코팅된 종이 한 장이 떨어졌다. 2학년 겨울, 냉장고에 붙여 두었던 내 답장이다. 글씨가 삐뚤빼뚤하다.",
     choices: [
       { label: "엄마한테 이게 뭐냐고 묻는다", fx: { morale: 6 },
-        result: "\"버리기 아까워서.\" 엄마는 그렇게만 말하고 부엌으로 가셨다. 귀가 빨갰다." },
+        result: "\"버리기 아까워서.\" 엄마는 그 말만 하시고 부엌으로 가셨다. 엄마 귀가 빨갰다." },
       { label: "모른 척 다시 넣어 둔다", fx: { morale: 4, s: { "student.attitude": 0.5 } },
         result: "지갑을 원래대로 닫아 두었다. 그날 저녁 설거지는 내가 했다." },
     ] },
@@ -11234,7 +11234,7 @@ const EVENTS_STORY = [
     text: "시즌 마지막 훈련. {coach}님께서 운동장을 한 바퀴 둘러보시더니 말씀하신다. \"저기 페널티 박스 앞, 비 오고 패였던 데. 그날 삽 들고 나온 놈 기억한다. 너다.\"",
     choices: [
       { label: "\"그날 흙 많이 날랐습니다\" 하고 웃는다", fx: { coach: 4, morale: 4 },
-        result: "\"그래. 그런 놈이 결국 운동장을 지킨다.\" 감독님이 처음으로 어깨를 두드려 주셨다." },
+        result: "\"그래. 그런 놈이 결국 운동장을 지킨다.\" 감독님이 어깨를 툭 두드려 주셨다." },
       { label: "말없이 고개를 숙인다", fx: { coach: 3, s: { "mental.teamwork": 0.5 } },
         result: "감독님은 더 말씀하지 않으셨다. 대신 마지막 정리 운동 구령을 나에게 맡기셨다." },
     ] },
@@ -11443,7 +11443,7 @@ const EVENTS_ORIGIN = [
         result: "점심마다 운동장 구석에 네트를 치고 반 친구들과 공을 넘겼다. 발등 서브 하나를 일주일 내내 가르쳤다. 대회 날, 그 서브로 첫 점수가 났다는 문자가 왔다. 내가 넣은 것보다 좋았다." },
     ] },
   { id: "o_jg_volley", cond: is("jokgu"), once: true, priority: 1, trigger: win(4, 2, 4), when: { grades: [2] }, bg: "bg_field_day", who: "assistant",
-    text: "크로스 훈련. 공이 생각보다 길게 넘어와 내 머리 뒤로 떨어진다. 생각할 틈도 없이 몸이 옆으로 누웠다. 족구에서 하던 그대로, 발등으로 공을 내리찍었다.\n\n공은 골대 옆 그물을 흔들었다. {assistant}님이 휘슬을 입에서 뗐다. \"방금 그거, 어디서 배웠냐?\"",
+    text: "크로스 훈련. 공이 생각보다 길게 넘어와 내 머리 뒤로 떨어진다. 생각할 틈도 없이 몸이 옆으로 누웠다. 족구에서 하던 그대로, 발등으로 공을 내리찍었다.\n\n공은 골문 안쪽 옆 그물을 흔들었다. {assistant}님이 휘슬을 입에서 떼셨다. \"방금 그거, 어디서 배웠냐?\"",
     choices: [
       { label: "\"족구요\" 하고 웃는다", fx: { s: { "tech.shoot": 1 }, morale: 4 },
         result: "\"족구?\" 코치님이 한참 웃으시더니 공 바구니를 끌고 오셨다. \"그 발등, 공 떨어지는 자리만 맞추면 무기다. 오늘은 발리 쉰 개.\"" },
@@ -11460,7 +11460,7 @@ const EVENTS_ORIGIN = [
       { label: "상대편에 서서 공을 받아 준다", fx: { s: { "tech.firstTouch": 0.5, "phys.agility": 0.4 }, fatigue: 3, morale: 4 },
         result: "넘어오는 공은 전부 받아서 다시 넘겨 줬다. 종이 칠 때쯤 아이들 서브가 꽤 날카로워졌다. 대회 날 문자가 왔다. \"형 저희 4강 갔어요!!\"" },
       { label: "발등 트래핑 시범을 보여 준다", req: { "tech.firstTouch": 65 }, fx: { s: { "mental.confidence": 1 }, morale: 6 },
-        result: "높이 띄운 공을 발등에 그대로 얹었다. 공이 멈췄다. 1학년들이 입을 벌렸다. 3년 동안 축구를 했는데, 이건 족구부 시절보다 더 잘 된다." },
+        result: "높이 띄운 공을 발등에 그대로 얹었다. 공이 멈췄다. 1학년들이 입을 벌렸다. 3년 동안 축구를 했는데, 이건 족구부 시절보다 더 잘된다." },
     ] },
 
   // ── 클럽에서 떨어지고 온 아이 ────────────────
