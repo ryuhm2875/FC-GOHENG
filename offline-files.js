@@ -8,7 +8,7 @@ self.OFFLINE_FILES = [
   ["css/style.css","0eae8b16ab"],
   ["js/admin/admin.js","c7a1965124"],
   ["js/engine/achievements.js","b2e08e38f9"],
-  ["js/engine/advice.js","2b8a6c754c"],
+  ["js/engine/advice.js","5dcda08acc"],
   ["js/engine/birthday.js","ae986c5239"],
   ["js/engine/calendar.js","30c40e5a31"],
   ["js/engine/career.js","73a3b408e3"],
