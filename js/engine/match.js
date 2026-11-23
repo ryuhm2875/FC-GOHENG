@@ -397,7 +397,7 @@ export function prepareMatch(state, info, fx) {
   // 경기장 시뮬레이션
   m.players = pitchPlayers(state, m);
   const oppStyle = styleSim(fx.opponent.name);
-  const S = createSim({ players: m.players, str: { us: ours, them: theirs }, style: { us: {}, them: oppStyle }, blocks: { us: "mid", them: oppStyle.block || "mid" } });
+  const S = createSim({ gsOn: !!CAL.gs, players: m.players, str: { us: ours, them: theirs }, style: { us: {}, them: oppStyle }, blocks: { us: "mid", them: oppStyle.block || "mid" } });
   const D = ours - theirs;
   S.brk = { us: CAL.brk * Math.exp(-D / CAL.kb), them: CAL.brk * Math.exp(D / CAL.kb) };
   S.attackP = { us: sig(CAL.a0 + D / CAL.ka), them: sig(CAL.a0 - D / CAL.ka) };
@@ -526,7 +526,7 @@ function narrate(state, m, e) {
     case "boxRun":
       if (!quiet() && chance(0.6) && tac(m, "boxRun", 5, 10)) add(fill(pick(SIM_LINES.boxRun), { a: e.by, n: e.n }), e.me ? "me-auto" : kt(e.team));
       break;
-    case "lockOn": case "chaseOn": {
+    case "lockOn": case "chaseOn": case "surgeOn": case "openOn": {
       const pool = SIM_LINES[e.type + (e.team === "us" ? "Us" : "Them")];
       if (pool && !quiet() && tac(m, e.type + e.team, 2, 60)) add(pick(pool), kt(e.team));   // 이름을 넣지 않음: 올라간 측면 수비는 공과 멀리 있을 때가 많음
       break;
@@ -1480,9 +1480,9 @@ export function next(state, m) {
     S.block.us = late && a > b ? "low" : late && a < b ? "high" : "mid";
     S.block.them = late && b > a ? "low" : late && b < a ? "high" : m.oppBlock;
     // 경기 국면 (CAL.gs 0이면 끔): 55분부터 1~2골 차면 앞선 팀은 잠그기, 뒤진 팀은 쫓아가기 (3골 차 넘게 벌어지면 승부가 기울어 그대로). 모양은 sim.js에서 4분에 걸쳐 바뀜
-    const on = CAL.gs && m.minute >= 55 && Math.abs(a - b) <= 2;
-    setGameState(S, "us", on && a > b ? "lock" : on && a < b ? "chase" : null);
-    setGameState(S, "them", on && b > a ? "lock" : on && b < a ? "chase" : null); }
+    const on = CAL.gs && m.minute >= 55 && Math.abs(a - b) <= 2, open = CAL.gs && m.minute >= 60 && a === b;   // 동점으로 60분을 넘기면 난타전
+    setGameState(S, "us", on && a > b ? "lock" : on && a < b ? "chase" : open ? "open" : null);
+    setGameState(S, "them", on && b > a ? "lock" : on && b < a ? "chase" : open ? "open" : null); }
   if (m.half2Pending) {
     m.half2Pending = false; cut = true;
     kickoffSetup(S, "them", true);

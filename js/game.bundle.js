@@ -3966,6 +3966,10 @@ const SIM_LINES = {
   chaseOnUs:    ["한 골이 급하다. 우리 측면 수비까지 앞으로 올라간다.", "측면 수비까지 공격에 가담한다. 수비수는 셋만 뒤에 남았다."],
   lockOnThem:   ["앞서 있는 상대가 뒤로 물러나 잠근다. 박스 앞에 선수들이 겹겹이 섰다.", "상대가 리드를 지키려고 박스 앞으로 내려섰다. 공격수 하나만 앞에 남겨 두고."],
   lockOnUs:     ["앞서 있는 우리가 박스 앞으로 내려선다. 이제 지킬 차례다.", "리드를 지키려고 우리 선수들이 박스 앞을 촘촘히 막는다."],
+  surgeOnUs:    ["골을 넣은 기세 그대로, 우리가 상대 진영까지 올라가 달려든다.", "한 골 넣었다고 물러서지 않는다. 우리 선수들이 앞에서부터 몰아친다."],
+  surgeOnThem:  ["골을 넣은 상대가 기세를 몰아 앞에서부터 달려든다.", "한 골 넣은 상대가 더 거세게 나온다. 우리 진영까지 올라와 압박한다."],
+  openOnUs:     ["동점이다. 남은 시간이 많지 않다. 양 팀 모두 한 명씩 더 올라가 결승골을 노린다.", "어느 쪽도 비길 생각이 없다. 우리 미드필더까지 박스 앞으로 올라간다."],
+  openOnThem:   ["동점이다. 남은 시간이 많지 않다. 양 팀 모두 한 명씩 더 올라가 결승골을 노린다.", "어느 쪽도 비길 생각이 없다. 상대 미드필더까지 박스 앞으로 올라온다."],
   // 해설이 한참 없을 때 지금 공 가진 선수 이야기 (팀_자리: def 자기 진영, mid 중원, att 상대 진영)
   hold: {
     us_def:   ["{a|이/가} 뒤에서 공을 돌리며 빈틈을 찾는다.", "{a|이/가} 수비 진영에서 침착하게 공을 지킨다.", "{a|이/가} 서두르지 않는다. 동료들이 자리를 잡을 때까지 공을 끈다."],
@@ -5680,7 +5684,8 @@ function createSim(cfg) {
     ev: [], rec: null, phase: "play", restart: null, decideAt: 0, script: [], scur: null, stage: null, noFoulUntil: 0,
     pass: null, chain: [], possT: { us: 0, them: 0 }, flow: 0, bias: null, gkHold: 0, stopped: false, kickTeam: "us",
     pickOnly: null, trace: null, traceEnd: false, onTick: null, lastRestart: null, deflect: null, wonAt: null, wonBy: null, lastClear: false, oneOn: null, sw: { us: { hi: 0, deep: 0, said: -1 }, them: { hi: 0, deep: 0, said: -1 } }, gegenAt: null,
-    gs: { us: { cur: null, want: null, k: 0, said: false, fb: null }, them: { cur: null, want: null, k: 0, said: false, fb: null } },   // 경기 국면(점수·시간): lock 잠그기 / chase 쫓아가기. k는 0→1로 천천히
+    gs: { us: { cur: null, want: null, k: 0, said: false, fb: null }, them: { cur: null, want: null, k: 0, said: false, fb: null } },
+    gsOn: !!cfg.gsOn, sc: { us: 0, them: 0 }, surge: { us: -1, them: -1 }, surgeSaid: { us: true, them: true }, openSaid: false,   // 경기 국면(점수·시간): lock 잠그기 / chase 쫓아가기 / open 난타전, k는 0→1로 천천히. surge 몰아치기: 골 넣은 팀이 그 뒤 4분(경기 시간) 압박형처럼
     shot: null, pending: null, clockOff: 0, tk: cfg.tk ?? 0.32, ik: cfg.ik ?? 0.8, prog: cfg.prog ?? 0.00045, dw: cfg.dw ?? 17, ft: cfg.ft ?? 1, brk0: cfg.brk ?? 1,
   };
   S.GK = P.filter(p => p.pos === "GK");
@@ -5761,10 +5766,11 @@ function shape(S, team) {
   else {
     const B = BLOCK[S.block[team]] || BLOCK.mid;
     line = clamp(bx - B[0], B[1], Math.min(B[2], Math.max(B[1], bx - 4)));
-    W = S.dw * (st.compact ? 0.88 : S.block[team] === "deep" ? 0.9 : st.press ? 0.95 : 1);   // 역습형은 가운데를 잠그고, 압박형은 공 쪽으로 좁힘
+    const pr = st.press || S.t < S.surge[team];
+    W = S.dw * (st.compact ? 0.88 : S.block[team] === "deep" ? 0.9 : pr ? 0.95 : 1);   // 역습형은 가운데를 잠그고, 압박형은 공 쪽으로 좁힘
     cy = clamp(34 + (by - 34) * 0.55, 19, 49);
     if (bx > 62 && S.block[team] !== "low" && S.block[team] !== "deep") line = Math.max(line, Math.min(bx - 37, B[2] + 9));   // 높은 곳에서 압박할 때는 수비 라인도 따라 올라가 팀을 짧게 (앞뒤 40m 안쪽)
-    if (st.press && bx > 45 && S.block[team] !== "low") line = Math.min(line + 4, Math.max(B[1], bx - 4));   // 압박형: 라인을 한 칸 더 올려 팀을 앞으로 (공보다 앞으로는 안 감)
+    if (st.press && bx > 45 && S.block[team] !== "low") line = Math.min(line + 4, Math.max(B[1], bx - 4));   // 몰아치기(surge)는 라인은 그대로, 압박 거리·되찾기 압박만   // 압박형: 라인을 한 칸 더 올려 팀을 앞으로 (공보다 앞으로는 안 감)
   }
   const stretch = att ? 1.05 : S.block[team] === "high" && bx > 70 ? 1.3 : 0.95;
   const F = att ? FA : FD;
@@ -5776,6 +5782,7 @@ function shape(S, team) {
     out[fi * 2] += 13 * G.k;
     out[wi * 2 + 1] += (34 + sg * 0.5 * W - out[wi * 2 + 1]) * G.k;
   }
+  if (G.k > 0 && G.cur === "open" && att) out[RI.RCM * 2] += 8 * G.k;   // 난타전: 중앙 미드필더 하나가 한 칸 더 올라가 공격에 붙음 (중원이 비어 감)
   if (G.k > 0 && G.cur === "lock" && !att) {        // 잠그기: 두 번째 공격수가 미드필더 줄로, 공 쪽 측면 미드필더는 수비 라인 옆까지 내려와 다섯 명이 박스 앞을 막음
     out[RI.ST2 * 2] -= 8 * G.k;
     const wi = by < 34 ? RI.LM : RI.RM;
@@ -5903,7 +5910,8 @@ function targets(S) {
     }
   }
   // 압박: 공에 가장 가까운 수비가 나가고 두 번째가 뒤를 받침
-  const pressR = S.style[def].press ? 28 : S.block[def] === "low" || S.block[def] === "deep" ? 17 : 22;
+  const prD = S.style[def].press || S.t < S.surge[def];
+  const pressR = prD ? 28 : S.block[def] === "low" || S.block[def] === "deep" ? 17 : 22;
   const bpx = flying ? flying.x1 : S.ball.x, bpy = flying ? flying.y1 : S.ball.y;
   if (!S.stage && S.phase === "play") {
     let c1 = null, c2 = null, d1 = 1e9, d2 = 1e9, a1 = null, da = 1e9;
@@ -5915,7 +5923,7 @@ function targets(S) {
     }
     const g = -dirOf(def);
     // 압박형: 공을 잃은 직후 3초는 가까운 두 명이 함께 전력으로 되찾으러 감 (상대 진영·중원에서만)
-    const gegen = S.style[def].press && S.wonAt != null && c - S.wonAt < 3 && ox(def, bpx) > 40 && H && H.ri && !S.scur && !S.script.length && !S.bias;
+    const gegen = prD && S.wonAt != null && c - S.wonAt < 3 && ox(def, bpx) > 40 && H && H.ri && !S.scur && !S.script.length && !S.bias;
     if (c1 && (d1 < pressR || !H || (gegen && d1 < 34))) { c1.tx = bpx + g * (H ? 1.5 : 0); c1.ty = bpy + (34 - bpy) * 0.05; c1.v = d1 > 6 || gegen ? SPRINT : RUN; c1.press = true; }
     if (c2 && gegen && d2 < 18) {
       const sy = c2.y < bpy ? -1 : 1; c2.tx = bpx + g * 2.5; c2.ty = bpy + sy * 2.2; c2.v = SPRINT; c2.press = true;
@@ -6116,7 +6124,7 @@ function decide(S) {
       const mid = lossV((hx + rx) / 2, (hy + ry) / 2);
       let free = 99; for (const o of S.P) if (o.team === foe && o.ri) free = Math.min(free, hyp(o.x - tp[0], o.y - tp[1]));
       v += clamp(free - 2, 0, 6) * 0.0012;                                                 // 받을 자리에 여유가 있으면 더 좋음
-      let u = (1 - lr.risk) * (v + clamp(rx - hx, -15, 30) * S.prog * (cw ? 1.8 : st.keep ? 0.75 : 1) * (S.gs[team].cur === "chase" ? 1 + 0.15 * S.gs[team].k : 1)) - lr.risk * mid;   // 점유형은 앞으로 덜 서두름
+      let u = (1 - lr.risk) * (v + clamp(rx - hx, -15, 30) * S.prog * (cw ? 1.8 : st.keep ? 0.75 : 1) * (S.gs[team].cur === "chase" ? 1 + 0.15 * S.gs[team].k : S.gs[team].cur === "open" ? 1 + 0.1 * S.gs[team].k : 1)) - lr.risk * mid;   // 점유형은 앞으로 덜 서두름
       if (offside) u = Math.min(u, 0) - 0.01;
       if (air && !wide) u *= st.long ? 0.6 : cw ? 0.55 : 0.4;
       if (r === S.chain[S.chain.length - 1]) u *= 0.75;                                       // 방금 준 선수에게 바로 돌려주는 건 덜
@@ -6394,6 +6402,8 @@ function shotEnd(S) {
   emit(S, "shotEnd", { by: by.name, team, result, me: by.me, gk: gk?.name, blocker: sh.blocker?.name, blockerMe: !!sh.blocker?.me, kind: sh.kind, forced: sh.forced, assist: sh.assist?.name || null, assistMe: !!sh.assist?.me, save });
   if (result === "goal") {
     S.ball.x = team === "us" ? 104.6 : 0.4;
+    S.sc[team]++;
+    if (S.gsOn && Math.abs(S.sc.us - S.sc.them) <= 2 && minuteOf(S) < 64) { S.surge[team] = S.t + CELEBRATE + 18; S.surgeSaid[team] = false; }   // 골을 넣은 팀이 기세를 몰아 압박 (킥오프 뒤 약 4분)
     emit(S, "goal", { team, by: by.name, me: by.me, assist: sh.assist?.name || null, assistMe: !!sh.assist?.me, forced: sh.forced, kind: sh.kind });
     S.phase = "dead"; S.restart = { kind: "kickoff", team: def, at: S.t + 99, celebrate: S.t + CELEBRATE, goalAt: S.t };
     S.holder = null;
@@ -6996,9 +7006,17 @@ function styleWatch(S) {
 function setGameState(S, team, mode) { S.gs[team].want = mode || null; }
 function gsWatch(S, team) {
   const G = S.gs[team];
+  if (!S.surgeSaid[team] && S.t < S.surge[team] && S.holder && S.poss !== team && ox(team, S.ball.x) > 55) {   // 몰아치기: 상대 진영에서 우리 선수가 공 가진 선수에게 3m 안으로 붙었을 때
+    let d = 99; for (const p of S.P) if (p.team === team && p.ri) d = Math.min(d, hyp(p.x - S.holder.x, p.y - S.holder.y));
+    if (d < 3) { S.surgeSaid[team] = true; emit(S, "surgeOn", { team }); }
+  }
+  if (G.cur === "open" && G.k >= 0.9 && !S.openSaid && S.holder && S.poss === team && ox(team, S.ball.x) > 68) {   // 난타전: 공을 가진 팀의 올라간 미드필더가 박스 앞(72m↑)
+    const cm = S.P.find(p => p.team === team && p.role === "RCM"), og = S.gs[other(team)];
+    if (cm && ox(team, cm.x) >= 72 && og.cur === "open" && og.k >= 0.9) { S.openSaid = true; emit(S, "openOn", { team }); }
+  }
   if (G.cur !== G.want) { G.k = Math.max(0, G.k - 1 / 12); if (G.k === 0) { G.cur = G.want; G.said = false; if (G.cur === "chase") G.fb = pickFb(S, team); } }
   else if (G.cur) G.k = Math.min(1, G.k + 1 / 12);
-  if (!G.cur || G.k < 0.9 || G.said || !S.holder) return;
+  if (!G.cur || G.cur === "open" || G.k < 0.9 || G.said || !S.holder) return;
   if (G.cur === "chase" && S.poss === team) {         // 올라간 측면 수비가 실제로 상대 진영 깊이 있을 때만 말함
     const f = S.P.find(p => p.team === team && p.role === G.fb);
     if (f && ox(team, f.x) >= 70 && ox(team, S.ball.x) > 52) { G.said = true; emit(S, "chaseOn", { team, by: f.name }); }
@@ -7721,7 +7739,7 @@ function prepareMatch(state, info, fx) {
   // 경기장 시뮬레이션
   m.players = pitchPlayers(state, m);
   const oppStyle = styleSim(fx.opponent.name);
-  const S = createSim({ players: m.players, str: { us: ours, them: theirs }, style: { us: {}, them: oppStyle }, blocks: { us: "mid", them: oppStyle.block || "mid" } });
+  const S = createSim({ gsOn: !!CAL.gs, players: m.players, str: { us: ours, them: theirs }, style: { us: {}, them: oppStyle }, blocks: { us: "mid", them: oppStyle.block || "mid" } });
   const D = ours - theirs;
   S.brk = { us: CAL.brk * Math.exp(-D / CAL.kb), them: CAL.brk * Math.exp(D / CAL.kb) };
   S.attackP = { us: sig(CAL.a0 + D / CAL.ka), them: sig(CAL.a0 - D / CAL.ka) };
@@ -7850,7 +7868,7 @@ function narrate(state, m, e) {
     case "boxRun":
       if (!quiet() && chance(0.6) && tac(m, "boxRun", 5, 10)) add(fill(pick(SIM_LINES.boxRun), { a: e.by, n: e.n }), e.me ? "me-auto" : kt(e.team));
       break;
-    case "lockOn": case "chaseOn": {
+    case "lockOn": case "chaseOn": case "surgeOn": case "openOn": {
       const pool = SIM_LINES[e.type + (e.team === "us" ? "Us" : "Them")];
       if (pool && !quiet() && tac(m, e.type + e.team, 2, 60)) add(pick(pool), kt(e.team));   // 이름을 넣지 않음: 올라간 측면 수비는 공과 멀리 있을 때가 많음
       break;
@@ -8804,9 +8822,9 @@ function next(state, m) {
     S.block.us = late && a > b ? "low" : late && a < b ? "high" : "mid";
     S.block.them = late && b > a ? "low" : late && b < a ? "high" : m.oppBlock;
     // 경기 국면 (CAL.gs 0이면 끔): 55분부터 1~2골 차면 앞선 팀은 잠그기, 뒤진 팀은 쫓아가기 (3골 차 넘게 벌어지면 승부가 기울어 그대로). 모양은 sim.js에서 4분에 걸쳐 바뀜
-    const on = CAL.gs && m.minute >= 55 && Math.abs(a - b) <= 2;
-    setGameState(S, "us", on && a > b ? "lock" : on && a < b ? "chase" : null);
-    setGameState(S, "them", on && b > a ? "lock" : on && b < a ? "chase" : null); }
+    const on = CAL.gs && m.minute >= 55 && Math.abs(a - b) <= 2, open = CAL.gs && m.minute >= 60 && a === b;   // 동점으로 60분을 넘기면 난타전
+    setGameState(S, "us", on && a > b ? "lock" : on && a < b ? "chase" : open ? "open" : null);
+    setGameState(S, "them", on && b > a ? "lock" : on && b < a ? "chase" : open ? "open" : null); }
   if (m.half2Pending) {
     m.half2Pending = false; cut = true;
     kickoffSetup(S, "them", true);
