@@ -122,7 +122,7 @@ export const SCENES = {
   freekick: { at: [[76, 82], [26, 42]], from: "fk" },
   penalty: { at: [[94, 94], [34, 34]], from: "pk" },
   df_2v1: { counter: true, at: [[36, 44], [24, 44]], from: "oppCarry", src: [16, 0], v: 8, runs: [["oppfw", -6, -12, 8.4]], pre: [["df", 18, 12], ["df", 20, -12]], meGap: 5 },
-  df_box: { tight: 4, at: [[8, 14], [26, 42]], from: "loose", holder: "me", src: [3, -2], runs: [["opp", 1.5, 1.5, 8]], pack: "them" },
+  df_box: { tight: 2.5, at: [[6, 14], [26, 42]], from: "loose", holder: "me", src: [3, -2], runs: [["opp", 1.5, 1.5, 8]], pack: "them" },
   df_overlap: { lure: ["wing", "wingdribble", "switch"], patience: 4, lureSide: true, at: [[70, 80], [4, 10]], from: "through", giver: "mate", src: [-8, -10], press: 0 },
   df_boxdribble: { at: [[12, 18], [24, 44]], from: "oppCarry", src: [10, 4], v: 6, meGap: 2 },
   df_last: { at: [[8, 14], [28, 40]], from: "oppLong", pack: "them", meGap: 1 },

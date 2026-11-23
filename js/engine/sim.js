@@ -27,14 +27,14 @@ export const FORMS = {
   "4231": { label: "4-2-3-1", t: { ...FORM,
     LCM: { d: [8, -0.2], a: [9, -0.16] }, RCM: { d: [8, 0.2], a: [13, 0.18] },
     LM: { d: [13, -0.9], a: [32, -0.72] }, RM: { d: [13, 0.9], a: [32, 0.78] },
-    ST2: { d: [19, 0.02], a: [30, 0.04] }, ST1: { d: [26, -0.02], a: [42, 0] } } },
-  "433": { label: "4-3-3", t: { ...FORM,
+    ST2: { d: [17, 0.14], a: [30, 0.1] }, ST1: { d: [27, -0.1], a: [42, -0.04] } } },
+  "433": { label: "4-3-3", mid8: true, t: { ...FORM,
     LCM: { d: [7, 0], a: [9, 0] }, RCM: { d: [13, 0.34], a: [22, 0.3] }, ST2: { d: [13, -0.34], a: [23, -0.3] },
     LM: { d: [17, -0.88], a: [40, -0.86] }, RM: { d: [17, 0.88], a: [40, 0.86] },
     ST1: { d: [25, 0], a: [43, 0] } } },
-  "352": { label: "3-5-2", wb: true, back: ["LM", "RM"], notBack: ["RCB"], t: { ...FORM,
+  "352": { label: "3-5-2", wb: true, notBack: ["RCB"], t: { ...FORM,
     LB: { d: [0, -0.58], a: [0, -0.7] }, LCB: { d: [-1, 0], a: [-2, 0] }, RB: { d: [0, 0.58], a: [0, 0.7] }, RCB: { d: [8, 0.05], a: [11, 0.04] },
-    LM: { d: [-5, -0.98], a: [32, -0.95] }, RM: { d: [-5, 0.98], a: [32, 0.95] },   // 윙백은 상대 측면 선수를 따라 올라가므로 자리 자체는 라인보다 조금 뒤
+    LM: { d: [1, -0.98], a: [32, -0.95] }, RM: { d: [1, 0.98], a: [32, 0.95] },   // 수비 땐 shape()에서 공 쪽 윙백은 앞으로 나가고 반대쪽은 라인으로
     LCM: { d: [11, -0.34], a: [16, -0.32] }, RCM: { d: [11, 0.34], a: [19, 0.3] },
     ST1: { d: [24, -0.18], a: [41, -0.14] }, ST2: { d: [22, 0.2], a: [38, 0.22] } } },
 };
@@ -155,8 +155,10 @@ const RI = Object.fromEntries(ROLE_LIST.map((r, i) => [r, i]));
 const FAF = {}, FDF = {};
 for (const [k, f] of Object.entries(FORMS)) { FAF[k] = ROLE_LIST.map(r => f.t[r]?.a || [0, 0]); FDF[k] = ROLE_LIST.map(r => f.t[r]?.d || [0, 0]); }
 const formOf = (S, team) => FORMS[S.form?.[team]] || FORMS["442"];
-// 수비할 때 수비 라인에 서는 선수: 보통은 수비수, 3-5-2는 윙백이 들어오고 수비형 미드필더(RCB)는 빠짐
-const isBack = (S, p) => { const f = formOf(S, p.team); return f.back?.includes(p.role) || (p.pos === "DF" && !f.notBack?.includes(p.role)); };
+// 공격수(4-3-3의 ST2는 8번이라 빼고)는 자기 진영 깊은 곳까지 공을 쫓아 내려가 압박하지 않음 (공격수가 우리 박스 안까지 따라 들어가던 것)
+const deepFw = (S, p) => p.pos === "FW" && !(p.role === "ST2" && formOf(S, p.team).mid8);
+// 수비할 때 수비 라인에 서는 선수: 보통은 수비수. 3-5-2는 공 반대쪽 윙백이 들어오고(5백), 수비형 미드필더(RCB)는 빠짐
+const isBack = (S, p) => { const f = formOf(S, p.team); return (f.wb && S.wbFar?.[p.team] === p.role) || (p.pos === "DF" && !f.notBack?.includes(p.role)); };
 const SH = { us: new Float64Array(22), them: new Float64Array(22) };
 // 그 팀 기준 좌표로 역할마다 설 자리 (out[ri*2], out[ri*2+1])
 function shape(S, team) {
@@ -179,7 +181,15 @@ function shape(S, team) {
   const stretch = att ? 1.05 : S.block[team] === "high" && bx > 70 ? 1.3 : 0.95;
   const fk = FORMS[S.form?.[team]] ? S.form[team] : "442", F = att ? FAF[fk] : FDF[fk];
   for (let i = 1; i < 11; i++) { out[i * 2] = line + F[i][0] * stretch; out[i * 2 + 1] = cy + F[i][1] * W; }
-  if (!att && S.block[team] === "deep") out[RI.ST1 * 2] = Math.max(out[RI.ST1 * 2], 46);   // 역습형: 공격수 하나는 하프라인 근처에 남아 역습을 기다림
+  if (!att && S.block[team] === "deep") out[RI.ST1 * 2] = Math.max(out[RI.ST1 * 2], 46);
+  // 3-5-2 수비: 공 쪽 윙백은 앞으로 나가 상대 측면을 막고(공이 측면이면 더 바짝), 반대쪽 윙백은 수비 라인으로 내려와 5백. 현대 스리백 팀의 기본 움직임
+  if (!att && formOf(S, team).wb) {
+    const near = by < 34 ? RI.LM : RI.RM, far = near === RI.LM ? RI.RM : RI.LM;
+    (S.wbFar ||= {})[team] = ROLE_LIST[far];
+    out[far * 2] = line; out[far * 2 + 1] = 34 + (far === RI.LM ? -1 : 1) * 0.74 * W;
+    const wide = Math.abs(by - 34) > 14;
+    out[near * 2] = wide ? clamp(bx - 5, line + 4, line + 22) : line + 9; out[near * 2 + 1] = 34 + (near === RI.LM ? -1 : 1) * (wide ? 0.95 : 0.85) * W;
+  }   // 역습형: 공격수 하나는 하프라인 근처에 남아 역습을 기다림
   const G = S.gs[team];
   if (G.k > 0 && G.cur === "chase" && att && !formOf(S, team).wb) {        // 쫓아가기: 측면 수비 하나가 윙어 높이로, 같은 쪽 측면 미드필더는 안쪽(하프스페이스)으로 좁혀 길을 비켜 줌. 나머지 수비 셋과 중앙 미드필더 둘은 뒤를 받침
     const fi = RI[G.fb], wi = G.fb === "RB" ? RI.RM : RI.LM, sg = G.fb === "RB" ? 1 : -1;
@@ -322,7 +332,7 @@ function targets(S) {
     for (const p of P) {
       if (!p.ri || p.ov) continue;
       const d = hyp(p.x - bpx, p.y - bpy);
-      if (p.team === def) { if (p.stun > 0) continue; if (d < d1) { c2 = c1; d2 = d1; c1 = p; d1 = d; } else if (d < d2) { c2 = p; d2 = d; } }
+      if (p.team === def) { if (p.stun > 0 || (deepFw(S, p) && ox(def, bpx) < 34)) continue; if (d < d1) { c2 = c1; d2 = d1; c1 = p; d1 = d; } else if (d < d2) { c2 = p; d2 = d; } }
       else if (d < da) { da = d; a1 = p; }
     }
     const g = -dirOf(def);
@@ -338,6 +348,15 @@ function targets(S) {
       if (p.team !== def || !p.ri || p === c1 || p === c2 || p.ov) continue;
       const dx = p.tx - H.x, dy = p.ty - H.y, d = hyp(dx, dy);
       if (d < 7 && d > 0.01) { p.tx = clamp(H.x + dx / d * 7, 1.5, 103.5); p.ty = clamp(H.y + dy / d * 7, 1.5, 66.5); }
+    }
+    // 수비 간격: 압박하러 나간 선수 말고는 같은 팀끼리 5m 안으로 겹쳐 서지 않음 (대인 마크가 같은 상대를 잡아 두 명이 한 자리에 포개지던 것)
+    if (!S.scur && !S.script.length && !S.bias) {
+      const D = P.filter(p => p.team === def && p.ri && p.pos !== "GK" && !p.press && !p.ov);
+      for (let i = 0; i < D.length; i++) for (let j = i + 1; j < D.length; j++) {
+        const a = D[i], b = D[j], dx = b.tx - a.tx, dy = b.ty - a.ty, d = hyp(dx, dy);
+        if (d < 5 && d > 0.01) { const k = (5 - d) / d * 0.5; a.tx -= dx * k; a.ty -= dy * k; b.tx += dx * k; b.ty += dy * k; }
+        else if (d <= 0.01) { a.ty -= 2.5; b.ty += 2.5; }
+      }
     }
     // 흘러 있는 공: 공격 팀도 가장 가까운 선수가 달려감
     if (!H && !flying && a1) { a1.tx = S.ball.x; a1.ty = S.ball.y; a1.v = SPRINT; a1.press = true; }
