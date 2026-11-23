@@ -25,7 +25,7 @@ self.OFFLINE_FILES = [
   ["js/engine/rank.js","8152eac620"],
   ["js/engine/relations.js","7c9eb2ed1e"],
   ["js/engine/season.js","751f38b9b6"],
-  ["js/engine/sim.js","0c40fa186b"],
+  ["js/engine/sim.js","d8766a95f0"],
   ["js/engine/team.js","9135c63504"],
   ["js/engine/traits.js","4b5e58ed33"],
   ["js/engine/week.js","601f0763ad"],
