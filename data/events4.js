@@ -77,7 +77,7 @@ export const EVENTS_ORIGIN = [
       { label: "읽고 답장하지 않는다", fx: { s: { "mental.focus": 0.5 }, morale: -2 },
         result: "휴대폰을 서랍에 넣었다. 득점왕 메달은 어디 뒀더라. 찾지 않기로 했다." },
     ] },
-  { id: "o_ace_medal", cond: is("ace"), once: true, priority: 1, trigger: weeks([11, 2], [11, 3], [11, 4], [11, 5], [12, 2]), when: { grades: [3] }, bg: "ev_award", who: "narr",
+  { id: "o_ace_medal", cond: is("ace"), once: true, priority: 1, trigger: weeks([11, 2], [11, 3], [11, 4], [11, 5], [12, 2]), when: { grades: [3] }, bg: "ev_medal_give", who: "narr",
     text: "모교 초등학교 축구 대회 시상식. 옛 코치님이 시상자로 나를 부르셨다. 올해 득점왕은 키가 내 가슴께밖에 안 오는 4학년이다. 메달을 걸어 주자 아이가 올려다보며 묻는다.\n\n\"형도 득점왕이었죠? 중학교 가면 어때요?\"",
     choices: [
       { label: "\"솔직히, 처음엔 엄청 넘어졌어\"", fx: { s: { "mental.teamwork": 1 }, morale: 5 },
@@ -92,7 +92,7 @@ export const EVENTS_ORIGIN = [
 
   // ── 초등 족구부 출신 ─────────────────────────
   // 학교에 족구부는 없음. 학교스포츠클럽 족구 대회에 나갈 사람을 체육 선생님이 찾고, 담임이 말을 전함
-  { id: "o_jg_cup", cond: is("jokgu"), once: true, priority: 1, school: true, trigger: weeks([5, 2], [5, 3], [5, 5], [6, 1], [6, 2]), when: { grades: [1] }, bg: "ev_classroom", who: "teacher",
+  { id: "o_jg_cup", cond: is("jokgu"), once: true, priority: 1, school: true, trigger: weeks([5, 2], [5, 3], [5, 5], [6, 1], [6, 2]), when: { grades: [1] }, bg: "ev_classroom_talk", who: "teacher",
     text: "종례가 끝나고 {teacher}께서 나를 부르셨다.\n\n\"{given|아/야}, 체육 선생님이 그러시던데 너 초등학교 때 족구부였다며? 이번에 학교스포츠클럽 족구 대회가 있는데, 우리 학교는 네 명 채우기도 빠듯하대. 한번 나가 볼래?\"",
     choices: [
       { mark: "jg_cup", label: "감독님께 허락받고 나간다", fx: { s: { "tech.firstTouch": 0.6, "phys.jump": 0.4 }, coach: 1, fatigue: 4, morale: 4 },
