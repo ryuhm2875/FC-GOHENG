@@ -57,7 +57,8 @@ for (let k = 0; k < N; k++) {
   while (!m.done && guard++ < 4000) {
     if (m.pending) { const ch = m.pending.choices || []; resolve(s, m, PICK === "auto" ? autoChoice(m) : Math.floor(rand() * Math.max(1, ch.length))); continue; }
     const r = next(s, m);
-    for (const l of r.lines) if (/앞으로 올려 보낸다|공격수처럼 올라와|공격에 가담한다|앞으로 올라간다|물러나 잠근다|박스 앞으로 내려|박스 앞을 촘촘히/.test(l.t || "")) { lines[/잠근|내려|촘촘/.test(l.t) ? "lockOn" : "chaseOn"]++; lineEx.length < SHOW * 2 && lineEx.push(`#${k} ${l.minute}' ${l.k}: ${l.t}`); }
+    for (const l of r.lines) { const t = l.t || ""; const kk = /물러나 잠근다|박스 앞으로 내려|박스 앞을 촘촘히/.test(t) ? "lockOn" : /앞으로 올려 보낸다|공격수처럼 올라와|공격에 가담한다|측면 수비까지 앞으로/.test(t) ? "chaseOn" : /골을 넣은 (기세|상대가 기세)|한 골 넣은 상대가 더 거세게|앞에서부터 몰아친다/.test(t) ? "surgeOn" : /한 명씩 더 올라가|미드필더까지 박스 앞으로/.test(t) ? "openOn" : null;
+      if (kk) { lines[kk] = (lines[kk] || 0) + 1; lineEx.length < SHOW * 3 && lineEx.push(`#${k} ${l.minute}' ${l.k}: ${t}`); } }
   }
   finishMatch(s, m);
   // 사건: 슈팅(자리)·크로스·긴 패스·골 (팀별 그때 점수 상태는 사건 시각 기준으로 다시 계산)
@@ -75,7 +76,7 @@ for (let k = 0; k < N; k++) {
   }
 }
 const f = (a, b, d = 1) => (C[b] ? (C[a] || 0) / C[b] : NaN).toFixed(d);
-console.log(`경기 ${games}, 경기당 골 ${(goals / games).toFixed(2)} (55분 뒤 ${(lateGoals / games).toFixed(2)}), 국면 해설 잠그기 ${lines.lockOn} 쫓아가기 ${lines.chaseOn} (경기당 ${((lines.lockOn + lines.chaseOn) / games).toFixed(2)})`);
+console.log(`경기 ${games}, 경기당 골 ${(goals / games).toFixed(2)} (55분 뒤 ${(lateGoals / games).toFixed(2)}), 국면 해설 잠그기 ${lines.lockOn} 쫓아가기 ${lines.chaseOn} 몰아치기 ${lines.surgeOn || 0} 난타전 ${lines.openOn || 0}`);
 for (const late of ["후반초", "55분↑"]) for (const c of ["앞섬", "뒤짐", "동점"]) {
   const p = `${late}/${c}`; if (!C[`${p}/틱`]) continue;
   console.log(`${p.padEnd(9)} | 틱 ${C[`${p}/틱`]} | 공격 때 공 뒤 평균 ${f(`${p}/공격_공뒤인원합`, `${p}/공격틱`)}명, 상대 진영에서 뒤 3명 미만 ${(100 * (C[`${p}/공격_뒤에3미만(상대진영)`] || 0) / (C[`${p}/공격_상대진영틱`] || 1)).toFixed(1)}%, 가장 높은 수비수 ${f(`${p}/공격_가장높은수비수합`, `${p}/공격틱`)}m`
