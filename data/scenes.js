@@ -213,4 +213,11 @@ export const SCENES = {
   mf_press_trigger: { side: 16, at: [[56, 72], [3, 12]], from: "oppPass", giver: "oppdf", src: [6, -14], meGap: 7 },
   df_bait_press: { at: [[14, 24], [22, 46]], from: "pass", giver: "df", src: [-2, 14], press: 1, pressGap: 9, block: { them: "high" } },
   df_back_post: { lure: ["wing", "overlap", "switch"], patience: 4, air: true, at: [[6, 12], [38, 48]], from: "oppCross", meGap: 1.6, pack: "them" },
+  // 상대 포메이션 장면 (§71)
+  f352_wb_space: { side: 16, at: [[64, 88], [2, 20]], from: "pass", giver: "fb", press: 1, pressGap: 3 },   // wing_isolation 연출 그대로
+  f352_wb_cross: { lure: ["wing", "overlap", "switch"], patience: 4, air: true, at: [[6, 12], [38, 48]], from: "oppCross", meGap: 1.6, pack: "them" },   // df_back_post 연출 그대로
+  f4231_am_drop: { at: [[30, 38], [26, 42]], from: "oppPass", src: [14, -4], meGap: 2 },   // df_step_out 연출 그대로
+  f4231_pivot: { at: [[50, 58], [26, 42]], from: "pass", giver: "df", src: [-20, -5], press: 1, pressGap: 1.2 },   // fw_drop_deep 연출 그대로
+  f433_trident: { at: [[26, 36], [22, 46]], from: "oppCarry", src: [15, 0], v: 7.8, meGap: 3 },   // df_1v1 연출 그대로
+  f433_dm_side: { at: [[64, 72], [14, 22]], from: "pass", giver: "fb", src: [-10, 8], runs: [["mate", 14, 10, 8.4], ["fw", 18, -6, 7.6]], press: 1, pressGap: 2.6, block: { them: "mid" } },   // mf_halfspace_turn 연출 그대로
 };

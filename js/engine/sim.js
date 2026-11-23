@@ -17,6 +17,27 @@ const FORM = {
   LM: { d: [11, -0.92], a: [30, -0.6] }, LCM: { d: [11, -0.28], a: [11, -0.14] }, RCM: { d: [11, 0.28], a: [19, 0.2] }, RM: { d: [11, 0.92], a: [31, 0.88] },
   ST1: { d: [24, -0.2], a: [41, -0.14] }, ST2: { d: [22, 0.22], a: [38, 0.24] },
 };
+// 상대 포메이션: 자리 이름(역할)은 4-4-2 그대로 두고 서는 위치만 바꿈 (역할에 달린 움직임 코드를 그대로 쓰려고).
+//  4-2-3-1: ST2가 공격형 미드필더, 중앙 미드필더 둘은 조금 아래(더블 볼란치), 측면 미드필더는 2선 윙어
+//  4-3-3:   측면 미드필더가 높은 윙어, ST2가 왼쪽 중앙 미드필더(8번), LCM이 가운데 수비형, RCM이 오른쪽 8번
+//  3-5-2:   LB·RB가 좌우 센터백, LCB가 가운데 센터백, RCB가 수비형 미드필더, 측면 미드필더가 윙백 (수비 땐 수비 라인까지 내려와 5백)
+//  wb: 측면을 맡는 선수가 측면 수비가 아니라 측면 미드필더(윙백) → 오버래핑·쫓아가기 측면 수비 올리기를 안 함
+export const FORMS = {
+  "442": { label: "4-4-2", t: FORM },
+  "4231": { label: "4-2-3-1", t: { ...FORM,
+    LCM: { d: [8, -0.2], a: [9, -0.16] }, RCM: { d: [8, 0.2], a: [13, 0.18] },
+    LM: { d: [13, -0.9], a: [32, -0.72] }, RM: { d: [13, 0.9], a: [32, 0.78] },
+    ST2: { d: [19, 0.02], a: [30, 0.04] }, ST1: { d: [26, -0.02], a: [42, 0] } } },
+  "433": { label: "4-3-3", t: { ...FORM,
+    LCM: { d: [7, 0], a: [9, 0] }, RCM: { d: [13, 0.34], a: [22, 0.3] }, ST2: { d: [13, -0.34], a: [23, -0.3] },
+    LM: { d: [17, -0.88], a: [40, -0.86] }, RM: { d: [17, 0.88], a: [40, 0.86] },
+    ST1: { d: [25, 0], a: [43, 0] } } },
+  "352": { label: "3-5-2", wb: true, back: ["LM", "RM"], notBack: ["RCB"], t: { ...FORM,
+    LB: { d: [0, -0.58], a: [0, -0.7] }, LCB: { d: [-1, 0], a: [-2, 0] }, RB: { d: [0, 0.58], a: [0, 0.7] }, RCB: { d: [8, 0.05], a: [11, 0.04] },
+    LM: { d: [-5, -0.98], a: [32, -0.95] }, RM: { d: [-5, 0.98], a: [32, 0.95] },   // 윙백은 상대 측면 선수를 따라 올라가므로 자리 자체는 라인보다 조금 뒤
+    LCM: { d: [11, -0.34], a: [16, -0.32] }, RCM: { d: [11, 0.34], a: [19, 0.3] },
+    ST1: { d: [24, -0.18], a: [41, -0.14] }, ST2: { d: [22, 0.2], a: [38, 0.22] } } },
+};
 // 수비 블록 높이: [공에서 몇 m 뒤에 라인, 라인 최소, 라인 최대] (자기 골문에서 잰 거리)
 const BLOCK = { low: [24, 9, 24], mid: [25, 16, 38], high: [21, 24, 50], deep: [23, 11, 29] };   // deep: 역습형 (자기 진영에서 기다림)
 const KICKOFF_X = { GK: 4, DF: 25, MF: 37, FW: 47 };
@@ -59,7 +80,7 @@ export function createSim(cfg) {
   });
   const S = {
     P, t: 0, half: 1, ball: { x: 52.5, y: 34, z: 0, fl: null }, holder: null, poss: "us", last: null, lastTeam: "us",
-    str: { ...cfg.str }, style: { us: {}, them: {}, ...cfg.style }, block: { us: "mid", them: "mid", ...(cfg.blocks || {}) },
+    str: { ...cfg.str }, form: { us: "442", them: "442", ...(cfg.form || {}) }, style: { us: {}, them: {}, ...cfg.style }, block: { us: "mid", them: "mid", ...(cfg.blocks || {}) },
     ev: [], rec: null, phase: "play", restart: null, decideAt: 0, script: [], scur: null, stage: null, noFoulUntil: 0,
     pass: null, chain: [], possT: { us: 0, them: 0 }, flow: 0, bias: null, gkHold: 0, stopped: false, kickTeam: "us",
     pickOnly: null, trace: null, traceEnd: false, onTick: null, lastRestart: null, deflect: null, wonAt: null, wonBy: null, lastClear: false, oneOn: null, sw: { us: { hi: 0, deep: 0, said: -1 }, them: { hi: 0, deep: 0, said: -1 } }, gegenAt: null,
@@ -131,7 +152,11 @@ function loose(S, vx = 0, vy = 0) { S.holder = null; S.ball.fl = null; S.ball.ro
 // ── 대형 ──
 const ROLE_LIST = ["GK", "LB", "LCB", "RCB", "RB", "LM", "LCM", "RCM", "RM", "ST1", "ST2"];
 const RI = Object.fromEntries(ROLE_LIST.map((r, i) => [r, i]));
-const FA = ROLE_LIST.map(r => FORM[r]?.a || [0, 0]), FD = ROLE_LIST.map(r => FORM[r]?.d || [0, 0]);
+const FAF = {}, FDF = {};
+for (const [k, f] of Object.entries(FORMS)) { FAF[k] = ROLE_LIST.map(r => f.t[r]?.a || [0, 0]); FDF[k] = ROLE_LIST.map(r => f.t[r]?.d || [0, 0]); }
+const formOf = (S, team) => FORMS[S.form?.[team]] || FORMS["442"];
+// 수비할 때 수비 라인에 서는 선수: 보통은 수비수, 3-5-2는 윙백이 들어오고 수비형 미드필더(RCB)는 빠짐
+const isBack = (S, p) => { const f = formOf(S, p.team); return f.back?.includes(p.role) || (p.pos === "DF" && !f.notBack?.includes(p.role)); };
 const SH = { us: new Float64Array(22), them: new Float64Array(22) };
 // 그 팀 기준 좌표로 역할마다 설 자리 (out[ri*2], out[ri*2+1])
 function shape(S, team) {
@@ -152,11 +177,11 @@ function shape(S, team) {
     if (st.press && bx > 45 && S.block[team] !== "low") line = Math.min(line + 4, Math.max(B[1], bx - 4));   // 몰아치기(surge)는 라인은 그대로, 압박 거리·되찾기 압박만   // 압박형: 라인을 한 칸 더 올려 팀을 앞으로 (공보다 앞으로는 안 감)
   }
   const stretch = att ? 1.05 : S.block[team] === "high" && bx > 70 ? 1.3 : 0.95;
-  const F = att ? FA : FD;
+  const fk = FORMS[S.form?.[team]] ? S.form[team] : "442", F = att ? FAF[fk] : FDF[fk];
   for (let i = 1; i < 11; i++) { out[i * 2] = line + F[i][0] * stretch; out[i * 2 + 1] = cy + F[i][1] * W; }
   if (!att && S.block[team] === "deep") out[RI.ST1 * 2] = Math.max(out[RI.ST1 * 2], 46);   // 역습형: 공격수 하나는 하프라인 근처에 남아 역습을 기다림
   const G = S.gs[team];
-  if (G.k > 0 && G.cur === "chase" && att) {        // 쫓아가기: 측면 수비 하나가 윙어 높이로, 같은 쪽 측면 미드필더는 안쪽(하프스페이스)으로 좁혀 길을 비켜 줌. 나머지 수비 셋과 중앙 미드필더 둘은 뒤를 받침
+  if (G.k > 0 && G.cur === "chase" && att && !formOf(S, team).wb) {        // 쫓아가기: 측면 수비 하나가 윙어 높이로, 같은 쪽 측면 미드필더는 안쪽(하프스페이스)으로 좁혀 길을 비켜 줌. 나머지 수비 셋과 중앙 미드필더 둘은 뒤를 받침
     const fi = RI[G.fb], wi = G.fb === "RB" ? RI.RM : RI.LM, sg = G.fb === "RB" ? 1 : -1;
     out[fi * 2] += 13 * G.k;
     out[wi * 2 + 1] += (34 + sg * 0.5 * W - out[wi * 2 + 1]) * G.k;
@@ -212,13 +237,13 @@ function targets(S) {
     if (!A && p.ri && markOn) {
       let best = null, bd = 9;
       for (const q of P) if (q.team === att && q.ri) { const qx = ox(def, q.x), qy = oy(def, q.y), d = Math.abs(qx - x) + Math.abs(qy - y); if (d < bd) { bd = d; best = q; } }
-      if (best) { const k = p.pos === "DF" ? 0.55 : 0.35; x += (ox(def, best.x) - 1.6 - x) * k; y += (oy(def, best.y) - y) * k; }
+      if (best) { const k = isBack(S, p) ? 0.55 : 0.35; x += (ox(def, best.x) - 1.6 - x) * k; y += (oy(def, best.y) - y) * k; }
     }
     // 공격 팀의 공 없는 움직임 (팀 기준 좌표)
     if (A && p.ri && H && p !== H) {
       const hx = ox(att, H.x), hy = oy(att, H.y);
       // 오버래핑: 측면 미드필더가 상대 진영에서 공을 잡으면 같은 쪽 측면 수비가 바깥으로 올라감
-      if (((p.role === "LB" && H.role === "LM") || (p.role === "RB" && H.role === "RM")) && !(S.gs[att].cur === "lock" && S.gs[att].k > 0.5)) {   // 잠그는 팀은 측면 수비가 올라가지 않음
+      if (!formOf(S, att).wb && ((p.role === "LB" && H.role === "LM") || (p.role === "RB" && H.role === "RM")) && !(S.gs[att].cur === "lock" && S.gs[att].k > 0.5)) {   // 3-5-2는 윙백이 이미 측면을 맡음   // 잠그는 팀은 측면 수비가 올라가지 않음
         if (hx > ((S.style[att] || {}).cross ? 40 : 48) && hx < 88) { x = Math.min(off - 1, hx + 9); y = hy < 34 ? 4 : 64; p.overlap = true; }
       } else p.overlap = false;
       // 공격수 내려오기: 빌드업 중이면 한 명이 받으러 내려옴
@@ -227,7 +252,7 @@ function targets(S) {
       // 점유형: 빌드업 때 중앙 미드필더 하나가 센터백 사이로 내려오고, 측면 수비는 높이 올라가 패스 길을 넓힘
       if (sa.keep && S.plan?.build && S.plan.team === att && hx < 45) {
         if (p.role === "LCM" && H.pos !== "GK") { x = Math.min(x, hx + 4); y = 34 + (hy - 34) * 0.3; }
-        if (p.role === "LB" || p.role === "RB") x = Math.max(x, Math.min(off - 2, hx + 14));
+        if ((p.role === "LB" || p.role === "RB") && !formOf(S, att).wb) x = Math.max(x, Math.min(off - 2, hx + 14));
       }
       // 측면형: 상대 진영에서는 측면 미드필더가 터치라인을 밟고 섬
       if (sa.cross && hx > 45 && (p.role === "LM" || p.role === "RM") && !p.boxRun) y = 34 + (p.role === "LM" ? -1 : 1) * Math.max(Math.abs(y - 34), 27);
@@ -266,7 +291,7 @@ function targets(S) {
       const ahead = ox(def, p.x) - ox(def, S.ball.x), far = hyp(p.tx - p.x, p.ty - p.y);
       if (ahead > 3 || far > 12) p.v = S.wonAt != null && c - S.wonAt < 5 ? SPRINT : RUN;
       // 공보다 앞에 남은 수비수는 공 뒤(우리 골 쪽)로 먼저 돌아와 라인에 붙음 (한 명만 앞에 떠 있지 않게)
-      if (p.pos === "DF" && ahead > 2) { const gx = ox(def, S.ball.x) - 3; if (ox(def, p.tx) > gx) p.tx = clamp(def === "us" ? gx : 105 - gx, 1.5, 103.5); }
+      if (isBack(S, p) && ahead > 2) { const gx = ox(def, S.ball.x) - 3; if (ox(def, p.tx) > gx) p.tx = clamp(def === "us" ? gx : 105 - gx, 1.5, 103.5); }
     }
   }
   // 공 가진 선수 주변의 지원: 가까운 동료 둘이 받을 자리로
@@ -1255,7 +1280,7 @@ function celebrate(S, team, by) {
 }
 // 킥오프 자리 (공을 차는 팀 kickTeam 기준). 받는 팀은 센터서클(9.15m) 밖
 function kickoffPoint(S, p, kickTeam) {
-  const f = FORM[p.role];
+  const f = formOf(S, p.team).t[p.role];
   let pt = p.pos === "GK" ? [4, 34] : [KICKOFF_X[p.pos], 34 + (f ? f.d[1] : 0) * 21];
   if (p.team === kickTeam && p.role === "ST1") pt = [51.6, 34];
   else if (p.team === kickTeam && p.role === "ST2") pt = [49.5, 27.5];

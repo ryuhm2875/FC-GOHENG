@@ -70,6 +70,23 @@ export function styleOf(name) {
   let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return STYLES[h % STYLES.length];
 }
+// 상대 포메이션: 팀마다 늘 같음 (이름으로 정함). 성향에 어울리는 것 가운데서 고르고, 4-4-2도 흔하게 남김
+const FORM_BY_STYLE = { press: ["433", "4231", "442"], long: ["442", "352", "442"], counter: ["352", "4231", "442"], keep: ["433", "4231", "433"],
+  rough: ["442", "352", "442"], cross: ["433", "442", "352"], low: ["352", "442", "352"], ace: ["4231", "433", "4231"] };
+const FORM_LABEL = { "442": "4-4-2", "4231": "4-2-3-1", "433": "4-3-3", "352": "3-5-2" };
+const FORM_TALK = {
+  "4231": ["상대는 4-2-3-1이다. 공격수 하나 뒤에 10번이 붙어 다닌다. 우리 수비와 미드필더 사이에서 받는 그 선수를 놓치지 마라.",
+    "4-2-3-1로 나온다. 앞에는 공격수 하나뿐이지만, 그 뒤에서 공격형 미드필더가 내려와 공을 받는다. 거기서 돌아서게 두면 끝이다."],
+  "433": ["상대는 4-3-3이다. 윙어 둘이 터치라인에 붙어 넓게 선다. 측면 수비는 등 뒤를 조심하고, 미드필더는 상대 수비형 미드필더 옆 빈자리를 노려라.",
+    "4-3-3이다. 앞에 셋이 서서 우리 수비를 하나씩 잡으려 할 거다. 대신 가운데 수비형 미드필더가 혼자다. 그 옆을 파고들자."],
+  "352": ["상대는 스리백, 3-5-2다. 윙백이 올라가면 그 뒤가 비어 있다. 공을 뺏으면 측면으로 빠르게 넘겨라.",
+    "3-5-2로 나온다. 센터백이 셋이라 가운데는 단단하다. 대신 윙백 뒤가 우리 길이다. 투톱이 우리 센터백을 하나씩 잡으니 수비는 짝을 놓치지 마라."],
+};
+export function formOfTeam(name) {
+  const c = FORM_BY_STYLE[styleOf(name).key] || ["442"];
+  let h = 7; for (const ch of name) h = (h * 131 + ch.charCodeAt(0)) >>> 0;
+  return c[h % c.length];
+}
 // 원정 길 (리그 팀 이름의 지역으로)
 const TRAVEL = {
   목포: "목포까지 버스로 한 시간 반. 버스에서 자 두고, 내리면 바로 몸부터 풀자.",
@@ -146,7 +163,8 @@ export function meetingScript(state, fx) {
       : diff > -2 ? pick(["해 볼 만한 상대다. 먼저 실수하는 쪽이 진다.", "딱 우리만 한 팀이다. 누가 더 많이 뛰느냐다.", "50 대 50이다. 세트피스 하나가 갈라 놓을 거다.", "누가 먼저 한 발 더 뛰느냐. 그게 다다."])
       : pick(["우리가 할 것만 하면 된다. 그래도 방심하는 순간 뒤집힌다.", "전력은 우리가 앞선다. 이런 경기를 쉽게 이겨야 강팀이다.", "이겨야 본전인 경기다. 일찍 골 넣고 편하게 가자.", "쉬운 경기라고 생각하는 순간 어려워진다."]);
     const power = diff > 5 ? "한 수 위" : diff > 2 ? "조금 앞섬" : diff > -2 ? "비슷함" : "우리가 앞섬";
-    const rows = [["유형", style.label], ["전력", power]];
+    const fk = formOfTeam(fx.opponent.name);
+    const rows = [["유형", style.label], ["포메이션", FORM_LABEL[fk]], ["전력", power]];
     const more = [], mine = [];
     const a0 = aceOf(state, fx.opponent.name);
     if (a0) {
@@ -176,6 +194,7 @@ export function meetingScript(state, fx) {
     // 팀 전체에게: 전력 + (에이스 결장 / 순위 / 지난 경기 중 하나). 덧붙일 말이 없을 때만 여는 말
     const side = more[0] || (leagueLine && lastLine ? pick([leagueLine, lastLine]) : leagueLine || lastLine);
     A(side ? `${diffLine} ${side}` : `${opener} ${diffLine}`);
+    if (FORM_TALK[fk]) A(pick(FORM_TALK[fk]));   // 4-4-2가 아니면 상대 포메이션을 짚어 줌
     card = { title: fx.opponent.name, sub: `${fx.compLabel}${fx.round ? ` ${fx.round}` : ""}`, rows };
     // 따로 불러서 하는 이야기
     const an = `${STAFF.assistant}님`;
