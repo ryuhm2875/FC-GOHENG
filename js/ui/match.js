@@ -1,6 +1,7 @@
 // 경기 화면: 전광판 → 22명이 움직이는 경기장 → 문자 중계 → 내 장면 선택지
 import { staffOf, next, resolve, autoChoice, autoPlay, finishMatch, applyHalftime, STATUS_LABEL, TAG_LABEL } from "../engine/match.js";
 import { track } from "../net/online.js";
+import { practiceGuide } from "./tutorial.js";
 import { frameNow } from "../engine/sim.js";
 import { STAFF } from "../../data/roster.js";
 import { getPath } from "../rng.js";
@@ -84,7 +85,7 @@ export function showMatch(app, m, onDone) {
     <header class="board">
       <div class="comp">${esc(fx.compLabel)}${fx.round ? ` ${esc(fx.round)}` : ""}</div>
       <div class="teams">
-        <span class="tm home">${fx.jn ? `<i class="kit-dot jn-dot"></i>${esc(fx.usName)}` : `<img src="assets/img/logo.png" alt="">${TEAM_NAME}`}</span>
+        <span class="tm home">${fx.jn ? `<i class="kit-dot jn-dot"></i>${esc(fx.usName)}` : `<img src="assets/img/logo.png" alt="">${esc(fx.usName || TEAM_NAME)}`}</span>
         <span class="sc num" id="sc">0 : 0</span>
         <span class="tm away">${crest(fx.opponent.name, { size: 26, cls: "bcrest" })}${esc(fx.opponent.name)}</span>
       </div>
@@ -103,6 +104,7 @@ export function showMatch(app, m, onDone) {
   enter(root.querySelector(".match-screen"));
   const feed = root.querySelector("#feed");
   const ctl = root.querySelector("#ctl");
+  const stopGuide = fx.practice ? practiceGuide(ctl, "#pitch") : null;   // 청백전(튜토리얼): 정 코치 안내
   const svg = root.querySelector(".pitch");
   const flash = root.querySelector("#flash");
   const dotEls = Object.fromEntries([...svg.querySelectorAll(".dot")].map(el => [el.dataset.id, el]));
@@ -510,7 +512,7 @@ export function showMatch(app, m, onDone) {
     finished = true;
     const before = m.feed.length;
     const res = finishMatch(state, m);
-    track("match", { state, m, res });
+    if (!fx.practice) track("match", { state, m, res });   // 청백전은 기록하지 않음
     m.feed.slice(before).forEach(addLine);
     shown = m.score.slice();
     updateBoard();
@@ -542,12 +544,12 @@ export function showMatch(app, m, onDone) {
         <span class="pos-tag ${t.pos === "GK" ? "" : t.pos}">${t.pos}</span><span class="num">${t.number}</span><span class="nm">${esc(t.name)}${t.name === m.mom?.name && m.mom.team === "us" ? " ★" : ""}</span>
         <b class="rt num ${t.r >= 7.5 ? "hi" : t.r >= 6.5 ? "mid" : "lo"}">${t.r.toFixed(1)}</b></li>`).join("")}</ul></details>` : ""}
       ${res.notes.length ? `<ul class="pm-notes">${res.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
-      <p class="mute" style="font-size:13px;margin:0">감독님 면담과 경기 기록은 메시지함에 왔습니다.</p>
-      <button class="btn btn-kit btn-wide" data-done>${fx.jn && state.jnCup?.alive && !p.condition.injury ? `다음 경기로 (${["1회전", "준결승", "결승"][state.jnCup.stage]})` : "이번 주 마무리"}</button>
+      <p class="mute" style="font-size:13px;margin:0">${fx.practice ? "연습 경기라 능력치와 기록에는 남지 않습니다." : "감독님 면담과 경기 기록은 메시지함에 왔습니다."}</p>
+      <button class="btn btn-kit btn-wide" data-done>${fx.jn && state.jnCup?.alive && !p.condition.injury ? `다음 경기로 (${["1회전", "준결승", "결승"][state.jnCup.stage]})` : fx.practice ? "홈으로" : "이번 주 마무리"}</button>
       </div>
     </div>`;
     if (res.mom) setTimeout(() => sfx.play("stamp"), 1350);         // 도장이 내려앉는 순간
-    ctl.querySelector("[data-done]").addEventListener("click", () => { ro?.disconnect(); removeEventListener("resize", fitPitch); pitch.destroy(); onDone(res); });
+    ctl.querySelector("[data-done]").addEventListener("click", () => { stopGuide?.(); ro?.disconnect(); removeEventListener("resize", fitPitch); pitch.destroy(); onDone(res); });
     ctl.querySelector("[data-done]").focus({ preventScroll: true });
   }
 }

@@ -272,13 +272,109 @@ function goalsPanel(state) {
       <div class="gs mute">${g.state === "done" ? esc(g.desc) : esc(g.text)}</div></div></li>`).join("")}</ul></section>`;
 }
 
+// ── 홈 (휴대폰 첫 화면에 매주 볼 것만: 상태 네 칸·경고 한 줄 → 다음 경기와 지시 → 이번 주 칸. 나머지는 접어 둠) ──
+const statCls = (v, invert = false) => { const g = invert ? 100 - v : v; return g >= 55 ? "" : g >= 30 ? "warn" : "bad"; };
+function statusStrip(state) {
+  const p = state.player, c = p.condition, s = p.stats.student;
+  const chip = (k, v, invert) => { const cls = statCls(v, invert); return `<div class="hs-chip ${cls}"><span class="hs-k">${k}</span><b class="num">${Math.round(v)}</b>
+    <span class="hs-bar"><i style="width:${Math.min(100, v)}%"></i></span></div>`; };
+  const inj = c.injury, acad = ACADEMIC_ALERT[state.flags.academicLevel];
+  const alert = inj ? ["bad", `${INJURIES[inj.type].label}, 복귀까지 약 ${Math.max(1, Math.ceil(inj.weeksLeft))}주. 훈련 대신 재활과 학교생활만 할 수 있어요.`]
+    : c.fatigue >= 85 ? ["bad", `피로가 너무 높아요. 이대로면 다음 경기 선발에서 빠지고 다치기도 쉬워요.`]
+    : acad ? ["warn", acad[1]]
+    : c.fatigue >= 50 ? ["warn", `피로가 쌓였어요. 수면이나 가족 시간이 피로를 가장 많이 풀어 줘요.`] : null;
+  return `<section class="hs" aria-label="상태"><div class="hs-row">${chip("피로", c.fatigue, true)}${chip("사기", c.morale)}${chip("감독 신뢰", state.relations.coach)}${chip("학업", s.academic)}</div>
+    ${alert ? `<p class="hs-alert ${alert[0]}" role="alert">${esc(alert[1])}</p>` : ""}</section>`;
+}
+// 행동 효과 한 줄: 많이 오르는 능력치 둘과 피로·사기 (기본값, 실제는 훈련 효율에 따라 달라짐)
+function actEffect(a) {
+  const g = Object.entries(a.gains || {}).filter(([, v]) => v > 0).sort((x, y) => y[1] - x[1]).slice(0, 2)
+    .map(([k, v]) => `<span class="up">${STAT_LABEL[k] || k} +${Math.max(1, Math.round(v))}</span>`);
+  if (a.morale) g.push(`<span class="${a.morale > 0 ? "up" : "down"}">사기 ${a.morale > 0 ? "+" : ""}${a.morale}</span>`);
+  if (a.fatigue) g.push(`<span class="${a.fatigue > 0 ? "down" : "up"}">피로 ${a.fatigue > 0 ? "+" : ""}${a.fatigue}</span>`);
+  return g.join(" · ");
+}
+function homeWeek(state, opts = {}) {
+  const eff = Math.round(efficiency(state) * 100);
+  const o = weekOrder(state), hasOrder = o && !o.none;
+  const free = SLOTS.filter(s => !slotLocked(state, s.id));
+  const empty = free.filter(s => !ACTION_MAP[state.plan[s.id]]).length;
+  const inPlan = hasOrder && free.some(s => o.acts.includes(state.plan[s.id]));
+  const guide = empty ? `빈 칸이 ${empty}개 있어요.${hasOrder && !inPlan ? " 감독님 지시 행동을 넣으면 신뢰가 올라요." : " 칸을 눌러 채워 주세요."}`
+    : hasOrder && !inPlan ? "감독님 지시 행동이 없어요. 하나 넣으면 신뢰가 올라요." : "준비 끝! 아래 '이번 주 진행'을 누르세요.";
+  return `<section class="panel hw" data-tut="week">
+    <h2>이번 주 <small>훈련 효율 ${eff}%</small>
+      <button class="linkbtn mg-toggle" data-mgtoggle aria-pressed="${!!opts.minigame}">🎮 미니게임 ${opts.minigame ? "ON" : "OFF"}</button>
+      ${state.lastPlan ? `<button class="linkbtn right" data-repeat>지난주처럼</button>` : ""}</h2>
+    <p class="hw-guide ${empty || (hasOrder && !inPlan) ? "" : "ok"}">${guide}</p>
+    <div class="slots">${SLOTS.map(s => {
+      const locked = slotLocked(state, s.id);
+      if (locked) {
+        const fx = locked.fx;
+        return `<div class="slot locked"><span class="when">${s.label}</span>
+          <span><span class="what">⚽ vs ${esc(fx.opponent.name)}</span>
+          <span class="hint">${fx.compLabel}${fx.round ? ` ${esc(fx.round)}` : ""}${fx.school ? `. ${esc(fx.school.coach)} 관전` : ""}</span></span><span></span></div>`;
+      }
+      const a = ACTION_MAP[state.plan[s.id]];
+      return `<button class="slot ${a ? "filled" : "empty"} ${a && hasOrder && o.acts.includes(a.id) ? "order" : ""}" data-slot="${s.id}">
+        <span class="when">${s.label}</span>
+        <span>${a ? `<span class="what"><span class="ic">${a.icon}</span>${a.label}</span><span class="eff">${actEffect(a)}</span>` : `<span class="what mute">행동 고르기</span>`}</span>
+        <span class="chev" aria-hidden="true">${a ? "›" : "+"}</span></button>`;
+    }).join("")}</div>
+  </section>`;
+}
+// 다음 경기 + 감독 지시를 한 카드로
+function homeNext(state) {
+  const o = weekOrder(state), hasOrder = o && !o.none;
+  const inPlan = hasOrder && SLOTS.some(s => !slotLocked(state, s.id) && o.acts.includes(state.plan[s.id]));
+  const tile = nextMatchTile(state);
+  if (!hasOrder) return tile;
+  return tile.replace(/<\/section>\s*$/, `<div class="hn-order ${inPlan ? "on" : ""}">
+      <div class="oc-head"><span>📋 ${esc(STAFF.coach)}님 이번 주 지시</span>${inPlan ? `<span class="oc-ok">✔ 계획에 넣음</span>` : ""}</div>
+      <p class="oc-text">"${esc(o.text)}"</p>
+      <div class="oc-acts">${o.acts.map(id => `<span class="chip">${ACTION_MAP[id].icon} ${esc(ACTION_MAP[id].label)}</span>`).join("")}</div></div></section>`);
+}
+// 나: 작은 얼굴·종합 능력치 (누르면 선수 화면)
+function meStrip(state) {
+  const p = state.player, o = fl(ovr(p));
+  const det = p.detailPos && DETAIL_POS[p.detailPos]?.pos === p.position ? DETAIL_POS[p.detailPos] : null;
+  const code = det ? POS_CODE[p.detailPos] : BASE_CODE[p.position];
+  return `<button class="me-strip t-${cardTier(o)}" data-go="player" aria-label="내 선수 카드 보기">
+    <span class="ms-face">${img(faceOf(p, state.calendar.grade), "")}</span>
+    <span class="ms-txt"><b>${esc(p.name)}</b><small>#${p.number} · ${det ? esc(det.label) : POSITIONS[p.position].label}${state.flags.captain ? " · 주장" : ""}</small></span>
+    <span class="ms-ovr"><b class="num">${o}</b><small>${code}</small></span><span class="chev" aria-hidden="true">›</span></button>`;
+}
+// 접는 칸: 제목 한 줄(요약)만 보이고, 누르면 펼침. 넓은 화면에서는 늘 펼침
+const fold = (key, title, sum, body, open = false) => `<section class="fold ${open ? "open" : ""}" data-fold="${key}">
+  <button class="fold-h" data-foldbtn aria-expanded="${open}"><b>${title}</b><span class="fold-s">${sum}</span><span class="chev" aria-hidden="true">›</span></button>
+  <div class="fold-b">${body}</div></section>`;
+function homeFolds(state, openSet = {}) {
+  const unread = state.inbox.filter(m => !m.read), first = unread[0];
+  const d = depthChart(state);
+  const lg = state.league, rank = lg ? sortTable(lg.table).findIndex(r => r.id === US) + 1 : 0;
+  const info = turnInfo(state), inTour = info && (info.phase === "summer" || info.phase === "winter") && state.tour?.key?.startsWith(`${info.grade}-`);
+  const nx = (() => { for (let k = 0; k < 8; k++) { const i = turnInfo(state, k); if (!i) break; if ((i.match && stillScheduled(state, i)) || i.exam || i.school.some(x => !x.hidden) || jnFixture(state, i)) return i; } return null; })();
+  const nxText = nx ? `${nx.month}월 ${nx.week}주 ${nx.match && stillScheduled(state, nx) ? nx.comp.label : nx.exam ? nx.exam.name : nx.school.find(x => !x.hidden)?.label || "전국소년체전"}` : "당분간 없음";
+  const c = conditionOf(state.player);
+  const main = state.calendar.grade >= 2 ? goalProgress(state).find(g => g.main) : null;
+  const strip = html => html.replace(/^<section class="panel[^"]*">/, "").replace(/<\/section>$/, "");
+  return [
+    fold("mail", "메시지", unread.length ? `<span class="newbadge">새 ${unread.length}</span> ${first ? esc(first.title) : ""}` : "새 메시지 없음", strip(mailPreview(state)), openSet.mail),
+    fold("cond", "컨디션 자세히", `${c.label} ${Math.round(c.score)} · 생활태도 ${Math.round(state.player.stats.student.attitude)}`, strip(conditionPanel(state)), openSet.cond),
+    fold("comp", inTour ? esc(state.tour.label) : "주말리그 순위", inTour ? "대회 진행 중" : rank ? `${rank}위 · ${lg.table.find(r => r.id === US)?.pts ?? 0}점` : "3월 2주차 시작", strip(compPanel(state)), openSet.comp),
+    fold("depth", "주전 경쟁", `${POSITIONS[state.player.position].label} ${d.rank}위 (${d.slots}자리)`, strip(depthPanel(state)), openSet.depth),
+    state.calendar.grade >= 2 ? fold("goals", "나의 목표", main ? esc(main.label) : "면담에서 정함", strip(goalsPanel(state)), openSet.goals) : "",
+    fold("sched", "다가오는 일정", esc(nxText), strip(upcomingPanel(state)), openSet.sched),
+  ].join("");
+}
 export function homeView(state, opts = {}) {
-  // 휴대폰에서는 다음 경기 → 카드 → 이번 주 → 컨디션 → 순위 → 메시지 → 경쟁 순서 (css .home)
-  return `<div class="cols home">
-    <div class="colwrap"><div class="o2">${jerseyCard(state)}</div><div class="o4">${conditionPanel(state)}</div><div class="o7">${depthPanel(state)}</div></div>
-    <div class="colwrap"><div class="o1">${nextMatchTile(state)}</div><div class="o3">${weekPanel(state, opts)}</div>
-      <div class="advance o3b"><button class="btn btn-kit btn-go" data-advance><span>이번 주 진행</span></button></div>
-      <div class="o5">${compPanel(state)}</div>${state.calendar.grade >= 2 ? `<div class="o5g">${goalsPanel(state)}</div>` : ""}<div class="o6">${mailPreview(state)}</div><div class="o8">${upcomingPanel(state)}</div></div>
+  return `<div class="home2">
+    ${meStrip(state)}
+    ${statusStrip(state)}
+    ${homeNext(state)}
+    ${homeWeek(state, opts)}
+    <div class="advance" data-tut="advance"><button class="btn btn-kit btn-go" data-advance><span>이번 주 진행</span></button></div>
+    <div class="h-folds">${homeFolds(state, opts.open || {})}</div>
   </div>`;
 }
 

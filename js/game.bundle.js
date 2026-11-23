@@ -7464,6 +7464,22 @@ function keeperOf(state) {
   return list[0] || { name: "골키퍼" };
 }
 function ourKeeper(state) { return keeperOf(state).name; }
+// 청백전(연습 경기): 축구부를 A조(나)·B조로 나눔. 포지션마다 번갈아 넣어 전력을 맞추고, 내 자리는 A조가 한 명 덜 뽑음
+function practiceSplit(state, roster) {
+  const me = state.player.position, a = [], b = [];
+  for (const [pos, def] of Object.entries(POSITIONS)) {
+    let needA = def.slots - (pos === me ? 1 : 0), needB = def.slots, turnB = true;
+    for (const m of roster.filter(x => x.position === pos).sort((x, y) => y.ovrNow - x.ovrNow)) {
+      if (needA <= 0 && needB <= 0) break;
+      const toB = needA <= 0 || (needB > 0 && turnB);
+      (toB ? b : a).push({ ...m, side: pos }); toB ? needB-- : needA--; turnB = !turnB;
+    }
+  }
+  const rest = roster.filter(m => !a.some(x => x.name === m.name) && !b.some(x => x.name === m.name));
+  const g = state.calendar.grade, ka = ourKeeper(state);
+  const kb = GOALKEEPERS.map(k => ({ ...k, g: mateGrade(k, g) })).find(k => k.g >= 1 && k.g <= 3 && k.name !== ka)?.name || null;
+  return { a, b, rest, gkB: kb };
+}
 
 // 경기 전 감독·코치 한마디 (지시 tag와 같은 종류의 선택을 하면 성공률 +4%p)
 function pickTalk(state, fx, status, star) {
@@ -7662,7 +7678,8 @@ function prepareMatch(state, info, fx) {
   const depth = depthChart(state);
 
   let status = "out", minIn = 0;
-  if (elig.ok) {
+  if (fx.practice) status = "start";                 // 청백전: 늘 선발
+  else if (elig.ok) {
     if (depth.rank <= depth.slots) status = "start";
     else if (!fx.official) { status = "sub"; minIn = int(30, 40); }
     else if (depth.rank <= depth.slots + 2 && chance(0.65)) { status = "sub"; minIn = int(45, 60); }
@@ -7681,7 +7698,9 @@ function prepareMatch(state, info, fx) {
   const myOvr = ovr(p);
   const star = onPitch ? clamp((myOvr - teamAvg) / 15 + (hasTrait(p, "ace") ? 0.2 : 0), 0, 1.7) : 0;
 
-  const roster = cup ? cup.squad.map(x => ({ name: x.name, number: x.number, position: x.pos, ovrNow: cup.str + (x.school ? 0.5 : 0) + (x.nemesis ? 1 : 0), school: x.school })) : activeRoster(state);
+  const roster0 = cup ? cup.squad.map(x => ({ name: x.name, number: x.number, position: x.pos, ovrNow: cup.str + (x.school ? 0.5 : 0) + (x.nemesis ? 1 : 0), school: x.school })) : activeRoster(state);
+  const split = fx.practice ? practiceSplit(state, roster0) : null;
+  const roster = split ? [...split.a, ...split.rest] : roster0;          // 청백전: 우리 편은 A조 (모자라면 남은 선수)
   const lineup = [];
   for (const [pos, def] of Object.entries(POSITIONS)) {
     const n = def.slots - (status === "start" && pos === p.position ? 1 : 0);
@@ -7705,7 +7724,19 @@ function prepareMatch(state, info, fx) {
   const nem = nemesisOf(state, fx.opponent.name);
   const known = oppLineup(state, fx.opponent.name, info.turn, nem?.name);
   let oppPlayers;
-  if (known) {
+  if (split) {                                        // 청백전: 상대는 B조 (우리 축구부 선수들)
+    split.b.forEach(x => usedNames.add(x.name));
+    oppPlayers = split.b.map(x => ({ name: x.name, number: x.number, pos: x.position }));
+    const pool = split.rest.filter(m => !lineup.some(l => l.name === m.name));
+    for (const [pos, n] of [["DF", 4], ["MF", 4], ["FW", 2]]) {
+      for (let have = oppPlayers.filter(x => x.pos === pos).length; have < n; have++) {
+        const sp = pool.shift();
+        if (sp) oppPlayers.push({ name: sp.name, number: sp.number, pos });
+        else { let name; do { name = randomName(); } while (usedNames.has(name)); usedNames.add(name); oppPlayers.push({ name: `신입생 ${name}`, number: 90 + oppPlayers.length, pos }); }
+      }
+    }
+    oppPlayers.sort((a, b) => ["DF", "MF", "FW"].indexOf(a.pos) - ["DF", "MF", "FW"].indexOf(b.pos));
+  } else if (known) {
     oppPlayers = known.lineup.map(x => ({ name: x.name, number: x.number, pos: x.pos, star: x.star }));
     oppPlayers.forEach(x => usedNames.add(x.name));
     for (const [pos, n] of [["DF", 4], ["MF", 4], ["FW", 2]]) {
@@ -7730,7 +7761,7 @@ function prepareMatch(state, info, fx) {
   const ours = cup ? cup.str * 0.6 + 50 * 0.4 + (onPitch ? (myOvr - teamAvg) * 0.12 + cond.match * 15 : 0)
     : teamStrength(state, onPitch) * 0.6 + 50 * 0.4 + (onPitch ? (myOvr - teamAvg) * 0.12 + cond.match * 15 : 0)
     + (keeperOf(state).strong ? 1.5 : 0);
-  const theirs = fx.opponent.strength + (oppAce ? 0.6 : known?.absent ? -1.5 : 0) + (nem ? 1.2 : 0);   // 맞수가 있는 날은 그 팀이 더 독하게 나옴   // 에이스가 뛰면 조금 더 강하고, 빠지면 약해짐
+  const theirs = split ? teamStrength(state, false) * 0.6 + 50 * 0.4 : fx.opponent.strength + (oppAce ? 0.6 : known?.absent ? -1.5 : 0) + (nem ? 1.2 : 0);   // 맞수가 있는 날은 그 팀이 더 독하게 나옴   // 에이스가 뛰면 조금 더 강하고, 빠지면 약해짐
 
   // 시간에 맞춰 일어나는 일 (분위기 문장, 교체 투입, 부상). 골과 공격은 경기장에서 실제로 일어남
   const timed = [];
@@ -7781,7 +7812,7 @@ function prepareMatch(state, info, fx) {
     })(),
     lineupStart: lineup.map(x => ({ ...x })),
     ours, theirs, lineup, oppPlayers, oppAce, oppAceAbsent: known?.absent?.name || null, bench, nemesisOn: nem && oppPlayers.some(x => x.name === nem.name) ? nem.name : null, talk: pickTalk(state, fx, status, star),
-    gk: { us: cup ? cup.gk : ourKeeper(state), them: (() => { let n; do { n = randomName(); } while (usedNames.has(n)); usedNames.add(n); return n; })() }, myNumber: p.number,
+    gk: { us: cup ? cup.gk : ourKeeper(state), them: split?.gkB || (() => { let n; do { n = randomName(); } while (usedNames.has(n)); usedNames.add(n); return n; })() }, myNumber: p.number,
     timed, momentQ, minute: 0, score: [0, 0],
     stats: { us: { shots: 0, on: 0, corners: 0, cards: 0 }, them: { shots: 0, on: 0, corners: 0, cards: 0 }, poss: 50 },
     goalsLog: [],
@@ -16621,6 +16652,122 @@ return { GRADES, statFor, levelOf, playMinigame };
 })();
 (__fix["js/ui/minigames.js"] || []).forEach(f => f());
 
+// ── js/ui/tutorial.js
+__m["js/ui/tutorial.js"] = (function () {
+const {openModal} = __m["js/ui/modals.js"];
+// 첫 주 튜토리얼: 환영 → 청백전(연습 경기, 기록에 안 남음) → 홈에서 칸·상태·진행 짚어 주기
+// 새로 시작한 판에서 한 번만 (state.flags.tutDone). 어느 단계에서든 '건너뛰기'
+
+const COACH = "assets/img/npc_assistant.webp";
+const head = t => `<div class="tb-h"><img src="${COACH}" alt="정 코치"><b>${t}</b></div>`;
+const root = () => document.getElementById("modal-root");
+
+// 밝게 남길 곳(sel)과 말풍선. block: 뒤를 못 누르게(홈 안내) / false: 경기 화면처럼 뒤를 눌러야 할 때
+function coach(sel, html, { block = true, btn = "다음", n = "", onNext, onSkip, skip = true } = {}) {
+  const t = typeof sel === "string" ? document.querySelector(sel) : sel;
+  const layer = document.createElement("div");
+  layer.className = `tut-layer ${block ? "block" : ""}`;
+  if (block) layer.style.background = "transparent";
+  layer.innerHTML = `<div class="tut-hole"></div><section class="tut-bub" role="dialog" aria-label="안내">${html}
+    <div class="tb-f"><span class="tb-n">${n}</span>${skip ? `<button class="btn btn-ghost" data-skip>건너뛰기</button>` : ""}${btn ? `<button class="btn btn-kit" data-ok>${btn}</button>` : ""}</div></section>`;
+  root().appendChild(layer);
+  const hole = layer.querySelector(".tut-hole"), bub = layer.querySelector(".tut-bub");
+  const place = () => {
+    if (!t || !t.isConnected) { hole.style.display = "none"; bub.style.top = "30%"; return; }
+    const r = t.getBoundingClientRect(), pad = 6;
+    Object.assign(hole.style, { display: "", left: `${r.left - pad}px`, top: `${r.top - pad}px`, width: `${r.width + pad * 2}px`, height: `${r.height + pad * 2}px` });
+    const bh = bub.offsetHeight, below = innerHeight - r.bottom, above = r.top;
+    bub.style.top = below >= bh + 24 ? `${r.bottom + 16}px` : above >= bh + 24 ? `${r.top - bh - 16}px` : `${Math.max(12, innerHeight - bh - 12)}px`;
+  };
+  if (t && t.isConnected && block) {                       // 홈: 아래에 떠 있는 '이번 주 진행' 버튼에 가리지 않게, 위쪽(70px)에 맞춤
+    const r = t.getBoundingClientRect(), fixedBottom = document.querySelector(".advance")?.getBoundingClientRect().top || innerHeight;
+    if (r.top < 60 || r.bottom > fixedBottom - 8) window.scrollBy(0, r.top - 70);
+  }
+  requestAnimationFrame(place); setTimeout(place, 350);
+  addEventListener("resize", place); addEventListener("scroll", place, true);
+  const close = () => { layer.remove(); removeEventListener("resize", place); removeEventListener("scroll", place, true); };
+  layer.querySelector("[data-ok]")?.addEventListener("click", () => { close(); onNext?.(); });
+  layer.querySelector("[data-skip]")?.addEventListener("click", () => { close(); onSkip?.(); });
+  return { close, place };
+}
+
+function finish(app) {
+  app.state.flags.tutDone = true;
+  app.saveTo("auto");
+  app.render();
+}
+
+// 새 판 시작 직후 (main.js startGame)
+function startTutorial(app) {
+  const s = app.state;
+  if (!s || s.flags.tutDone) return;
+  const html = `${head("고흥FC에 온 걸 환영한다.<br>한 주는 이렇게 흘러간다.")}
+    <ol class="tb-steps">
+      <li><i>1</i><span>칸 세 개에 할 일을 넣는다<small>훈련, 휴식, 공부 가운데서 고른다</small></span></li>
+      <li><i>2</i><span>이번 주 진행을 누른다<small>일주일이 지나고, 주말엔 경기가 있다</small></span></li>
+      <li><i>3</i><span>경기 중 중요한 순간엔 내가 정한다<small>공이 오면 패스할지, 슈팅할지 고른다</small></span></li>
+    </ol>
+    <p>실전 전에 A조·B조로 나눠 청백전부터 한 판 하자. 연습이라 기록에는 안 남는다.</p>
+    <div class="tb-f"><button class="btn btn-ghost" data-skip>건너뛰기</button><button class="btn btn-kit" data-ok style="flex:1">청백전 하러 가기</button></div>`;
+  openModal(`<div class="tut-bub tut-welcome">${html}</div>`, (el, close) => {
+    el.querySelector("[data-skip]").addEventListener("click", () => { close(); finish(app); });
+    el.querySelector("[data-ok]").addEventListener("click", () => { close(); app.practice(() => homeTour(app)); });
+  }, { dismissable: false });
+}
+
+// 청백전 화면 안내: 킥오프 전·첫 선택·첫 타이밍·경기 끝 (showMatch가 m.fx.practice일 때 부름)
+function practiceGuide(ctl, pitchSel) {
+  const seen = {};
+  let cur = null;
+  const show = (key, sel, html, opt = {}) => { if (seen[key]) return; seen[key] = true; cur?.close(); cur = coach(sel, html, { block: false, skip: false, ...opt }); cur.key = key; };
+  const check = () => {
+    if (ctl.querySelector("[data-start]") && !seen.kick) {
+      show("kick", pitchSel, `${head("경기장 보는 법부터.")}
+        <p><b>주황</b>이 우리 A조, <b>흰색</b>이 B조, <b>노란 고리</b>가 너다. 공 가진 선수 위엔 이름이 뜬다.</p>
+        <p>아래로 해설이 한 줄씩 올라온다. 끝까지 안 봐도 되면 <b>결과만 보기</b>를 눌러라.</p>`, { btn: "알겠어요", n: "1 / 4" });
+    } else if (ctl.querySelector(".moment .mo-choices") && !seen.pick) {
+      show("pick", ctl.querySelector(".moment"), `${head("공이 오면 경기가 멈춘다.<br>하나를 골라라.")}
+        <p>오른쪽 <b>높음·보통·낮음</b>은 성공 가능성이다. 성공하면 평점이 오르고, 실패하면 내려간다. <b>★ 특기</b>는 네 장점이 살아나는 선택지고, 고민되면 <b>알아서 하기</b>.</p>`, { btn: "", n: "2 / 4" });
+    } else if (ctl.querySelector(".timing") && !seen.timing) {
+      show("timing", ctl.querySelector(".timing"), `${head("⏱ 표시를 고르면 바늘이 나온다.")}
+        <p>초록 칸에 왔을 때 눌러라. 가운데 진한 초록이면 완벽이다. 능력치가 좋아질수록 초록 칸이 넓어지고 바늘도 느려진다.</p>`, { btn: "", n: "3 / 4" });
+    } else if (ctl.querySelector(".postmatch .pm-me") && !seen.end) {
+      show("end", ctl.querySelector(".pm-me"), `${head("수고했다.")}
+        <p>평점은 네 선택이 얼마나 잘 됐는지, 팀이 이겼는지로 매겨진다. 공식 경기에서 평점이 좋으면 감독님 신뢰가 오르고, 그게 선발로 이어진다.</p>
+        <p>오늘은 연습이라 기록에는 안 남는다. 이제 진짜 한 주를 시작하자.</p>`, { btn: "알겠어요", n: "4 / 4" });
+    } else if (cur && ((cur.key === "pick" && !ctl.querySelector(".moment")) || (cur.key === "timing" && !ctl.querySelector(".timing")))) { cur.close(); cur = null; }   // 고르고 나면 말풍선도 닫힘
+  };
+  const mo = new MutationObserver(check);
+  mo.observe(ctl, { childList: true, subtree: true });
+  check();
+  return () => { mo.disconnect(); cur?.close(); };
+}
+
+// 청백전이 끝나고 홈으로 돌아온 뒤: 칸 → 상태와 지시 → 진행
+function homeTour(app) {
+  const steps = [
+    ["[data-tut=week]", `${head("빈칸을 누르면 할 일을 고를 수 있다.<br>훈련, 휴식, 공부 중에 하나.")}
+      <p>칸 아래 <b style="color:var(--turf)">초록 글씨</b>는 이번 주에 오르는 능력치, <b style="color:var(--kit-2)">주황 글씨</b>는 쌓이는 피로다.</p>`],
+    [".hs", `${head("숫자가 빨갛게 바뀌면 조심해라.")}
+      <p>피로가 쌓이면 다치기 쉽고, 감독님도 선발로 안 쓰신다. 피로는 <b>수면</b>이나 <b>가족 시간</b>이 제일 많이 풀어 준다.</p>
+      <p>바로 아래 감독님 지시도 꼭 봐라. 지시대로 한 칸이라도 넣으면 신뢰가 오른다.</p>`],
+    ["[data-tut=advance]", `${head("칸을 다 채웠으면 여기를 누른다.")}
+      <p>일주일이 지나가고, 주말에 경기가 있으면 경기장으로 간다. 다음 주부터는 <b>지난주처럼</b>을 눌러 계획을 그대로 써도 된다.</p>`],
+  ];
+  let i = 0;
+  const step = () => {
+    if (i >= steps.length) return finish(app);
+    const [sel, html] = steps[i];
+    coach(sel, html, { n: `${i + 1} / ${steps.length}`, btn: i === steps.length - 1 ? "시작하기" : "다음", onNext: () => { i++; step(); }, onSkip: () => finish(app) });
+  };
+  app.render(); window.scrollTo(0, 0);
+  setTimeout(step, 200);
+}
+
+return { coach, startTutorial, practiceGuide };
+})();
+(__fix["js/ui/tutorial.js"] || []).forEach(f => f());
+
 // ── data/audio.js
 __m["data/audio.js"] = (function () {
 
@@ -16970,6 +17117,7 @@ return { createPitch };
 __m["js/ui/match.js"] = (function () {
 const {staffOf, next, resolve, autoChoice, autoPlay, finishMatch, applyHalftime, STATUS_LABEL, TAG_LABEL} = __m["js/engine/match.js"];
 const {track} = __m["js/net/online.js"];
+const {practiceGuide} = __m["js/ui/tutorial.js"];
 const {frameNow} = __m["js/engine/sim.js"];
 const {STAFF} = __m["data/roster.js"];
 const {getPath} = __m["js/rng.js"];
@@ -16982,6 +17130,7 @@ const {sfx} = __m["js/ui/sfx.js"];
 const {bgm} = __m["js/ui/bgm.js"];
 const {createPitch} = __m["js/ui/pitch.js"];
 // 경기 화면: 전광판 → 22명이 움직이는 경기장 → 문자 중계 → 내 장면 선택지
+
 
 
 
@@ -17066,7 +17215,7 @@ function showMatch(app, m, onDone) {
     <header class="board">
       <div class="comp">${esc(fx.compLabel)}${fx.round ? ` ${esc(fx.round)}` : ""}</div>
       <div class="teams">
-        <span class="tm home">${fx.jn ? `<i class="kit-dot jn-dot"></i>${esc(fx.usName)}` : `<img src="assets/img/logo.png" alt="">${TEAM_NAME}`}</span>
+        <span class="tm home">${fx.jn ? `<i class="kit-dot jn-dot"></i>${esc(fx.usName)}` : `<img src="assets/img/logo.png" alt="">${esc(fx.usName || TEAM_NAME)}`}</span>
         <span class="sc num" id="sc">0 : 0</span>
         <span class="tm away">${crest(fx.opponent.name, { size: 26, cls: "bcrest" })}${esc(fx.opponent.name)}</span>
       </div>
@@ -17085,6 +17234,7 @@ function showMatch(app, m, onDone) {
   enter(root.querySelector(".match-screen"));
   const feed = root.querySelector("#feed");
   const ctl = root.querySelector("#ctl");
+  const stopGuide = fx.practice ? practiceGuide(ctl, "#pitch") : null;   // 청백전(튜토리얼): 정 코치 안내
   const svg = root.querySelector(".pitch");
   const flash = root.querySelector("#flash");
   const dotEls = Object.fromEntries([...svg.querySelectorAll(".dot")].map(el => [el.dataset.id, el]));
@@ -17492,7 +17642,7 @@ function showMatch(app, m, onDone) {
     finished = true;
     const before = m.feed.length;
     const res = finishMatch(state, m);
-    track("match", { state, m, res });
+    if (!fx.practice) track("match", { state, m, res });   // 청백전은 기록하지 않음
     m.feed.slice(before).forEach(addLine);
     shown = m.score.slice();
     updateBoard();
@@ -17524,12 +17674,12 @@ function showMatch(app, m, onDone) {
         <span class="pos-tag ${t.pos === "GK" ? "" : t.pos}">${t.pos}</span><span class="num">${t.number}</span><span class="nm">${esc(t.name)}${t.name === m.mom?.name && m.mom.team === "us" ? " ★" : ""}</span>
         <b class="rt num ${t.r >= 7.5 ? "hi" : t.r >= 6.5 ? "mid" : "lo"}">${t.r.toFixed(1)}</b></li>`).join("")}</ul></details>` : ""}
       ${res.notes.length ? `<ul class="pm-notes">${res.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
-      <p class="mute" style="font-size:13px;margin:0">감독님 면담과 경기 기록은 메시지함에 왔습니다.</p>
-      <button class="btn btn-kit btn-wide" data-done>${fx.jn && state.jnCup?.alive && !p.condition.injury ? `다음 경기로 (${["1회전", "준결승", "결승"][state.jnCup.stage]})` : "이번 주 마무리"}</button>
+      <p class="mute" style="font-size:13px;margin:0">${fx.practice ? "연습 경기라 능력치와 기록에는 남지 않습니다." : "감독님 면담과 경기 기록은 메시지함에 왔습니다."}</p>
+      <button class="btn btn-kit btn-wide" data-done>${fx.jn && state.jnCup?.alive && !p.condition.injury ? `다음 경기로 (${["1회전", "준결승", "결승"][state.jnCup.stage]})` : fx.practice ? "홈으로" : "이번 주 마무리"}</button>
       </div>
     </div>`;
     if (res.mom) setTimeout(() => sfx.play("stamp"), 1350);         // 도장이 내려앉는 순간
-    ctl.querySelector("[data-done]").addEventListener("click", () => { ro?.disconnect(); removeEventListener("resize", fitPitch); pitch.destroy(); onDone(res); });
+    ctl.querySelector("[data-done]").addEventListener("click", () => { stopGuide?.(); ro?.disconnect(); removeEventListener("resize", fitPitch); pitch.destroy(); onDone(res); });
     ctl.querySelector("[data-done]").focus({ preventScroll: true });
   }
 }
@@ -18300,13 +18450,109 @@ function goalsPanel(state) {
       <div class="gs mute">${g.state === "done" ? esc(g.desc) : esc(g.text)}</div></div></li>`).join("")}</ul></section>`;
 }
 
+// ── 홈 (휴대폰 첫 화면에 매주 볼 것만: 상태 네 칸·경고 한 줄 → 다음 경기와 지시 → 이번 주 칸. 나머지는 접어 둠) ──
+const statCls = (v, invert = false) => { const g = invert ? 100 - v : v; return g >= 55 ? "" : g >= 30 ? "warn" : "bad"; };
+function statusStrip(state) {
+  const p = state.player, c = p.condition, s = p.stats.student;
+  const chip = (k, v, invert) => { const cls = statCls(v, invert); return `<div class="hs-chip ${cls}"><span class="hs-k">${k}</span><b class="num">${Math.round(v)}</b>
+    <span class="hs-bar"><i style="width:${Math.min(100, v)}%"></i></span></div>`; };
+  const inj = c.injury, acad = ACADEMIC_ALERT[state.flags.academicLevel];
+  const alert = inj ? ["bad", `${INJURIES[inj.type].label}, 복귀까지 약 ${Math.max(1, Math.ceil(inj.weeksLeft))}주. 훈련 대신 재활과 학교생활만 할 수 있어요.`]
+    : c.fatigue >= 85 ? ["bad", `피로가 너무 높아요. 이대로면 다음 경기 선발에서 빠지고 다치기도 쉬워요.`]
+    : acad ? ["warn", acad[1]]
+    : c.fatigue >= 50 ? ["warn", `피로가 쌓였어요. 수면이나 가족 시간이 피로를 가장 많이 풀어 줘요.`] : null;
+  return `<section class="hs" aria-label="상태"><div class="hs-row">${chip("피로", c.fatigue, true)}${chip("사기", c.morale)}${chip("감독 신뢰", state.relations.coach)}${chip("학업", s.academic)}</div>
+    ${alert ? `<p class="hs-alert ${alert[0]}" role="alert">${esc(alert[1])}</p>` : ""}</section>`;
+}
+// 행동 효과 한 줄: 많이 오르는 능력치 둘과 피로·사기 (기본값, 실제는 훈련 효율에 따라 달라짐)
+function actEffect(a) {
+  const g = Object.entries(a.gains || {}).filter(([, v]) => v > 0).sort((x, y) => y[1] - x[1]).slice(0, 2)
+    .map(([k, v]) => `<span class="up">${STAT_LABEL[k] || k} +${Math.max(1, Math.round(v))}</span>`);
+  if (a.morale) g.push(`<span class="${a.morale > 0 ? "up" : "down"}">사기 ${a.morale > 0 ? "+" : ""}${a.morale}</span>`);
+  if (a.fatigue) g.push(`<span class="${a.fatigue > 0 ? "down" : "up"}">피로 ${a.fatigue > 0 ? "+" : ""}${a.fatigue}</span>`);
+  return g.join(" · ");
+}
+function homeWeek(state, opts = {}) {
+  const eff = Math.round(efficiency(state) * 100);
+  const o = weekOrder(state), hasOrder = o && !o.none;
+  const free = SLOTS.filter(s => !slotLocked(state, s.id));
+  const empty = free.filter(s => !ACTION_MAP[state.plan[s.id]]).length;
+  const inPlan = hasOrder && free.some(s => o.acts.includes(state.plan[s.id]));
+  const guide = empty ? `빈 칸이 ${empty}개 있어요.${hasOrder && !inPlan ? " 감독님 지시 행동을 넣으면 신뢰가 올라요." : " 칸을 눌러 채워 주세요."}`
+    : hasOrder && !inPlan ? "감독님 지시 행동이 없어요. 하나 넣으면 신뢰가 올라요." : "준비 끝! 아래 '이번 주 진행'을 누르세요.";
+  return `<section class="panel hw" data-tut="week">
+    <h2>이번 주 <small>훈련 효율 ${eff}%</small>
+      <button class="linkbtn mg-toggle" data-mgtoggle aria-pressed="${!!opts.minigame}">🎮 미니게임 ${opts.minigame ? "ON" : "OFF"}</button>
+      ${state.lastPlan ? `<button class="linkbtn right" data-repeat>지난주처럼</button>` : ""}</h2>
+    <p class="hw-guide ${empty || (hasOrder && !inPlan) ? "" : "ok"}">${guide}</p>
+    <div class="slots">${SLOTS.map(s => {
+      const locked = slotLocked(state, s.id);
+      if (locked) {
+        const fx = locked.fx;
+        return `<div class="slot locked"><span class="when">${s.label}</span>
+          <span><span class="what">⚽ vs ${esc(fx.opponent.name)}</span>
+          <span class="hint">${fx.compLabel}${fx.round ? ` ${esc(fx.round)}` : ""}${fx.school ? `. ${esc(fx.school.coach)} 관전` : ""}</span></span><span></span></div>`;
+      }
+      const a = ACTION_MAP[state.plan[s.id]];
+      return `<button class="slot ${a ? "filled" : "empty"} ${a && hasOrder && o.acts.includes(a.id) ? "order" : ""}" data-slot="${s.id}">
+        <span class="when">${s.label}</span>
+        <span>${a ? `<span class="what"><span class="ic">${a.icon}</span>${a.label}</span><span class="eff">${actEffect(a)}</span>` : `<span class="what mute">행동 고르기</span>`}</span>
+        <span class="chev" aria-hidden="true">${a ? "›" : "+"}</span></button>`;
+    }).join("")}</div>
+  </section>`;
+}
+// 다음 경기 + 감독 지시를 한 카드로
+function homeNext(state) {
+  const o = weekOrder(state), hasOrder = o && !o.none;
+  const inPlan = hasOrder && SLOTS.some(s => !slotLocked(state, s.id) && o.acts.includes(state.plan[s.id]));
+  const tile = nextMatchTile(state);
+  if (!hasOrder) return tile;
+  return tile.replace(/<\/section>\s*$/, `<div class="hn-order ${inPlan ? "on" : ""}">
+      <div class="oc-head"><span>📋 ${esc(STAFF.coach)}님 이번 주 지시</span>${inPlan ? `<span class="oc-ok">✔ 계획에 넣음</span>` : ""}</div>
+      <p class="oc-text">"${esc(o.text)}"</p>
+      <div class="oc-acts">${o.acts.map(id => `<span class="chip">${ACTION_MAP[id].icon} ${esc(ACTION_MAP[id].label)}</span>`).join("")}</div></div></section>`);
+}
+// 나: 작은 얼굴·종합 능력치 (누르면 선수 화면)
+function meStrip(state) {
+  const p = state.player, o = fl(ovr(p));
+  const det = p.detailPos && DETAIL_POS[p.detailPos]?.pos === p.position ? DETAIL_POS[p.detailPos] : null;
+  const code = det ? POS_CODE[p.detailPos] : BASE_CODE[p.position];
+  return `<button class="me-strip t-${cardTier(o)}" data-go="player" aria-label="내 선수 카드 보기">
+    <span class="ms-face">${img(faceOf(p, state.calendar.grade), "")}</span>
+    <span class="ms-txt"><b>${esc(p.name)}</b><small>#${p.number} · ${det ? esc(det.label) : POSITIONS[p.position].label}${state.flags.captain ? " · 주장" : ""}</small></span>
+    <span class="ms-ovr"><b class="num">${o}</b><small>${code}</small></span><span class="chev" aria-hidden="true">›</span></button>`;
+}
+// 접는 칸: 제목 한 줄(요약)만 보이고, 누르면 펼침. 넓은 화면에서는 늘 펼침
+const fold = (key, title, sum, body, open = false) => `<section class="fold ${open ? "open" : ""}" data-fold="${key}">
+  <button class="fold-h" data-foldbtn aria-expanded="${open}"><b>${title}</b><span class="fold-s">${sum}</span><span class="chev" aria-hidden="true">›</span></button>
+  <div class="fold-b">${body}</div></section>`;
+function homeFolds(state, openSet = {}) {
+  const unread = state.inbox.filter(m => !m.read), first = unread[0];
+  const d = depthChart(state);
+  const lg = state.league, rank = lg ? sortTable(lg.table).findIndex(r => r.id === US) + 1 : 0;
+  const info = turnInfo(state), inTour = info && (info.phase === "summer" || info.phase === "winter") && state.tour?.key?.startsWith(`${info.grade}-`);
+  const nx = (() => { for (let k = 0; k < 8; k++) { const i = turnInfo(state, k); if (!i) break; if ((i.match && stillScheduled(state, i)) || i.exam || i.school.some(x => !x.hidden) || jnFixture(state, i)) return i; } return null; })();
+  const nxText = nx ? `${nx.month}월 ${nx.week}주 ${nx.match && stillScheduled(state, nx) ? nx.comp.label : nx.exam ? nx.exam.name : nx.school.find(x => !x.hidden)?.label || "전국소년체전"}` : "당분간 없음";
+  const c = conditionOf(state.player);
+  const main = state.calendar.grade >= 2 ? goalProgress(state).find(g => g.main) : null;
+  const strip = html => html.replace(/^<section class="panel[^"]*">/, "").replace(/<\/section>$/, "");
+  return [
+    fold("mail", "메시지", unread.length ? `<span class="newbadge">새 ${unread.length}</span> ${first ? esc(first.title) : ""}` : "새 메시지 없음", strip(mailPreview(state)), openSet.mail),
+    fold("cond", "컨디션 자세히", `${c.label} ${Math.round(c.score)} · 생활태도 ${Math.round(state.player.stats.student.attitude)}`, strip(conditionPanel(state)), openSet.cond),
+    fold("comp", inTour ? esc(state.tour.label) : "주말리그 순위", inTour ? "대회 진행 중" : rank ? `${rank}위 · ${lg.table.find(r => r.id === US)?.pts ?? 0}점` : "3월 2주차 시작", strip(compPanel(state)), openSet.comp),
+    fold("depth", "주전 경쟁", `${POSITIONS[state.player.position].label} ${d.rank}위 (${d.slots}자리)`, strip(depthPanel(state)), openSet.depth),
+    state.calendar.grade >= 2 ? fold("goals", "나의 목표", main ? esc(main.label) : "면담에서 정함", strip(goalsPanel(state)), openSet.goals) : "",
+    fold("sched", "다가오는 일정", esc(nxText), strip(upcomingPanel(state)), openSet.sched),
+  ].join("");
+}
 function homeView(state, opts = {}) {
-  // 휴대폰에서는 다음 경기 → 카드 → 이번 주 → 컨디션 → 순위 → 메시지 → 경쟁 순서 (css .home)
-  return `<div class="cols home">
-    <div class="colwrap"><div class="o2">${jerseyCard(state)}</div><div class="o4">${conditionPanel(state)}</div><div class="o7">${depthPanel(state)}</div></div>
-    <div class="colwrap"><div class="o1">${nextMatchTile(state)}</div><div class="o3">${weekPanel(state, opts)}</div>
-      <div class="advance o3b"><button class="btn btn-kit btn-go" data-advance><span>이번 주 진행</span></button></div>
-      <div class="o5">${compPanel(state)}</div>${state.calendar.grade >= 2 ? `<div class="o5g">${goalsPanel(state)}</div>` : ""}<div class="o6">${mailPreview(state)}</div><div class="o8">${upcomingPanel(state)}</div></div>
+  return `<div class="home2">
+    ${meStrip(state)}
+    ${statusStrip(state)}
+    ${homeNext(state)}
+    ${homeWeek(state, opts)}
+    <div class="advance" data-tut="advance"><button class="btn btn-kit btn-go" data-advance><span>이번 주 진행</span></button></div>
+    <div class="h-folds">${homeFolds(state, opts.open || {})}</div>
   </div>`;
 }
 
@@ -19160,6 +19406,7 @@ const {welcomeMails} = __m["js/engine/advice.js"];
 const {birthdayWeek} = __m["js/engine/birthday.js"];
 const {initRelations} = __m["js/engine/relations.js"];
 const {showMatch} = __m["js/ui/match.js"];
+const {startTutorial} = __m["js/ui/tutorial.js"];
 const {ACTION_MAP} = __m["data/actions.js"];
 const {renderCreate} = __m["js/ui/create.js"];
 const {renderIntro} = __m["js/ui/intro.js"];
@@ -19175,6 +19422,7 @@ const {bgm} = __m["js/ui/bgm.js"];
 const {login, logout, checkAccess, resume, watch, track, flush, pushSave, session, signup, signupOpen} = __m["js/net/online.js"];
 const {renderLogin, renderSignup, renderLock, renderLoading} = __m["js/ui/login.js"];
 // 진입점: 화면 전환, 저장, 한 주 진행
+
 
 
 
@@ -19232,6 +19480,18 @@ const app = {
     flush(); pushSave(true);
     this.go("home");
     this.toast(`${player.name}, 등번호 ${this.state.player.number}번으로 입단했습니다`);
+    startTutorial(this);                                     // 첫 주 튜토리얼 (환영 → 청백전 → 홈 안내)
+  },
+  // 청백전(연습 경기): 상태를 복사해서 치르고 버림 → 능력치·기록·랭킹·업적 그대로
+  practice(done) {
+    const copy = JSON.parse(JSON.stringify(this.state));
+    const fx = { comp: "practice", compLabel: "고흥FC 청백전", round: "연습 경기", official: false, tournament: false, ko: false, practice: true, usName: "A조",
+      opponent: { id: "B", name: "B조", strength: 50, color: "#F3F5FB", color2: "#1F2C8F" } };
+    const m = prepareMatch(copy, turnInfo(copy), fx);
+    const papp = Object.create(this); papp.state = copy;
+    this.view = "match";
+    window.scrollTo(0, 0);
+    showMatch(papp, m, () => { this.view = "home"; done(); });
   },
   load(state) {
     if (!state.relations.people) initRelations(state);     // 이전 저장 파일 보정
@@ -19423,7 +19683,7 @@ function renderShell(app) {
   const info = turnInfo(s);
   const unread = s.inbox.filter(m => !m.read).length;
   let main = "";
-  if (app.view === "home") main = homeView(s, { minigame: app.settings.minigame });
+  if (app.view === "home") main = homeView(s, { minigame: app.settings.minigame, open: app.homeOpen || (app.homeOpen = {}) });
   if (app.view === "player") main = playerView(s, app.sub.ptab);
   if (app.view === "team") main = teamView(s, app.sub.ttab);
   if (app.view === "schedule") main = scheduleView(s, app.sub.sgrade || s.calendar.grade);
@@ -19459,6 +19719,10 @@ function renderShell(app) {
   r.querySelectorAll("[data-slot]").forEach(b => b.addEventListener("click", () => actionPicker(app, b.dataset.slot)));
   r.querySelectorAll("[data-flip]").forEach(b => b.addEventListener("click", () => { const on = !b.classList.contains("flipped"); b.classList.toggle("flipped", on); b.setAttribute("aria-pressed", String(on)); }));   // 선수 카드 뒤집기
   r.querySelector("[data-advance]")?.addEventListener("click", () => app.advance());
+  r.querySelectorAll("[data-foldbtn]").forEach(b => b.addEventListener("click", () => {   // 홈 접는 칸 (펼친 칸은 다시 그려도 그대로)
+    const f = b.closest("[data-fold]"), on = !f.classList.contains("open");
+    f.classList.toggle("open", on); b.setAttribute("aria-expanded", String(on)); (app.homeOpen ||= {})[f.dataset.fold] = on;
+  }));
   r.querySelector("[data-repeat]")?.addEventListener("click", () => app.repeatPlan());
   r.querySelector("[data-mgtoggle]")?.addEventListener("click", () => {
     app.settings.minigame = !app.settings.minigame; saveSettings(app.settings);
