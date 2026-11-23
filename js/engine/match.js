@@ -18,7 +18,7 @@ import { turnInfo } from "./calendar.js";
 import { oppLineup, noteOpp } from "./opponents.js";
 import { nemesisOf, nemesisAfter } from "./nemesis.js";
 import { SCENES } from "../../data/scenes.js";
-import { createSim, step as simStep, DT, RATE, HALF_T, playT, kickoffSetup, soSetup, soKick, soReady, soSetResult, soCancelNext, setScript, stageStart, minuteOf, meOf, gkOf, setRestart, passTo, kickLoose, pokeOut } from "./sim.js";
+import { createSim, setGameState, step as simStep, DT, RATE, HALF_T, playT, kickoffSetup, soSetup, soKick, soReady, soSetResult, soCancelNext, setScript, stageStart, minuteOf, meOf, gkOf, setRestart, passTo, kickLoose, pokeOut } from "./sim.js";
 
 export const LENGTH = 70;
 export const MY_SLOT = { FW: 0, MF: 1, DF: 1 };        // 경기장에서 내가 서는 자리 (포지션 안 순서). 세부 포지션이 정해지면 그 자리
@@ -179,7 +179,7 @@ export function timingOf(c) {
 // 모두 우리 전력 − 상대 전력(D)에 따라 바뀜
 // 시험 도구(tools/dev)가 경기 끝마다 내용을 받아 볼 수 있게
 export const DEV = { onFinish: null };
-export const CAL = { brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 5.3, kcu: 5.8, kcun: 80, ct: 2.65, kct: 22, kctn: 13, ft: 0.2, meShot: 1.08, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.105, dfk: 1.45, mfk: 0.6, rk: { FW: 0.82, MF: 1.08, DF: 1.1 }, dfCS: 0.45 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비 기여 배수, mfk: 미드필더 선택 하나가 평점에 주는 몫 (선택이 많은 만큼), rk: 포지션별 평점 배율, dfCS: 수비수 무실점 가산
+export const CAL = { gs: 1, brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 5.3, kcu: 5.8, kcun: 80, ct: 2.65, kct: 22, kctn: 13, ft: 0.2, meShot: 1.08, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.105, dfk: 1.45, mfk: 0.6, rk: { FW: 0.82, MF: 1.08, DF: 1.1 }, dfCS: 0.45 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비 기여 배수, mfk: 미드필더 선택 하나가 평점에 주는 몫 (선택이 많은 만큼), rk: 포지션별 평점 배율, dfCS: 수비수 무실점 가산
 const sig = x => 1 / (1 + Math.exp(-x));
 
 // 상대 성향 → 경기장 움직임
@@ -526,6 +526,11 @@ function narrate(state, m, e) {
     case "boxRun":
       if (!quiet() && chance(0.6) && tac(m, "boxRun", 5, 10)) add(fill(pick(SIM_LINES.boxRun), { a: e.by, n: e.n }), e.me ? "me-auto" : kt(e.team));
       break;
+    case "lockOn": case "chaseOn": {
+      const pool = SIM_LINES[e.type + (e.team === "us" ? "Us" : "Them")];
+      if (pool && !quiet() && tac(m, e.type + e.team, 2, 60)) add(pick(pool), kt(e.team));   // 이름을 넣지 않음: 올라간 측면 수비는 공과 멀리 있을 때가 많음
+      break;
+    }
     case "lineHigh": case "sitDeep": case "gegen": case "counterGo": case "keepLong": case "boxLoad": case "longBall": {
       const pool = SIM_LINES[e.type + (e.team === "us" ? "Us" : "Them")];
       if (pool && !quiet() && tac(m, e.type + e.team, e.type === "gegen" || e.type === "longBall" ? 3 : e.type === "counterGo" ? 4 : 2, e.type === "gegen" || e.type === "longBall" ? 40 : e.type === "counterGo" ? 20 : 90))
@@ -1473,7 +1478,11 @@ export function next(state, m) {
   // 경기 막판 블록 높이: 이기는 팀은 내려앉고, 지는 팀은 올라감
   { const [a, b] = m.score, late = m.minute >= 52;
     S.block.us = late && a > b ? "low" : late && a < b ? "high" : "mid";
-    S.block.them = late && b > a ? "low" : late && b < a ? "high" : m.oppBlock; }
+    S.block.them = late && b > a ? "low" : late && b < a ? "high" : m.oppBlock;
+    // 경기 국면 (CAL.gs 0이면 끔): 55분부터 1~2골 차면 앞선 팀은 잠그기, 뒤진 팀은 쫓아가기 (3골 차 넘게 벌어지면 승부가 기울어 그대로). 모양은 sim.js에서 4분에 걸쳐 바뀜
+    const on = CAL.gs && m.minute >= 55 && Math.abs(a - b) <= 2;
+    setGameState(S, "us", on && a > b ? "lock" : on && a < b ? "chase" : null);
+    setGameState(S, "them", on && b > a ? "lock" : on && b < a ? "chase" : null); }
   if (m.half2Pending) {
     m.half2Pending = false; cut = true;
     kickoffSetup(S, "them", true);
