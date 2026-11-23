@@ -1234,3 +1234,10 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
 - uiplay-cdp FW·MF·DF 엔딩까지 오류 0 (튜토리얼은 건너뛰기로 지나감)
 - `tools/dev/tutorial-shots.mjs` FW·MF·DF: 환영 → 청백전(킥오프·첫 선택·타이밍·끝) → 홈 안내 3단계 끝까지 오류 0, 청백전 뒤 실제 상태 그대로(경기 기록 0, 감독 신뢰 그대로), tutDone true
 - 주의(테스트할 때): index.html?dev로 열고 제목 화면을 한 번 누르면 도입 영상(intro)이 돌기 시작해 나중에 화면을 덮음. 도구에서는 제목 화면에서 바로 gfc.startGame을 부름
+
+## 66. 홈은 예전 화면으로 되돌림 + 칸 효과 한 줄만 남김, 아이폰 위쪽 잘림 (2026-11-23, 사용자: "첫페이지... 이전이 더 나은 것 같아", "2번으로", "아이폰 기준 위가 잘리는 것도")
+- 65절의 새 홈(상태 네 칸·접는 칸·작은 카드)은 뺌. homeView는 64절 때 그대로(큰 선수 카드·컨디션 게이지·메시지 순)
+- 남긴 것: 이번 주 칸에 고른 행동의 효과 한 줄(`actEffect`, 예: "패스 +2 · 크로스 +1 · 피로 +10"), weekPanel에 class `hw`
+- 튜토리얼 홈 안내는 예전 화면에 맞게: `[data-tut=week]`(이번 주 패널), `[data-tut=cond]`(컨디션 패널, "막대가 노랗거나 빨갛게…"), `[data-tut=advance]`. 끝나면 window.scrollTo(0, 0) (예전엔 안내하느라 내려간 화면이 그대로 남아 맨 위가 막대 밑에 잘려 보였음)
+- 아이폰 '홈 화면에 추가'(상태 표시줄 투명, black-translucent): 위 막대를 `top: 0` + `padding-top: 10px + safe-area-inset-top`으로. 예전 `top: env(safe-area-inset-top)`은 맨 위에서는 막대가 상태 표시줄에 겹치고, 조금 내리면 그만큼 내용이 막대 밑으로 들어가 잘려 보였음 (polish.css 맨 끝)
+- 점검: tutorial-shots(홈 안내 세 단계 새 자리), uiplay-cdp MF 엔딩까지 오류 0. 헤드리스 크롬은 safe-area가 0이라 아이폰 잘림은 실제 기기에서 확인 필요
