@@ -5755,7 +5755,7 @@ const FORM = {
 //  wb: 측면을 맡는 선수가 측면 수비가 아니라 측면 미드필더(윙백) → 오버래핑·쫓아가기 측면 수비 올리기를 안 함
 const FORMS = {
   "442": { label: "4-4-2", t: FORM },
-  "4231": { label: "4-2-3-1", t: { ...FORM,
+  "4231": { label: "4-2-3-1", am: true, t: { ...FORM,
     LCM: { d: [8, -0.2], a: [9, -0.16] }, RCM: { d: [8, 0.2], a: [13, 0.18] },
     LM: { d: [13, -0.9], a: [32, -0.72] }, RM: { d: [13, 0.9], a: [32, 0.78] },
     ST2: { d: [17, 0.14], a: [30, 0.1] }, ST1: { d: [27, -0.1], a: [42, -0.04] } } },
@@ -5886,8 +5886,10 @@ const RI = Object.fromEntries(ROLE_LIST.map((r, i) => [r, i]));
 const FAF = {}, FDF = {};
 for (const [k, f] of Object.entries(FORMS)) { FAF[k] = ROLE_LIST.map(r => f.t[r]?.a || [0, 0]); FDF[k] = ROLE_LIST.map(r => f.t[r]?.d || [0, 0]); }
 const formOf = (S, team) => FORMS[S.form?.[team]] || FORMS["442"];
-// 공격수(4-3-3의 ST2는 8번이라 빼고)는 자기 진영 깊은 곳까지 공을 쫓아 내려가 압박하지 않음 (공격수가 우리 박스 안까지 따라 들어가던 것)
-const deepFw = (S, p) => p.pos === "FW" && !(p.role === "ST2" && formOf(S, p.team).mid8);
+// 공격수(4-2-3-1 공격형 미드필더·4-3-3 8번인 ST2는 빼고)는 자기 진영 깊은 곳까지 공을 쫓아 내려가 압박하지 않음 (공격수가 우리 박스 안까지 따라 들어가던 것)
+// 역할은 ST2(공격수)지만 실제로는 미드필더 줄에 서는 선수: 4-2-3-1 공격형 미드필더, 4-3-3 8번
+const deepFw2 = (S, p, team) => p.role === "ST2" && (formOf(S, team).am || formOf(S, team).mid8);
+const deepFw = (S, p) => p.pos === "FW" && !deepFw2(S, p, p.team);
 // 수비할 때 수비 라인에 서는 선수: 보통은 수비수. 3-5-2는 공 반대쪽 윙백이 들어오고(5백), 수비형 미드필더(RCB)는 빠짐
 const isBack = (S, p) => { const f = formOf(S, p.team); return (f.wb && S.wbFar?.[p.team] === p.role) || (p.pos === "DF" && !f.notBack?.includes(p.role)); };
 const SH = { us: new Float64Array(22), them: new Float64Array(22) };
@@ -5966,7 +5968,7 @@ function targets(S) {
     let x = sh[p.ri * 2], y = sh[p.ri * 2 + 1];
     if (p.ri) { x += A ? p.tune[0] : p.tune[1]; if (A && p.tune[2]) y += (y < 34 ? -1 : 1) * p.tune[2]; }   // 세부 포지션: 수비형은 한 칸 아래, 공격형은 한 칸 위, 윙어는 공격할 때 더 넓게
     if (A && p.ri) {
-      if (p.pos === "FW") x = Math.max(x, off - 3.5);                // 공격수는 상대 마지막 수비 라인에 붙어 섬
+      if (p.pos === "FW" && !deepFw2(S, p, att)) x = Math.max(x, off - 3.5);                // 공격수는 상대 마지막 수비 라인에 붙어 섬 (4-2-3-1의 공격형 미드필더·4-3-3의 8번 ST2는 빼고)
       else if (p.runner) x = Math.max(x, Math.min(off - 9, x + 12));
       if (p.runner) { const q = Math.max(0, Math.sin(c * 0.55 + p.ph[0] * 1.7)); x += q * q * 9; }   // 뒷공간으로 뛰어들었다 돌아옴
       p.cRun = false;
@@ -5987,6 +5989,8 @@ function targets(S) {
       if (!formOf(S, att).wb && ((p.role === "LB" && H.role === "LM") || (p.role === "RB" && H.role === "RM")) && !(S.gs[att].cur === "lock" && S.gs[att].k > 0.5)) {   // 3-5-2는 윙백이 이미 측면을 맡음   // 잠그는 팀은 측면 수비가 올라가지 않음
         if (hx > ((S.style[att] || {}).cross ? 40 : 48) && hx < 88) { x = Math.min(off - 1, hx + 9); y = hy < 34 ? 4 : 64; p.overlap = true; }
       } else p.overlap = false;
+      // 4-2-3-1 공격형 미드필더: 최전방 공격수와 같은 줄(오프사이드 선)까지 올라가 포개지지 않게, 한 칸 아래 공간에 섬
+      if (deepFw2(S, p, att)) x = Math.min(x, off - 8);
       // 공격수 내려오기: 빌드업 중이면 한 명이 받으러 내려옴
       if (p.role === "ST2" && S.plan?.build && hx < 55) { x = Math.min(x, hx + 16); y += (hy - y) * 0.3; }
       const sa = S.style[att] || {};
