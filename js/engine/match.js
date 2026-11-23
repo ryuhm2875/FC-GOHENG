@@ -66,6 +66,22 @@ function keeperOf(state) {
   return list[0] || { name: "골키퍼" };
 }
 function ourKeeper(state) { return keeperOf(state).name; }
+// 청백전(연습 경기): 축구부를 A조(나)·B조로 나눔. 포지션마다 번갈아 넣어 전력을 맞추고, 내 자리는 A조가 한 명 덜 뽑음
+function practiceSplit(state, roster) {
+  const me = state.player.position, a = [], b = [];
+  for (const [pos, def] of Object.entries(POSITIONS)) {
+    let needA = def.slots - (pos === me ? 1 : 0), needB = def.slots, turnB = true;
+    for (const m of roster.filter(x => x.position === pos).sort((x, y) => y.ovrNow - x.ovrNow)) {
+      if (needA <= 0 && needB <= 0) break;
+      const toB = needA <= 0 || (needB > 0 && turnB);
+      (toB ? b : a).push({ ...m, side: pos }); toB ? needB-- : needA--; turnB = !turnB;
+    }
+  }
+  const rest = roster.filter(m => !a.some(x => x.name === m.name) && !b.some(x => x.name === m.name));
+  const g = state.calendar.grade, ka = ourKeeper(state);
+  const kb = GOALKEEPERS.map(k => ({ ...k, g: mateGrade(k, g) })).find(k => k.g >= 1 && k.g <= 3 && k.name !== ka)?.name || null;
+  return { a, b, rest, gkB: kb };
+}
 
 // 경기 전 감독·코치 한마디 (지시 tag와 같은 종류의 선택을 하면 성공률 +4%p)
 function pickTalk(state, fx, status, star) {
@@ -264,7 +280,8 @@ export function prepareMatch(state, info, fx) {
   const depth = depthChart(state);
 
   let status = "out", minIn = 0;
-  if (elig.ok) {
+  if (fx.practice) status = "start";                 // 청백전: 늘 선발
+  else if (elig.ok) {
     if (depth.rank <= depth.slots) status = "start";
     else if (!fx.official) { status = "sub"; minIn = int(30, 40); }
     else if (depth.rank <= depth.slots + 2 && chance(0.65)) { status = "sub"; minIn = int(45, 60); }
@@ -283,7 +300,9 @@ export function prepareMatch(state, info, fx) {
   const myOvr = ovr(p);
   const star = onPitch ? clamp((myOvr - teamAvg) / 15 + (hasTrait(p, "ace") ? 0.2 : 0), 0, 1.7) : 0;
 
-  const roster = cup ? cup.squad.map(x => ({ name: x.name, number: x.number, position: x.pos, ovrNow: cup.str + (x.school ? 0.5 : 0) + (x.nemesis ? 1 : 0), school: x.school })) : activeRoster(state);
+  const roster0 = cup ? cup.squad.map(x => ({ name: x.name, number: x.number, position: x.pos, ovrNow: cup.str + (x.school ? 0.5 : 0) + (x.nemesis ? 1 : 0), school: x.school })) : activeRoster(state);
+  const split = fx.practice ? practiceSplit(state, roster0) : null;
+  const roster = split ? [...split.a, ...split.rest] : roster0;          // 청백전: 우리 편은 A조 (모자라면 남은 선수)
   const lineup = [];
   for (const [pos, def] of Object.entries(POSITIONS)) {
     const n = def.slots - (status === "start" && pos === p.position ? 1 : 0);
@@ -307,7 +326,19 @@ export function prepareMatch(state, info, fx) {
   const nem = nemesisOf(state, fx.opponent.name);
   const known = oppLineup(state, fx.opponent.name, info.turn, nem?.name);
   let oppPlayers;
-  if (known) {
+  if (split) {                                        // 청백전: 상대는 B조 (우리 축구부 선수들)
+    split.b.forEach(x => usedNames.add(x.name));
+    oppPlayers = split.b.map(x => ({ name: x.name, number: x.number, pos: x.position }));
+    const pool = split.rest.filter(m => !lineup.some(l => l.name === m.name));
+    for (const [pos, n] of [["DF", 4], ["MF", 4], ["FW", 2]]) {
+      for (let have = oppPlayers.filter(x => x.pos === pos).length; have < n; have++) {
+        const sp = pool.shift();
+        if (sp) oppPlayers.push({ name: sp.name, number: sp.number, pos });
+        else { let name; do { name = randomName(); } while (usedNames.has(name)); usedNames.add(name); oppPlayers.push({ name: `신입생 ${name}`, number: 90 + oppPlayers.length, pos }); }
+      }
+    }
+    oppPlayers.sort((a, b) => ["DF", "MF", "FW"].indexOf(a.pos) - ["DF", "MF", "FW"].indexOf(b.pos));
+  } else if (known) {
     oppPlayers = known.lineup.map(x => ({ name: x.name, number: x.number, pos: x.pos, star: x.star }));
     oppPlayers.forEach(x => usedNames.add(x.name));
     for (const [pos, n] of [["DF", 4], ["MF", 4], ["FW", 2]]) {
@@ -332,7 +363,7 @@ export function prepareMatch(state, info, fx) {
   const ours = cup ? cup.str * 0.6 + 50 * 0.4 + (onPitch ? (myOvr - teamAvg) * 0.12 + cond.match * 15 : 0)
     : teamStrength(state, onPitch) * 0.6 + 50 * 0.4 + (onPitch ? (myOvr - teamAvg) * 0.12 + cond.match * 15 : 0)
     + (keeperOf(state).strong ? 1.5 : 0);
-  const theirs = fx.opponent.strength + (oppAce ? 0.6 : known?.absent ? -1.5 : 0) + (nem ? 1.2 : 0);   // 맞수가 있는 날은 그 팀이 더 독하게 나옴   // 에이스가 뛰면 조금 더 강하고, 빠지면 약해짐
+  const theirs = split ? teamStrength(state, false) * 0.6 + 50 * 0.4 : fx.opponent.strength + (oppAce ? 0.6 : known?.absent ? -1.5 : 0) + (nem ? 1.2 : 0);   // 맞수가 있는 날은 그 팀이 더 독하게 나옴   // 에이스가 뛰면 조금 더 강하고, 빠지면 약해짐
 
   // 시간에 맞춰 일어나는 일 (분위기 문장, 교체 투입, 부상). 골과 공격은 경기장에서 실제로 일어남
   const timed = [];
@@ -383,7 +414,7 @@ export function prepareMatch(state, info, fx) {
     })(),
     lineupStart: lineup.map(x => ({ ...x })),
     ours, theirs, lineup, oppPlayers, oppAce, oppAceAbsent: known?.absent?.name || null, bench, nemesisOn: nem && oppPlayers.some(x => x.name === nem.name) ? nem.name : null, talk: pickTalk(state, fx, status, star),
-    gk: { us: cup ? cup.gk : ourKeeper(state), them: (() => { let n; do { n = randomName(); } while (usedNames.has(n)); usedNames.add(n); return n; })() }, myNumber: p.number,
+    gk: { us: cup ? cup.gk : ourKeeper(state), them: split?.gkB || (() => { let n; do { n = randomName(); } while (usedNames.has(n)); usedNames.add(n); return n; })() }, myNumber: p.number,
     timed, momentQ, minute: 0, score: [0, 0],
     stats: { us: { shots: 0, on: 0, corners: 0, cards: 0 }, them: { shots: 0, on: 0, corners: 0, cards: 0 }, poss: 50 },
     goalsLog: [],

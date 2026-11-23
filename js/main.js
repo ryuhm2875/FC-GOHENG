@@ -9,6 +9,7 @@ import { welcomeMails } from "./engine/advice.js";
 import { birthdayWeek } from "./engine/birthday.js";
 import { initRelations } from "./engine/relations.js";
 import { showMatch } from "./ui/match.js";
+import { startTutorial } from "./ui/tutorial.js";
 import { ACTION_MAP } from "../data/actions.js";
 import { renderCreate } from "./ui/create.js";
 import { renderIntro } from "./ui/intro.js";
@@ -57,6 +58,18 @@ const app = {
     flush(); pushSave(true);
     this.go("home");
     this.toast(`${player.name}, 등번호 ${this.state.player.number}번으로 입단했습니다`);
+    startTutorial(this);                                     // 첫 주 튜토리얼 (환영 → 청백전 → 홈 안내)
+  },
+  // 청백전(연습 경기): 상태를 복사해서 치르고 버림 → 능력치·기록·랭킹·업적 그대로
+  practice(done) {
+    const copy = JSON.parse(JSON.stringify(this.state));
+    const fx = { comp: "practice", compLabel: "고흥FC 청백전", round: "연습 경기", official: false, tournament: false, ko: false, practice: true, usName: "A조",
+      opponent: { id: "B", name: "B조", strength: 50, color: "#F3F5FB", color2: "#1F2C8F" } };
+    const m = prepareMatch(copy, turnInfo(copy), fx);
+    const papp = Object.create(this); papp.state = copy;
+    this.view = "match";
+    window.scrollTo(0, 0);
+    showMatch(papp, m, () => { this.view = "home"; done(); });
   },
   load(state) {
     if (!state.relations.people) initRelations(state);     // 이전 저장 파일 보정
@@ -248,7 +261,7 @@ function renderShell(app) {
   const info = turnInfo(s);
   const unread = s.inbox.filter(m => !m.read).length;
   let main = "";
-  if (app.view === "home") main = homeView(s, { minigame: app.settings.minigame });
+  if (app.view === "home") main = homeView(s, { minigame: app.settings.minigame, open: app.homeOpen || (app.homeOpen = {}) });
   if (app.view === "player") main = playerView(s, app.sub.ptab);
   if (app.view === "team") main = teamView(s, app.sub.ttab);
   if (app.view === "schedule") main = scheduleView(s, app.sub.sgrade || s.calendar.grade);
@@ -284,6 +297,10 @@ function renderShell(app) {
   r.querySelectorAll("[data-slot]").forEach(b => b.addEventListener("click", () => actionPicker(app, b.dataset.slot)));
   r.querySelectorAll("[data-flip]").forEach(b => b.addEventListener("click", () => { const on = !b.classList.contains("flipped"); b.classList.toggle("flipped", on); b.setAttribute("aria-pressed", String(on)); }));   // 선수 카드 뒤집기
   r.querySelector("[data-advance]")?.addEventListener("click", () => app.advance());
+  r.querySelectorAll("[data-foldbtn]").forEach(b => b.addEventListener("click", () => {   // 홈 접는 칸 (펼친 칸은 다시 그려도 그대로)
+    const f = b.closest("[data-fold]"), on = !f.classList.contains("open");
+    f.classList.toggle("open", on); b.setAttribute("aria-expanded", String(on)); (app.homeOpen ||= {})[f.dataset.fold] = on;
+  }));
   r.querySelector("[data-repeat]")?.addEventListener("click", () => app.repeatPlan());
   r.querySelector("[data-mgtoggle]")?.addEventListener("click", () => {
     app.settings.minigame = !app.settings.minigame; saveSettings(app.settings);

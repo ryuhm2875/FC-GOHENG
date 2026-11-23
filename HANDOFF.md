@@ -1210,3 +1210,27 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
 - sync-audit 300 다섯 시드: 6.2·6.2·6.3·5.6·6.5% (바로 전 6.0·6.3·6.4·5.6·6.9)
 - 밸런스(baseline 240, 시드 5000·8000): 득점 2.24, 실점 1.085, FW 7.66·골 1.68, MF 7.185·도움 1.00, DF 7.165
 - uiplay-cdp FW·MF·DF 엔딩까지 오류 0
+
+## 65. 홈 화면 정리, 첫 주 튜토리얼, 청백전 (2026-11-23, 사용자: 시안 확인 뒤 "전부 다 해줘". 시안 캔버스: claude.ai/artifact/DvwTzWSL6niJVatM2MJWwb)
+### 홈 (js/ui/views.js homeView, css/polish.css 맨 끝 '홈 정리')
+- 위에서부터: 나(작은 얼굴·종합 능력치, 누르면 선수 화면) → 상태 네 칸(피로·사기·감독 신뢰·학업, 위험하면 빨강/노랑) + 경고 한 줄(부상 > 피로 85 > 학업 경고 > 피로 50 순으로 하나만) → 다음 경기 카드 안에 감독 지시 → 이번 주(할 일 한 줄 + 칸마다 효과 "패스 +2 · 크로스 +1 · 피로 +10") → 이번 주 진행 → 접는 칸(메시지·컨디션 자세히·리그 순위/대회·주전 경쟁·나의 목표(2학년부터)·다가오는 일정)
+- 효과 숫자는 data/actions.js의 기본값(gains 상위 둘, morale, fatigue). 실제로는 훈련 효율·미니게임에 따라 달라짐
+- 접는 칸은 예전 패널을 그대로 넣고(제목만 숨김) 열고 닫은 상태는 app.homeOpen에 (다시 그려도 유지). 넓은 화면(900px↑)에서는 늘 펼침, 한 줄로 가운데
+- 예전 패널 함수(conditionPanel·weekPanel·orderCard 등)는 그대로 둠. weekPanel·orderCard는 이제 홈에서 안 씀
+- '이번 주 진행'은 원래도 휴대폰에서 화면 아래에 떠 있었음(.advance fixed). 처음 설명에서 '버튼까지 멀다'고 한 건 틀린 말이었음
+### 튜토리얼 (js/ui/tutorial.js)
+- 새 판(startGame)에서만, `state.flags.tutDone`으로 한 번. 불러오기 판에는 안 나옴. 어느 단계든 '건너뛰기'(data-skip → uiplay도 이걸 눌러 그냥 지나감)
+- 순서: 환영(정 코치, 세 단계 소개) → 청백전 → 홈 안내 3단계(이번 주 칸 → 상태와 지시 → 진행)
+- `coach(sel, html, opts)`: 밝게 남길 요소(box-shadow로 나머지를 어둡게) + 말풍선(아래/위 빈 쪽). 홈에서는 뒤를 못 누르게(block), 경기 화면에서는 뒤를 눌러야 해서 block 없이. 홈에서는 아래 떠 있는 진행 버튼에 가리지 않게 요소를 위쪽 70px로 스크롤
+### 청백전 (연습 경기)
+- main.js `practice(done)`: **상태를 JSON으로 복사해서 그 복사본으로 경기**(Object.create(app)에 state만 바꿔 showMatch에 넘김) → 끝나면 버림. 능력치·기록·랭킹·업적·리그·감독 신뢰 모두 그대로. track("match")도 안 보냄
+- fx: `{ comp: "practice", practice: true, official: false, usName: "A조", opponent: { name: "B조", 흰색 } }`
+- engine/match.js `practiceSplit`: 지금 학년에 있는 축구부 선수를 포지션마다 실력순으로 번갈아 A조·B조(B조 먼저)로, 내 자리는 A조가 한 명 덜. 골키퍼는 keeperOf가 A조, 다른 한 명이 B조. 모자라면 남은 선수 → '신입생' 이름. B조 전력 = teamStrength×0.6+50×0.4
+- 1학년 3월 1주 기준(미드필더): A조 GK 조요훈 + 수비 넷 + 미드 넷(나 포함) + 공격 둘, B조 GK 장만춘 + 4·4·2 → 11 대 11 (학년으로 나누면 8 대 16이라 안 됨. 사용자가 'A조·B조'로 정함)
+- 경기 길이·엔진은 그대로(전후반 70분). 정 코치 안내 4개(`practiceGuide`, MutationObserver로 경기 화면 아래 칸을 봄): 킥오프 전 경기장 읽기 → 첫 선택(높음·보통·낮음, ★ 특기, 알아서 하기) → 첫 ⏱ 타이밍 → 경기 끝 평점(평점 → 감독 신뢰 → 선발: match.js `coach += (rating−6.6)×0.8`와 같은 설명). 타이밍 선택지가 안 나오면 3번은 건너뜀
+- 경기 화면: 점수판 우리 이름에 fx.usName, 끝 화면 문구 "연습 경기라 능력치와 기록에는 남지 않습니다", 버튼 '홈으로'
+### 점검
+- baseline 30: main과 결과 파일이 한 글자도 같음(청백전은 practice일 때만)
+- uiplay-cdp FW·MF·DF 엔딩까지 오류 0 (튜토리얼은 건너뛰기로 지나감)
+- `tools/dev/tutorial-shots.mjs` FW·MF·DF: 환영 → 청백전(킥오프·첫 선택·타이밍·끝) → 홈 안내 3단계 끝까지 오류 0, 청백전 뒤 실제 상태 그대로(경기 기록 0, 감독 신뢰 그대로), tutDone true
+- 주의(테스트할 때): index.html?dev로 열고 제목 화면을 한 번 누르면 도입 영상(intro)이 돌기 시작해 나중에 화면을 덮음. 도구에서는 제목 화면에서 바로 gfc.startGame을 부름
