@@ -2021,13 +2021,65 @@ function scriptSteps(state, m, pd, c, out, R, tail, outTpl) {
     const spot = set?.spot || (set && set.x != null ? [set.x, set.y] : [S.ball.x, S.ball.y]);   // 아직 공을 내려놓기 전이면 재개 자리로
     steps.push({ do: "restart", kind: setKind, team, x: spot[0], y: spot[1], taker, delay: 0.7, main: !["set:corner", "defset:corner", "defset:throw"].includes(ctx.cat) });
     holder = taker;
-    if (ctx.cat === "set:corner") {
+    if (ctx.cat === "set:corner" && /짧게 받|박스 바깥에서 빼 주는/.test(c.label)) {   // 짧은 코너킥을 받으러 나감 / 박스 바깥에서 땅볼을 기다림
+      const cy = spot[1] < 34 ? -1 : 1, edge = /박스 바깥/.test(c.label);
+      const tp = edge ? [85, 34 - cy * 4] : [clamp(spot[0] - 4, 96, 102), clamp(spot[1] - cy * 7, 4, 64)];
+      { const r = steps.findLast(x => x.do === "restart"); (r.runs ||= []).push([M, tp[0], tp[1]]); }   // 공을 내려놓는 동안 미리 뜀
+      steps.push({ do: "waitNear", p: M, x: tp[0], y: tp[1], r: 2.5, max: 3.5, hold: taker });
+      steps.push({ do: "pass", from: taker, to: M, tp, kind: "ground", main: true }); holder = M;
+    } else if (ctx.cat === "set:corner") {
       const cy = spot[1] < 34 ? -1 : 1, near = /니어/.test(c.label), far = /먼 쪽/.test(c.label);
       const tp = near ? [101, 34 + cy * 3.5] : far ? [97.5, 34 - cy * 5] : M.x < 88 ? [94, 34 - cy * 2] : [M.x, M.y];
       if (near || far || M.x < 88) steps.push({ do: "runTo", p: M, x: tp[0], y: tp[1] });   // 니어로 끊어 들어가거나 먼 쪽에서 기다림 (박스 밖에 있었으면 박스 안으로)
       steps.push({ do: "pass", from: taker, to: M, air: true, cross: true, tp, kind: "cross", main: true }); holder = M;
     }
-    if (ctx.cat.startsWith("defset")) {
+    // 세트피스 갈래 선택지 (코너킥 뒤로 깔아 줌, 프리킥 벽 옆, 상대 짧은 코너킥): 처음부터 끝까지 여기서 짬
+    const cy0 = spot[1] < 34 ? -1 : 1;
+    const early = st => { const r = steps.findLast(x => x.do === "restart"); (r.runs ||= []).push([st.p, st.x, st.y]); };   // 공을 내려놓는 동안 미리 뛰기 시작 (재개 대본의 runs)
+    const shot0 = (p, res, kind) => steps.push({ do: "shot", by: p, result: res || "wide", kind, saveKind: (res || "wide") === "save" ? R?.save || null : null });   // shotBy는 아래에서 만들어지므로
+    if (ctx.cat === "defset:corner" && /짧게 주는/.test(c.label)) {   // 상대 짧은 코너킥: 가까운 상대가 받으러 오고, 나는 따라 나감
+      const tp = [clamp(spot[0] + 4, 3, 9), clamp(spot[1] - cy0 * 7, 4, 64)];
+      const okR = p => p.ri && p !== taker && p.pos !== "GK" && (out === "win" || p !== opp);   // 실점 쪽이면 {opp}는 박스 안에서 마무리하므로 받는 선수가 아님
+      const rcv = nearestP(S, "them", { x: tp[0], y: tp[1] }, p => okR(p) && p.pos !== "DF") || nearestP(S, "them", { x: tp[0], y: tp[1] }, okR);
+      early({ do: "runTo", p: rcv, x: tp[0], y: tp[1] });
+      steps.push({ do: "runTo", p: M, x: tp[0] + 1.5, y: tp[1] - cy0 * 1.5 });   // 나는 차기 전까지 9.15m 밖 (차는 순간 달려 나감)
+      steps.push({ do: "waitNear", p: rcv, x: tp[0], y: tp[1], r: 1.5, max: 2.5, hold: taker });
+      steps.push({ do: "pass", from: taker, to: rcv, tp, kind: "ground" }); holder = rcv;
+      if (out === "win") { steps.push({ do: "steal", by: M, main: true }); holder = M; }
+      else {                                                                      // 한 번 접고 박스로 올림
+        const box = opp && opp !== rcv && opp !== taker ? opp : nearestP(S, "them", { x: 7, y: 34 }, p => p.ri && p !== rcv && p !== taker && p.pos !== "GK");   // 기록된 상대({opp})가 마무리
+        const bt = [6.5, 34 + cy0 * 2];                                           // 박스 안 니어 쪽 (차기 전에 미리 들어감)
+        early({ do: "runTo", p: box, x: bt[0], y: bt[1] });
+        steps.push({ do: "pass", from: rcv, to: box, air: true, cross: true, tp: bt, kind: "cross", main: true }); holder = box;
+        if (R) shot0(box, R.res, "head");
+      }
+      steps.push(emit); steps.push({ do: "release" }); return steps;
+    }
+    if (ctx.cat === "set:cornerKick" && /뒤로 깔아/.test(c.label)) {           // 코너킥: 뒤로 낮게 깔아 박스 안 뒤쪽 동료에게
+      const tp = [90, 34 - cy0 * 3];
+      const tgt = mate && !mate.me && mate.ri && mate.pos !== "GK" ? mate : nearestP(S, "us", { x: tp[0], y: tp[1] }, p => !p.me && p.ri && p.pos !== "GK");   // 문장의 {mate}가 받음
+      early({ do: "runTo", p: tgt, x: tp[0], y: tp[1] });
+      steps.push({ do: "waitNear", p: tgt, x: tp[0], y: tp[1], r: 2, max: 3, hold: M });
+      steps.push({ do: "pass", from: M, to: tgt, tp, kind: "ground", main: out !== "turnover" }); holder = tgt;
+      if (out === "turnover") { const o = R?.res === "goal" && opp ? opp : nearestP(S, "them", { x: tp[0], y: tp[1] }, p => p.ri && p.pos !== "GK");   // 실점으로 이어지면 기록된 상대({opp})가 steps.push({ do: "steal", by: o, main: true }); holder = o;
+        if (R?.res === "goal") { steps.push({ do: "carry", by: o, toGoal: 15, v: 8.2 }); shot0(o, "goal", "shot"); } }
+      else shot0(tgt, R?.res, "shot");
+      steps.push(emit); steps.push({ do: "release" }); return steps;
+    }
+    if (ctx.cat === "set:fkShot" && /벽 옆/.test(c.label)) {                   // 프리킥: 벽 옆(가운데 쪽 4.5m)의 동료에게 살짝 밀어 줌
+      const sd = spot[1] < 34 ? 1 : -1, tp = [spot[0] + 0.8, clamp(spot[1] + sd * 4.5, 4, 64)];
+      const tgt = mate && !mate.me && mate.ri && mate.pos !== "GK" ? mate : nearestP(S, "us", { x: tp[0], y: tp[1] }, p => !p.me && p.ri && p.pos !== "GK");   // 문장의 {mate}가 받음
+      early({ do: "runTo", p: tgt, x: tp[0], y: tp[1] });
+      steps.push({ do: "waitNear", p: tgt, x: tp[0], y: tp[1], r: 1.5, max: 3, hold: M });
+      steps.push({ do: "pass", from: M, to: tgt, tp, kind: "ground", main: out !== "turnover" }); holder = tgt;
+      if (out === "turnover") { const o = R?.res === "goal" && opp ? opp : nearestP(S, "them", { x: tp[0], y: tp[1] }, p => p.ri && p.pos !== "GK");   // 실점으로 이어지면 기록된 상대({opp})가 steps.push({ do: "steal", by: o, main: R?.res === "goal" }); holder = o;
+        if (R?.res === "goal") { steps.push({ do: "carry", by: o, toGoal: 15, v: 8.2 }); shot0(o, "goal", "shot"); }   // 걷어 낸 공이 역습 골로
+        else { steps.push({ do: "clear", by: o, main: true }); holder = null; } }
+      else shot0(tgt, R?.res, "shot");
+      steps.push(emit); steps.push({ do: "release" }); return steps;
+    }
+    if (false) {
+    } else if (ctx.cat.startsWith("defset")) {
       const tgt = ["win", "keep"].includes(out) ? M : opp !== taker ? opp : nearestP(S, "them", { x: 10, y: 34 }, p => p.ri && p !== taker);
       steps.push({ do: "pass", from: taker, to: tgt, air: true, cross: true, tp: [tgt.x, tgt.y], kind: "cross", main: true }); holder = tgt;
     }
