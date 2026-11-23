@@ -11,7 +11,8 @@ const { SCENES } = await import(R + "data/scenes.js");
 const { DETAIL_POS } = await import(R + "data/player.js");
 
 const N = +process.argv[2] || 60, which = process.argv[3] || "all", SHOW = +(process.env.SHOW || 4), PICK = process.env.PICK || "random";
-const NEW = ["df_carry_out", "df_counter_2v2", "df_cutback_guard", "df_shield_out", "fb_inverted", "mf_scan_turn", "mf_wing_triangle", "mf_track_runner", "mf_underlap", "mf_cover_cb", "fw_dummy", "fw_box_turn", "fw_flick_on", "fw_screen"];
+// IDS=a,b 로 다른 장면만 볼 수 있음, WX=wind 처럼 날씨 고정, PICK=last 면 마지막 선택지만 (새로 넣은 선택지 점검)
+const NEW = process.env.IDS ? process.env.IDS.split(",") : ["df_carry_out", "df_counter_2v2", "df_cutback_guard", "df_shield_out", "fb_inverted", "mf_scan_turn", "mf_wing_triangle", "mf_track_runner", "mf_underlap", "mf_cover_cb", "fw_dummy", "fw_box_turn", "fw_flick_on", "fw_screen"];
 const issues = {}, samples = {}, seen = {}, outs = {};
 const bad = (kind, msg) => { issues[kind] = (issues[kind] || 0) + 1; (samples[kind] ||= []).length < SHOW && samples[kind].push(msg); };
 const hyp = Math.hypot;
@@ -29,6 +30,7 @@ for (let k = 0; k < N; k++) {
   let ctx; for (let i = 0; i < 60; i++) { ctx = beginWeek(s); if (ctx.fx) break; endWeek(s, ctx, null); }
   if (!ctx.fx) continue;
   const m = prepareMatch(s, ctx.info, ctx.fx);
+  if (process.env.WX) m.weather = process.env.WX;
   games++;
   const S = m.sim;
   const pool = NEW.map(id => SITUATIONS.find(x => x.id === id)).filter(x => x.pos.includes(pos));
@@ -89,7 +91,7 @@ for (let k = 0; k < N; k++) {
     if (id === "fw_flick_on") { const d = Math.min(...S.P.filter(p => p.team === "them" && p.pos !== "GK").map(p => hyp(p.x - M.x, p.y - M.y))); if (d > 3) bad("플릭온: 같이 뜬 수비가 멂", `${tag} ${d.toFixed(1)}m`); }
     if (id === "fw_screen") { const gk = S.P.find(p => p.team === "them" && p.pos === "GK"); if (!gk || hyp(gk.x - M.x, gk.y - M.y) > 4.5) bad("골키퍼 앞: 내가 골키퍼 바로 앞이 아님", `${tag} ${gk ? hyp(gk.x - M.x, gk.y - M.y).toFixed(1) : "-"}m`); if (H.x > 89 || Math.abs(H.y - 34) > 19) bad("골키퍼 앞: 동료가 박스 밖 정면이 아님", `${tag} (${H.x.toFixed(1)}, ${H.y.toFixed(1)})`); }
     // ── 2) 결과 ──
-    const ci = PICK === "auto" ? autoChoice(m) : Math.floor(rand() * pd.choices.length);
+    const ci = PICK === "auto" ? autoChoice(m) : PICK === "last" ? pd.choices.length - 1 : Math.floor(rand() * pd.choices.length);
     const label = pd.choices[ci].label;
     const n0 = S.ev.length;
     const r = resolve(s, m, ci);

@@ -1120,6 +1120,13 @@ const CHANCE_LEAD = 4, CHANCE_PULL = 0.6, CHANCE_DFREB = 0.2, CHANCE_DFCORNER = 
 const throwOk = (ctx, s) => { if (ctx.cat !== "set:throw" || !ctx.set) return true;
   const r = SCENES[s.id]?.at || s.spot; if (!r) return true;
   const x = (ctx.set.spot || [ctx.set.x])[0]; return x == null || (x >= r[0][0] - 10 && x <= r[0][1] + 10); };
+// 선택지 이름을 바꿀 경기 상황: 55분 넘어 1~2점 뒤짐(trail) / 앞섬(lead), 아니면 비·바람(rain, wind)
+export function choiceMood(m) {
+  const d = m.score[0] - m.score[1];
+  if (m.minute >= 55 && d < 0 && d >= -2) return "trail";
+  if (m.minute >= 55 && d > 0) return "lead";
+  return m.weather === "rain" || m.weather === "wind" ? m.weather : null;
+}
 // 기다리던 장면과 맞지 않는 상황이 너무 오래 이어질 때: 지금 상황에 가장 어울리는 장면
 function pickSituation(state, m, ctx, only = null) {
   const pool = [];
@@ -1472,10 +1479,12 @@ function finishStaging(state, m) {
   if (sig && Object.entries(sig.requires).every(([k, v]) => getPath(state.player.stats, k) >= v)) list.push({ ...sig, signature: true });
   // 선택지 글자에 {mate} 같은 자리 표시가 남지 않게 (경기 장면 선택지는 따로 채우지 않으므로 안전장치)
   const lab = t => /\{/.test(t) ? fill(t, { mate: mateName(m), opp: oppName(m), gk: m.gk.us, ogk: m.gk.them }) : t;
-  const choices = list.map(c => { const p = prob(state, m, c); return { label: lab(c.label), p, signature: !!c.signature,
+  // 경기 상황에 따라 보이는 선택지 이름만 바뀜 (c.by[상황][0]). 엔진은 늘 원래 이름(c.label)을 읽으므로 화면 동작·타이밍은 그대로
+  const ck = choiceMood(m);
+  const choices = list.map(c => { const p = prob(state, m, c); return { label: lab(c.by?.[ck]?.[0] || c.label), p, signature: !!c.signature,
     level: p >= 0.65 ? "높음" : p >= 0.4 ? "보통" : "낮음", timing: timingOf(c), follow: !!(m.talk?.tag && choiceTag(c) === m.talk.tag) }; });
   const texts = noWing ? sit.text.filter(t => !/\{wing/.test(t)) : sit.text;
-  m.pending = { sit, list, vars: sv, text: fill(pickFresh("s:" + sit.id, texts.length ? texts : sit.text), sv), choices, ball: [S.ball.x, S.ball.y], ctx };
+  m.pending = { sit, list, ck, vars: sv, text: fill(pickFresh("s:" + sit.id, texts.length ? texts : sit.text), sv), choices, ball: [S.ball.x, S.ball.y], ctx };
 }
 
 // 경기 시작 줄
@@ -1816,9 +1825,12 @@ export function resolve(state, m, ci, timing = null) {
   const S = m.sim, ts = S.t;
   // 상황 설명을 기록에 남겨야 나중에 읽어도 앞뒤가 이어짐
   const head = [{ t: pd.text, k: "me", minute: min, ts, fast: true },
-                { t: `▶ ${c.label}${timing ? ` ${{ perfect: "(완벽한 타이밍!)", good: "(좋은 타이밍)", miss: "(타이밍이 어긋났다)" }[timing]}` : ""}`, k: "me", minute: min, ts }];
+                { t: `▶ ${pd.choices[ci].label}${timing ? ` ${{ perfect: "(완벽한 타이밍!)", good: "(좋은 타이밍)", miss: "(타이밍이 어긋났다)" }[timing]}` : ""}`, k: "me", minute: min, ts }];
   // 결과 문장은 경기장에서 그 동작이 끝나는 순간에 나옴 (대본 안에 넣음, scriptFor). 문장 틀은 동작을 고르는 데도 씀
-  const outTpl = pickFresh(`r:${pd.sit.id}:${ci}:${ok ? 1 : 0}`, ok ? c.winText : c.loseText);
+  // 상황 이름으로 보였던 선택지가 성공하면 그 상황의 한마디를 앞에 붙임 (c.by[상황][1]. 동작을 정하는 정규식에 걸리지 않는 말만, add-texts.mjs가 확인)
+  const pre = ok && pd.ck && c.by?.[pd.ck]?.[1];
+  // 앞말을 붙일 땐 첫 문장에만 (둘째 문장부터는 앞에 "서두르지 않았다" 같은 말이 붙어 있어 앞말과 부딪칠 수 있음)
+  const outTpl = pre ? pre + " " + c.winText[0] : pickFresh(`r:${pd.sit.id}:${ci}:${ok ? 1 : 0}`, ok ? c.winText : c.loseText);
   { const a0 = (pd.sit.poss || "us") === "us" && /\{mate/.test(outTpl) ? actOf(outTpl, out, "us") : null;
     if (["passNear", "passWide", "passSwitch", "passBack"].includes(a0)) { const M0 = meOf(S), t = M0 && passTarget(S, M0, a0, SP(m, v.mate, "us")); if (t && !t.me && t.pos !== "GK") v.mate = t.name; } }
   // 패스 선택: 문장이 말하는 패스 종류에 맞는 동료가 받음 (문장의 {mate}도 그 동료)

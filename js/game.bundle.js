@@ -2060,11 +2060,11 @@ const SITUATIONS = [
   { id: "fw_press_cb", intro: false, poss: "them", pos: ["FW"], zone: "att", weight: 1.3,
     text: ["상대 센터백 {opp|이/가} 공을 잡고 옆으로 돌릴 곳을 찾는다. 패스 길이 내 앞을 지난다.", "상대 센터백 {opp|이/가} 공을 발밑에 두고 두리번거린다. 옆 동료에게 줄 생각이다. 그 길목에 내가 서 있다.", "상대 센터백 {opp|이/가} 뒤에서 공을 돌리려 한다. 서두르는 기색이 없다. 패스가 나갈 길이 내 앞으로 보인다."],
     choices: [
-      { label: "패스 길을 막는다", stats: { "mental.focus": 0.5, "mental.teamwork": 0.5 }, diff: -2, win: "win", lose: "keep",
+      { label: "패스 길을 막는다", by: { trail: ["실수 하나면 된다, 패스 길을 막는다", "실수 하나면 된다."], lead: ["앞에서부터, 패스 길을 막는다", "수비는 맨 앞에서부터다."] }, stats: { "mental.focus": 0.5, "mental.teamwork": 0.5 }, diff: -2, win: "win", lose: "keep",
         winText: ["길을 막자 당황한 {opp}의 패스가 내 발에 걸렸다. 우리 공이다!", "반 걸음 먼저 움직여 길을 막았다. 당황한 {opp}의 패스가 내 발에 걸렸다. 우리 공이다!"], loseText: ["{opp|이/가} 한 박자 빠르게 반대편으로 공을 돌렸다.", "내 움직임을 먼저 봤다. {opp|이/가} 한 박자 빠르게 반대편으로 공을 돌렸다."] },
-      { label: "골키퍼 쪽으로 몰아간다", stats: { "phys.stamina": 0.5, "mental.competitive": 0.5 }, diff: 4, win: "shot", lose: "keep",
+      { label: "골키퍼 쪽으로 몰아간다", by: { trail: ["실수를 노린다, 골키퍼 쪽으로 몰아간다", "실수 하나면 된다."], lead: ["여기서 끝내자, 골키퍼 쪽으로 몰아간다", "여기서 끝내고 싶었다."], rain: ["젖은 잔디, 골키퍼 쪽으로 몰아간다", "젖은 잔디는 수비수에게 무섭다."] }, stats: { "phys.stamina": 0.5, "mental.competitive": 0.5 }, diff: 4, win: "shot", lose: "keep",
         winText: ["몰리던 {opp}의 백패스가 짧다! 먼저 발을 댔다. 골키퍼와 둘만 남았다!", "한쪽 길을 지우며 조여 갔다. 몰리던 {opp}의 백패스가 짧다! 먼저 발을 댔다. 골키퍼와 둘만 남았다!"], loseText: ["{ogk|이/가} 침착하게 받아 길게 걷어 냈다.", "거기까지는 뜻대로 됐다. 하지만 {ogk|이/가} 침착하게 받아 길게 걷어 냈다."] },
-      { label: "한 발 물러서 기다린다", stats: { "mental.focus": 1 }, diff: -10, win: "keep", lose: "keep",
+      { label: "한 발 물러서 기다린다", by: { trail: ["참는다, 한 발 물러서 기다린다", "급한 마음을 눌렀다."], lead: ["서두를 것 없다, 한 발 물러서 기다린다", "급할 것 없다."] }, stats: { "mental.focus": 1 }, diff: -10, win: "keep", lose: "keep",
         winText: ["무리하지 않고 자리를 지켰다. 상대 패스가 옆으로만 돈다.", "달려들고 싶은 마음을 누르고 자리를 지켰다. 상대 패스가 옆으로만 돈다."], loseText: ["{opp|이/가} 여유 있게 앞으로 공을 찔렀다.", "기다려 준 꼴이 됐다. {opp|이/가} 여유 있게 앞으로 공을 찔렀다."] },
     ] },
   { id: "fw_press_fb", intro: false, poss: "them", pos: ["FW"], zone: "att", weight: 1,
@@ -2078,9 +2078,9 @@ const SITUATIONS = [
   { id: "fw_counterpress", intro: false, poss: "them", pos: ["FW"], zone: "att", weight: 1.2,
     text: ["방금 공을 빼앗겼다. {opp|이/가} 공을 잡고 고개를 든다. 아직 내가 가장 가깝다.", "공이 발에서 떨어지자마자 {opp|이/가} 낚아챘다. 아직 몸을 다 돌리지 못했다. 두 걸음이면 닿는다.", "뺏겼다. 아쉬워할 틈은 없다. {opp|이/가} 공을 잡아 놓고 줄 곳을 찾는다. 내가 제일 가깝다."],
     choices: [
-      { label: "곧바로 되찾으러 달려든다", stats: { "phys.stamina": 0.5, "mental.competitive": 0.5 }, diff: 2, win: "win", lose: "keep",
+      { label: "곧바로 되찾으러 달려든다", by: { trail: ["시간 없다, 곧바로 되찾으러 달려든다", "쉴 시간은 없다."], lead: ["숨 돌릴 겨를을 안 준다, 곧바로 되찾으러 달려든다", "끝까지 귀찮게 하는 게 내 일이다."], rain: ["미끄러운 공, 곧바로 되찾으러 달려든다", "젖은 공은 누구에게나 미끄럽다."] }, stats: { "phys.stamina": 0.5, "mental.competitive": 0.5 }, diff: 2, win: "win", lose: "keep",
         winText: ["등 뒤에서 발을 넣었다. 공을 다시 찾아왔다!", "고개를 든 그 짧은 사이, 등 뒤에서 발을 넣었다. 공을 다시 찾아왔다!"], loseText: ["{opp|이/가} 한 번 접어 나를 벗겨 냈다. 동료들이 뒤를 막는다.", "너무 급했다. {opp|이/가} 한 번 접어 나를 벗겨 냈다. 동료들이 뒤를 막는다."] },
-      { label: "뒤로 물러나 길을 막는다", stats: { "mental.focus": 1 }, diff: -10, win: "keep", lose: "keep",
+      { label: "뒤로 물러나 길을 막는다", by: { trail: ["급해도 참는다, 뒤로 물러나 길을 막는다", "급한 마음을 눌렀다."], lead: ["무리하지 않는다, 뒤로 물러나 길을 막는다", "무리할 필요가 없다."] }, stats: { "mental.focus": 1 }, diff: -10, win: "keep", lose: "keep",
         winText: ["한 발 물러나 앞쪽 패스 길을 막았다. 상대가 공을 뒤로 돌린다.", "덤비지 않고 한 발 물러나 앞쪽 패스 길을 막았다. 줄 곳이 없어진 상대가 공을 뒤로 돌린다."], loseText: ["{opp|이/가} 내 옆으로 빠르게 공을 찔렀다. 이제 중원이 막아 줘야 한다.", "물러선 만큼 틈이 생겼다. {opp|이/가} 내 옆으로 빠르게 공을 찔렀다. 이제 중원이 막아 줘야 한다."] },
     ] },
 
@@ -2088,21 +2088,21 @@ const SITUATIONS = [
   { id: "mf_press", pos: ["MF"], zone: "mid", weight: 3,
     text: ["중원에서 공을 받는 순간 상대 둘이 달려든다.", "등 뒤로 압박이 붙었다.", "공이 발에 닿기도 전에 양쪽에서 발소리가 난다. 둘이다.", "받자마자 그림자가 덮친다. 고개를 들 시간이 없다."],
     choices: [
-      { label: "원터치로 내준다", stats: { "tech.firstTouch": 0.5, "tech.pass": 0.5 }, diff: -2, win: "keep", lose: "turnover",
+      { label: "원터치로 내준다", by: { trail: ["시간 없다, 원터치로 앞으로 내준다", "한 골이 급하다."], lead: ["서두를 것 없다, 원터치로 안전하게 내준다", "공을 오래 끌 이유가 없다."], rain: ["미끄러운 잔디, 원터치로 빨리 내준다", "공이 물을 먹어 무겁다."] }, stats: { "tech.firstTouch": 0.5, "tech.pass": 0.5 }, diff: -2, win: "keep", lose: "turnover",
         winText: ["원터치로 깔끔하게 {mate}에게 연결했다.", "서두르지 않았다. 원터치로 깔끔하게 {mate}에게 연결했다."], loseText: ["패스가 짧았다. 상대가 가로챈다.", "발끝이 급했다. 패스가 짧았다. 상대가 가로챈다."] },
-      { label: "드리블로 탈압박", stats: { "tech.dribble": 0.5, "phys.agility": 0.5 }, diff: 5, win: "keyPass", lose: "danger",
+      { label: "드리블로 탈압박", by: { trail: ["둘이 와도 뚫는다, 드리블로 탈압박", "물러설 데가 없다."], lead: ["공을 지키며 드리블로 탈압박", "공은 내가 지킨다."], rain: ["젖은 잔디 위로 드리블로 탈압박", "젖은 잔디가 오히려 공을 빠르게 굴렸다."] }, stats: { "tech.dribble": 0.5, "phys.agility": 0.5 }, diff: 5, win: "keyPass", lose: "danger",
         winText: ["한 명, 두 명 벗겨 내고 앞으로! 공간이 열렸다.", "좁은 공간에서 한 명, 두 명 벗겨 내고 앞으로! 공간이 열렸다."], loseText: ["압박에 갇혔다. 상대 역습이다!", "둘이 동시에 좁혀 왔다. 압박에 갇혔다. 상대 역습이다!"] },
-      { label: "뒤로 돌린다", stats: { "tech.pass": 1 }, diff: -14, win: "keep", lose: "turnover",
+      { label: "뒤로 돌린다", by: { trail: ["다시 만들자, 뒤로 돌린다", "조급해하지 않기로 했다."], lead: ["시간을 쓰며 뒤로 돌린다", "시계는 우리 편이다."] }, stats: { "tech.pass": 1 }, diff: -14, win: "keep", lose: "turnover",
         winText: ["안전하게 수비에게 돌렸다.", "무리하지 않고 안전하게 수비에게 돌렸다."], loseText: ["백패스가 약했다!", "너무 약하게 찼다. 백패스가 약했다!"] },
     ] },
   { id: "mf_space", pos: ["MF"], zone: "mid", weight: 3,
     text: ["앞이 열렸다. 공격수들이 뛰기 시작한다.", "상대 미드필더가 올라간 사이 공간이 생겼다.", "공을 받았는데 아무도 달려들지 않는다. 앞쪽에서 공격수들이 먼저 뛰기 시작한다.", "상대 중원이 벌어졌다. 그 틈 너머로 우리 공격수들이 뛰어나가는 게 보인다."],
     choices: [
-      { label: "스루패스", stats: { "tech.pass": 0.7, "mental.focus": 0.3 }, diff: 6, win: "assist", lose: "turnover",
+      { label: "스루패스", by: { trail: ["스루패스, 지금 아니면 없다", "지금 아니면 없다."], lead: ["스루패스로 쐐기를 노린다", "쐐기를 박을 기회다."], rain: ["스루패스, 젖은 잔디라 힘을 빼고", "젖은 잔디에선 공이 더 미끄러진다."], wind: ["스루패스, 바람까지 계산해서", "바람까지 계산했다."] }, stats: { "tech.pass": 0.7, "mental.focus": 0.3 }, diff: 6, win: "assist", lose: "turnover",
         winText: ["수비 사이로 찔러 넣은 공이 {mate} 발 앞에 떨어진다!", "타이밍이 딱 맞았다. 수비 사이로 찔러 넣은 공이 {mate} 발 앞에 떨어진다!"], loseText: ["패스가 조금 길었다. 골키퍼가 잡는다.", "조금만 덜 찼어도 됐는데. 패스가 조금 길었다. 골키퍼가 잡는다."] },
-      { label: "직접 몰고 간다", stats: { "tech.dribble": 0.5, "phys.speed": 0.5 }, diff: 5, win: "shot", lose: "turnover",
+      { label: "직접 몰고 간다", by: { trail: ["내가 간다, 직접 몰고 간다", "내가 해결한다."], lead: ["시간을 쓰며 직접 몰고 간다", "공은 내가 지킨다."] }, stats: { "tech.dribble": 0.5, "phys.speed": 0.5 }, diff: 5, win: "shot", lose: "turnover",
         winText: ["하프라인부터 단독 돌파! 박스 앞까지 왔다.", "망설임이 없었다. 하프라인부터 단독 돌파! 박스 앞까지 왔다."], loseText: ["태클에 걸렸다.", "한 명을 넘자마자 태클에 걸렸다."] },
-      { label: "박스 앞까지 몰고 가 때린다", stats: { "tech.shoot": 1 }, diff: 14, win: "shot", lose: "miss",
+      { label: "박스 앞까지 몰고 가 때린다", by: { trail: ["한 방이 필요하다, 박스 앞까지 몰고 가 때린다", "한 방이 필요하다."], lead: ["여기서 끝내자, 박스 앞까지 몰고 가 때린다", "확실히 끝낼 차례다."], rain: ["젖은 공으로, 박스 앞까지 몰고 가 때린다", "젖은 공은 다루기 어렵다."] }, stats: { "tech.shoot": 1 }, diff: 14, win: "shot", lose: "miss",
         winText: ["박스 앞까지 몰고 올라가 힘껏 때렸다! 공이 골문으로 날아간다!", "고개를 들자마자 박스 앞까지 몰고 올라가 힘껏 때렸다! 공이 골문으로 날아간다!"], loseText: ["힘이 너무 들어갔다. 관중석으로.", "몸이 들렸다. 힘이 너무 들어갔다. 관중석으로."] },
     ] },
   { id: "mf_switch", pos: ["MF"], zone: "mid", weight: 2,
@@ -2191,11 +2191,11 @@ const SITUATIONS = [
   { id: "att_corner_head", intro: false, pos: ["FW", "MF", "DF"], zone: "att", weight: 1,
     text: ["코너킥. 문전에 양 팀 선수들이 엉켜 있다. 공이 날아온다.", "우리 팀 코너킥. 키커가 손을 들어 신호를 보내고 공을 올린다."],
     choices: [
-      { label: "니어포스트로 뛰어들어 헤더", stats: { "phys.jump": 0.5, "phys.speed": 0.2, "tech.shoot": 0.3 }, diff: 6, win: "head", lose: "miss", physical: true,
+      { label: "니어포스트로 뛰어들어 헤더", by: { trail: ["이게 끝일지도, 니어포스트로 뛰어들어 헤더", "이게 끝일지도 모른다."], lead: ["쐐기를 노리며 니어포스트로 뛰어들어 헤더", "쐐기를 박을 기회다."], rain: ["미끄러운 공, 니어포스트로 뛰어들어 헤더", "젖은 공이 빠르게 미끄러져 왔다."] }, stats: { "phys.jump": 0.5, "phys.speed": 0.2, "tech.shoot": 0.3 }, diff: 6, win: "head", lose: "miss", physical: true,
         winText: ["수비 앞을 먼저 잘라 들어가 머리를 갖다 댔다!"], loseText: ["한 발 늦었다. 수비가 먼저 걷어 낸다."] },
-      { label: "뒤로 빠져 흘러나오는 공 노리기", stats: { "mental.focus": 0.5, "tech.shoot": 0.5 }, diff: 2, win: "longShot", lose: "keep",
+      { label: "뒤로 빠져 흘러나오는 공 노리기", by: { trail: ["한 번만 와라, 뒤로 빠져 흘러나오는 공 노리기", "한 번만 와라 싶었다."], lead: ["침착하게, 뒤로 빠져 흘러나오는 공 노리기"], rain: ["젖은 공은 어디로 튈지 모른다, 뒤로 빠져 흘러나오는 공 노리기", "젖은 공은 어디로 튈지 모른다."] }, stats: { "mental.focus": 0.5, "tech.shoot": 0.5 }, diff: 2, win: "longShot", lose: "keep",
         winText: ["예상대로 공이 흘러나왔다. 그대로 발을 휘두른다!"], loseText: ["공이 반대쪽으로 흘렀다. 자리를 지킨다."] },
-      { label: "수비를 끌고 나가 공간 만들기", stats: { "mental.teamwork": 0.6, "phys.strength": 0.4 }, diff: -4, win: "decoy", lose: "keep",
+      { label: "수비를 끌고 나가 공간 만들기", by: { trail: ["내가 미끼가 된다, 수비를 끌고 나가 공간 만들기", "미끼가 되기로 했다."], lead: ["한 점 더, 수비를 끌고 나가 공간 만들기"] }, stats: { "mental.teamwork": 0.6, "phys.strength": 0.4 }, diff: -4, win: "decoy", lose: "keep",
         winText: ["내가 수비 둘을 끌고 나가자 {mate} 앞이 비었다!"], loseText: ["아무도 따라오지 않았다. 공은 다른 곳으로 갔다."] },
       { label: "몸을 날려 바이시클 킥", requires: { "phys.jump": 70, "phys.agility": 66 }, stats: { "phys.jump": 0.4, "phys.agility": 0.3, "tech.shoot": 0.3 }, diff: 14, win: "acro", lose: "miss", physical: true,
         winText: ["등 뒤로 넘어가는 공을 향해 몸을 거꾸로 띄웠다!"], loseText: ["발이 허공을 갈랐다. 엉덩방아만 찧었다."] },
@@ -2330,11 +2330,11 @@ const SITUATIONS = [
   { id: "mf_foul", intro: false, pos: ["MF", "FW"], zone: "mid", weight: 1,
     text: ["공을 받자마자 {opp|이/가} 뒤에서 거칠게 밀어붙인다."],
     choices: [
-      { label: "버티며 지킨다", stats: { "phys.strength": 0.7, "mental.competitive": 0.3 }, diff: 2, win: "keep", lose: "turnover", physical: true,
+      { label: "버티며 지킨다", by: { trail: ["물러설 데가 없다, 버티며 지킨다", "물러설 데가 없다."], lead: ["공을 오래 갖고 버티며 지킨다", "시계는 우리 편이다."] }, stats: { "phys.strength": 0.7, "mental.competitive": 0.3 }, diff: 2, win: "keep", lose: "turnover", physical: true,
         winText: ["몸을 낮추고 버텼다. 공은 아직 내 발밑이다."], loseText: ["힘에서 밀렸다. 공을 빼앗겼다."] },
-      { label: "끝까지 공을 지켜 파울을 얻는다", stats: { "tech.dribble": 0.5, "mental.focus": 0.5 }, diff: 1, win: "setPiece", lose: "turnover",
+      { label: "끝까지 공을 지켜 파울을 얻는다", by: { trail: ["프리킥이라도, 끝까지 공을 지켜 파울을 얻는다", "뭐라도 얻어 내야 한다."], lead: ["시간을 벌자, 끝까지 공을 지켜 파울을 얻는다", "시간을 벌어야 한다."] }, stats: { "tech.dribble": 0.5, "mental.focus": 0.5 }, diff: 1, win: "setPiece", lose: "turnover",
         winText: ["{opp|이/가} 결국 내 다리를 걷어찼다. 휘슬! 우리 프리킥이다."], loseText: ["주심은 휘슬을 불지 않았다. 공은 이미 상대 발에 있다."] },
-      { label: "먼저 내주고 피한다", stats: { "tech.firstTouch": 0.5, "tech.pass": 0.5 }, diff: -4, win: "keep", lose: "turnover",
+      { label: "먼저 내주고 피한다", by: { trail: ["빨리, 먼저 내주고 피한다", "시간이 없다."], lead: ["무리하지 않는다, 먼저 내주고 피한다", "무리할 필요가 없다."] }, stats: { "tech.firstTouch": 0.5, "tech.pass": 0.5 }, diff: -4, win: "keep", lose: "turnover",
         winText: ["부딪히기 직전에 {mate}에게 내줬다. {opp|이/가} 허공을 밀었다."], loseText: ["내주려는 순간 발이 걸렸다."] },
     ] },
   { id: "mf_lead", intro: false, pos: ["MF", "DF"], zone: "mid", weight: 3, late: true, leading: true,
@@ -2404,6 +2404,9 @@ const SITUATIONS = [
         winText: ["수비보다 반 박자 먼저 니어포스트로 뛰어들었다!", "발만 갖다 댔다. 공이 방향을 틀어 골문 구석으로 향한다!"], loseText: ["한 발이 모자랐다. 공이 발끝 앞을 스쳐 지나간다.", "발에 맞긴 했는데 골라인 밖으로 흘러나간다."] },
       { label: "흘려보내 뒤에 양보한다", stats: { "mental.focus": 0.6, "mental.teamwork": 0.4 }, diff: -2, win: "decoy", lose: "turnover",
         winText: ["다리를 벌려 공을 흘려보냈다. 속은 수비 둘이 나를 따라온다!"], loseText: ["흘려보낸 공을 수비가 먼저 걷어 낸다."] },
+      // 옆 동료가 멀면 위 선택지가 빠져서 하나만 남던 것 → 누구나 고를 수 있는 선택지 하나 더
+      { label: "발밑에 멈춰 세우고 슈팅", stats: { "tech.firstTouch": 0.6, "tech.shoot": 0.4 }, diff: 3, win: "shot", lose: "turnover",
+        winText: ["첫 터치로 공을 발밑에 세웠다. 골문이 보인다!"], loseText: ["멈춰 세우려던 공이 발에서 튀었다. 수비가 달려들어 빼앗는다."] },
     ] },
   { id: "mf_lowblock", pos: ["MF"], zone: "att", weight: 2,
     text: ["상대가 자기 진영에 두 줄로 내려앉았다. 틈이 잘 안 보인다.", "공을 잡고 고개를 들었다. 상대 열 명이 전부 자기 진영에 있다."],
@@ -2563,9 +2566,9 @@ const SITUATIONS = [
   { id: "mf_third_man", intro: false, pos: ["MF"], zone: "mid", weight: 2,
     text: ["{mate}에게 공을 주는 순간, 그 너머로 또 다른 동료가 뛰기 시작하는 게 보인다."],
     choices: [
-      { label: "주고 빠져서 다시 받는다", stats: { "tech.pass": 0.4, "phys.speed": 0.3, "mental.teamwork": 0.3 }, diff: 2, win: "shot", lose: "turnover",
+      { label: "주고 빠져서 다시 받는다", by: { trail: ["빨리, 주고 빠져서 다시 받는다", "시간이 없다."], lead: ["여유 있게, 주고 빠져서 다시 받는다", "여유가 있다."] }, stats: { "tech.pass": 0.4, "phys.speed": 0.3, "mental.teamwork": 0.3 }, diff: 2, win: "shot", lose: "turnover",
         winText: ["{mate|이/가} 원터치로 돌려준다. 수비 뒤로 빠져나왔다!"], loseText: ["돌아온 패스를 수비가 끊었다."] },
-      { label: "안전하게 공을 돌린다", stats: { "tech.pass": 0.7, "mental.focus": 0.3 }, diff: -8, win: "keep", lose: "turnover",
+      { label: "안전하게 공을 돌린다", by: { trail: ["다시 만들자, 안전하게 공을 돌린다"], lead: ["시간을 쓰며 안전하게 공을 돌린다", "시계는 우리 편이다."] }, stats: { "tech.pass": 0.7, "mental.focus": 0.3 }, diff: -8, win: "keep", lose: "turnover",
         winText: ["서두르지 않았다. 공은 계속 우리 발밑에 있다."], loseText: ["돌린 공이 끊겼다."] },
       { label: "세 번째 동료에게 바로 찔러 준다", requires: { "mental.focus": 64, "mental.teamwork": 64 }, stats: { "mental.focus": 0.4, "mental.teamwork": 0.3, "tech.pass": 0.3 }, diff: 4, win: "killPass", lose: "turnover",
         winText: ["{mate|을/를} 거치지 않고 그 너머로 바로 찔렀다! 수비가 통째로 무너진다!"], loseText: ["타이밍이 반 박자 빨랐다."] },
@@ -2577,31 +2580,33 @@ const SITUATIONS = [
         winText: ["상대가 자리 잡기 전에 던졌다. 다시 받아 공격을 이어 간다."], loseText: ["던진 공을 상대가 가로챘다."] },
       { label: "박스 쪽으로 길게 던진다", requires: { "phys.strength": 64, "phys.stamina": 60 }, stats: { "phys.strength": 0.7, "phys.stamina": 0.3 }, diff: 5, win: "keyPass", lose: "turnover", physical: true,
         winText: ["롱 스로인이 박스 한가운데로 날아간다! 문전이 혼전이다!"], loseText: ["공이 짧았다. 수비가 머리로 걷어 낸다."] },
+      { label: "가까운 동료 발밑으로 던진다", stats: { "mental.teamwork": 0.6, "mental.focus": 0.4 }, diff: -8, win: "keep", lose: "turnover",
+        winText: ["가까이 다가온 동료 발밑에 정확히 던져 줬다. 공을 지킨다."], loseText: ["던진 공을 상대가 가로챘다."] },
     ] },
   { id: "mf_backpass_steal", intro: false, poss: "them", pos: ["MF", "FW"], zone: "att", weight: 1, spot: [[72, 80], [26, 42]],
     text: ["상대 센터백 {opp}의 백패스가 짧다! 공이 중간에 멈춘다.", "상대 센터백 {opp|이/가} 뒤로 보낸 공이 생각보다 약하다. 잔디 위에서 멈칫한다.", "{opp}의 백패스가 짧게 흘렀다! 내가 조금만 빨리 뛰면 먼저 닿을 거리다."],
     choices: [
-      { label: "달려가 가로챈다", stats: { "phys.speed": 0.6, "mental.focus": 0.4 }, diff: 0, win: "shot", lose: "keep",
+      { label: "달려가 가로챈다", by: { trail: ["지금이다, 달려가 가로챈다", "지금 아니면 없다."], lead: ["여기서 끝내자, 달려가 가로챈다", "확실히 끝낼 차례다."], rain: ["물 먹은 공이 멈췄다, 달려가 가로챈다", "물웅덩이에 공이 멈춰 있었다."] }, stats: { "phys.speed": 0.6, "mental.focus": 0.4 }, diff: 0, win: "shot", lose: "keep",
         winText: ["먼저 닿았다! 골키퍼와 둘만 남았다!"], loseText: ["{ogk|이/가} 뛰쳐나와 먼저 걷어 냈다."] },
-      { label: "패스 길을 막고 압박한다", stats: { "phys.stamina": 0.5, "mental.teamwork": 0.5 }, diff: -4, win: "keep", lose: "keep",
+      { label: "패스 길을 막고 압박한다", by: { trail: ["실수 하나면 된다, 패스 길을 막고 압박한다", "실수 하나면 된다."], lead: ["무리하지 않는다, 패스 길을 막고 압박한다", "무리할 필요가 없다."] }, stats: { "phys.stamina": 0.5, "mental.teamwork": 0.5 }, diff: -4, win: "keep", lose: "keep",
         winText: ["당황한 상대가 공을 터치라인 밖으로 차 냈다."], loseText: ["상대가 겨우 공을 살려 냈다."] },
     ] },
   { id: "mf_open_lane", pos: ["MF"], zone: "mid", weight: 2, spot: [[46, 62], [18, 50]],
     text: ["공을 잡고 돌아섰다. 앞이 텅 비었다. 상대 미드필더들이 한 박자 늦게 돌아온다.", "돌아서고 나서야 알았다. 앞이 휑하다. 상대 미드필더들은 아직 등을 보인 채 뛰어 돌아오는 중이다.", "공을 잡아 몸을 돌렸더니 길이 뚫려 있다. 상대 중원이 자리를 잡으려면 몇 초는 걸린다."],
     choices: [
-      { label: "그대로 몰고 올라가 슈팅", stats: { "tech.dribble": 0.5, "tech.shoot": 0.5 }, diff: 4, win: "shot", lose: "turnover",
+      { label: "그대로 몰고 올라가 슈팅", by: { trail: ["지금이다, 그대로 몰고 올라가 슈팅", "지금 아니면 없다."], lead: ["쐐기를 노리며 그대로 몰고 올라가 슈팅", "쐐기를 박을 기회다."], rain: ["젖은 잔디, 그대로 몰고 올라가 슈팅", "젖은 잔디에서 공이 쭉쭉 미끄러진다."] }, stats: { "tech.dribble": 0.5, "tech.shoot": 0.5 }, diff: 4, win: "shot", lose: "turnover",
         winText: ["아무도 막지 않는다. 박스 앞까지 몰고 가 슈팅 각을 잡았다!", "한 번, 두 번 공을 밀어 놓았다. 아무도 막지 않는다. 박스 앞까지 몰고 가 슈팅 각을 잡았다!"], loseText: ["너무 오래 끌었다. 뒤따라온 {opp}에게 공을 빼앗겼다.", "욕심이 났다. 너무 오래 끌었다. 뒤따라온 {opp}에게 공을 빼앗겼다."] },
-      { label: "박스 밖까지 치고 나가 중거리 슈팅", stats: { "tech.shoot": 0.7, "mental.confidence": 0.3 }, diff: 8, win: "longShot", lose: "miss",
+      { label: "박스 밖까지 치고 나가 중거리 슈팅", by: { trail: ["한 방이 필요하다, 박스 밖까지 치고 나가 중거리 슈팅", "한 방이 필요하다."], lead: ["여기서 끝내자, 박스 밖까지 치고 나가 중거리 슈팅"], rain: ["젖은 공은 무섭다, 박스 밖까지 치고 나가 중거리 슈팅", "젖은 공은 다루기 어렵다."], wind: ["바람을 계산하고 박스 밖까지 치고 나가 중거리 슈팅", "바람까지 계산했다."] }, stats: { "tech.shoot": 0.7, "mental.confidence": 0.3 }, diff: 8, win: "longShot", lose: "miss",
         winText: ["박스 바깥까지 치고 나가 그대로 발등에 얹었다!", "다가오는 사람이 없다. 박스 바깥까지 치고 나가 그대로 발등에 얹었다!"], loseText: ["힘이 너무 들어갔다. 공이 크로스바 위로 높이 뜬다.", "마음이 앞섰다. 힘이 너무 들어갔다. 공이 크로스바 위로 높이 뜬다."] },
-      { label: "공격수에게 찔러 준다", stats: { "tech.pass": 0.7, "mental.teamwork": 0.3 }, diff: 0, win: "keyPass", lose: "keep",
+      { label: "공격수에게 찔러 준다", by: { trail: ["빨리, 공격수에게 찔러 준다", "시간이 없다."], lead: ["역습 기회다, 공격수에게 찔러 준다", "확실히 끝낼 차례다."] }, stats: { "tech.pass": 0.7, "mental.teamwork": 0.3 }, diff: 0, win: "keyPass", lose: "keep",
         winText: ["달려가는 {mate}의 발 앞으로 정확히 찔렀다. 공격이 빨라진다!", "끌지 않았다. 달려가는 {mate}의 발 앞으로 정확히 찔렀다. 공격이 빨라진다!"], loseText: ["수비가 먼저 발을 뻗었다. 공은 다시 우리 미드필더에게 흘렀다.", "길이 보였는데 한 뼘 모자랐다. 수비가 먼저 발을 뻗었다. 공은 다시 우리 미드필더에게 흘렀다."] },
     ] },
   { id: "mf_split", pos: ["MF"], zone: "mid", weight: 2,
     text: ["중앙에서 공을 잡았다. 앞에 상대 미드필더 둘이 나란히 섰다. 둘 사이가 조금 벌어져 있다."],
     choices: [
-      { label: "둘 사이로 치고 들어간다", stats: { "tech.dribble": 0.5, "phys.agility": 0.5 }, diff: 5, win: "shot", lose: "danger",
+      { label: "둘 사이로 치고 들어간다", by: { trail: ["물러설 데가 없다, 둘 사이로 치고 들어간다", "물러설 데가 없다."], lead: ["여기서 끝내자, 둘 사이로 치고 들어간다"], rain: ["젖은 잔디 위로 둘 사이로 치고 들어간다", "젖은 잔디가 공을 빠르게 굴렸다."] }, stats: { "tech.dribble": 0.5, "phys.agility": 0.5 }, diff: 5, win: "shot", lose: "danger",
         winText: ["좁은 틈을 비집고 빠져나왔다!"], loseText: ["두 명 사이에 끼었다. 공을 빼앗겼다."] },
-      { label: "측면으로 벌려 준다", stats: { "tech.pass": 0.8, "mental.teamwork": 0.2 }, diff: -6, win: "keep", lose: "turnover",
+      { label: "측면으로 벌려 준다", by: { trail: ["빨리, 측면으로 벌려 준다", "시간이 없다."], lead: ["넓게 쓰자, 측면으로 벌려 준다", "넓게 쓰면 시간이 간다."], wind: ["바람을 계산하고 측면으로 벌려 준다", "바람까지 계산했다."] }, stats: { "tech.pass": 0.8, "mental.teamwork": 0.2 }, diff: -6, win: "keep", lose: "turnover",
         winText: ["측면의 {mate}에게 넓게 벌렸다."], loseText: ["벌린 공이 라인을 넘어갔다."] },
       { label: "공을 뒤로 끌며 돌아선다", requires: { "tech.dribble": 70, "phys.agility": 64 }, stats: { "tech.dribble": 0.6, "phys.agility": 0.4 }, diff: 5, win: "keyPass", lose: "turnover",
         winText: ["발바닥으로 공을 끌며 빙글 돌았다! 두 명이 동시에 헛발질한다!"], loseText: ["돌다가 공이 발에서 떨어졌다."] },
@@ -2704,9 +2709,9 @@ const SITUATIONS = [
   { id: "df_block", intro: false, poss: "them", pos: ["DF", "MF"], zone: "def", weight: 2, spot: [[16, 24], [24, 44]],
     text: ["{opp|이/가} 박스 앞에서 슈팅 자세를 잡는다!"],
     choices: [
-      { label: "몸을 날려 막는다", stats: { "phys.agility": 0.5, "mental.competitive": 0.5 }, diff: 2, win: "win", lose: "danger",
+      { label: "몸을 날려 막는다", by: { trail: ["더는 물러설 곳이 없다, 몸을 날려 막는다", "더는 내줄 수 없다."], lead: ["이 한 점을 지킨다, 몸을 날려 막는다", "이 한 점을 지켜야 한다."], rain: ["젖은 잔디 위로 몸을 날려 막는다", "물보라가 튀었다."] }, stats: { "phys.agility": 0.5, "mental.competitive": 0.5 }, diff: 2, win: "win", lose: "danger",
         winText: ["몸을 던졌다! 공이 내 허벅지에 맞고 튀어나간다."], loseText: ["몸을 날리는 사이 {opp|이/가} 한 번 접고 찬다!"] },
-      { label: "끝까지 서서 슈팅 각을 좁힌다", stats: { "mental.focus": 0.6, "tech.defense": 0.4 }, diff: 0, win: "win", lose: "danger",
+      { label: "끝까지 서서 슈팅 각을 좁힌다", by: { trail: ["더는 물러설 곳이 없다, 끝까지 서서 슈팅 각을 좁힌다", "더는 내줄 수 없다."], lead: ["침착하게, 끝까지 서서 슈팅 각을 좁힌다", "침착했다."], rain: ["미끄러지지 않게, 끝까지 서서 슈팅 각을 좁힌다", "미끄러운 잔디에서도 버텼다."] }, stats: { "mental.focus": 0.6, "tech.defense": 0.4 }, diff: 0, win: "win", lose: "danger",
         winText: ["끝까지 버텼다. 각이 없어진 {opp|이/가} 옆으로 돌린다."], loseText: ["각을 다 못 막았다. 공이 내 옆을 지나간다!"] },
       { label: "눈을 감지 않고 몸으로 받아 낸다", requires: { "mental.competitive": 70, "phys.strength": 60 }, stats: { "mental.competitive": 0.5, "phys.strength": 0.5 }, diff: -2, win: "win", lose: "danger", physical: true,
         winText: ["강한 슈팅을 가슴으로 받아 냈다. 동료들이 달려와 머리를 쓰다듬는다."], loseText: ["공이 굴절되어 골문 쪽으로 향한다!"] },
@@ -2815,9 +2820,9 @@ const SITUATIONS = [
   { id: "opp_coach_shout", intro: false, poss: "them", pos: ["MF", "DF"], zone: "def", weight: 1, once: true,
     text: ["상대 감독이 사이드라인에서 \"저 친구 약해! 저쪽으로 밀어!\" 하고 나를 가리킨다. {opp|이/가} 나를 향해 온다."],
     choices: [
-      { label: "보란 듯이 정면으로 막아선다", stats: { "tech.defense": 0.6, "mental.competitive": 0.4 }, diff: 3, win: "win", lose: "danger",
+      { label: "보란 듯이 정면으로 막아선다", by: { trail: ["무시당할 순 없다, 보란 듯이 정면으로 막아선다", "지고 있는데 무시까지 당할 순 없다."], lead: ["끝까지 보여 준다, 보란 듯이 정면으로 막아선다", "보여 줄 차례다."] }, stats: { "tech.defense": 0.6, "mental.competitive": 0.4 }, diff: 3, win: "win", lose: "danger",
         winText: ["깔끔하게 공을 빼앗았다. 상대 감독이 팔짱을 낀다."], loseText: ["흥분했다. 너무 일찍 발을 뻗었다!"] },
-      { label: "흥분하지 않고 거리를 지킨다", stats: { "mental.focus": 0.7, "tech.defense": 0.3 }, diff: -3, win: "win", lose: "turnover",
+      { label: "흥분하지 않고 거리를 지킨다", by: { trail: ["참는다, 흥분하지 않고 거리를 지킨다", "급한 마음을 눌렀다."], lead: ["이기고 있다, 흥분하지 않고 거리를 지킨다", "이기고 있는 건 우리다."] }, stats: { "mental.focus": 0.7, "tech.defense": 0.3 }, diff: -3, win: "win", lose: "turnover",
         winText: ["차분히 따라가며 길을 막았다. {opp|이/가} 결국 뒤로 돌린다."], loseText: ["너무 물러섰다. {opp|이/가} 여유 있게 공을 앞으로 보낸다."] },
     ] },
   { id: "mate_yellow", intro: false, poss: "them", pos: ["MF", "DF"], zone: "def", weight: 1, once: true, late: true,
@@ -2942,6 +2947,8 @@ const SITUATIONS = [
         winText: ["바람을 탄 공이 골키퍼 머리 위로 뚝 떨어진다!"], loseText: ["조금 길었다. 크로스바 위로."] },
       { label: "바람을 등지고 침투 패스", stats: { "tech.pass": 0.7, "mental.focus": 0.3 }, diff: 2, win: "keyPass", lose: "turnover",
         winText: ["바람에 실린 패스가 {mate}의 발 앞에 딱 멈춘다!"], loseText: ["바람에 너무 멀리 날아갔다."] },
+      { label: "가까운 동료에게 짧게 연결", stats: { "tech.pass": 0.7, "mental.teamwork": 0.3 }, diff: -6, win: "keep", lose: "turnover",
+        winText: ["바람이 세다. 무리하지 않고 {mate}에게 짧게 내줬다."], loseText: ["패스가 짧았다. 상대가 가로챈다."] },
     ] },  // ── 경기 흐름과 이어지는 장면 (flowUp: 우리가 기세를 탔을 때 / flowDown: 상대에게 흐름이 넘어갔을 때) ─────
   // 공격수
   { id: "fw_flow_storm", intro: false, pos: ["FW"], zone: "att", weight: 3, flowUp: true,
@@ -3027,9 +3034,9 @@ const SITUATIONS = [
   { id: "df_player_down", once: true, intro: false, poss: "us", pos: ["DF", "MF"], zone: "def", weight: 0.25, once: true,
     text: ["공을 따냈다. 그런데 상대 선수 {opp|이/가} 다리를 잡고 쓰러져 있다. 주심은 아직 휘슬을 불지 않았다."],
     choices: [
-      { label: "공을 밖으로 차 내 경기를 멈춘다", stats: { "mental.teamwork": 0.7, "mental.focus": 0.3 }, diff: -10, win: "keep", lose: "keep",
+      { label: "공을 밖으로 차 내 경기를 멈춘다", by: { trail: ["지고 있어도, 공을 밖으로 차 내 경기를 멈춘다", "지고 있어도 이건 지켜야 한다."], lead: ["페어플레이, 공을 밖으로 차 내 경기를 멈춘다"] }, stats: { "mental.teamwork": 0.7, "mental.focus": 0.3 }, diff: -10, win: "keep", lose: "keep",
         winText: ["공을 터치라인 밖으로 차 냈다. 양 팀 관중석에서 박수가 나온다. 재개 후 상대가 공을 우리에게 돌려준다."], loseText: ["공을 밖으로 찼다. 상대가 스로인을 우리에게 돌려준다."] },
-      { label: "주심이 불 때까지 계속 플레이한다", stats: { "tech.pass": 0.6, "mental.focus": 0.4 }, diff: 2, win: "keyPass", lose: "turnover",
+      { label: "주심이 불 때까지 계속 플레이한다", by: { trail: ["한 골이 급하다, 주심이 불 때까지 계속 플레이한다", "한 골이 급했다."] }, stats: { "tech.pass": 0.6, "mental.focus": 0.4 }, diff: 2, win: "keyPass", lose: "turnover",
         winText: ["앞으로 빠르게 연결했다. 상대 벤치에서 항의가 쏟아진다. 주심은 그대로 진행시킨다."], loseText: ["서두른 패스가 끊겼다. 관중석에서 야유도 섞여 나온다."] },
     ] },
   // ── 현대 축구 장면 (경기장 움직임과 함께 추가. 연출은 data/scenes.js) ──
@@ -3057,11 +3064,11 @@ const SITUATIONS = [
   { id: "mf_drop_between", intro: false, pos: ["MF"], zone: "def", weight: 2,
     text: ["상대 공격수 둘이 우리 센터백 두 명을 하나씩 막아섰다. 내가 둘 사이로 내려가면 수비가 셋이 된다."],
     choices: [
-      { label: "센터백 사이로 내려가 받는다", stats: { "tech.firstTouch": 0.5, "tech.pass": 0.5 }, diff: -4, win: "keep", lose: "danger",
+      { label: "센터백 사이로 내려가 받는다", by: { trail: ["다시 만들자, 센터백 사이로 내려가 받는다", "조급해하지 않기로 했다."], lead: ["침착하게 센터백 사이로 내려가 받는다", "침착했다."] }, stats: { "tech.firstTouch": 0.5, "tech.pass": 0.5 }, diff: -4, win: "keep", lose: "danger",
         winText: ["센터백 사이에서 받아 돌아섰다. 상대 공격수 둘이 한꺼번에 따돌려졌다."], loseText: ["내려와 받는 순간 뒤에서 발이 들어왔다. 우리 골문 앞이다!"] },
-      { label: "압박 뒤 공간에서 기다린다", stats: { "mental.focus": 0.6, "tech.firstTouch": 0.4 }, diff: 3, win: "keyPass", lose: "turnover",
+      { label: "압박 뒤 공간에서 기다린다", by: { trail: ["급해도, 압박 뒤 공간에서 기다린다"], lead: ["역습을 노리며 압박 뒤 공간에서 기다린다"] }, stats: { "mental.focus": 0.6, "tech.firstTouch": 0.4 }, diff: 3, win: "keyPass", lose: "turnover",
         winText: ["상대 공격수 등 뒤에서 받았다. 몸을 돌리니 앞이 다 열려 있다!"], loseText: ["센터백의 패스가 나에게 오기 전에 끊겼다."] },
-      { label: "골키퍼에게 돌리라고 손짓한다", stats: { "mental.teamwork": 0.7, "mental.focus": 0.3 }, diff: -9, win: "keep", lose: "turnover",
+      { label: "골키퍼에게 돌리라고 손짓한다", by: { trail: ["처음부터 다시, 골키퍼에게 돌리라고 손짓한다", "처음부터 다시다."], lead: ["시간을 쓰자, 골키퍼에게 돌리라고 손짓한다", "시계는 우리 편이다."] }, stats: { "mental.teamwork": 0.7, "mental.focus": 0.3 }, diff: -9, win: "keep", lose: "turnover",
         winText: ["골키퍼를 거쳐 반대편으로 돌았다. 압박이 한쪽으로 쏠린 사이 빠져나간다."], loseText: ["골키퍼의 킥이 짧았다. 상대 미드필더가 머리로 따낸다."] },
     ] },
   { id: "fw_cutback_arrive", intro: false, pos: ["FW"], zone: "att", weight: 3,
@@ -3087,11 +3094,11 @@ const SITUATIONS = [
   { id: "fw_false_nine", intro: false, pos: ["FW"], zone: "mid", weight: 1.2,
     text: ["하프라인 근처까지 내려와 공을 받았다. 상대 센터백 {opp|이/가} 나를 따라 올라왔다. 그 뒤가 비었다.", "공을 받으러 하프라인 근처까지 내려왔다. 상대 센터백 {opp|이/가} 자리를 버리고 따라붙는다. 센터백이 떠난 자리가 훤하다.", "하프라인 근처에서 등을 지고 공을 받았다. 숨소리가 들릴 만큼 {opp|이/가} 가깝다. 센터백이 여기까지 나왔으니 뒤는 비어 있을 것이다."],
     choices: [
-      { label: "돌아서서 빈 공간으로 동료를 보낸다", stats: { "tech.pass": 0.6, "mental.focus": 0.4 }, diff: 3, win: "killPass", lose: "turnover",
+      { label: "돌아서서 빈 공간으로 동료를 보낸다", by: { trail: ["지금이다, 돌아서서 빈 공간으로 동료를 보낸다", "지금 아니면 없다."], lead: ["역습 한 방, 돌아서서 빈 공간으로 동료를 보낸다", "확실히 끝낼 차례다."] }, stats: { "tech.pass": 0.6, "mental.focus": 0.4 }, diff: 3, win: "killPass", lose: "turnover",
         winText: ["센터백이 비운 자리로 공을 찔렀다. 측면에서 뛰어든 {mate|이/가} 골키퍼와 마주한다!", "미리 봐 둔 빈자리였다. 센터백이 비운 자리로 공을 찔렀다. 측면에서 뛰어든 {mate|이/가} 골키퍼와 마주한다!"], loseText: ["돌아서는 순간 {opp|이/가} 발을 넣었다.", "아차 싶었다. 돌아서는 순간 {opp|이/가} 발을 넣었다."] },
-      { label: "등지고 버티며 반칙을 얻어 낸다", stats: { "phys.strength": 0.7, "mental.focus": 0.3 }, diff: -4, win: "setPiece", lose: "turnover",
+      { label: "등지고 버티며 반칙을 얻어 낸다", by: { trail: ["프리킥이라도, 등지고 버티며 반칙을 얻어 낸다", "뭐라도 얻어 내야 한다."], lead: ["시간을 벌자, 등지고 버티며 반칙을 얻어 낸다", "시간을 벌어야 한다."] }, stats: { "phys.strength": 0.7, "mental.focus": 0.3 }, diff: -4, win: "setPiece", lose: "turnover",
         winText: ["끝까지 버텼다. 참다못한 {opp|이/가} 뒤에서 밀어 넘어뜨린다. 프리킥!", "등을 대고 끝까지 버텼다. 참다못한 {opp|이/가} 뒤에서 밀어 넘어뜨린다. 프리킥!"], loseText: ["버티다가 균형을 잃었다. 공이 상대 발에 걸린다.", "힘이 빠졌다. 버티다가 균형을 잃었다. 공이 상대 발에 걸린다."] },
-      { label: "원터치로 내주고 다시 뒤로 뛴다", stats: { "tech.firstTouch": 0.5, "phys.speed": 0.5 }, diff: 6, win: "shot", lose: "offside",
+      { label: "원터치로 내주고 다시 뒤로 뛴다", by: { trail: ["빨리, 원터치로 내주고 다시 뒤로 뛴다", "시간이 없다."], lead: ["여유 있게, 원터치로 내주고 다시 뒤로 뛴다"] }, stats: { "tech.firstTouch": 0.5, "phys.speed": 0.5 }, diff: 6, win: "shot", lose: "offside",
         winText: ["내주자마자 뒤로 돌아 뛰었다. 다시 돌아온 공이 내 앞에 떨어진다!", "그대로 달렸다. 내주자마자 뒤로 돌아 뛰었다. 다시 돌아온 공이 내 앞에 떨어진다!"], loseText: ["돌려받는 순간 부심 깃발이 올라간다. 오프사이드.", "발이 조금 빨랐다. 돌려받는 순간 부심 깃발이 올라간다. 오프사이드."] },
     ] },
   { id: "df_gk_triangle", intro: false, pos: ["DF"], zone: "def", weight: 2,
@@ -3162,11 +3169,11 @@ const SITUATIONS = [
   { id: "df_race", intro: false, poss: "them", pos: ["DF"], zone: "def", weight: 0.8,
     text: ["상대 공격수 {opp|이/가} 수비 뒤로 빠져나갔다! 공을 쫓는 건 나뿐이다.", "수비 뒤로 공이 넘어왔다. {opp|과/와} 나, 둘의 경주다!", "공 하나에 수비 라인이 뚫렸다. {opp|이/가} 먼저 출발했다. 따라갈 수 있는 건 나 하나다.", "공이 내 머리 위를 넘어갔다. 돌아서니 {opp|이/가} 벌써 어깨를 나란히 하고 있다. 이제 달리기다."],
     choices: [
-      { label: "끝까지 쫓아가 슬라이딩 태클", stats: { "tech.defense": 0.6, "phys.speed": 0.4 }, diff: 4, win: "win", lose: "danger",
+      { label: "끝까지 쫓아가 슬라이딩 태클", by: { trail: ["뚫리면 끝이다, 끝까지 쫓아가 슬라이딩 태클", "여기서 더 내주면 끝이다."], lead: ["한 점만 지키자, 끝까지 쫓아가 슬라이딩 태클", "지켜야 할 한 점이다."], rain: ["젖은 잔디를 믿고 끝까지 쫓아가 슬라이딩 태클", "젖은 잔디 덕에 몸이 쭉 미끄러졌다."] }, stats: { "tech.defense": 0.6, "phys.speed": 0.4 }, diff: 4, win: "win", lose: "danger",
         winText: ["마지막 순간 몸을 던졌다! 발끝으로 공만 걷어 냈다!", "기회는 한 번뿐이다. 마지막 순간 몸을 던졌다! 발끝으로 공만 걷어 냈다!"], loseText: ["태클이 한 뼘 늦었다! {opp|이/가} 골문을 향해 달린다!", "잔디만 긁었다. 태클이 한 뼘 늦었다! {opp|이/가} 골문을 향해 달린다!"] },
-      { label: "몸을 붙여 바깥으로 몰아낸다", stats: { "phys.strength": 0.5, "phys.speed": 0.5 }, diff: 1, win: "win", lose: "danger", physical: true,
+      { label: "몸을 붙여 바깥으로 몰아낸다", by: { trail: ["여기서 더 내줄 순 없다, 몸을 붙여 바깥으로 몰아낸다", "여기서 더 내줄 순 없다."], lead: ["급할 것 없다, 몸을 붙여 바깥으로 몰아낸다", "급할 것 없다."], rain: ["미끄러운 잔디, 몸을 붙여 바깥으로 몰아낸다", "미끄러운 잔디에선 끝까지 버티는 쪽이 이긴다."] }, stats: { "phys.strength": 0.5, "phys.speed": 0.5 }, diff: 1, win: "win", lose: "danger", physical: true,
         winText: ["어깨를 붙여 끝까지 바깥으로 밀어냈다. 공이 터치라인 밖으로 나간다.", "발은 뻗지 않았다. 어깨를 붙여 끝까지 바깥으로 밀어냈다. 공이 터치라인 밖으로 나간다."], loseText: ["몸싸움에서 밀렸다! {opp|이/가} 안으로 파고든다!", "어깨를 댔지만 버티는 힘이 달랐다. 몸싸움에서 밀렸다! {opp|이/가} 안으로 파고든다!"] },
-      { label: "각을 좁히며 골키퍼와 함께 막는다", stats: { "mental.teamwork": 0.6, "mental.focus": 0.4 }, diff: 0, win: "win", lose: "danger",
+      { label: "각을 좁히며 골키퍼와 함께 막는다", by: { trail: ["더는 물러설 곳이 없다, 각을 좁히며 골키퍼와 함께 막는다", "더는 내줄 수 없다."], lead: ["이 한 점을 지킨다, 각을 좁히며 골키퍼와 함께 막는다", "이 한 점을 지켜야 한다."] }, stats: { "mental.teamwork": 0.6, "mental.focus": 0.4 }, diff: 0, win: "win", lose: "danger",
         winText: ["각을 좁히며 따라가자 골키퍼 {gk|이/가} 뛰쳐나와 공을 덮쳤다.", "혼자 끝낼 일이 아니다. 각을 좁히며 따라가자 골키퍼 {gk|이/가} 뛰쳐나와 공을 덮쳤다."], loseText: ["골키퍼와 내가 서로 미뤘다. {opp|이/가} 그 사이로 찬다!", "'네 공'이라고 생각한 건 둘 다였다. 골키퍼와 내가 서로 미뤘다. {opp|이/가} 그 사이로 찬다!"] },
     ] },
   // 수비수: 골라인 앞 마지막 수비
@@ -3197,11 +3204,11 @@ const SITUATIONS = [
   { id: "df_long_assist", intro: false, pos: ["DF"], zone: "def", weight: 2, spot: [[18, 42], [10, 58]],
     text: ["공을 잡고 고개를 들었다. 상대 수비 라인이 높이 올라와 있다. 우리 공격수가 뒷공간을 노린다.", "상대 공격을 끊었다. 앞을 보니 우리 공격수가 수비 뒤로 뛸 준비를 하고 있다.", "공을 잡고 숨을 골랐다. 상대 수비들이 겁 없이 올라와 있다. 그 등 뒤로 우리 공격수가 어깨를 낮춘다.", "공을 따냈다. 멀리서 우리 공격수가 손가락으로 수비 뒤쪽을 가리킨다. 거기가 비어 있다."],
     choices: [
-      { label: "수비 뒤로 길게 띄운다", stats: { "tech.pass": 0.6, "tech.cross": 0.4 }, diff: 5, win: "assist", lose: "turnover",
+      { label: "수비 뒤로 길게 띄운다", by: { trail: ["한 번에 간다, 수비 뒤로 길게 띄운다", "시간이 없다. 한 번에 간다."], lead: ["쐐기를 노리며 수비 뒤로 길게 띄운다", "쐐기를 박을 기회다."], rain: ["물 먹은 잔디 위로는 못 굴린다, 수비 뒤로 길게 띄운다", "물웅덩이 위로는 굴릴 수 없다."], wind: ["바람을 계산하고 수비 뒤로 길게 띄운다", "바람까지 계산했다."] }, stats: { "tech.pass": 0.6, "tech.cross": 0.4 }, diff: 5, win: "assist", lose: "turnover",
         winText: ["수비 머리 위로 길게! {mate|이/가} 뒷공간으로 빠져나가 혼자 달린다!", "눈이 마주쳤다. 수비 머리 위로 길게! {mate|이/가} 뒷공간으로 빠져나가 혼자 달린다!"], loseText: ["너무 길었다. 골키퍼가 나와서 잡는다.", "생각은 좋았는데 발에 힘이 실렸다. 너무 길었다. 골키퍼가 나와서 잡는다."] },
-      { label: "공격수 발밑으로 정확히 붙여 준다", stats: { "tech.pass": 0.7, "mental.focus": 0.3 }, diff: 0, win: "keyPass", lose: "turnover",
+      { label: "공격수 발밑으로 정확히 붙여 준다", by: { trail: ["급할수록, 공격수 발밑으로 정확히 붙여 준다", "급할수록 정확해야 한다."], lead: ["공을 지키며 공격수 발밑으로 정확히 붙여 준다", "공을 잃지 않는 게 먼저다."], rain: ["비가 와도 낮게, 공격수 발밑으로 정확히 붙여 준다", "공이 물을 먹어 무겁다."], wind: ["바람을 피해 낮게, 공격수 발밑으로 정확히 붙여 준다", "바람이 셀 땐 낮게 차는 게 답이다."] }, stats: { "tech.pass": 0.7, "mental.focus": 0.3 }, diff: 0, win: "keyPass", lose: "turnover",
         winText: ["공격수 발밑에 정확히 붙였다. {mate|이/가} 돌아서서 앞을 본다.", "띄우지 않고 낮게 깔았다. 공격수 발밑에 정확히 붙였다. {mate|이/가} 돌아서서 앞을 본다."], loseText: ["패스가 수비 발에 걸렸다.", "길이 좁았다. 패스가 수비 발에 걸렸다."] },
-      { label: "가까운 미드필더에게 짧게 준다", stats: { "tech.pass": 0.7, "mental.teamwork": 0.3 }, diff: -8, win: "keep", lose: "turnover",
+      { label: "가까운 미드필더에게 짧게 준다", by: { trail: ["다시 만들자, 가까운 미드필더에게 짧게 준다", "조급해하지 않기로 했다."], lead: ["시간을 쓰며 가까운 미드필더에게 짧게 준다", "시계는 우리 편이다."], wind: ["바람이 세다, 가까운 미드필더에게 짧게 준다", "바람이 세다."] }, stats: { "tech.pass": 0.7, "mental.teamwork": 0.3 }, diff: -8, win: "keep", lose: "turnover",
         winText: ["가까운 {mate}에게 짧게 내줬다. 차분하게 다시 시작한다.", "서두를 이유가 없다. 가까운 {mate}에게 짧게 내줬다. 차분하게 다시 시작한다."], loseText: ["패스가 짧았다. 상대가 가로챈다.", "쉬운 공이라고 방심했다. 패스가 짧았다. 상대가 가로챈다."] },
     ] },  // ── 세부 포지션 장면 (2학년 하계대회 뒤 면담에서 정한 자리에서만 나옴. detail: 그 자리 이름이나 묶음) ──
   // {side}: 장면이 벌어지는 쪽 (왼쪽·오른쪽). 경기장에서 실제로 그쪽일 때만 나옴
@@ -3266,11 +3273,11 @@ const SITUATIONS = [
   { id: "df_carry_out", pos: ["DF"], zone: "def", weight: 2.5,
     text: ["공을 잡았다. 상대 공격수들이 패스 길만 막고 서 있다. 내 앞이 넓게 비었다.", "수비 라인에서 공을 받았다. 아무도 나에게 달려들지 않는다. 앞에 빈 공간이 보인다.", "공을 받았는데 아무도 오지 않는다. 상대 공격수들은 내 동료들만 지키고 서 있다. 나더러 나오라는 것 같다.", "수비 라인에서 공을 잡았다. 줄 곳은 다 막혔는데, 정작 내 앞은 뻥 뚫려 있다."],
     choices: [
-      { label: "몰고 올라가 상대를 끌어낸다", stats: { "tech.dribble": 0.4, "phys.speed": 0.3, "mental.confidence": 0.3 }, diff: 3, win: "keyPass", lose: "turnover",
+      { label: "몰고 올라가 상대를 끌어낸다", by: { trail: ["내가 올라간다, 몰고 올라가 상대를 끌어낸다", "수비수라고 기다릴 때가 아니다."], lead: ["여유 있게 몰고 올라가 상대를 끌어낸다", "여유가 있다."] }, stats: { "tech.dribble": 0.4, "phys.speed": 0.3, "mental.confidence": 0.3 }, diff: 3, win: "keyPass", lose: "turnover",
         winText: ["하프라인까지 몰고 올라갔다. 미드필더가 끌려 나온 자리로 {mate}에게 찔러 줬다!", "빈 공간으로 성큼성큼 몰고 올라갔다. 미드필더가 끌려 나온 자리로 {mate}에게 찔러 줬다!"], loseText: ["몰고 나가다 {opp}에게 공을 빼앗겼다.", "너무 깊게 들어갔다. 몰고 나가다 {opp}에게 공을 빼앗겼다."] },
-      { label: "몇 걸음 몰고 나가 측면으로 벌린다", stats: { "tech.dribble": 0.3, "tech.pass": 0.7 }, diff: -2, win: "keep", lose: "turnover",
+      { label: "몇 걸음 몰고 나가 측면으로 벌린다", by: { trail: ["빨리, 몇 걸음 몰고 나가 측면으로 벌린다", "시간이 없다."], lead: ["침착하게 몇 걸음 몰고 나가 측면으로 벌린다", "침착했다."] }, stats: { "tech.dribble": 0.3, "tech.pass": 0.7 }, diff: -2, win: "keep", lose: "turnover",
         winText: ["몇 걸음 몰고 나가 상대를 끌어낸 뒤 측면의 {mate}에게 벌렸다.", "여유를 갖고 몇 걸음 몰고 나가 상대를 끌어낸 뒤 측면의 {mate}에게 벌렸다."], loseText: ["측면으로 벌린 패스가 {opp}의 발에 걸렸다.", "발끝이 무뎠다. 측면으로 벌린 패스가 {opp}의 발에 걸렸다."] },
-      { label: "멈춰 서서 골키퍼에게 돌린다", stats: { "mental.focus": 0.6, "tech.pass": 0.4 }, diff: -8, win: "keep", lose: "turnover",
+      { label: "멈춰 서서 골키퍼에게 돌린다", by: { trail: ["처음부터 다시, 멈춰 서서 골키퍼에게 돌린다", "처음부터 다시다."], lead: ["시간을 쓰며 멈춰 서서 골키퍼에게 돌린다", "시계는 우리 편이다."] }, stats: { "mental.focus": 0.6, "tech.pass": 0.4 }, diff: -8, win: "keep", lose: "turnover",
         winText: ["멈춰 서서 상대를 기다리게 했다. 골키퍼 {gk}에게 돌려 다시 시작한다.", "서두를 이유가 없다. 멈춰 서서 상대를 기다리게 했다. 골키퍼 {gk}에게 돌려 다시 시작한다."], loseText: ["돌려준 공이 짧았다. {opp|이/가} 달려들어 가로챈다!", "방심한 게 컸다. 돌려준 공이 짧았다. {opp|이/가} 달려들어 가로챈다!"] },
     ] },
   // 수비수: 우리 공격이 끊기고 2 대 2 역습
@@ -3321,11 +3328,11 @@ const SITUATIONS = [
   { id: "mf_scan_turn", pos: ["MF"], zone: "mid", weight: 1.6,
     text: ["공이 오기 전, 어깨 너머로 한 번 돌아봤다. 등 뒤에서 {opp|이/가} 달려온다. 옆에는 {wing|이/가} 서 있다.", "패스가 오는 동안 고개를 돌려 확인했다. {opp|이/가} 내 등 쪽으로 붙는다. 가까이에 {wing|이/가} 있다.", "공이 오기 전, 어깨 너머로 한 번 돌아봤다. {opp|이/가} 등 뒤로 바짝 다가온다.", "공이 굴러오는 짧은 사이, 고개를 돌렸다. {opp|이/가} 등 뒤에서 속도를 올린다. 받기 전에 정해야 한다.", "패스가 출발했다. 흘끗 뒤를 봤다. {opp|이/가} 달려오고, 옆쪽에 {wing|이/가} 손을 들고 있다."],
     choices: [
-      { label: "몸을 반쯤 열고 받아 바로 돌아선다", stats: { "tech.firstTouch": 0.6, "tech.dribble": 0.4 }, diff: 3, win: "keyPass", lose: "turnover",
+      { label: "몸을 반쯤 열고 받아 바로 돌아선다", by: { trail: ["앞으로 가야 한다, 몸을 반쯤 열고 받아 바로 돌아선다", "시간이 없다."], lead: ["침착하게, 몸을 반쯤 열고 받아 바로 돌아선다", "침착했다."], rain: ["미끄러운 공, 몸을 반쯤 열고 받아 바로 돌아선다", "젖은 공이 발에 착 감겼다."] }, stats: { "tech.firstTouch": 0.6, "tech.dribble": 0.4 }, diff: 3, win: "keyPass", lose: "turnover",
         winText: ["반쯤 연 몸으로 받아 그대로 돌아섰다. {opp|이/가} 헛발질한다. 앞으로 찔러 준다!", "미리 봐 둔 덕이다. 반쯤 연 몸으로 받아 그대로 돌아섰다. {opp|이/가} 헛발질한다. 앞으로 찔러 준다!"], loseText: ["받는 순간 {opp|이/가} 등 뒤에서 발을 넣어 빼앗았다.", "보긴 봤다. 몸이 따라가지 않았다. 받는 순간 {opp|이/가} 등 뒤에서 발을 넣어 빼앗았다."] },
-      { label: "원터치로 벽패스를 주고 빠져나간다", stats: { "tech.pass": 0.5, "mental.teamwork": 0.5 }, diff: 0, win: "keep", lose: "turnover",
+      { label: "원터치로 벽패스를 주고 빠져나간다", by: { trail: ["시간 없다, 원터치로 벽패스를 주고 빠져나간다", "시간이 없다."], lead: ["여유 있게, 원터치로 벽패스를 주고 빠져나간다", "여유가 있다."] }, stats: { "tech.pass": 0.5, "mental.teamwork": 0.5 }, diff: 0, win: "keep", lose: "turnover",
         winText: ["{mate}에게 원터치로 주고 빠져나가 다시 받았다. {opp|을/를} 벗어났다.", "공을 세우지 않았다. {mate}에게 원터치로 주고 빠져나가 다시 받았다. {opp|을/를} 벗어났다."], loseText: ["벽패스가 {opp}의 발에 걸렸다.", "주는 발이 조금 급했다. 벽패스가 {opp}의 발에 걸렸다."] },
-      { label: "받지 않고 흘려보낸다", stats: { "mental.focus": 0.5, "mental.teamwork": 0.5 }, diff: 2, win: "keep", lose: "turnover",
+      { label: "받지 않고 흘려보낸다", by: { trail: ["모험이다, 받지 않고 흘려보낸다", "한번 해 보기로 했다."], lead: ["상대를 속이며 받지 않고 흘려보낸다"] }, stats: { "mental.focus": 0.5, "mental.teamwork": 0.5 }, diff: 2, win: "keep", lose: "turnover",
         winText: ["받는 척하다 공을 그대로 흘려보냈다! {opp|이/가} 속았다. {wing|이/가} 받아 앞으로 치고 나간다!", "발을 대는 시늉만 했다. 공을 그대로 흘려보냈다! {opp|이/가} 속았다. {wing|이/가} 받아 앞으로 치고 나간다!"], loseText: ["흘려보낸 공을 {opp|이/가} 먼저 끊었다.", "속임수가 통하지 않았다. 흘려보낸 공을 {opp|이/가} 먼저 끊었다."] },
     ] },
   // 미드필더: 측면에서 셋이 삼각형
@@ -3343,11 +3350,11 @@ const SITUATIONS = [
   { id: "mf_track_runner", intro: false, poss: "them", pos: ["MF"], zone: "def", weight: 2,
     text: ["{opp2|이/가} 내 옆을 지나 우리 박스 쪽으로 뛰어든다. 공은 {opp|이/가} 가지고 있다.", "공을 가진 {opp|이/가} 고개를 든다. 그 순간 {opp2|이/가} 내 뒤로 빠져 박스를 향해 달린다.", "{opp|이/가} 공을 멈춰 세운다. 줄 곳을 찾는 눈이다. 내 시야 끝에서 {opp2|이/가} 슬그머니 우리 박스 쪽으로 출발한다.", "공은 {opp}의 발밑에 있다. 더 급한 쪽은 따로 있다. {opp2|이/가} 내 어깨를 스치며 우리 박스로 뛰어든다."],
     choices: [
-      { label: "끝까지 따라간다", stats: { "phys.stamina": 0.5, "mental.focus": 0.5 }, diff: 2, win: "win", lose: "danger",
+      { label: "끝까지 따라간다", by: { trail: ["더는 물러설 곳이 없다, 끝까지 따라간다", "더는 내줄 수 없다."], lead: ["이 한 점을 지킨다, 끝까지 따라간다", "이 한 점을 지켜야 한다."] }, stats: { "phys.stamina": 0.5, "mental.focus": 0.5 }, diff: 2, win: "win", lose: "danger",
         winText: ["끝까지 따라붙었다. {opp|이/가} {opp2}에게 주려던 패스를 내가 끊어 냈다!", "눈을 떼지 않고 끝까지 따라붙었다. {opp|이/가} {opp2}에게 주려던 패스를 내가 끊어 냈다!"], loseText: ["따라가다 한 발 늦었다. {opp2|이/가} 박스 안에서 공을 받았다!", "반 박자 늦었다. 따라가다 한 발 늦었다. {opp2|이/가} 박스 안에서 공을 받았다!"] },
-      { label: "공 쪽을 막고 동료에게 맡긴다", stats: { "mental.teamwork": 0.6, "tech.defense": 0.4 }, diff: -2, win: "win", lose: "danger",
+      { label: "공 쪽을 막고 동료에게 맡긴다", by: { trail: ["동료를 믿는다, 공 쪽을 막고 동료에게 맡긴다"], lead: ["침착하게 공 쪽을 막고 동료에게 맡긴다", "침착했다."] }, stats: { "mental.teamwork": 0.6, "tech.defense": 0.4 }, diff: -2, win: "win", lose: "danger",
         winText: ["공 쪽을 막아섰다. 앞으로 줄 곳이 없다. {opp|이/가} 결국 뒤로 돌린다.", "동료를 믿고 공 쪽을 막아섰다. 앞으로 줄 곳이 없다. {opp|이/가} 결국 뒤로 돌린다."], loseText: ["맡긴 줄 알았는데 아무도 없었다. {opp2|이/가} 혼자 공을 받았다!", "소통이 어긋났다. 맡긴 줄 알았는데 아무도 없었다. {opp2|이/가} 혼자 공을 받았다!"] },
-      { label: "멈춰 서서 오프사이드를 노린다", stats: { "mental.focus": 0.7, "mental.teamwork": 0.3 }, diff: 4, win: "win", lose: "danger",
+      { label: "멈춰 서서 오프사이드를 노린다", by: { trail: ["모험이다, 멈춰 서서 오프사이드를 노린다", "한번 해 보기로 했다."], lead: ["라인을 맞춰 멈춰 서서 오프사이드를 노린다"] }, stats: { "mental.focus": 0.7, "mental.teamwork": 0.3 }, diff: 4, win: "win", lose: "danger",
         winText: ["멈춰 섰다. {opp2|이/가} 수비 라인보다 먼저 나갔다. 오프사이드!", "라인을 맞춰 멈춰 섰다. {opp2|이/가} 수비 라인보다 먼저 나갔다. 오프사이드!"], loseText: ["깃발은 올라가지 않았다. {opp2|이/가} 혼자 골키퍼와 마주했다!", "타이밍이 어긋났다. 깃발은 올라가지 않았다. {opp2|이/가} 혼자 골키퍼와 마주했다!"] },
     ] },
   // 미드필더: 측면 동료 옆으로 — 안쪽(언더래핑)이냐 바깥(오버래핑)이냐
@@ -8518,6 +8525,13 @@ const CHANCE_LEAD = 4, CHANCE_PULL = 0.6, CHANCE_DFREB = 0.2, CHANCE_DFCORNER = 
 const throwOk = (ctx, s) => { if (ctx.cat !== "set:throw" || !ctx.set) return true;
   const r = SCENES[s.id]?.at || s.spot; if (!r) return true;
   const x = (ctx.set.spot || [ctx.set.x])[0]; return x == null || (x >= r[0][0] - 10 && x <= r[0][1] + 10); };
+// 선택지 이름을 바꿀 경기 상황: 55분 넘어 1~2점 뒤짐(trail) / 앞섬(lead), 아니면 비·바람(rain, wind)
+function choiceMood(m) {
+  const d = m.score[0] - m.score[1];
+  if (m.minute >= 55 && d < 0 && d >= -2) return "trail";
+  if (m.minute >= 55 && d > 0) return "lead";
+  return m.weather === "rain" || m.weather === "wind" ? m.weather : null;
+}
 // 기다리던 장면과 맞지 않는 상황이 너무 오래 이어질 때: 지금 상황에 가장 어울리는 장면
 function pickSituation(state, m, ctx, only = null) {
   const pool = [];
@@ -8870,10 +8884,12 @@ function finishStaging(state, m) {
   if (sig && Object.entries(sig.requires).every(([k, v]) => getPath(state.player.stats, k) >= v)) list.push({ ...sig, signature: true });
   // 선택지 글자에 {mate} 같은 자리 표시가 남지 않게 (경기 장면 선택지는 따로 채우지 않으므로 안전장치)
   const lab = t => /\{/.test(t) ? fill(t, { mate: mateName(m), opp: oppName(m), gk: m.gk.us, ogk: m.gk.them }) : t;
-  const choices = list.map(c => { const p = prob(state, m, c); return { label: lab(c.label), p, signature: !!c.signature,
+  // 경기 상황에 따라 보이는 선택지 이름만 바뀜 (c.by[상황][0]). 엔진은 늘 원래 이름(c.label)을 읽으므로 화면 동작·타이밍은 그대로
+  const ck = choiceMood(m);
+  const choices = list.map(c => { const p = prob(state, m, c); return { label: lab(c.by?.[ck]?.[0] || c.label), p, signature: !!c.signature,
     level: p >= 0.65 ? "높음" : p >= 0.4 ? "보통" : "낮음", timing: timingOf(c), follow: !!(m.talk?.tag && choiceTag(c) === m.talk.tag) }; });
   const texts = noWing ? sit.text.filter(t => !/\{wing/.test(t)) : sit.text;
-  m.pending = { sit, list, vars: sv, text: fill(pickFresh("s:" + sit.id, texts.length ? texts : sit.text), sv), choices, ball: [S.ball.x, S.ball.y], ctx };
+  m.pending = { sit, list, ck, vars: sv, text: fill(pickFresh("s:" + sit.id, texts.length ? texts : sit.text), sv), choices, ball: [S.ball.x, S.ball.y], ctx };
 }
 
 // 경기 시작 줄
@@ -9214,9 +9230,12 @@ function resolve(state, m, ci, timing = null) {
   const S = m.sim, ts = S.t;
   // 상황 설명을 기록에 남겨야 나중에 읽어도 앞뒤가 이어짐
   const head = [{ t: pd.text, k: "me", minute: min, ts, fast: true },
-                { t: `▶ ${c.label}${timing ? ` ${{ perfect: "(완벽한 타이밍!)", good: "(좋은 타이밍)", miss: "(타이밍이 어긋났다)" }[timing]}` : ""}`, k: "me", minute: min, ts }];
+                { t: `▶ ${pd.choices[ci].label}${timing ? ` ${{ perfect: "(완벽한 타이밍!)", good: "(좋은 타이밍)", miss: "(타이밍이 어긋났다)" }[timing]}` : ""}`, k: "me", minute: min, ts }];
   // 결과 문장은 경기장에서 그 동작이 끝나는 순간에 나옴 (대본 안에 넣음, scriptFor). 문장 틀은 동작을 고르는 데도 씀
-  const outTpl = pickFresh(`r:${pd.sit.id}:${ci}:${ok ? 1 : 0}`, ok ? c.winText : c.loseText);
+  // 상황 이름으로 보였던 선택지가 성공하면 그 상황의 한마디를 앞에 붙임 (c.by[상황][1]. 동작을 정하는 정규식에 걸리지 않는 말만, add-texts.mjs가 확인)
+  const pre = ok && pd.ck && c.by?.[pd.ck]?.[1];
+  // 앞말을 붙일 땐 첫 문장에만 (둘째 문장부터는 앞에 "서두르지 않았다" 같은 말이 붙어 있어 앞말과 부딪칠 수 있음)
+  const outTpl = pre ? pre + " " + c.winText[0] : pickFresh(`r:${pd.sit.id}:${ci}:${ok ? 1 : 0}`, ok ? c.winText : c.loseText);
   { const a0 = (pd.sit.poss || "us") === "us" && /\{mate/.test(outTpl) ? actOf(outTpl, out, "us") : null;
     if (["passNear", "passWide", "passSwitch", "passBack"].includes(a0)) { const M0 = meOf(S), t = M0 && passTarget(S, M0, a0, SP(m, v.mate, "us")); if (t && !t.me && t.pos !== "GK") v.mate = t.name; } }
   // 패스 선택: 문장이 말하는 패스 종류에 맞는 동료가 받음 (문장의 {mate}도 그 동료)
@@ -10268,7 +10287,7 @@ function finishMatch(state, m) {
 // 점검 도구용 (tools/dev): 장면 조건 함수
 const _dev = { holderOk: (ctx, s, S, m) => holderOk(ctx, s, S, m), newSceneOk: (ctx, sc, S, m) => newSceneOk(ctx, sc, S, m), sitCat: s => sitCat(s), canSit: (state, m, s) => canSit(state, m, s) };
 
-return { staffOf, LENGTH, MY_SLOT, detailOf, mySlotOf, HALF, STATUS_LABEL, fill, eligibility, tagFit, TAG_LABEL, choiceTag, timingKind, timingOf, DEV, CAL, styleSim, prepareMatch, next, statLine, prob, playKind, resolve, applyHalftime, autoChoice, autoPlay, finishMatch, _dev };
+return { staffOf, LENGTH, MY_SLOT, detailOf, mySlotOf, HALF, STATUS_LABEL, fill, eligibility, tagFit, TAG_LABEL, choiceTag, timingKind, timingOf, DEV, CAL, styleSim, prepareMatch, choiceMood, next, statLine, prob, playKind, resolve, applyHalftime, autoChoice, autoPlay, finishMatch, _dev };
 })();
 (__fix["js/engine/match.js"] || []).forEach(f => f());
 
