@@ -1583,12 +1583,12 @@ export function next(state, m) {
     }
     // 내 순간: 정해 둔 때가 되면 공이나 상황이 나에게 오기를 기다림 (그동안 동료들이 나를 더 찾음)
     const halfEnd = m.half === 1 ? HALF_T : 2 * HALF_T;
-    // 드물게 오는 순간(세트피스, 막힌 슈팅에서 흘러나온 공)은 기다리지 않고 바로 잡음. 다음 장면 차례가 4분 안이면 앞당겨서
+    // 드물게 오는 순간(세트피스, 막힌 슈팅에서 흘러나온 공)은 기다리지 않고 바로 잡음. 다음 장면 차례가 4분 안이면 앞당겨서 (페널티킥은 15분 안이면 늘)
     // (그 순간이 지나면 다시 오지 않으므로, 차례를 기다리거나 미리 고른 장면을 고집하면 이런 장면이 거의 안 나왔음)
-    if (m.onPitch && !m.injured && !m.subbedOff && m.momentQ.length && m.minute >= m.momentQ[0] - CHANCE_LEAD && S.t >= (m.nextOk || 0) && playT(S) < halfEnd - 7
+    if (m.onPitch && !m.injured && !m.subbedOff && m.momentQ.length && m.minute >= m.momentQ[0] - (S.restart?.kind === "pk" ? 15 : CHANCE_LEAD) && S.t >= (m.nextOk || 0) && playT(S) < halfEnd - 7
       && !S.script.length && !S.scur && S.ev.length > n0 && S.ev.slice(n0).some(e => e.type === "setup" || e.type === "shotEnd")) {
       const ctx = momentCtx(state, m, S.ev.slice(n0));
-      if (ctx && (ctx.rebound || ctx.cat.includes(":")) && (m.minute >= m.momentQ[0] || chance(CHANCE_PULL) && !(m.myPos === "DF" && ctx.cat === "set:corner"))
+      if (ctx && (ctx.rebound || ctx.cat.includes(":")) && (m.minute >= m.momentQ[0] || ctx.cat === "set:pk" || chance(CHANCE_PULL) && !(m.myPos === "DF" && ctx.cat === "set:corner"))
         && chance(ctx.rebound && ctx.poss === "them" ? CHANCE_DFREB : ctx.cat === "defset:corner" ? CHANCE_DFCORNER : 1)) {   // 상대 코너킥·우리 박스 혼전은 자주 생겨서 일부만 (다 잡으면 수비수 장면의 5%씩)
         const sit = pickSituation(state, m, ctx, ctx.rebound ? s => !!SCENES[s.id]?.after || SCENES[s.id]?.from === "loose" : null);
         if (sit) { m.want = null; startMoment(state, m, sit, ctx, lines, S.t); continue; }

@@ -9,6 +9,7 @@ export const DT = 0.1;                      // 한 틱 (초)
 export const RATE = 20;                     // 시뮬레이션 1초 = 경기 시간 20초
 export const HALF_T = 35 * 60 / RATE;       // 전반 길이 (시뮬레이션 초)
 
+const PEN_FOUL = 10;                        // 박스 안 반칙은 다른 곳의 10배 (태클이 박스 안에서 잘 안 일어나서, 1배면 페널티킥이 양 팀 합쳐 80경기에 한 번 → 10배면 열 경기에 한 번)
 const ROLES = { GK: ["GK"], DF: ["LB", "LCB", "RCB", "RB"], MF: ["LM", "LCM", "RCM", "RM"], FW: ["ST1", "ST2"] };
 // 4-4-2. 자기 진영 기준 [수비 라인에서 앞으로 몇 m, 좌우 비율]. d 수비할 때, a 공격할 때
 const FORM = {
@@ -1043,9 +1044,8 @@ function duels(S) {
       else { S.last = d; S.lastTeam = d.team; loose(S, dirOf(d.team) * range(2, 6), range(-4, 4)); }
       return;
     }
-    if (r < p + 0.05 * rough && !(S.noFoulUntil > S.t)) {   // 반칙 (내 수비 장면 직후 몇 초는 없음)
-      const hx = ox(H.team, H.x), hy = oy(H.team, H.y);
-      const pen = hx > 88.5 && Math.abs(hy - 34) < 20;
+    const hx = ox(H.team, H.x), hy = oy(H.team, H.y), pen = hx > 88.5 && Math.abs(hy - 34) < 20;
+    if (r < p + 0.05 * rough * (pen ? PEN_FOUL : 1) && !(S.noFoulUntil > S.t)) {   // 반칙 (내 수비 장면 직후 몇 초는 없음). 박스 안은 더 자주 (페널티킥 열 경기에 한 번쯤)
       const card = rand() < (pen ? 0.35 : 0.14 * rough);
       emit(S, "foul", { by: d.name, team: d.team, victim: H.name, me: d.me, victimMe: H.me, card, pen, x: hx, y: hy });
       d.stun = 0.4;
