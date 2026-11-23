@@ -770,3 +770,20 @@ body:has(#modal-root .backdrop) .fs-btn { opacity: 0; pointer-events: none; }
 /* 아이폰(홈 화면에 추가, 상태 표시줄 투명): 위 막대가 상태 표시줄 밑까지 덮고, 그 아래부터 내용 (예전엔 맨 위에서 막대가 상태 표시줄에 겹치거나, 조금 내리면 내용이 막대 밑으로 잘려 보였음) */
 .topbar { top: 0; padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
 @media (min-width: 900px) { .topbar { padding-top: env(safe-area-inset-top, 0px); } }
+
+/* 메일함 (§74): 중요 표시, 단톡방 한 줄·칸, 말풍선 */
+.mail .imp { display: inline-block; margin-right: 6px; padding: 1px 7px; border-radius: 6px; background: var(--kit, #FF6B1A); color: #fff; font-size: 11px; font-weight: 800; vertical-align: 1px; }
+.mail.important { background: rgba(255, 107, 26, .08); }
+.grouprow { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 6px; padding: 10px 8px; border: 0; border-radius: 10px; background: rgba(255, 255, 255, .04); color: #C9CFE8; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.grouprow img { width: 28px; height: 28px; flex: none; }
+.grouprow b { color: #fff; }
+.tabs2 { display: flex; gap: 6px; margin: 4px 0 10px; }
+.tabs2 button { flex: 1; padding: 9px 0; border-radius: 10px; border: 1px solid #2a3560; background: transparent; color: #9AA3C9; font: inherit; font-weight: 700; font-size: 14px; cursor: pointer; }
+.tabs2 button.on { background: #1C2759; color: #fff; border-color: #3b4a85; }
+.tabs2 .n { margin-left: 6px; padding: 0 7px; border-radius: 999px; background: #2a3560; color: #fff; font-size: 11px; }
+.inbox .sec { color: #9AA3C9; font-size: 12px; margin: 10px 2px 4px; }
+.chat { display: grid; gap: 8px; justify-items: start; }
+.chat .day { justify-self: stretch; color: #6E78A6; font-size: 11px; text-align: center; margin: 10px 0 2px; }
+.chat .bub { max-width: 82%; padding: 8px 11px; border-radius: 12px; background: #1C2759; color: #E9ECF7; font-size: 13px; line-height: 1.45; word-break: keep-all; }
+.chat .bub b { display: block; font-size: 11px; color: #9AA3C9; margin-bottom: 2px; }
+.chat .bub.note { background: transparent; border: 1px dashed #2a3560; color: #9AA3C9; }

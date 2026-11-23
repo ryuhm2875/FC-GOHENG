@@ -13,7 +13,7 @@ import { startTutorial } from "./ui/tutorial.js";
 import { ACTION_MAP } from "../data/actions.js";
 import { renderCreate } from "./ui/create.js";
 import { renderIntro } from "./ui/intro.js";
-import { homeView, playerView, teamView, scheduleView, inboxView } from "./ui/views.js";
+import { homeView, playerView, teamView, scheduleView, inboxView, unreadMail } from "./ui/views.js";
 import { ask, eventModal, actionPicker, weekReport, mailModal, saveModal, numberModal, yearModal, meetingModal } from "./ui/modals.js";
 import { esc } from "./ui/util.js";
 import { admissionModal, nationalModal, detailModal, showEnding, galleryModal } from "./ui/career.js";
@@ -259,13 +259,13 @@ function renderTitle(app) {
 function renderShell(app) {
   const s = app.state;
   const info = turnInfo(s);
-  const unread = s.inbox.filter(m => !m.read).length;
+  const unread = unreadMail(s);   // 단톡방 글은 빼고 셈 (§74)
   let main = "";
   if (app.view === "home") main = homeView(s, { minigame: app.settings.minigame });
   if (app.view === "player") main = playerView(s, app.sub.ptab);
   if (app.view === "team") main = teamView(s, app.sub.ttab);
   if (app.view === "schedule") main = scheduleView(s, app.sub.sgrade || s.calendar.grade);
-  if (app.view === "inbox") main = inboxView(s);
+  if (app.view === "inbox") { main = inboxView(s, app.sub.itab || "mail"); if (app.sub.itab === "group") s.inbox.forEach(m => { if (m.kind === "group") m.read = true; }); }
 
   setScene("bg_home", app.view === "home" ? "home" : "dim");
   const when = info ? label(info) : "졸업";
@@ -291,8 +291,8 @@ function renderShell(app) {
   if (!app._pre) { app._pre = true; preload(SCENES); }
   r.querySelector("[data-sound]").addEventListener("click", () => app.toggleSound());
   r.querySelector("[data-music]").addEventListener("click", () => app.toggleMusic());
-  r.querySelectorAll("[data-nav]").forEach(b => b.addEventListener("click", () => app.go(b.dataset.nav)));
-  r.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => app.go(b.dataset.go)));
+  r.querySelectorAll("[data-nav]").forEach(b => b.addEventListener("click", () => { if (b.dataset.nav === "inbox") app.sub.itab = "mail"; app.go(b.dataset.nav); }));
+  r.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => { if (b.dataset.itab) app.sub.itab = b.dataset.itab; else if (b.dataset.go === "inbox") app.sub.itab = "mail"; app.go(b.dataset.go); }));
   r.querySelector("[data-savemenu]").addEventListener("click", () => saveModal(app));
   r.querySelectorAll("[data-slot]").forEach(b => b.addEventListener("click", () => actionPicker(app, b.dataset.slot)));
   r.querySelectorAll("[data-flip]").forEach(b => b.addEventListener("click", () => { const on = !b.classList.contains("flipped"); b.classList.toggle("flipped", on); b.setAttribute("aria-pressed", String(on)); }));   // 선수 카드 뒤집기
@@ -305,7 +305,8 @@ function renderShell(app) {
   r.querySelectorAll("[data-ptab]").forEach(b => b.addEventListener("click", () => { app.sub.ptab = b.dataset.ptab; app.render(); }));
   r.querySelectorAll("[data-ttab]").forEach(b => b.addEventListener("click", () => { app.sub.ttab = b.dataset.ttab; app.render(); }));
   r.querySelectorAll("[data-sgrade]").forEach(b => b.addEventListener("click", () => { app.sub.sgrade = +b.dataset.sgrade; app.render(); }));
-  r.querySelector("[data-readall]")?.addEventListener("click", () => { s.inbox.forEach(m => m.read = true); app.render(); });
+  r.querySelector("[data-readall]")?.addEventListener("click", () => { s.inbox.forEach(m => { if (m.kind !== "group") m.read = true; }); app.render(); });
+  r.querySelectorAll(".tabs2 [data-itab]").forEach(b => b.addEventListener("click", () => { app.sub.itab = b.dataset.itab; app.render(); }));
   r.querySelectorAll("[data-mail]").forEach(b => b.addEventListener("click", () => {
     const m = s.inbox.find(x => x.id === b.dataset.mail);
     if (!m) return;

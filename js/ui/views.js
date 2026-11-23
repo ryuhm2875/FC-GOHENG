@@ -15,6 +15,7 @@ import { efficiency, conditionOf } from "../engine/growth.js";
 import { SIGNATURE, SITUATIONS } from "../../data/match.js";
 import { STAT_LABEL, STAT_INFO } from "../../data/player.js";
 import { esc, img, faceOf, fl, stars, gauge, statLevel, AVATAR } from "./util.js";
+import { isImportant } from "../state.js";
 import { getPath } from "../rng.js";
 import { REL_ROLES, rivalGap, captainScore } from "../engine/relations.js";
 import { isBirthdayWeek } from "../engine/birthday.js";
@@ -190,12 +191,23 @@ function upcomingPanel(state) {
   </section>`;
 }
 
+// 메일함 (§74): 중요한 메일은 맨 위, 단톡방 잡담은 따로 (새 메시지 수에 안 셈)
+const isGroup = m => m.kind === "group";
+export const unreadMail = state => state.inbox.filter(m => !m.read && !isGroup(m)).length;
+function mailOrder(list, turn) {
+  // 맨 위에 고정하는 건 4주 안에 온 안 읽은 중요 메일 3통까지 (오래 안 읽은 중요 메일이 쌓여 위를 다 차지하지 않게)
+  const imp = list.filter(m => !m.read && isImportant(m) && turn - m.turn <= 4).slice(0, 3);
+  return [...imp, ...list.filter(m => !imp.includes(m) && !m.read), ...list.filter(m => !imp.includes(m) && m.read)];
+}
 function mailPreview(state) {
-  const unread = state.inbox.filter(m => !m.read);
-  const list = [...unread, ...state.inbox.filter(m => m.read)].slice(0, 4);
-  return `<section class="panel mailbox ${unread.length ? "has-new" : ""}">
-    <h2>메시지 ${unread.length ? `<span class="newbadge">새 메시지 ${unread.length}</span>` : ""}<button class="linkbtn right" data-go="inbox">전체 보기</button></h2>
-    ${list.length ? list.map(m => mailRow(m, state)).join("") : `<p class="mute">아직 메시지가 없습니다.</p>`}</section>`;
+  const mails = state.inbox.filter(m => !isGroup(m)), unread = unreadMail(state);
+  const list = mailOrder(mails, state.calendar.turn).slice(0, 3);
+  const g = state.inbox.filter(isGroup), gNew = g.filter(m => !m.read).length, gLast = g[0];
+  const gLine = gLast ? String(gLast.body || "").split("\n").find(l => l.trim()) || gLast.title : "";
+  return `<section class="panel mailbox ${unread ? "has-new" : ""}">
+    <h2>메시지 ${unread ? `<span class="newbadge">새 메시지 ${unread}</span>` : ""}<button class="linkbtn right" data-go="inbox">전체 보기</button></h2>
+    ${list.length ? list.map(m => mailRow(m, state)).join("") : `<p class="mute">아직 메시지가 없습니다.</p>`}
+    ${gLast ? `<button class="grouprow" data-go="inbox" data-itab="group"><img src="assets/img/logo.png" alt=""><span><b>고흥FC 단톡방</b>${gNew ? ` 새 글 ${gNew}` : ""} · ${esc(gLine.slice(0, 34))}</span></button>` : ""}</section>`;
 }
 
 // 보낸 사람 얼굴: 감독·코치·선생님·부모님은 인물 그림, 선수는 그 선수 얼굴, 단톡방은 엠블럼
@@ -214,11 +226,11 @@ const ago = (m, state) => {
 };
 
 export function mailRow(m, state) {
-  const preview = String(m.body || "").replace(/\s+/g, " ").slice(0, 46);
-  return `<button class="mail ${m.read ? "" : "unread"}" data-mail="${m.id}">
+  const preview = String(m.body || "").replace(/\s+/g, " ").slice(0, 46), imp = isImportant(m);
+  return `<button class="mail ${m.read ? "" : "unread"} ${imp ? "important" : ""}" data-mail="${m.id}">
     <span class="av" aria-hidden="true">${avatarOf(m)}</span>
     <span class="mb"><span class="fr"><b>${esc(m.from)}</b><span class="ago">${ago(m, state)}</span></span>
-      <span class="t">${esc(m.title)}</span><span class="pv">${esc(preview)}${String(m.body || "").length > 46 ? "…" : ""}</span></span></button>`;
+      <span class="t">${imp ? `<span class="imp">중요</span>` : ""}${esc(m.title)}</span><span class="pv">${esc(preview)}${String(m.body || "").length > 46 ? "…" : ""}</span></span></button>`;
 }
 
 function depthPanel(state) {
@@ -506,12 +518,29 @@ export function scheduleView(state, grade = state.calendar.grade) {
   </section>`;
 }
 
-export function inboxView(state) {
-  const unread = state.inbox.filter(m => !m.read).length;
-  return `<section class="panel inbox" style="max-width:720px;margin:0 auto;width:100%"><h2>메시지</h2>
-    <div class="inbox-bar"><span class="mute">${unread ? `안 읽은 메시지 <b class="num">${unread}</b>개` : "모두 읽었습니다"}</span>
+export function inboxView(state, tab = "mail") {
+  const mails = state.inbox.filter(m => !isGroup(m)), group = state.inbox.filter(isGroup);
+  const unread = unreadMail(state), gNew = group.filter(m => !m.read).length;
+  const tabs = `<div class="tabs2" role="tablist"><button data-itab="mail" class="${tab === "mail" ? "on" : ""}" aria-selected="${tab === "mail"}">메일${unread ? ` <span class="n">${unread}</span>` : ""}</button>
+    <button data-itab="group" class="${tab === "group" ? "on" : ""}" aria-selected="${tab === "group"}">단톡방${gNew ? ` <span class="n">${gNew}</span>` : ""}</button></div>`;
+  if (tab === "group") return `<section class="panel inbox" style="max-width:720px;margin:0 auto;width:100%"><h2>메시지</h2>${tabs}
+    <div class="chat">${group.map(m => groupChat(m, state)).join("") || `<p class="mute">아직 단톡방 글이 없습니다.</p>`}</div></section>`;
+  const order = mailOrder(mails, state.calendar.turn), imp = order.filter(m => !m.read && isImportant(m) && state.calendar.turn - m.turn <= 4).slice(0, 3), rest = order.filter(m => !imp.includes(m));
+  return `<section class="panel inbox" style="max-width:720px;margin:0 auto;width:100%"><h2>메시지</h2>${tabs}
+    <div class="inbox-bar"><span class="mute">${unread ? `안 읽은 메일 <b class="num">${unread}</b>개` : "모두 읽었습니다"}</span>
     <button class="btn btn-sm btn-ghost" data-readall ${unread ? "" : "disabled"}>모두 읽음</button></div>
-    ${state.inbox.map(m => mailRow(m, state)).join("") || `<p class="mute">아직 받은 메시지가 없습니다.</p>`}</section>`;
+    ${imp.length ? `<p class="sec">중요</p>${imp.map(m => mailRow(m, state)).join("")}<p class="sec">받은 메일</p>` : ""}
+    ${rest.map(m => mailRow(m, state)).join("") || (imp.length ? "" : `<p class="mute">아직 받은 메일이 없습니다.</p>`)}</section>`;
+}
+// 단톡방 글 한 통 → 말풍선 ("이름: 말" 줄은 그 사람 말풍선, 나머지는 공지처럼)
+function groupChat(m, state) {
+  const d = state.calendar.turn - m.turn, when = d <= 1 ? "이번 주" : `${d}주 전`;
+  const parts = String(m.body || "").split(/\n+/).map(t => t.trim()).filter(Boolean);
+  const bubbles = parts.map(t => { const k = t.match(/^([^:：]{1,12})[:：]\s*(.+)$/);
+    const bot = k && (/[^가-힣A-Za-z ]/.test(k[1]) || /득점|실점|경기|결과|점유|기록|순위|명단/.test(k[1]));   // "⚽ 득점: …", "다음 경기: …" 같은 기록 줄은 공지처럼
+    if (bot) return `<div class="bub note"><b>${esc(k[1])}</b>${esc(k[2])}</div>`;
+    return k ? `<div class="bub"><b>${esc(k[1])}</b>${esc(k[2])}</div>` : `<div class="bub note">${esc(t)}</div>`; }).join("");
+  return `<p class="day">${when} · ${esc(m.title)}</p>${bubbles}`;
 }
 
 export { label };
