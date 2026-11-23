@@ -816,6 +816,7 @@ const COMPAT = {
   def: { def: 1, defair: 0.6 },
   defair: { defair: 1, def: 0.6 },
   mate: { mate: 1, recv: 0.8, turn: 0.3 },
+  loose: { loose: 1 },                                     // 동료 슈팅이 막히고 공이 흘러나왔을 때 (아래 momentCtx의 rebound)
 };
 const ZONE_BOX = { att: [[78, 94], [16, 52]], mid: [[44, 66], [8, 60]], def: [[10, 32], [8, 60]] };
 const dist2 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -837,6 +838,11 @@ function momentCtx(state, m, evs) {
         if (e.kind === "corner" && M.pos !== "FW") return { cat: "defset:corner", poss: "them", set: R };
         if (e.kind === "throw" && M.pos === "DF" && sp[0] < 32) return { cat: "defset:throw", poss: "them", set: R };
       }
+    }
+    // 슈팅이 막혀 공이 흘러나옴 (잡거나 코너로 나간 공은 아님): 공격수는 박스 안, 수비수는 우리 박스 안에 있을 때 → 흘러나온 공 장면
+    if (e.type === "shotEnd" && ["save", "post", "block"].includes(e.result) && e.save !== "catch" && e.save !== "corner") {
+      if (e.team === "us" && !e.me && M.pos === "FW" && M.x > 84 && Math.abs(M.y - 34) < 17) return { cat: "loose", poss: "us", rebound: true };
+      if (e.team === "them" && M.pos === "DF" && M.x < 20 && Math.abs(M.y - 34) < 17) return { cat: "def", poss: "them", rebound: true };
     }
     if (e.type === "recv" && e.me) return { cat: e.air ? "air" : "recv", poss: "us", fresh: true, from: e.from, fx: e.fx, fy: e.fy };   // fx·fy: 공을 준 동료가 찬 자리 (크로스 장면)
     if ((e.type === "win" || e.type === "tackle" || e.type === "intercept") && e.me) return { cat: "turn", poss: "us" };
@@ -898,10 +904,11 @@ function callInAt(kind, S, H, M) {
     return tp;
   }
   if (kind === "wing") {                                           // 측면에 벌려 선 나에게 가까운 동료가 땅볼로 (측면 1 대 1 장면)
-    const sg = M.y < 34 ? -1 : 1, w = Math.abs(M.y - 34);
-    if (w < 13 || M.x < 62 || M.x > 84 || d < 10 || d > 32 || H.x > M.x + 6) return null;
+    const sg = M.y < 34 ? -1 : 1, w = Math.abs(M.y - 34);                   // 가운데 공격수·미드필더도 측면으로 벌려 뛰며 받음 (가운데에서 7m↑, 옆으로 19m 안)
+    if (w < 7 || M.x < 62 || M.x > 84 || d < 10 || d > 32 || H.x > M.x + 6) return null;
     if (ri(S, "them", p => Math.hypot(p.x - M.x, p.y - M.y) < 3).length) return null;
-    return [clamp(M.x + 4, 72, 84), 34 + sg * clamp(w + 4, 24, 28)];
+    const ty = clamp(w + 4, 24, 28); if (ty - w > 19) return null;
+    return [clamp(M.x + 4, 72, 84), 34 + sg * ty];
   }
   return null;
 }
@@ -1108,14 +1115,20 @@ function wantSituation(state, m) {
   const pool = SITUATIONS.filter(s => canSit(state, m, s)).map(s => [s, sitWeight(m, s)]);
   return pool.length ? weighted(pool) : null;
 }
+const CHANCE_LEAD = 4, CHANCE_PULL = 0.6, CHANCE_DFREB = 0.2, CHANCE_DFCORNER = 0.25;   // 수비수의 우리 코너킥은 따로(dfCorner) 있으므로 앞당기지 않음
+// 스로인 장면은 실제 스로인 자리 근처에서만 (상대 진영 스로인 장면이 우리 진영 스로인에서 나오지 않게)
+const throwOk = (ctx, s) => { if (ctx.cat !== "set:throw" || !ctx.set) return true;
+  const r = SCENES[s.id]?.at || s.spot; if (!r) return true;
+  const x = (ctx.set.spot || [ctx.set.x])[0]; return x == null || (x >= r[0][0] - 10 && x <= r[0][1] + 10); };
 // 기다리던 장면과 맞지 않는 상황이 너무 오래 이어질 때: 지금 상황에 가장 어울리는 장면
-function pickSituation(state, m, ctx) {
+function pickSituation(state, m, ctx, only = null) {
   const pool = [];
   let best = 0;
   for (const s of SITUATIONS) {
+    if (only && !only(s)) continue;
     if (!canSit(state, m, s) || (s.poss || "us") !== ctx.poss || !holderOk(ctx, s, m.sim, m)) continue;
     const cat = sitCat(s), c = ctxFits(ctx, cat);
-    if (!c) continue;
+    if (!c || !throwOk(ctx, s)) continue;
     const geo = cat.includes(":") ? 1 : geoFit(m, s);
     if (geo < 0.12) continue;                                                       // 공 자리와 너무 먼 장면은 안 고름 (13m)
     const w = sitWeight(m, s, true) * c * geo * (SCENES[s.id]?.at || s.spot || cat.includes(":") ? 1 : 0.35);   // 자리가 정해지지 않은 장면은 어디서나 맞으므로 덜 고름 (한 장면만 되풀이되지 않게)
@@ -1131,6 +1144,7 @@ function wantFits(m, want, ctx) {
   if ((s.poss || "us") !== ctx.poss || !holderOk(ctx, s, m.sim, m)) return false;
   if (ctx.callIn || ctx.byline && SCENES[s.id]?.bylineRun) return true;            // 동료가 차 주는 장면·측면 동료가 파고드는 장면은 공이 떨어질 자리가 장면 자리 (연출)
   const c = ctxFits(ctx, want.cat), wait = m.minute - want.t0;
+  if (!throwOk(ctx, s)) return false;
   if (c < (wait < 1.5 ? 1 : wait < 3 ? 0.5 : 0.3)) return false;                    // 처음엔 딱 맞는 상황만, 기다릴수록 비슷한 상황도
   if (want.cat.includes(":") || SCENES[s.id]?.selfByline && selfBylineOk(m.sim, meOf(m.sim))) return true;   // 엔드라인까지는 연출에서 몰고 감                           // 길게 차 주는 장면은 공이 떨어질 자리가 장면 자리 (연출)
   return geoFit(m, s) >= Math.max(0.12, 0.3 * Math.max(0, 1 - wait / 3));         // 아무리 오래 기다려도 장면 자리에서 13m 안
@@ -1569,6 +1583,17 @@ export function next(state, m) {
     }
     // 내 순간: 정해 둔 때가 되면 공이나 상황이 나에게 오기를 기다림 (그동안 동료들이 나를 더 찾음)
     const halfEnd = m.half === 1 ? HALF_T : 2 * HALF_T;
+    // 드물게 오는 순간(세트피스, 막힌 슈팅에서 흘러나온 공)은 기다리지 않고 바로 잡음. 다음 장면 차례가 4분 안이면 앞당겨서
+    // (그 순간이 지나면 다시 오지 않으므로, 차례를 기다리거나 미리 고른 장면을 고집하면 이런 장면이 거의 안 나왔음)
+    if (m.onPitch && !m.injured && !m.subbedOff && m.momentQ.length && m.minute >= m.momentQ[0] - CHANCE_LEAD && S.t >= (m.nextOk || 0) && playT(S) < halfEnd - 7
+      && !S.script.length && !S.scur && S.ev.length > n0 && S.ev.slice(n0).some(e => e.type === "setup" || e.type === "shotEnd")) {
+      const ctx = momentCtx(state, m, S.ev.slice(n0));
+      if (ctx && (ctx.rebound || ctx.cat.includes(":")) && (m.minute >= m.momentQ[0] || chance(CHANCE_PULL) && !(m.myPos === "DF" && ctx.cat === "set:corner"))
+        && chance(ctx.rebound && ctx.poss === "them" ? CHANCE_DFREB : ctx.cat === "defset:corner" ? CHANCE_DFCORNER : 1)) {   // 상대 코너킥·우리 박스 혼전은 자주 생겨서 일부만 (다 잡으면 수비수 장면의 5%씩)
+        const sit = pickSituation(state, m, ctx, ctx.rebound ? s => !!SCENES[s.id]?.after || SCENES[s.id]?.from === "loose" : null);
+        if (sit) { m.want = null; startMoment(state, m, sit, ctx, lines, S.t); continue; }
+      }
+    }
     const due = m.onPitch && !m.injured && !m.subbedOff && m.momentQ.length && m.minute >= m.momentQ[0] && S.t >= (m.nextOk || 0)
       && playT(S) < halfEnd - 7;                                   // 휘슬 직전(2분 20초)에는 새 장면을 시작하지 않음 (크로스·침투처럼 긴 결과도 경기장에서 다 이어지도록)
     if (due && !S.script.length && !S.scur) {
