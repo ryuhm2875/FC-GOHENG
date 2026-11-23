@@ -104,9 +104,14 @@ export function mail(state, who, title, body) {
 export function mailFrom(state, from, kind, title, body) {
   return pushMail(state, { from, kind }, title, body);
 }
+// 게임에 실제로 영향이 있는 메일은 '중요' (메일함 맨 위, 새 메시지 수는 단톡방을 빼고 셈, §74)
+const IMP_KIND = new Set(["medical", "scout"]);
+const IMP_TITLE = /^(끝나고 잠깐 보자|또 같은 얘기를 하게 되는구나|다음 명단 이야기|학업 경고|대회 출전 제한|공식 경기 출전 정지|진학|감독실로 와라|주장 완장|이번 학기 역할|오늘부터 |포지션 바꾼 첫 주|\d학년 등번호|3학년 등번호를 골라라|새 특성|.*정기시험|.*시험 안내|.*시험 결과|.*수행평가)/;
+export const isImportant = m => !!m.imp || IMP_KIND.has(m.kind) || IMP_TITLE.test(m.title || "");
 function pushMail(state, s, title, body) {
   state.meta.mailSeq = (state.meta.mailSeq || 0) + 1;
   const item = { id: `m${state.meta.mailSeq}`, turn: state.calendar.turn, ...s, title, body, read: false };
+  if (item.kind !== "group" && isImportant(item)) item.imp = true;
   state.inbox.unshift(item);
   if (state.inbox.length > 120) state.inbox.length = 120;
   return item;

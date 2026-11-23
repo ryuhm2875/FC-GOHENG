@@ -97,7 +97,12 @@ export function judgeOrder(state, chosenIds) {
   if (log.streakMiss >= 3 && state.calendar.turn - (log.lastCall ?? -99) >= 12) {
     log.lastCall = state.calendar.turn;
     state.relations.coach = Math.max(0, state.relations.coach - 1);
-    mail(state, "coach", "끝나고 잠깐 보자", "세 주째 내가 한 말이 너한테 안 들어가는 것 같다.\n\n네 생각이 있으면 말로 해라. 말없이 다른 걸 하는 건 생각이 아니라 고집이다.");
+    const call = [   // 두 번째부터는 말이 달라짐 (같은 글이 반복되던 것, §74)
+      ["끝나고 잠깐 보자", "세 주째 내가 한 말이 너한테 안 들어가는 것 같다.\n\n네 생각이 있으면 말로 해라. 말없이 다른 걸 하는 건 생각이 아니라 고집이다."],
+      ["또 같은 얘기를 하게 되는구나", "지난번에 한 얘기, 기억하고 있을 거라 믿었다.\n\n내 지시가 틀렸다고 생각하면 와서 따져라. 그건 얼마든지 들어 준다. 듣고도 안 하는 건 다른 문제다."],
+      ["다음 명단 이야기", "이번엔 말로 끝내지 않겠다. 다음 경기 명단은 지시를 지킨 선수부터 채운다.\n\n네 자리는 네가 지켜라."],
+    ][(log.calls = (log.calls || 0) + 1) <= 3 ? log.calls - 1 : 1 + (log.calls % 2)];
+    mail(state, "coach", call[0], call[1]);
   }
   return { ok: false, text: `📋 감독님 지시(${o.stat ? STAT_LABEL[o.stat] || "" : o.kind === "rest" ? "휴식" : "재활"})를 따르지 않았다. 감독 신뢰 −0.3` };
 }

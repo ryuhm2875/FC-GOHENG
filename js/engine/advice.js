@@ -487,6 +487,8 @@ export function weeklyAdvice(state, rep) {
   const p = state.player;
   const out = [];
   state.advice ||= {};
+  // 같은 걱정 메일이 다시 올 땐 보내는 사람·말이 단계적으로 바뀜. 마지막 단계까지 오면 둘째부터 섞어서 (§74)
+  const staged = (key, list) => { const c = (state.advice.cnt ||= {}); const n = c[key] = (c[key] || 0) + 1; return n <= list.length ? list[n - 1] : pick(list.slice(1)); };
   const push = (key, cd, fn) => {
     if (out.length >= 2) return;
     const last = state.advice[key];
@@ -511,18 +513,28 @@ export function weeklyAdvice(state, rep) {
   });
 
   // 피로
-  push("fatigue", 4, () => {
+  push("fatigue", 6, () => {
     if (p.condition.fatigue < 70) return false;
-    mail(state, "mom", "요즘 너무 지쳐 보여",
-      `집에 오자마자 씻지도 않고 자더라\n코치님이 그러시는디, 이렇게 지친 채로 하면 훈련도 반은 헛거고 다치기도 쉽대\n\n이번 주엔 하루라도 일찍 자잉\n엄마가 맛있는 거 해 줄게`);
+    const [who, title, body] = staged("fatigue", [
+      ["mom", "요즘 너무 지쳐 보여", `집에 오자마자 씻지도 않고 자더라\n코치님이 그러시는디, 이렇게 지친 채로 하면 훈련도 반은 헛거고 다치기도 쉽대\n\n이번 주엔 하루라도 일찍 자잉\n엄마가 맛있는 거 해 줄게`],
+      ["dad", "엄마가 걱정 많더라", `엄마가 너 요즘 너무 지쳐 보인다고 걱정 많더라.\n\n아빠도 공 좀 차 봐서 안다. 지친 몸으로 하는 훈련은 남는 게 없다.\n\n이번 주에 하루는 푹 자라. 감독님도 뭐라 안 하실 거다.`],
+      ["mom", "코치님이랑 통화했어", `코치님이랑 잠깐 통화했어\n요즘 훈련 때 다리가 무거워 보인대\n\n엄마가 축구는 잘 모르지만\n쉬는 것도 훈련이라더라\n\n이번 주엔 하루는 꼭 쉬어잉`],
+      ["dad", "주말에 바다나 보러 가자", `이번 주말에 아빠랑 바닷가 한 바퀴 돌자.\n공 생각은 하루만 내려놓고.\n\n지친 걸 숨기고 버티는 게 실력은 아니다.`],
+      ["mom", "밥은 먹고 자", `어제도 밥 반 공기 먹고 잤더라\n지치면 입맛도 없어지는 거 알아\n그래도 먹어야 버틴다잉\n\n냉장고에 장조림 해 놨어`],
+    ]);
+    mail(state, who, title, body);
     return true;
   });
 
   // 사기
   push("morale", 5, () => {
     if (p.condition.morale >= 35) return false;
-    mail(state, "mom", "괜찮니?",
-      `요즘 말수가 줄었네\n경기 못 뛰어서 그래?\n마음이 가라앉으면 훈련도 잘 안 된대\n\n이번 주엔 아빠랑 셋이 외식하든지\n친구들이랑 바람 좀 쐬고 와\n그래도 괜찮아`);
+    const [who, title, body] = staged("morale", [
+      ["mom", "괜찮니?", `요즘 말수가 줄었네\n경기 못 뛰어서 그래?\n마음이 가라앉으면 훈련도 잘 안 된대\n\n이번 주엔 아빠랑 셋이 외식하든지\n친구들이랑 바람 좀 쐬고 와\n그래도 괜찮아`],
+      ["dad", "아빠 얘기 하나", `아빠가 중학교 때 1년 내내 벤치에 앉아 있었던 거 아냐?\n\n그때 그만뒀으면 지금도 후회했을 거다.\n잘 안 풀리는 때는 누구한테나 온다. 오래 가지 않는다.`],
+      ["mom", "엄마는 네 편이야", `경기 결과는 엄마한테 하나도 안 중요해\n네가 웃고 다니는 게 중요하지\n\n하고 싶은 말 있으면 언제든 해잉\n안 해도 되고`],
+    ]);
+    mail(state, who, title, body);
     return true;
   });
 
@@ -530,8 +542,13 @@ export function weeklyAdvice(state, rep) {
   push("trust", 6, () => {
     if (state.relations.coach >= 35) return false;
     const teamCnt = hist.slice(-4).flatMap(h => h.acts).filter(a => ACTIONS.find(x => x.id === a)?.cat === "team").length;
-    mail(state, "assist", "감독님 눈에 좀 띄어라",
-      `요즘 감독님이 네 얘기를 잘 안 하신다.\n\n${teamCnt <= 1 ? "단체훈련에서 네 얼굴을 본 지가 꽤 됐다는 말씀을 하시더라." : "훈련 태도 얘기가 한 번 나왔다."} 감독님은 단체훈련에서 선수를 보신다. 같은 실력이면 믿을 만한 쪽을 내보내는 게 감독이다.`);
+    const why = teamCnt <= 1 ? "단체훈련에서 네 얼굴을 본 지가 꽤 됐다는 말씀을 하시더라." : "훈련 태도 얘기가 한 번 나왔다.";
+    const [title, body] = staged("trust", [
+      ["감독님 눈에 좀 띄어라", `요즘 감독님이 네 얘기를 잘 안 하신다.\n\n${why} 감독님은 단체훈련에서 선수를 보신다. 같은 실력이면 믿을 만한 쪽을 내보내는 게 감독이다.`],
+      ["명단 짤 때 네 이름이 안 나온다", `어제 감독님이랑 다음 경기 명단을 짜는데, 네 이름이 한 번도 안 나왔다.\n\n${why} 실력 얘기가 아니다. 믿음 얘기다. 단체훈련에 나와서 보여 줘라.`],
+      ["내가 말해 줄 수 있는 건 여기까지다", `코치로서 해 줄 수 있는 말은 다 한 것 같다.\n\n${why} 감독님 마음은 말로 돌아서지 않는다. 훈련장에서 매주 보이는 수밖에 없다.`],
+    ]);
+    mail(state, "assist", title, body);
     return true;
   });
 
@@ -547,8 +564,13 @@ export function weeklyAdvice(state, rep) {
   push("academic", 6, () => {
     if (hist.length < 6 || s.academic >= 48 || turnInfo(state)?.vacation) return false;   // 방학에는 담임 선생님 학교 이야기 없음
     const schoolCnt = hist.slice(-6).flatMap(h => h.acts).filter(a => ACTIONS.find(x => x.id === a)?.cat === "school").length;
-    mail(state, "teacher", "요즘 수업 시간에",
-      `피곤한 건 알지만 수업 시간에 자주 졸더라.\n\n${schoolCnt <= 1 ? "요즘 학교 공부엔 거의 손을 안 댄 것 같더라. " : ""}이대로 가면 감독님께 연락을 드려야 할 것 같아. 그러면 대회에 못 나갈 수도 있어.\n\n일주일에 하루만이라도 책을 펴 보자. 생각보다 금방 올라.`);
+    const none = schoolCnt <= 1 ? "요즘 학교 공부엔 거의 손을 안 댄 것 같더라. " : "";
+    const [title, body] = staged("academic", [
+      ["요즘 수업 시간에", `피곤한 건 알지만 수업 시간에 자주 졸더라.\n\n${none}이대로 가면 감독님께 연락을 드려야 할 것 같아. 그러면 대회에 못 나갈 수도 있어.\n\n일주일에 하루만이라도 책을 펴 보자. 생각보다 금방 올라.`],
+      ["숙제 이야기", `이번 주 숙제가 또 비어 있더라.\n\n${none}축구 열심히 하는 거 선생님도 알아. 그래서 더 아까워. 성적 때문에 대회를 못 나가면 그동안 한 훈련이 다 멈추잖아.\n\n쉬는 시간 10분이라도 같이 보자. 교무실로 와.`],
+      ["감독님께 전화드리기 전에", `감독님께 전화드리기 전에 너한테 먼저 말하는 거야.\n\n${none}이번 주부터 하루만 공부 칸을 넣어 줘. 그것만 보이면 선생님이 조금 더 기다려 볼게.`],
+    ]);
+    mail(state, "teacher", title, body);
     return true;
   });
 
@@ -564,13 +586,18 @@ export function weeklyAdvice(state, rep) {
     const used = drill ? recent.filter(a => a === drill.id).length : 0;
     const total = recent.length || 1;
     const lines = [];
-    if (cnt.personal / total > 0.6) lines.push("요 몇 주 혼자 하는 훈련만 하더라. 열심인 건 아는데, 축구는 같이 하는 거다.");
-    else if (cnt.team / total > 0.6) lines.push("단체훈련엔 빠짐없이 나왔더라. 감독님도 알고 계신다. 다만 네 것도 따로 챙겨라.");
-    else lines.push("훈련은 고르게 잘 나눠 하고 있다. 그게 제일 어렵다.");
+    const nth = (state.advice.cnt ||= {}).review || 0;   // 몇 번째 점검인지에 따라 첫 줄을 바꿈 (늘 같은 말로 시작하던 것)
+    const ln = list => list[nth % list.length];
+    if (cnt.personal / total > 0.6) lines.push(ln(["요 몇 주 혼자 하는 훈련만 하더라. 열심인 건 아는데, 축구는 같이 하는 거다.",
+      "개인훈련 일지가 빽빽하더라. 그런데 단체훈련 출석부엔 네 이름이 드문드문이다.", "혼자 하는 훈련으로는 동료가 언제 뛰는지 안 보인다. 단체훈련에도 좀 나와라."]));
+    else if (cnt.team / total > 0.6) lines.push(ln(["단체훈련엔 빠짐없이 나왔더라. 감독님도 알고 계신다. 다만 네 것도 따로 챙겨라.",
+      "단체훈련 출석은 팀에서 제일 좋다. 이제 너만의 무기 하나를 따로 갈아라.", "같이 하는 훈련은 충분하다. 남들 쉴 때 네 약점 하나만 더 파 봐라."]));
+    else lines.push(ln(["훈련은 고르게 잘 나눠 하고 있다. 그게 제일 어렵다.", "개인훈련, 단체훈련, 휴식. 나누는 건 잘하고 있다.", "균형은 좋다. 이제 그 안에서 뭘 더 날카롭게 할지 정할 때다."]));
     lines.push(`네 자리에서 지금 제일 아쉬운 건 ${ida(STAT_LABEL[weak])}.${drill ? used === 0 ? ` 그런데 ${josa(drill.label, "은", "는")} 한 번도 안 했더라.` : used <= 1 ? ` ${josa(drill.label, "을", "를")} 조금 더 늘려 보자.` : " 그래도 꾸준히 채우고 있으니 곧 올라올 거다." : ""}`);
     if (cnt.rest === 0) lines.push("쉬는 날이 하나도 없었다. 몸은 쉬는 동안 자란다.");
     if (cnt.school === 0 && !turnInfo(state)?.vacation) lines.push("그리고 담임 선생님이 수업 시간 얘기를 하시더라. 공부 칸도 잊지 마라.");
-    mail(state, "assist", "요즘 훈련 이야기", lines.join("\n\n"));
+    state.advice.cnt.review = nth + 1;
+    mail(state, "assist", ["요즘 훈련 이야기", "훈련 일지 봤다", "6주 점검", "코치 노트"][nth % 4], lines.join("\n\n"));
     return true;
   });
 
