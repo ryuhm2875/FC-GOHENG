@@ -841,9 +841,13 @@ function momentCtx(state, m, evs) {
       }
     }
     // 슈팅이 막혀 공이 흘러나옴 (잡거나 코너로 나간 공은 아님): 공격수는 박스 안, 수비수는 우리 박스 안에 있을 때 → 흘러나온 공 장면
-    if (e.type === "shotEnd" && ["save", "post", "block"].includes(e.result) && e.save !== "catch" && e.save !== "corner") {
-      if (e.team === "us" && !e.me && M.pos === "FW" && M.x > 84 && Math.abs(M.y - 34) < 17) return { cat: "loose", poss: "us", rebound: true };
-      if (e.team === "them" && M.pos === "DF" && M.x < 20 && Math.abs(M.y - 34) < 17) return { cat: "def", poss: "them", rebound: true };
+    // 공이 아직 박스 안에 있을 때만 (골키퍼가 측면 끝으로 쳐 낸 공에 "박스 안 혼전" 장면이 붙던 것)
+    const inBox = (x0, x1) => S.ball.x > x0 && S.ball.x < x1 && Math.abs(S.ball.y - 34) < 19;
+    if (e.type === "shotEnd" && ["save", "post", "block"].includes(e.result) && e.save !== "catch" && e.save !== "corner" && (e.team === "us" ? inBox(88.5, 105) : inBox(0, 16.5))) {
+      // 흘러나온 공이 내 가까이 있을 때만 (장면 연출이 공을 내 발 앞으로 옮기므로, 멀면 공이 순간이동함)
+      const dB = Math.hypot(S.ball.x - M.x, S.ball.y - M.y);
+      if (e.team === "us" && !e.me && M.pos === "FW" && M.x > 84 && Math.abs(M.y - 34) < 17 && dB < 9) return { cat: "loose", poss: "us", rebound: true };
+      if (e.team === "them" && M.pos === "DF" && M.x < 20 && Math.abs(M.y - 34) < 17 && dB < 6) return { cat: "def", poss: "them", rebound: true };
     }
     if (e.type === "recv" && e.me) return { cat: e.air ? "air" : "recv", poss: "us", fresh: true, from: e.from, fx: e.fx, fy: e.fy };   // fx·fy: 공을 준 동료가 찬 자리 (크로스 장면)
     if ((e.type === "win" || e.type === "tackle" || e.type === "intercept") && e.me) return { cat: "turn", poss: "us" };
