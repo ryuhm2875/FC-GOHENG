@@ -1150,6 +1150,6 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
 - 밸런스(baseline 240, 시드 5000·8000 두 벌 평균): 득점 2.245/2.245, 실점 1.095/1.095, FW 평점 7.645/7.645·골 1.665/1.665, MF 7.17/7.175·도움 0.995/1.005, DF 7.18/7.185, 내 순간 6.685/6.69
 - sync-audit 300 다섯 시드: 6.9·7.1·7.1·6.5·6.8% (main 7.1·7.1·6.9·6.9·6.8). 국면 줄 약 100개/시드 불일치 0
 - shape-audit 40·restart-audit 120·deep-audit 90·moment-audit 240: main과 같은 수준(잡음 범위)
-- 브라우저: 로컬 서버 + 크롬(CDP)으로 index.html?dev 열어 오류 0, 브라우저 안에서 FW·MF·DF 첫 경기 끝까지 오류 0. **uiplay는 못 돌림**(이 작업 환경에 Playwright가 없음) → 다음 작업 때 uiplay FW·MF·DF 권장
+- 화면: Playwright가 없는 환경이라 `tools/dev/uiplay-cdp.mjs`(크롬 DevTools 프로토콜, iPhone 13 크기)를 만들어 FW·MF·DF 엔딩까지 오류 0. `LIVE=1`로 경기를 빠르게 지켜보며 국면 해설이 뜬 순간을 찍어 확인(`/tmp/uiplay-cdp/`). 헤드리스 크롬의 navigator.vibrate 차단 알림은 오류에서 뺌
 ### 다음 (1-2단계 후보)
 - 몰아치기(골 넣은 직후 3~5분 압박), 난타전(동점 60분↑), 중거리·리바운드(잠그는 팀 상대로 박스 바깥 슈팅 허용). 마지막 3분 '올인'(골키퍼까지 코너킥에)은 아직
