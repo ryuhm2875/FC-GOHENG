@@ -1102,7 +1102,7 @@ function prepRestart(S) {
   const d = hyp(spot[0] - S.ball.x, spot[1] - S.ball.y);
   if (d > 0.5) launch(S, spot[0], spot[1], { air: d > 8, T: 0.35 + d / 24, h: Math.min(5, 0.8 + d * 0.12), kind: "reset" });   // 공이 그 자리로 날아감 (그동안 기다림)
   taker.ov = OV(spot[0] - g * 1.0, spot[1] + (R.kind === "throw" ? (spot[1] < 34 ? -0.6 : 0.6) : 0), 11, "keep");
-  if (R.kind === "corner") { packBox(S, team, taker); if (S.spVar) cornerPlan(S, R, taker, spot); }
+  if (R.kind === "corner") { packBox(S, team, taker); if (S.spVar && !R.script) cornerPlan(S, R, taker, spot); }   // 내 장면(대본) 코너킥은 갈래를 정하지 않음
   if (R.kind === "pk") { const gk = S.P.find(p => p.team !== team && p.pos === "GK"); if (gk) gk.ov = OV(team === "us" ? 104.4 : 0.6, 34, 9, "keep"); }   // 나머지는 zoneFix가 박스·아크 밖으로
   if (R.kind === "throw") {                       // 스로인: 가까운 동료 둘이 받으러 다가옴 (짧게 앞으로 / 안쪽으로)
     const inF = a => clamp(spot[1] < 34 ? spot[1] + a : spot[1] - a, 3, 65);
@@ -1118,7 +1118,7 @@ function prepRestart(S) {
     R.wall = wall;
     wall.forEach((p, i) => { const o = i - (nW - 1) / 2; p.ov = OV(spot[0] + ux * 9.4 - uy * o * 1.1, spot[1] + uy * 9.4 + ux * o * 1.1, 10, "keep"); });   // 벽: 프리킥을 차면 풀림 (예전엔 안 풀려서 벽 선 선수들이 그 자리에 묶여 있었음)
     if (ox(team, spot[0]) > 75) packBox(S, team, taker, true);
-    if (S.spVar && !S.bias && dd < 28 && Math.abs(spot[1] - 34) < 16 && rand() < 0.25) {   // 슈팅 거리 프리킥: 가끔 옆 동료에게 밀어 줌 (벽 옆으로 각을 바꿈)
+    if (S.spVar && !S.bias && !R.script && dd < 28 && Math.abs(spot[1] - 34) < 16 && rand() < 0.25) {   // 슈팅 거리 프리킥: 가끔 옆 동료에게 밀어 줌 (벽 옆으로 각을 바꿈)
       const sd = spot[1] < 34 ? 1 : -1, pt = [spot[0] + ux * 0.8 - uy * sd * 4.5, spot[1] + uy * 0.8 + ux * sd * 4.5];   // 가운데 쪽으로 4.5m
       const who = S.P.filter(p => p.team === team && p !== taker && p.pos !== "GK" && p.pos !== "DF" && !p.me && !p.ov).sort((a, b) => hyp(a.x - pt[0], a.y - pt[1]) - hyp(b.x - pt[0], b.y - pt[1]))[0];
       if (who && hyp(who.x - pt[0], who.y - pt[1]) < 30) { who.ov = OV(pt[0], pt[1], RUN, "keep"); R.v = "layoff"; R.to = who; R.pt = pt; }
@@ -1714,6 +1714,7 @@ function startStep(S, st) {
     S.restart.at = S.t + (st.delay ?? 1.4);
     S.restart.pack = !!st.pack;                          // 먼 프리킥: 박스 안에 모임
     if (st.runner) st.runner.ov = OV(st.runTo[0], st.runTo[1], SPRINT, "recv");   // 받을 동료는 먼저 박스로 뛰어 들어감 (공을 받으면 풀림)
+    if (st.runs) for (const [p, x, y] of st.runs) if (p) p.ov = OV(clamp(x, 2, 103), clamp(y, 2, 66), SPRINT, "plan");   // plan: 공이 제자리에 놓일 때(give) 풀리지 않게   // 세트피스 갈래 선택지: 공을 내려놓는 동안 미리 그 자리로
     return busy(S2 => S2.phase === "play" && !S2.restart, (st.delay ?? 1.4) + 5);
   }
   // 몸으로 막아 공을 골라인 밖으로: 공은 천천히 굴러 라인을 넘고(마지막 터치는 상대 → 우리 골킥), 나는 공 옆에서 등으로 막고, 상대는 등 뒤에
