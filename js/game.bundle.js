@@ -5648,6 +5648,7 @@ const DT = 0.1;                      // 한 틱 (초)
 const RATE = 20;                     // 시뮬레이션 1초 = 경기 시간 20초
 const HALF_T = 35 * 60 / RATE;       // 전반 길이 (시뮬레이션 초)
 
+const PEN_FOUL = 10;                        // 박스 안 반칙은 다른 곳의 10배 (태클이 박스 안에서 잘 안 일어나서, 1배면 페널티킥이 양 팀 합쳐 80경기에 한 번 → 10배면 열 경기에 한 번)
 const ROLES = { GK: ["GK"], DF: ["LB", "LCB", "RCB", "RB"], MF: ["LM", "LCM", "RCM", "RM"], FW: ["ST1", "ST2"] };
 // 4-4-2. 자기 진영 기준 [수비 라인에서 앞으로 몇 m, 좌우 비율]. d 수비할 때, a 공격할 때
 const FORM = {
@@ -6682,9 +6683,8 @@ function duels(S) {
       else { S.last = d; S.lastTeam = d.team; loose(S, dirOf(d.team) * range(2, 6), range(-4, 4)); }
       return;
     }
-    if (r < p + 0.05 * rough && !(S.noFoulUntil > S.t)) {   // 반칙 (내 수비 장면 직후 몇 초는 없음)
-      const hx = ox(H.team, H.x), hy = oy(H.team, H.y);
-      const pen = hx > 88.5 && Math.abs(hy - 34) < 20;
+    const hx = ox(H.team, H.x), hy = oy(H.team, H.y), pen = hx > 88.5 && Math.abs(hy - 34) < 20;
+    if (r < p + 0.05 * rough * (pen ? PEN_FOUL : 1) && !(S.noFoulUntil > S.t)) {   // 반칙 (내 수비 장면 직후 몇 초는 없음). 박스 안은 더 자주 (페널티킥 열 경기에 한 번쯤)
       const card = rand() < (pen ? 0.35 : 0.14 * rough);
       emit(S, "foul", { by: d.name, team: d.team, victim: H.name, me: d.me, victimMe: H.me, card, pen, x: hx, y: hy });
       d.stun = 0.4;
@@ -8981,12 +8981,12 @@ function next(state, m) {
     }
     // 내 순간: 정해 둔 때가 되면 공이나 상황이 나에게 오기를 기다림 (그동안 동료들이 나를 더 찾음)
     const halfEnd = m.half === 1 ? HALF_T : 2 * HALF_T;
-    // 드물게 오는 순간(세트피스, 막힌 슈팅에서 흘러나온 공)은 기다리지 않고 바로 잡음. 다음 장면 차례가 4분 안이면 앞당겨서
+    // 드물게 오는 순간(세트피스, 막힌 슈팅에서 흘러나온 공)은 기다리지 않고 바로 잡음. 다음 장면 차례가 4분 안이면 앞당겨서 (페널티킥은 15분 안이면 늘)
     // (그 순간이 지나면 다시 오지 않으므로, 차례를 기다리거나 미리 고른 장면을 고집하면 이런 장면이 거의 안 나왔음)
-    if (m.onPitch && !m.injured && !m.subbedOff && m.momentQ.length && m.minute >= m.momentQ[0] - CHANCE_LEAD && S.t >= (m.nextOk || 0) && playT(S) < halfEnd - 7
+    if (m.onPitch && !m.injured && !m.subbedOff && m.momentQ.length && m.minute >= m.momentQ[0] - (S.restart?.kind === "pk" ? 15 : CHANCE_LEAD) && S.t >= (m.nextOk || 0) && playT(S) < halfEnd - 7
       && !S.script.length && !S.scur && S.ev.length > n0 && S.ev.slice(n0).some(e => e.type === "setup" || e.type === "shotEnd")) {
       const ctx = momentCtx(state, m, S.ev.slice(n0));
-      if (ctx && (ctx.rebound || ctx.cat.includes(":")) && (m.minute >= m.momentQ[0] || chance(CHANCE_PULL) && !(m.myPos === "DF" && ctx.cat === "set:corner"))
+      if (ctx && (ctx.rebound || ctx.cat.includes(":")) && (m.minute >= m.momentQ[0] || ctx.cat === "set:pk" || chance(CHANCE_PULL) && !(m.myPos === "DF" && ctx.cat === "set:corner"))
         && chance(ctx.rebound && ctx.poss === "them" ? CHANCE_DFREB : ctx.cat === "defset:corner" ? CHANCE_DFCORNER : 1)) {   // 상대 코너킥·우리 박스 혼전은 자주 생겨서 일부만 (다 잡으면 수비수 장면의 5%씩)
         const sit = pickSituation(state, m, ctx, ctx.rebound ? s => !!SCENES[s.id]?.after || SCENES[s.id]?.from === "loose" : null);
         if (sit) { m.want = null; startMoment(state, m, sit, ctx, lines, S.t); continue; }
