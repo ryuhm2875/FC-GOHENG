@@ -35,7 +35,7 @@ body::before { display: none; }
 
 /* 버튼 */
 .btn { border-radius: 12px; font-weight: 700; }
-.btn-kit { background: var(--kit); color: #160A02; box-shadow: 0 8px 20px rgba(255, 107, 26, .28); }
+.btn-kit { background: var(--kit); color: #160A02; box-shadow: 0 8px 20px rgba(255, 107, 26, .28); clip-path: none; border-radius: 12px; }
 .btn-kit:hover { background: #FF7E36; }
 .btn-go { border-radius: 14px !important; font-family: var(--display) !important; font-weight: 800 !important; letter-spacing: -.01em; clip-path: none !important; }
 .btn-go span::after { content: ""; display: inline-block; width: 18px; height: 18px; margin-left: 8px; vertical-align: -3px;
@@ -200,3 +200,6 @@ td.tn { white-space: nowrap; }
 .nem-rec { font-size: 14px; margin: 2px 0 4px; }
 .nem-rec .num { font-size: 18px; font-weight: 800; }
 .ft-name { white-space: nowrap; }
+
+/* 로그인: 가입하기 버튼을 입력창과 같은 폭으로 */
+.gate-join { width: min(320px, 100%); }

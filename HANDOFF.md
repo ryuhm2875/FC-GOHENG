@@ -1241,3 +1241,12 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
 - 튜토리얼 홈 안내는 예전 화면에 맞게: `[data-tut=week]`(이번 주 패널), `[data-tut=cond]`(컨디션 패널, "막대가 노랗거나 빨갛게…"), `[data-tut=advance]`. 끝나면 window.scrollTo(0, 0) (예전엔 안내하느라 내려간 화면이 그대로 남아 맨 위가 막대 밑에 잘려 보였음)
 - 아이폰 '홈 화면에 추가'(상태 표시줄 투명, black-translucent): 위 막대를 `top: 0` + `padding-top: 10px + safe-area-inset-top`으로. 예전 `top: env(safe-area-inset-top)`은 맨 위에서는 막대가 상태 표시줄에 겹치고, 조금 내리면 그만큼 내용이 막대 밑으로 들어가 잘려 보였음 (polish.css 맨 끝)
 - 점검: tutorial-shots(홈 안내 세 단계 새 자리), uiplay-cdp MF 엔딩까지 오류 0. 헤드리스 크롬은 safe-area가 0이라 아이폰 잘림은 실제 기기에서 확인 필요
+
+## 67. 이벤트 그림 18장 교체·추가, 주 버튼 사선 제거 (2026-11-23, 사용자: "이벤트랑 사진이랑 어색하게 연결된 게 있나 체크", "필요한 것 모두 만들어줘", "2번 고쳐볼까")
+- 그림은 Canva 생성. 인물은 `npc_coach`·`npc_teacher`·`npc_dad`·`npc_mom`을 참고 이미지로 넣어 얼굴을 맞춤. 주인공은 얼굴 고르기가 있어 뒷모습으로만 그림. 1376×768 webp
+- 새 그림 15장: ev_coach_talk(감독 면담 10개, 조교 시험은 ev_office 그대로), ev_classroom_talk(t_blessing·pay_book·o_jg_cup), ev_phone_day(a_chatroom·c_sns·c_ref), ev_family_table(p_admission·sibling_exam), ev_tug(sports_day 줄다리기), ev_beach_clean, ev_medal_give(o_ace_medal), ev_dad_box(f_dad_night), ev_bench_talk(junior_slump·mentor_tip), ev_junior_kick(junior_ask), ev_teacher_call(t_injured), ev_coach_bday, ev_window(a_window), ev_bus_left(s_bag), ev_naro_family(f_naro)
+- 덮어쓴 그림: ev_schooltrip(남산타워 → 북악산), ev_night_phone·ev_mom_sick(밝게)
+- 기존 그림으로 바꿈: t_essay → ev_cram, c_junior_protect → ev_storage, r_g1_end → ev_measure. c_photo(벚꽃)에 `when: { months: [3, 4] }`
+- intro.js BG_STANDIN에 새 그림 이름마다 대신 쓸 옛 그림을 넣어 둠 (파일이 빠져도 화면이 비지 않게)
+- fc26.css: `.btn-kit`에 `clip-path: none; border-radius: 12px` (fc.css의 사선이 남아 있던 것), `.gate-join` 폭 `min(320px, 100%)` (로그인 '가입하기'가 화면 끝까지 늘어나던 것). 게임 안 주황 주 버튼도 모두 둥글게 바뀜
+- 점검: 이벤트 bg 파일 전부 존재, simulate 20판 오류 0, 로그인·가입 화면 휴대폰·PC 폭 확인. 게임 안 주 버튼 모양은 실제 화면에서 한 번 더 볼 것

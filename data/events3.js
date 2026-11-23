@@ -30,7 +30,7 @@ export const EVENTS_STORY = [
       { label: "대꾸하지 않고 공을 챙겨 나간다", fx: { s: { "mental.focus": 0.5 }, rel: { rival: -2 } },
         result: "등 뒤에서 {rival|이/가} 혀를 차는 소리가 들렸다. 말보다 훈련으로 답하기로 했다." },
     ] },
-  { id: "r_g1_end", needs: "rival", once: true, date: [[2, 3]], when: { grades: [1] }, bg: "bg_locker", who: "rival",
+  { id: "r_g1_end", needs: "rival", once: true, date: [[2, 3]], when: { grades: [1] }, bg: "ev_measure", who: "rival",
     text: s => `1학년 마지막 동계훈련. 코치님이 체력 측정 결과를 벽에 붙이셨다. ${gapText(s,
       "내 이름이 {rival}보다 위에 있다. {rival|이/가} 한참 그 종이를 보다가 말없이 나간다.",
       "내 이름 바로 옆에 {rival}의 이름이 있다. 기록 차이는 소수점 하나다.",
@@ -123,7 +123,7 @@ export const EVENTS_STORY = [
       { mark: "mom_reply", label: "엄마한테 답장을 써서 냉장고에 붙인다", fx: { morale: 5, s: { "mental.teamwork": 0.3 } },
         result: "'3학년엔 선발로 뛰는 거 보여 줄게요.' 다음 날 아침, 그 쪽지 옆에 하트 자석이 하나 더 붙어 있었다." },
     ] },
-  { id: "p_admission", family: true, once: true, date: [[10, 3]], when: { grades: [3] }, bg: "ev_home_talk", who: "dad",
+  { id: "p_admission", family: true, once: true, date: [[10, 3]], when: { grades: [3] }, bg: "ev_family_table", who: "dad",
     text: "저녁 식탁. 진학 이야기가 나왔다. 엄마는 공부도 놓지 않을 학교를, 아빠는 네가 가고 싶은 곳을 말하라고 하신다. 두 분이 동시에 나를 본다.",
     choices: [
       { label: "축구를 제일 잘할 수 있는 곳에 가고 싶다고 말한다", fx: { morale: 4, s: { "mental.competitive": 0.6 } },
@@ -199,7 +199,7 @@ export const EVENTS_STORY = [
       { label: "모른 척 다시 넣어 둔다", fx: { morale: 4, s: { "student.attitude": 0.5 } },
         result: "지갑을 원래대로 닫아 두었다. 그날 저녁 설거지는 내가 했다." },
     ] },
-  { id: "pay_book", once: true, school: true, bg: "ev_classroom", who: "teacher",
+  { id: "pay_book", once: true, school: true, bg: "ev_classroom_talk", who: "teacher",
     trigger: s => { const i = turnInfo(s); return marked(s, "book_read", 10) && i?.grade === 3 && [9, 10].includes(i.month) && (s.relations.teacher ?? 50) >= 60; },
     text: "{teacher}께서 진로 상담 자료를 넘기다 멈추신다. \"그때 준 책 기억나니? 그 주에 다 읽고 한 줄 써 왔던 거. 선생님이 추천서에 그 얘기를 썼다.\"",
     choices: [
@@ -255,7 +255,7 @@ export const EVENTS_STORY = [
       { label: "\"다음엔 오른발도 봐 줄게\"", fx: { s: { "mental.teamwork": 0.5 }, rel: { junior: 4 } },
         result: "\"진짜죠? 약속이에요!\" 그날 훈련은 둘이 제일 늦게 끝났다." },
     ] },
-  { id: "pay_asked_coach", once: true, bg: "ev_office", who: "coach",
+  { id: "pay_asked_coach", once: true, bg: "ev_coach_talk", who: "coach",
     trigger: s => { const m = lastMatch(s); return marked(s, "asked_coach", 2) && !!m && m.status === "start" && m.minutes > 0 && m.turn > s.marks.asked_coach; },
     text: "경기가 끝나고 {coach}님께서 부르셨다. \"벤치 옆에서 '뭘 더 하면 되냐'고 물었던 거 기억하냐. 지난 경기에서 그 답을 네가 직접 보여 줬다.\"",
     choices: [

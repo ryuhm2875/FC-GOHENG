@@ -202,7 +202,7 @@ export const EVENTS_MORE = [
       { label: "요가와 명상반", fx: { s: { "mental.focus": 1 }, fatigue: -4 },
         result: "10분 동안 눈을 감고 숨만 쉬었다. 경기 전에 써먹을 수 있을 것 같다." },
     ] },
-  { id: "a_beach_clean", bg: "ev_beach", who: "narr", when: { months: [4, 5, 9, 10] },
+  { id: "a_beach_clean", bg: "ev_beach_clean", who: "narr", when: { months: [4, 5, 9, 10] },
     text: "주말 봉사활동은 바닷가 쓰레기 줍기. 그런데 오후에 팀 훈련이 있다.",
     choices: [
       { label: "끝까지 마무리한다", fx: { s: { "student.attitude": 1.5, "phys.stamina": 0.3 }, fatigue: 3 },
@@ -226,7 +226,7 @@ export const EVENTS_MORE = [
       { label: "뒷문으로 몰래 들어간다", fx: { s: { "student.attitude": -1 }, morale: 1 },
         result: "뒷문엔 다른 선생님이 계셨다. 이름이 두 번 적혔다." },
     ] },
-  { id: "a_chatroom", bg: "ev_night_phone", school: true, who: "narr",
+  { id: "a_chatroom", bg: "ev_phone_day", school: true, who: "narr",
     text: "반 단톡방에 \"축구부는 맨날 공결이라 좋겠다\"는 말이 올라왔다. 읽음 표시가 순식간에 줄어든다.",
     choices: [
       { label: "차분하게 직접 답한다", fx: { s: { "mental.teamwork": 1, "mental.confidence": 0.5 } },
@@ -332,7 +332,7 @@ export const EVENTS_MORE = [
       { label: "훈련에 간다", fx: { s: { "position": 0.4 }, rel: { friend: -5 } },
         result: "훈련 끝나고 단톡방에 파티 사진이 올라왔다. 다들 웃고 있었다. 거기에 나만 없었다." },
     ] },
-  { id: "a_window", bg: "ev_classroom", school: true, who: "narr",
+  { id: "a_window", bg: "ev_window", school: true, who: "narr",
     text: "점심시간에 교실 창문이 깨졌다. 축구공 때문이었다. 반 아이들이 일제히 축구부를 쳐다본다. 공을 찬 건 다른 학년 아이였다.",
     choices: [
       { label: "본 대로 차분히 말씀드린다", fx: { s: { "student.attitude": 1 }, teacher: 1 },
@@ -470,7 +470,7 @@ export const EVENTS_MORE = [
       { label: "단톡방에 응원 메시지를 남긴다", fx: { rel: { mentor: 2 } },
         result: "\"빨리 나아서 와요 형.\" 선배가 엄지 이모티콘 하나를 보냈다." },
     ] },
-  { id: "c_junior_protect", bg: "ev_summer", who: "narr", needs: "junior", when: { grades: [2, 3] },
+  { id: "c_junior_protect", bg: "ev_storage", who: "narr", needs: "junior", when: { grades: [2, 3] },
     text: "동기 몇 명이 {junior}에게 물통을 전부 떠넘기고 있다. {junior|이/가} 아무 말 없이 들고 간다.",
     choices: [
       { label: "막아선다", fx: { s: { "mental.teamwork": 1 }, rel: { junior: 8 } },
@@ -490,7 +490,7 @@ export const EVENTS_MORE = [
       { label: "학년별로 이야기를 따로 들어 보겠다고 한다", req: { "mental.teamwork": 65 }, fx: { s: { "mental.teamwork": 0.8 }, coach: 2 },
         result: "1학년, 2학년을 따로 불러 이야기를 들었다. 다음 날 주장 형이 내 어깨를 툭 쳤다. \"고맙다. 덕분에 숨 좀 쉰다.\"" },
     ] },
-  { id: "c_coach_bday", bg: "ev_birthday", who: "narr", once: true,
+  { id: "c_coach_bday", bg: "ev_coach_bday", who: "narr", once: true,
     text: "내일이 감독님 생신이라는 말이 단톡방에 돌았다. 뭘 해 드릴지 다들 한마디씩 한다.",
     choices: [
       { label: "다 같이 롤링페이퍼를 쓰자고 한다", fx: { s: { "mental.teamwork": 1 }, coach: 2 },
@@ -514,7 +514,7 @@ export const EVENTS_MORE = [
       { label: "징크스는 이제 버린다", fx: { s: { "mental.focus": 1 } },
         result: "\"양말이 차는 거 아니다.\" 스스로에게 말하고 일찍 잤다." },
     ] },
-  { id: "c_sns", bg: "ev_night_phone", trigger: s => { const m = lastMatch(s); return !!m && m.goals > 0 && s.record.goals === m.goals; }, who: "narr", cond: s => (lastMatch(s)?.goals || 0) > 0,
+  { id: "c_sns", bg: "ev_phone_day", trigger: s => { const m = lastMatch(s); return !!m && m.goals > 0 && s.record.goals === m.goals; }, who: "narr", cond: s => (lastMatch(s)?.goals || 0) > 0,
     text: "내 골 영상이 지역 유소년 축구 계정에 올라갔다. 댓글이 벌써 백 개를 넘었다.",
     choices: [
       { label: "댓글을 하나하나 읽는다", fx: { morale: 4, s: { "mental.focus": -0.3 } },
@@ -547,7 +547,7 @@ export const EVENTS_MORE = [
       { label: "끝까지 버티며 뛴다", fx: { s: { "phys.stamina": 0.6 }, fatigue: 7 },
         result: "끝까지 뛰었다. 그날 밤 저녁을 먹다가 숟가락을 든 채 잠들었다." },
     ] },
-  { id: "c_ref", bg: "ev_night_phone", cool: 40, trigger: s => lastMatch(s)?.result === "패" && lastMatch(s)?.official, who: "narr", cond: s => lastMatch(s)?.result === "패",
+  { id: "c_ref", bg: "ev_phone_day", cool: 40, trigger: s => lastMatch(s)?.result === "패" && lastMatch(s)?.official, who: "narr", cond: s => lastMatch(s)?.result === "패",
     text: "지난 주말 경기 판정이 너무 억울했다. 단톡방이 온통 주심 이야기로 시끄럽다.",
     choices: [
       { label: "단톡방을 진정시킨다", fx: { s: { "mental.teamwork": 1 } },
@@ -584,7 +584,7 @@ export const EVENTS_MORE = [
       { label: "감독님께 보완할 점을 직접 여쭌다", req: { "rel.coach": 70 }, fx: { s: { "mental.focus": 0.5 }, coach: 2 },
         result: "감독님이 종이에 세 줄을 적어 주셨다. 첫 줄은 '왼발'. 그날부터 왼발로만 벽치기를 했다." },
     ] },
-  { id: "c_photo", bg: "ev_teamphoto", who: "narr", once: true,
+  { id: "c_photo", bg: "ev_teamphoto", who: "narr", when: { months: [3, 4] }, once: true,
     text: "시즌 단체 사진 촬영 날. 사진사 아저씨가 \"자, 웃어요! 하나, 둘!\" 하신다.",
     choices: [
       { label: "맨 앞줄에서 활짝 웃는다", fx: { morale: 2 },
@@ -637,7 +637,7 @@ export const EVENTS_MORE = [
       { label: "훈련 때문에 다음에 가자고 한다", fx: { s: { "position": 0.3 }, morale: -1 },
         result: "\"그래, 다음에.\" 아빠가 낚싯대를 다시 창고에 넣으셨다." },
     ] },
-  { id: "f_naro", bg: "ev_naro", family: true, who: "narr",
+  { id: "f_naro", bg: "ev_naro_family", family: true, who: "narr",
     text: "동생이 나로우주과학관에 가고 싶다고 며칠째 조른다.",
     choices: [
       { label: "주말에 데려간다", fx: { morale: 4, fatigue: -3, s: { "student.academic": 0.5 } },
@@ -653,7 +653,7 @@ export const EVENTS_MORE = [
       { label: "훈련 끝나고 약을 사 간다", fx: { fatigue: 2, s: { "student.attitude": 0.5 } },
         result: "약국 문 닫기 직전에 뛰어 들어갔다. 엄마가 약봉지를 받고 웃으셨다." },
     ] },
-  { id: "f_dad_night", bg: "ev_home_talk", family: true, who: "narr", cond: s => s.calendar.turn > 15,
+  { id: "f_dad_night", bg: "ev_dad_box", family: true, who: "narr", cond: s => s.calendar.turn > 15,
     text: "야근하고 새벽에 들어오신 아빠가 식탁 위에 상자 하나를 올려 두셨다. 새 축구화다.",
     choices: [
       { label: "아빠 출근 전에 고맙다고 말씀드린다", fx: { morale: 5 },
@@ -699,7 +699,7 @@ export const EVENTS_MORE = [
     ] },
 
   // ── 목표 (중2부터, 날짜와 조건이 맞을 때만. js/engine/goals.js) ──
-  { id: "goal_meeting", bg: "ev_office", fixed: true, who: "coach",
+  { id: "goal_meeting", bg: "ev_coach_talk", fixed: true, who: "coach",
     text: s => `${s.calendar.grade === 2 && s.calendar.turn <= 50 ? "2학년이 됐다." : "늦었지만 목표 이야기를 하자."} 이제 막연하게 열심히 하는 걸로는 부족하다. 졸업할 때까지 네가 제일 이루고 싶은 걸 하나만 말해 봐라.`,
     choices: Object.entries(GOALS).map(([id, g]) => ({
       label: `${g.icon} ${g.label} (${g.hint})`,
@@ -718,7 +718,7 @@ export const EVENTS_MORE = [
       { label: "다녀온 선배들에게 분위기를 묻는다", fx: { s: { "mental.focus": 0.5 } }, act: s => { const G = goalsOf(s); (G.jnCalled ||= {})[s.calendar.grade] = true; s.flags.jnBoost = (s.flags.jnBoost || 0) + 1; },
         result: "\"첫 10분에 다 정해진다. 처음 공 잡을 때 쫄지 마라.\" 선배의 말이 머리에 콕 박혔다." },
     ] },
-  { id: "goal_jn_result", bg: "ev_office", fixed: true, who: "coach",
+  { id: "goal_jn_result", bg: "ev_coach_talk", fixed: true, who: "coach",
     text: s => goalsOf(s).jnOutcome
       ? (s.jnCup?.grade === 2 && s.calendar.grade === 3 ? `전남 대표 명단이 발표됐다. 올해도 네 이름이 있다. 두 번째 전라남도 마크다. ${s.jnCup?.medal === "gold" ? "작년 금메달은 작년 거다. 올해 것도 가져와라." : "작년에 못 한 걸 이번엔 해 와라."}`
         : "전남 대표 명단이 발표됐다. …축하한다. 네 이름이 있다. 5월 전국소년체전에 전라남도 마크를 달고 나간다.")
@@ -769,7 +769,7 @@ export const EVENTS_MORE = [
       { label: "스크랩북에 붙여 둔다", fx: { morale: 4, s: { "mental.confidence": 0.5 } }, act: s => achieve(s, "news"),
         result: "첫 장에 붙였다. 나머지 장은 앞으로 채우면 된다." },
     ] },
-  { id: "goal_captain", bg: "ev_office", fixed: true, who: "coach",
+  { id: "goal_captain", bg: "ev_coach_talk", fixed: true, who: "coach",
     text: "따로 할 말이 있어서 불렀다. 내년 주장, 너를 생각하고 있다. 아직 아무한테도 말하지 마라. 선거는 동료들이 하는 거니까.",
     choices: [
       { label: "\"믿어 주셔서 감사합니다\"", fx: { morale: 4, s: { "mental.teamwork": 1 } },
@@ -779,7 +779,7 @@ export const EVENTS_MORE = [
         act: s => { s.flags.captainCandidate = true; achieve(s, "captain"); },
         result: "\"그 질문을 하는 녀석이라서 부른 거다.\"" },
     ] },
-  { id: "goal_check", bg: "ev_office", fixed: true, who: "coach",
+  { id: "goal_check", bg: "ev_coach_talk", fixed: true, who: "coach",
     text: s => { const id = goalsOf(s).main; if (!id) return "2학기가 시작됐다. 3월에 목표를 정하지 않았더라. 지금이라도 늦지 않다. 매주 한 걸음씩만 가자.";
       return goalsOf(s).done[id] ? `3월에 말한 '${mainLabel(s)}', 벌써 이뤘다. 대단하다. 이제 다음 목표를 스스로 찾아라.` : `3월에 말한 '${mainLabel(s)}', 중간 점검을 해 보자. 홈 화면에 진행 상황이 보일 거다. 지금 속도면 될 것 같으냐?`; },
     choices: [
@@ -789,7 +789,7 @@ export const EVENTS_MORE = [
         result: s => { const p = s.player; const low = [["기술", Object.values(p.stats.tech)], ["피지컬", Object.values(p.stats.phys)], ["정신력", Object.values(p.stats.mental)]].map(([k, v]) => [k, v.reduce((a, b) => a + b, 0) / v.length]).sort((a, b) => a[1] - b[1])[0][0];
           return `"솔직히 말하면 ${josa(low, "이", "가")} 제일 아쉽다. 거기부터 채워라."`; } },
     ] },
-  { id: "goal_fail", bg: "ev_office", fixed: true, who: "coach",
+  { id: "goal_fail", bg: "ev_coach_talk", fixed: true, who: "coach",
     text: s => `'${mainLabel(s)}'. 결국 못 이뤘다. 속상할 거다. 나도 그렇다.`,
     choices: [
       { label: "\"다음 목표를 다시 세우겠습니다\"", fx: { morale: 3, s: { "mental.confidence": 0.5 } },
