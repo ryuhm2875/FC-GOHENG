@@ -179,7 +179,7 @@ export function timingOf(c) {
 // 모두 우리 전력 − 상대 전력(D)에 따라 바뀜
 // 시험 도구(tools/dev)가 경기 끝마다 내용을 받아 볼 수 있게
 export const DEV = { onFinish: null };
-export const CAL = { gs: 1, brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 5.3, kcu: 5.8, kcun: 80, ct: 2.65, kct: 22, kctn: 13, ft: 0.2, meShot: 1.08, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.105, dfk: 1.45, mfk: 0.6, rk: { FW: 0.82, MF: 1.08, DF: 1.1 }, dfCS: 0.45 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비 기여 배수, mfk: 미드필더 선택 하나가 평점에 주는 몫 (선택이 많은 만큼), rk: 포지션별 평점 배율, dfCS: 수비수 무실점 가산
+export const CAL = { sp: 1, gs: 1, brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 5.3, kcu: 5.8, kcun: 80, ct: 2.65, kct: 22, kctn: 13, ft: 0.2, meShot: 1.08, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.105, dfk: 1.45, mfk: 0.6, rk: { FW: 0.82, MF: 1.08, DF: 1.1 }, dfCS: 0.45 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비 기여 배수, mfk: 미드필더 선택 하나가 평점에 주는 몫 (선택이 많은 만큼), rk: 포지션별 평점 배율, dfCS: 수비수 무실점 가산
 const sig = x => 1 / (1 + Math.exp(-x));
 
 // 상대 성향 → 경기장 움직임
@@ -397,7 +397,7 @@ export function prepareMatch(state, info, fx) {
   // 경기장 시뮬레이션
   m.players = pitchPlayers(state, m);
   const oppStyle = styleSim(fx.opponent.name);
-  const S = createSim({ gsOn: !!CAL.gs, players: m.players, str: { us: ours, them: theirs }, style: { us: {}, them: oppStyle }, blocks: { us: "mid", them: oppStyle.block || "mid" } });
+  const S = createSim({ spVar: !!CAL.sp, gsOn: !!CAL.gs, players: m.players, str: { us: ours, them: theirs }, style: { us: {}, them: oppStyle }, blocks: { us: "mid", them: oppStyle.block || "mid" } });
   const D = ours - theirs;
   S.brk = { us: CAL.brk * Math.exp(-D / CAL.kb), them: CAL.brk * Math.exp(D / CAL.kb) };
   S.attackP = { us: sig(CAL.a0 + D / CAL.ka), them: sig(CAL.a0 - D / CAL.ka) };
@@ -526,6 +526,11 @@ function narrate(state, m, e) {
     case "boxRun":
       if (!quiet() && chance(0.6) && tac(m, "boxRun", 5, 10)) add(fill(pick(SIM_LINES.boxRun), { a: e.by, n: e.n }), e.me ? "me-auto" : kt(e.team));
       break;
+    case "spKind": {   // 세트피스 갈래 (코너킥 니어·짧게·박스 바깥, 롱스로). 차는 선수 이름만 (받는 선수는 멀리 있을 때가 많음)
+      const pool = SIM_LINES["sp_" + e.k];
+      if (pool && tac(m, "sp" + e.k, 3, 20)) add(fill(pick(pool), { a: e.a }), e.me ? "me-auto" : kt(e.team));
+      break;
+    }
     case "lockOn": case "chaseOn": case "surgeOn": case "openOn": {
       const pool = SIM_LINES[e.type + (e.team === "us" ? "Us" : "Them")];
       if (pool && !quiet() && tac(m, e.type + e.team, 2, 60)) add(pick(pool), kt(e.team));   // 이름을 넣지 않음: 올라간 측면 수비는 공과 멀리 있을 때가 많음

@@ -1,7 +1,7 @@
 // uiplay.mjs와 같은 3년 자동 플레이를 Playwright 없이 (크롬 + DevTools 프로토콜). Playwright가 없는 컴퓨터용
 // 먼저 python3 -m http.server 8765, 크롬은 이 도구가 띄움 (CHROME=경로, 기본 google-chrome)
 // node tools/dev/uiplay-cdp.mjs [포지션] [이름]   LIMIT=밀리초  PORT=9333   마지막 줄이 "no errors"면 통과
-// LIVE=1: 경기를 '결과만 보기' 없이 빠르게 보면서, 국면 해설(잠그기·쫓아가기)이 뜨면 화면을 찍음 (/tmp/uiplay-cdp/)
+// LIVE_RE=정규식: 찍을 해설을 바꿈. LIVE=1: 경기를 '결과만 보기' 없이 빠르게 보면서, 국면 해설(잠그기·쫓아가기)이 뜨면 화면을 찍음 (/tmp/uiplay-cdp/)
 import { spawn } from "child_process";
 import { mkdirSync, writeFileSync } from "fs";
 const pos = process.argv[2] || "MF", nm = process.argv[3] || "김민준", PORT = +(process.env.PORT || 9333), LIVE = !!process.env.LIVE;
@@ -50,7 +50,7 @@ while (Date.now() - t0 < +(process.env.LIMIT || 520000)) {
   if (clicked === "[data-start]" && live) liveMatches++;
   if (clicked) { if (clicked === "[data-done]") matches++; await sleep(120); continue; }
   if (live && st.view === "match") {   // 국면 해설이 새로 뜨면 그 순간과 6초 뒤를 찍음
-    const hit = await ev(() => { const ls = [...document.querySelectorAll(".feed *")].map(e => e.textContent); const h = ls.reverse().find(t => /박스 앞을 촘촘히|박스 앞으로 내려|물러나 잠근다|측면 수비까지|측면 수비가 공격수처럼|골을 넣은 (기세|상대가 기세)|한 골 넣은 상대가 더 거세게|앞에서부터 몰아친다|한 명씩 더 올라가|미드필더까지 박스 앞으로/.test(t)); if (!h || window.__seen?.has(h + gfc.state.calendar.turn)) return null; (window.__seen ||= new Set()).add(h + gfc.state.calendar.turn); return h; });
+    const hit = await ev(rx => { const RX = new RegExp(rx); const ls = [...document.querySelectorAll(".feed *")].map(e => e.textContent); const h = ls.reverse().find(t => RX.test(t)); if (!h || window.__seen?.has(h + gfc.state.calendar.turn)) return null; (window.__seen ||= new Set()).add(h + gfc.state.calendar.turn); return h; }, process.env.LIVE_RE || '박스 앞을 촘촘히|박스 앞으로 내려|물러나 잠근다|측면 수비까지|측면 수비가 공격수처럼|골을 넣은 (기세|상대가 기세)|한 골 넣은 상대가 더 거세게|앞에서부터 몰아친다|한 명씩 더 올라가|미드필더까지 박스 앞으로|니어포스트 쪽으로 낮고|끊어 들어가는 동료에게|곧장 띄우지 않고|가까이 다가온 동료에게 짧게|박스 바깥으로 빼 준다|박스 바깥으로 간다|옆으로 살짝 밀어 준다|벽 옆으로 슈팅 각이');
     if (hit) { liveShots++; await shot(`live_${pos}_${liveShots}a.png`); await sleep(6000); await shot(`live_${pos}_${liveShots}b.png`); console.log("국면 해설:", hit.slice(0, 80)); }
   }
   if (st.view !== "match" && !st.modal) {
