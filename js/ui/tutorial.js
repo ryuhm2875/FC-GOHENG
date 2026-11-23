@@ -39,6 +39,7 @@ function finish(app) {
   app.state.flags.tutDone = true;
   app.saveTo("auto");
   app.render();
+  window.scrollTo(0, 0);                                     // 안내하느라 내려간 화면을 맨 위로
 }
 
 // 새 판 시작 직후 (main.js startGame)
@@ -92,9 +93,9 @@ function homeTour(app) {
   const steps = [
     ["[data-tut=week]", `${head("빈칸을 누르면 할 일을 고를 수 있다.<br>훈련, 휴식, 공부 중에 하나.")}
       <p>칸 아래 <b style="color:var(--turf)">초록 글씨</b>는 이번 주에 오르는 능력치, <b style="color:var(--kit-2)">주황 글씨</b>는 쌓이는 피로다.</p>`],
-    [".hs", `${head("숫자가 빨갛게 바뀌면 조심해라.")}
+    ["[data-tut=cond]", `${head("막대가 노랗거나 빨갛게 바뀌면 조심해라.")}
       <p>피로가 쌓이면 다치기 쉽고, 감독님도 선발로 안 쓰신다. 피로는 <b>수면</b>이나 <b>가족 시간</b>이 제일 많이 풀어 준다.</p>
-      <p>바로 아래 감독님 지시도 꼭 봐라. 지시대로 한 칸이라도 넣으면 신뢰가 오른다.</p>`],
+      <p>이번 주 칸 위의 감독님 지시도 꼭 봐라. 지시대로 한 칸이라도 넣으면 신뢰가 오른다.</p>`],
     ["[data-tut=advance]", `${head("칸을 다 채웠으면 여기를 누른다.")}
       <p>일주일이 지나가고, 주말에 경기가 있으면 경기장으로 간다. 다음 주부터는 <b>지난주처럼</b>을 눌러 계획을 그대로 써도 된다.</p>`],
   ];

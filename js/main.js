@@ -261,7 +261,7 @@ function renderShell(app) {
   const info = turnInfo(s);
   const unread = s.inbox.filter(m => !m.read).length;
   let main = "";
-  if (app.view === "home") main = homeView(s, { minigame: app.settings.minigame, open: app.homeOpen || (app.homeOpen = {}) });
+  if (app.view === "home") main = homeView(s, { minigame: app.settings.minigame });
   if (app.view === "player") main = playerView(s, app.sub.ptab);
   if (app.view === "team") main = teamView(s, app.sub.ttab);
   if (app.view === "schedule") main = scheduleView(s, app.sub.sgrade || s.calendar.grade);
@@ -297,10 +297,6 @@ function renderShell(app) {
   r.querySelectorAll("[data-slot]").forEach(b => b.addEventListener("click", () => actionPicker(app, b.dataset.slot)));
   r.querySelectorAll("[data-flip]").forEach(b => b.addEventListener("click", () => { const on = !b.classList.contains("flipped"); b.classList.toggle("flipped", on); b.setAttribute("aria-pressed", String(on)); }));   // 선수 카드 뒤집기
   r.querySelector("[data-advance]")?.addEventListener("click", () => app.advance());
-  r.querySelectorAll("[data-foldbtn]").forEach(b => b.addEventListener("click", () => {   // 홈 접는 칸 (펼친 칸은 다시 그려도 그대로)
-    const f = b.closest("[data-fold]"), on = !f.classList.contains("open");
-    f.classList.toggle("open", on); b.setAttribute("aria-expanded", String(on)); (app.homeOpen ||= {})[f.dataset.fold] = on;
-  }));
   r.querySelector("[data-repeat]")?.addEventListener("click", () => app.repeatPlan());
   r.querySelector("[data-mgtoggle]")?.addEventListener("click", () => {
     app.settings.minigame = !app.settings.minigame; saveSettings(app.settings);
