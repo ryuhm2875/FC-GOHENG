@@ -64,6 +64,10 @@ const RULES = [
     test: c => [c.possAge >= 12, `점유 ${fm(c.possAge)}초`] },
   { id: "boxLoad", name: "박스에 셋", re: /박스 안에 셋|박스 안으로 .*몰려든다|박스 안에서 기다린다/, win: [3, 2],
     test: c => [c.box3 >= 3, `박스 안 최다 ${c.box3}명`] },
+  { id: "chaseOn", name: "쫓아가기(측면 수비 올라감)", re: /측면 수비.{0,12}(올려 보낸다|올라와 있다|올라간다)|공격에 가담한다/, win: [4, 2],
+    test: c => [c.dfTop >= 65, `가장 높은 수비수 ${fm(c.dfTop)}m(자기 골문에서)`] },
+  { id: "lockOn", name: "잠그기(박스 앞 내려섬)", re: /물러나 잠근다|박스 앞으로 내려|박스 앞을 촘촘히/, win: [4, 2],
+    test: c => [c.own38 >= 8, `자기 골문 38m 안 최다 ${c.own38}명`] },
   { id: "fb", name: "측면 수비에게", re: /(측면 수비|풀백)(에게| .{1,6}에게)/, not: /손짓|걸|막혔|묶/, win: [3, 5],
     test: c => any(c.legsAny, l => l.to && !l.turnover && /^(LB|RB)$/.test(l.to.role)) },
 ];
@@ -146,10 +150,11 @@ for (let k = 0; k < N; k++) {
         if (f.h >= 0 && f.play) { const ht = teamOf(f.h); let n8 = 0, d1 = 99; P.forEach((p, pi) => { if (p.team !== ht) { const d = Math.hypot(f.px[pi] - f.x, f.py[pi] - f.y); if (d <= 8) n8++; d1 = Math.min(d1, d); } });
           if (n8 > c.minPress.n8 || (n8 === c.minPress.n8 && d1 < c.minPress.d1)) c.minPress = { n8, d1 }; }
       }
-      c.dfHi = 0; c.own8 = 0; c.box3 = 0;
+      c.dfHi = 0; c.own8 = 0; c.box3 = 0; c.dfTop = 0; c.own38 = 0;
       for (let i = i0; i <= i1; i++) { const f = T[i]; let sx = 0, n = 0, o = 0;
         P.forEach((p, pi) => { if (p.team !== team || p.pos === "GK") return; const x = team === "us" ? f.px[pi] : 105 - f.px[pi]; if (p.pos === "DF") { sx += x; n++; } if (x < 52.5) o++; });
         if (n) c.dfHi = Math.max(c.dfHi, sx / n); c.own8 = Math.max(c.own8, o);
+        let o38 = 0; P.forEach((p, pi) => { if (p.team !== team || p.pos === "GK") return; const x = team === "us" ? f.px[pi] : 105 - f.px[pi]; if (p.pos === "DF") c.dfTop = Math.max(c.dfTop, x); if (x < 38) o38++; }); c.own38 = Math.max(c.own38, o38);
         let bx3 = 0; P.forEach((p, pi) => { if (p.team !== team || p.pos === "GK") return; const x = team === "us" ? f.px[pi] : 105 - f.px[pi], y = team === "us" ? f.py[pi] : 68 - f.py[pi]; if (x > 88.5 && Math.abs(y - 34) < 20) bx3++; }); c.box3 = Math.max(c.box3, bx3); }
       const ic = at(l.ts); let lastCh = -99; for (const t of changes) if (t <= l.ts + 2) lastCh = t;
       c.possAge = l.ts - lastCh;

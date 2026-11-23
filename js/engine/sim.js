@@ -62,6 +62,7 @@ export function createSim(cfg) {
     ev: [], rec: null, phase: "play", restart: null, decideAt: 0, script: [], scur: null, stage: null, noFoulUntil: 0,
     pass: null, chain: [], possT: { us: 0, them: 0 }, flow: 0, bias: null, gkHold: 0, stopped: false, kickTeam: "us",
     pickOnly: null, trace: null, traceEnd: false, onTick: null, lastRestart: null, deflect: null, wonAt: null, wonBy: null, lastClear: false, oneOn: null, sw: { us: { hi: 0, deep: 0, said: -1 }, them: { hi: 0, deep: 0, said: -1 } }, gegenAt: null,
+    gs: { us: { cur: null, want: null, k: 0, said: false, fb: null }, them: { cur: null, want: null, k: 0, said: false, fb: null } },   // 경기 국면(점수·시간): lock 잠그기 / chase 쫓아가기. k는 0→1로 천천히
     shot: null, pending: null, clockOff: 0, tk: cfg.tk ?? 0.32, ik: cfg.ik ?? 0.8, prog: cfg.prog ?? 0.00045, dw: cfg.dw ?? 17, ft: cfg.ft ?? 1, brk0: cfg.brk ?? 1,
   };
   S.GK = P.filter(p => p.pos === "GK");
@@ -151,6 +152,17 @@ function shape(S, team) {
   const F = att ? FA : FD;
   for (let i = 1; i < 11; i++) { out[i * 2] = line + F[i][0] * stretch; out[i * 2 + 1] = cy + F[i][1] * W; }
   if (!att && S.block[team] === "deep") out[RI.ST1 * 2] = Math.max(out[RI.ST1 * 2], 46);   // 역습형: 공격수 하나는 하프라인 근처에 남아 역습을 기다림
+  const G = S.gs[team];
+  if (G.k > 0 && G.cur === "chase" && att) {        // 쫓아가기: 측면 수비 하나가 윙어 높이로, 같은 쪽 측면 미드필더는 안쪽(하프스페이스)으로 좁혀 길을 비켜 줌. 나머지 수비 셋과 중앙 미드필더 둘은 뒤를 받침
+    const fi = RI[G.fb], wi = G.fb === "RB" ? RI.RM : RI.LM, sg = G.fb === "RB" ? 1 : -1;
+    out[fi * 2] += 13 * G.k;
+    out[wi * 2 + 1] += (34 + sg * 0.5 * W - out[wi * 2 + 1]) * G.k;
+  }
+  if (G.k > 0 && G.cur === "lock" && !att) {        // 잠그기: 두 번째 공격수가 미드필더 줄로, 공 쪽 측면 미드필더는 수비 라인 옆까지 내려와 다섯 명이 박스 앞을 막음
+    out[RI.ST2 * 2] -= 8 * G.k;
+    const wi = by < 34 ? RI.LM : RI.RM;
+    out[wi * 2] -= 7 * G.k;
+  }
   if (att && bx > 78) {                     // 공이 상대 박스 근처면 문전과 박스 앞을 채움
     const fy = by < 34 ? 1 : -1;
     out[RI.ST1 * 2] = Math.max(out[RI.ST1 * 2], 95); out[RI.ST1 * 2 + 1] = 34 - fy * 3;
@@ -202,7 +214,7 @@ function targets(S) {
     if (A && p.ri && H && p !== H) {
       const hx = ox(att, H.x), hy = oy(att, H.y);
       // 오버래핑: 측면 미드필더가 상대 진영에서 공을 잡으면 같은 쪽 측면 수비가 바깥으로 올라감
-      if ((p.role === "LB" && H.role === "LM") || (p.role === "RB" && H.role === "RM")) {
+      if (((p.role === "LB" && H.role === "LM") || (p.role === "RB" && H.role === "RM")) && !(S.gs[att].cur === "lock" && S.gs[att].k > 0.5)) {   // 잠그는 팀은 측면 수비가 올라가지 않음
         if (hx > ((S.style[att] || {}).cross ? 40 : 48) && hx < 88) { x = Math.min(off - 1, hx + 9); y = hy < 34 ? 4 : 64; p.overlap = true; }
       } else p.overlap = false;
       // 공격수 내려오기: 빌드업 중이면 한 명이 받으러 내려옴
@@ -486,7 +498,7 @@ function decide(S) {
       const mid = lossV((hx + rx) / 2, (hy + ry) / 2);
       let free = 99; for (const o of S.P) if (o.team === foe && o.ri) free = Math.min(free, hyp(o.x - tp[0], o.y - tp[1]));
       v += clamp(free - 2, 0, 6) * 0.0012;                                                 // 받을 자리에 여유가 있으면 더 좋음
-      let u = (1 - lr.risk) * (v + clamp(rx - hx, -15, 30) * S.prog * (cw ? 1.8 : st.keep ? 0.75 : 1)) - lr.risk * mid;   // 점유형은 앞으로 덜 서두름
+      let u = (1 - lr.risk) * (v + clamp(rx - hx, -15, 30) * S.prog * (cw ? 1.8 : st.keep ? 0.75 : 1) * (S.gs[team].cur === "chase" ? 1 + 0.15 * S.gs[team].k : 1)) - lr.risk * mid;   // 점유형은 앞으로 덜 서두름
       if (offside) u = Math.min(u, 0) - 0.01;
       if (air && !wide) u *= st.long ? 0.6 : cw ? 0.55 : 0.4;
       if (r === S.chain[S.chain.length - 1]) u *= 0.75;                                       // 방금 준 선수에게 바로 돌려주는 건 덜
@@ -1334,6 +1346,7 @@ export function step(S) {
 }
 // 성향이 경기장에 실제로 보일 때 알림 (해설용): 압박형 라인이 3초 넘게 높이, 역습형이 3초 넘게 자기 진영에 8명 이상
 function styleWatch(S) {
+  for (const team of ["us", "them"]) gsWatch(S, team);
   for (const team of ["us", "them"]) {
     const w = S.sw[team], st = S.style[team] || {};
     if (S.poss === team && S.holder) {
@@ -1360,6 +1373,27 @@ function styleWatch(S) {
       if (w.deep === 3 && S.t - w.said > 60) { w.said = S.t; emit(S, "sitDeep", { team }); }
     }
   }
+}
+// 경기 국면: 1초마다 k를 1/12씩 (경기 시간 4분에 걸쳐 모양이 바뀜). 다른 국면으로 바뀔 때는 먼저 0으로 돌아온 뒤
+export function setGameState(S, team, mode) { S.gs[team].want = mode || null; }
+function gsWatch(S, team) {
+  const G = S.gs[team];
+  if (G.cur !== G.want) { G.k = Math.max(0, G.k - 1 / 12); if (G.k === 0) { G.cur = G.want; G.said = false; if (G.cur === "chase") G.fb = pickFb(S, team); } }
+  else if (G.cur) G.k = Math.min(1, G.k + 1 / 12);
+  if (!G.cur || G.k < 0.9 || G.said || !S.holder) return;
+  if (G.cur === "chase" && S.poss === team) {         // 올라간 측면 수비가 실제로 상대 진영 깊이 있을 때만 말함
+    const f = S.P.find(p => p.team === team && p.role === G.fb);
+    if (f && ox(team, f.x) >= 70 && ox(team, S.ball.x) > 52) { G.said = true; emit(S, "chaseOn", { team, by: f.name }); }
+  }
+  if (G.cur === "lock" && S.poss !== team) {           // 자기 진영 38m 안에 필드 선수 여덟 이상
+    let n = 0; for (const p of S.P) if (p.team === team && p.ri && ox(team, p.x) < 38) n++;
+    if (n >= 8) { G.said = true; emit(S, "lockOn", { team }); }
+  }
+}
+// 올라갈 측면 수비: 패스·드리블이 나은 쪽 (난수를 쓰지 않음)
+function pickFb(S, team) {
+  const v = r => { const p = S.P.find(q => q.team === team && q.role === r); return p ? p.st.pass + p.st.drib : 0; };
+  return v("LB") > v("RB") ? "LB" : "RB";
 }
 function record(S) {
   const n = S.P.length, f = new Float32Array(5 + n * 2);
