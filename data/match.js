@@ -97,7 +97,7 @@ export const SITUATIONS = [
       { label: "한 발 물러서 기다린다", by: { trail: ["참는다, 한 발 물러서 기다린다", "급한 마음을 눌렀다."], lead: ["서두를 것 없다, 한 발 물러서 기다린다", "급할 것 없다."] }, stats: { "mental.focus": 1 }, diff: -10, win: "keep", lose: "keep",
         winText: ["무리하지 않고 자리를 지켰다. 상대 패스가 옆으로만 돈다.", "달려들고 싶은 마음을 누르고 자리를 지켰다. 상대 패스가 옆으로만 돈다."], loseText: ["{opp|이/가} 여유 있게 앞으로 공을 찔렀다.", "기다려 준 꼴이 됐다. {opp|이/가} 여유 있게 앞으로 공을 찔렀다."] },
     ] },
-  { id: "fw_press_fb", intro: false, poss: "them", pos: ["FW"], zone: "att", weight: 1,
+  { id: "fw_press_fb", intro: false, poss: "them", pos: ["FW"], zone: "att", weight: 1, oppForm: ["442", "4231", "433"],
     text: ["상대 측면 수비 {opp|이/가} 터치라인에 붙어서 공을 잡았다. 빠져나갈 곳이 좁다."],
     choices: [
       { label: "터치라인 쪽으로 몰아붙인다", stats: { "phys.speed": 0.4, "phys.stamina": 0.3, "mental.competitive": 0.3 }, diff: -2, win: "win", lose: "keep",
@@ -631,7 +631,7 @@ export const SITUATIONS = [
       { label: "공격수에게 찔러 준다", by: { trail: ["빨리, 공격수에게 찔러 준다", "시간이 없다."], lead: ["역습 기회다, 공격수에게 찔러 준다", "확실히 끝낼 차례다."] }, stats: { "tech.pass": 0.7, "mental.teamwork": 0.3 }, diff: 0, win: "keyPass", lose: "keep",
         winText: ["달려가는 {mate}의 발 앞으로 정확히 찔렀다. 공격이 빨라진다!", "끌지 않았다. 달려가는 {mate}의 발 앞으로 정확히 찔렀다. 공격이 빨라진다!"], loseText: ["수비가 먼저 발을 뻗었다. 공은 다시 우리 미드필더에게 흘렀다.", "길이 보였는데 한 뼘 모자랐다. 수비가 먼저 발을 뻗었다. 공은 다시 우리 미드필더에게 흘렀다."] },
     ] },
-  { id: "mf_split", pos: ["MF"], zone: "mid", weight: 2,
+  { id: "mf_split", pos: ["MF"], zone: "mid", weight: 2, oppForm: ["442", "4231", "352"],
     text: ["중앙에서 공을 잡았다. 앞에 상대 미드필더 둘이 나란히 섰다. 둘 사이가 조금 벌어져 있다."],
     choices: [
       { label: "둘 사이로 치고 들어간다", by: { trail: ["물러설 데가 없다, 둘 사이로 치고 들어간다", "물러설 데가 없다."], lead: ["여기서 끝내자, 둘 사이로 치고 들어간다"], rain: ["젖은 잔디 위로 둘 사이로 치고 들어간다", "젖은 잔디가 공을 빠르게 굴렸다."] }, stats: { "tech.dribble": 0.5, "phys.agility": 0.5 }, diff: 5, win: "shot", lose: "danger",
@@ -679,7 +679,7 @@ export const SITUATIONS = [
       { label: "손뼉 치며 모두를 불러 모은다", requires: { "mental.teamwork": 70, "mental.confidence": 62 }, stats: { "mental.teamwork": 0.6, "mental.confidence": 0.4 }, diff: -6, win: "keyPass", lose: "keep",
         winText: ["손뼉을 치며 다들 불러 모았다. 다음 공격부터 발이 맞기 시작한다."], loseText: ["목소리는 컸는데, 분위기는 쉽게 돌아오지 않는다."] },
     ] },
-  { id: "mf_shield_wing", intro: false, poss: "them", pos: ["MF"], zone: "mid", weight: 2,
+  { id: "mf_shield_wing", intro: false, poss: "them", pos: ["MF"], zone: "mid", weight: 2, oppForm: ["442"],
     text: ["상대 측면 미드필더 {opp|이/가} 터치라인을 따라 공을 몰고 온다."],
     choices: [
       { label: "터치라인 쪽으로 몰아붙인다", stats: { "tech.defense": 0.5, "mental.focus": 0.5 }, diff: -2, win: "win", lose: "turnover",
@@ -772,7 +772,7 @@ export const SITUATIONS = [
       { label: "짧게 주는 걸 보고 따라 나간다", stats: { "phys.speed": 0.5, "mental.focus": 0.5 }, diff: 2, win: "win", lose: "danger",
         winText: ["짧게 받은 {opp}에게 곧장 달려가 공을 빼앗았다."], loseText: ["한 발 늦었다. 짧게 받은 상대가 한 번 접고 크로스를 올린다!"] },
     ] },
-  { id: "df_split_pass", intro: false, pos: ["DF"], zone: "def", weight: 2,
+  { id: "df_split_pass", intro: false, pos: ["DF"], zone: "def", weight: 2, oppForm: ["442", "352"],
     text: ["빌드업. 상대 공격수 둘 사이로 패스 길이 살짝 보인다."],
     choices: [
       { label: "둘 사이로 찔러 넣는다", stats: { "tech.pass": 0.6, "mental.focus": 0.4 }, diff: 4, win: "keyPass", lose: "danger",
@@ -1001,7 +1001,7 @@ export const SITUATIONS = [
       { label: "반칙을 얻어 흐름을 끊는다", stats: { "phys.agility": 0.5, "mental.focus": 0.5 }, diff: 0, win: "setPiece", lose: "turnover",
         winText: ["먼저 몸을 넣자 상대가 발을 걸었다. 휘슬. 흐름이 잠깐 멈춘다."], loseText: ["넘어졌지만 주심은 고개를 젓는다. 경기는 계속된다."] },
     ] },
-  { id: "fw_decoy", intro: false, pos: ["FW"], zone: "att", weight: 2,
+  { id: "fw_decoy", intro: false, pos: ["FW"], zone: "att", weight: 2, oppForm: ["442", "4231", "433"],
     text: ["{mate|이/가} 측면에서 공을 몰고 들어온다. 상대 센터백 둘이 나만 보고 있다."],
     choices: [
       { label: "니어로 뛰어 수비 둘을 끌고 간다", stats: { "mental.teamwork": 0.6, "phys.speed": 0.4 }, diff: -3, win: "decoy", lose: "miss",
@@ -1070,7 +1070,7 @@ export const SITUATIONS = [
         winText: ["앞으로 빠르게 연결했다. 상대 벤치에서 항의가 쏟아진다. 주심은 그대로 진행시킨다."], loseText: ["서두른 패스가 끊겼다. 관중석에서 야유도 섞여 나온다."] },
     ] },
   // ── 현대 축구 장면 (경기장 움직임과 함께 추가. 연출은 data/scenes.js) ──
-  { id: "mf_halfspace_turn", intro: false, pos: ["MF"], zone: "att", weight: 3,
+  { id: "mf_halfspace_turn", intro: false, pos: ["MF"], zone: "att", weight: 3, oppForm: ["442", "4231", "433"],
     text: ["측면과 중앙 사이, 수비 두 명 틈에서 몸을 반쯤 열고 공을 받았다. 바깥으로 {mate|이/가} 겹쳐 뛰어 올라간다.",
       "하프스페이스에서 공을 잡았다. 상대 측면 수비가 끌려 나온 자리 뒤로 {mate|이/가} 달려 나간다."],
     choices: [
@@ -1091,7 +1091,7 @@ export const SITUATIONS = [
       { label: "상대 공격수 옆에 바짝 붙어 둔다", stats: { "tech.defense": 0.6, "mental.focus": 0.4 }, diff: 0, win: "keyPass", lose: "turnover",
         winText: ["상대가 걷어 낸 공을 붙어 있던 내가 먼저 끊어 다시 앞으로 찔러 준다!"], loseText: ["붙어 있던 공격수가 몸을 돌려 빠져나간다."] },
     ] },
-  { id: "mf_drop_between", intro: false, pos: ["MF"], zone: "def", weight: 2,
+  { id: "mf_drop_between", intro: false, pos: ["MF"], zone: "def", weight: 2, oppForm: ["442", "352"],
     text: ["상대 공격수 둘이 우리 센터백 두 명을 하나씩 막아섰다. 내가 둘 사이로 내려가면 수비가 셋이 된다."],
     choices: [
       { label: "센터백 사이로 내려가 받는다", by: { trail: ["다시 만들자, 센터백 사이로 내려가 받는다", "조급해하지 않기로 했다."], lead: ["침착하게 센터백 사이로 내려가 받는다", "침착했다."] }, stats: { "tech.firstTouch": 0.5, "tech.pass": 0.5 }, diff: -4, win: "keep", lose: "danger",
@@ -1519,6 +1519,65 @@ export const SITUATIONS = [
         winText: ["어깨를 붙이고 같이 뛰었다. {opp|이/가} 제대로 뛰어오르지 못한다. 공은 골라인 밖으로 나갔다."], loseText: ["붙었지만 크로스가 우리 둘 머리 위로 넘어 뒤로 떨어진다!"] },
       { label: "골키퍼와 소리쳐 정리한다", stats: { "mental.teamwork": 0.7, "mental.focus": 0.3 }, diff: -3, win: "win", lose: "danger",
         winText: ["\"키퍼!\" 소리에 {gk|이/가} 뛰어나와 공을 잡았다. 나는 {opp}의 앞을 막아섰다."], loseText: ["서로 미루다 공이 그 사이로 떨어졌다!"] },
+    ] },
+  // ── 상대 포메이션 장면 (oppForm): 연출(SCENES)과 선택지는 검증된 장면을 그대로 빌려 씀 (§71) ─────
+  { id: "f352_wb_space", pos: ["MF", "FW"], zone: "att", weight: 3, oppForm: ["352"],
+    text: ["상대 윙백이 올라간 뒤 미처 내려오지 못했다. {side} 측면 뒷공간에서 공을 받았다. 바깥쪽으로 끌려 나온 수비 {opp|이/가} 나와 1 대 1로 마주 선다."],
+    choices: [
+      { label: "안으로 접고 들어가 감아 찬다", stats: { "tech.dribble": 0.5, "tech.shoot": 0.5 }, diff: 6, win: "shot", lose: "turnover",
+        winText: ["안으로 한 번 접었다. {opp|이/가} 따라오지 못한다. 슈팅 각이 열렸다!"], loseText: ["접는 순간 {opp|이/가} 발을 뻗어 공을 빼냈다."] },
+      { label: "바깥으로 치고 달려 크로스", stats: { "phys.speed": 0.4, "tech.cross": 0.6 }, diff: 3, win: "assist", lose: "turnover",
+        winText: ["공을 길게 치고 달렸다. {opp|을/를} 속도로 떼어 내고 문전으로 크로스! {mate|이/가} 뛰어든다!"], loseText: ["크로스가 {opp}의 발에 걸렸다."] },
+      { label: "골라인까지 파고들어 컷백", stats: { "tech.dribble": 0.5, "tech.pass": 0.5 }, diff: 5, win: "assist", lose: "turnover",
+        winText: ["골라인 앞까지 파고들어 뒤로 깔아 줬다! {mate|이/가} 달려 들어온다!"], loseText: ["컷백이 {opp}의 발에 걸렸다."] },
+    ] },
+  { id: "f352_wb_cross", intro: false, poss: "them", pos: ["DF"], zone: "def", weight: 2.5, oppForm: ["352"],
+    text: ["반대편에서 상대 윙백이 깊숙이 올라와 크로스를 올리려 한다. 투톱 중 하나인 {opp|이/가} 내 등 뒤 먼 쪽 포스트로 슬금슬금 빠진다."],
+    choices: [
+      { label: "몸을 반쯤 열어 공과 사람을 같이 본다", stats: { "mental.focus": 0.6, "phys.jump": 0.4 }, diff: -1, win: "win", lose: "danger",
+        winText: ["몸을 반쯤 열어 공과 {opp|을/를} 한눈에 뒀다. 날아온 크로스를 먼저 머리로 걷어 냈다."], loseText: ["공을 보는 사이 {opp|이/가} 등 뒤에서 뛰어올랐다!"] },
+      { label: "그 상대에게 바짝 붙어 같이 뛴다", stats: { "phys.strength": 0.6, "phys.jump": 0.4 }, diff: 1, win: "win", lose: "danger", physical: true,
+        winText: ["어깨를 붙이고 같이 뛰었다. {opp|이/가} 제대로 뛰어오르지 못한다. 공은 골라인 밖으로 나갔다."], loseText: ["붙었지만 크로스가 우리 둘 머리 위로 넘어 뒤로 떨어진다!"] },
+      { label: "골키퍼와 소리쳐 정리한다", stats: { "mental.teamwork": 0.7, "mental.focus": 0.3 }, diff: -3, win: "win", lose: "danger",
+        winText: ["\"키퍼!\" 소리에 {gk|이/가} 뛰어나와 공을 잡았다. 나는 {opp}의 앞을 막아섰다."], loseText: ["서로 미루다 공이 그 사이로 떨어졌다!"] },
+    ] },
+  { id: "f4231_am_drop", intro: false, poss: "them", pos: ["DF"], zone: "def", weight: 3, oppForm: ["4231"],
+    text: ["상대 공격형 미드필더 {opp|이/가} 우리 수비와 미드필더 사이로 내려와 등지고 공을 받는다. 따라 올라가면 뺏을 수 있지만, 놓치면 내 뒤가 빈다."],
+    choices: [
+      { label: "따라 올라가 등 뒤에서 바로 붙는다", stats: { "tech.defense": 0.5, "phys.strength": 0.5 }, diff: 2, win: "win", lose: "danger",
+        winText: ["돌아서기 전에 발을 넣었다. 공이 우리 쪽으로 흐른다!"], loseText: ["{opp|이/가} 등으로 버티며 옆으로 흘렸다. 내가 비운 자리로 상대가 뛰어든다!"] },
+      { label: "자리를 지키고 앞으로 못 돌게만 한다", stats: { "mental.focus": 0.7, "mental.teamwork": 0.3 }, diff: -5, win: "keep", lose: "turnover",
+        winText: ["거리를 두고 버텼다. {opp|은/는} 결국 뒤로 공을 돌린다."], loseText: ["너무 물러섰다. {opp|이/가} 편하게 돌아서서 앞을 본다."] },
+      { label: "미드필더와 같이 가둔다", stats: { "mental.teamwork": 0.6, "phys.stamina": 0.4 }, diff: 0, win: "win", lose: "danger",
+        winText: ["앞뒤에서 동시에 조였다. 갇힌 공을 미드필더가 걷어 낸다!"], loseText: ["둘이 동시에 붙는 사이 옆으로 빠진 공이 그대로 앞으로 간다!"] },
+    ] },
+  { id: "f4231_pivot", pos: ["FW"], zone: "mid", weight: 2.5, oppForm: ["4231"],
+    text: ["하프라인 근처까지 내려와 공을 받았다. 상대 수비형 미드필더 둘 가운데 {opp|이/가} 등 뒤에 붙었다."],
+    choices: [
+      { label: "원터치로 돌려준다", stats: { "tech.firstTouch": 0.6, "mental.teamwork": 0.4 }, diff: -6, win: "keep", lose: "turnover",
+        winText: ["달려오던 동료에게 원터치로 돌려줬다. 깔끔하다."], loseText: ["패스가 짧았다. {opp|이/가} 가로챈다."] },
+      { label: "돌아서서 앞으로 치고 간다", stats: { "phys.agility": 0.5, "tech.dribble": 0.5 }, diff: 6, win: "keyPass", lose: "danger",
+        winText: ["순간적으로 돌아섰다! 앞이 활짝 열렸다."], loseText: ["돌아서다 공을 빼앗겼다. 역습이다!"] },
+      { label: "돌아서며 반대편으로 길게 벌린다", requires: { "tech.pass": 66, "mental.focus": 60 }, stats: { "tech.pass": 0.6, "mental.focus": 0.4 }, diff: 5, win: "killPass", lose: "turnover",
+        winText: ["몸을 돌리며 반대편 측면으로 길게 찼다. {mate|이/가} 정확히 받는다!"], loseText: ["공이 너무 길었다. 라인 밖으로 나간다."] },
+    ] },
+  { id: "f433_trident", poss: "them", pos: ["DF"], zone: "def", weight: 2.5, oppForm: ["433"],
+    text: ["상대 스리톱의 가운데 {opp|이/가} 빠르게 치고 들어온다. 양옆 윙어가 넓게 벌려 서 있어 도와줄 동료가 없다."],
+    choices: [
+      { label: "태클", stats: { "tech.defense": 0.6, "phys.speed": 0.4 }, diff: 4, win: "win", lose: "danger",
+        winText: ["미끄러지듯 들어간 태클, 공만 정확히 빼냈다!"], loseText: ["태클이 늦었다! {opp|이/가} 빠져나간다."] },
+      { label: "거리를 두고 막기", stats: { "tech.defense": 0.5, "mental.focus": 0.5 }, diff: -3, win: "win", lose: "turnover",
+        winText: ["거리를 유지하며 슈팅 각도를 지웠다."], loseText: ["크로스를 허용했다."] },
+    ] },
+  { id: "f433_dm_side", intro: false, pos: ["MF"], zone: "att", weight: 3, oppForm: ["433"],
+    text: ["상대 수비형 미드필더가 혼자다. 그 옆 빈자리, 측면과 중앙 사이에서 몸을 반쯤 열고 공을 받았다. 바깥으로 {mate|이/가} 겹쳐 뛰어 올라간다."],
+    choices: [
+      { label: "겹쳐 뛰는 동료에게 찔러 준다", stats: { "tech.pass": 0.6, "mental.teamwork": 0.4 }, diff: 1, win: "assist", lose: "turnover",
+        winText: ["수비 뒤로 찌른 공을 {mate|이/가} 골라인 앞에서 받아 그대로 때린다!"], loseText: ["패스가 반 박자 늦었다. 상대 측면 수비가 다리를 뻗어 끊어 낸다."] },
+      { label: "몸을 돌려 직접 박스로 파고든다", stats: { "tech.dribble": 0.6, "phys.agility": 0.4 }, diff: 6, win: "shot", lose: "turnover",
+        winText: ["반쯤 열어 둔 몸을 그대로 돌렸다. 수비 둘 사이가 열린다!"], loseText: ["돌아서는 순간 두 번째 수비가 공을 빼앗는다."] },
+      { label: "한 번 더 돌려 상대를 끌어낸다", stats: { "mental.focus": 0.6, "tech.pass": 0.4 }, diff: -7, win: "keep", lose: "turnover",
+        winText: ["뒤로 돌려 주자 상대 블록이 한 칸 따라 올라온다. 다시 빈틈을 찾는다."], loseText: ["돌린 공이 짧았다. 상대 공격수가 가로챈다."] },
     ] },
 ];
 

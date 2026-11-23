@@ -12,7 +12,7 @@ import { rand, int, range, normal, chance, pick, weighted, clamp, getPath, shuff
 import { ovr, depthChart, teamStrength, activeRoster, mateGrade } from "./team.js";
 import { hasTrait, applyGain, conditionOf } from "./growth.js";
 import { applyResult, TEAM_NAME } from "./season.js";
-import { matchMails, styleOf } from "./advice.js";
+import { matchMails, styleOf, formOfTeam } from "./advice.js";
 import { isBirthdayWeek } from "./birthday.js";
 import { turnInfo } from "./calendar.js";
 import { oppLineup, noteOpp } from "./opponents.js";
@@ -428,7 +428,8 @@ export function prepareMatch(state, info, fx) {
   // 경기장 시뮬레이션
   m.players = pitchPlayers(state, m);
   const oppStyle = styleSim(fx.opponent.name);
-  const S = createSim({ spVar: !!CAL.sp, gsOn: !!CAL.gs, players: m.players, str: { us: ours, them: theirs }, style: { us: {}, them: oppStyle }, blocks: { us: "mid", them: oppStyle.block || "mid" } });
+  m.oppForm = fx.practice || fx.elementary ? "442" : formOfTeam(fx.opponent.name);   // 상대 포메이션 (청백전·초등부는 4-4-2)
+  const S = createSim({ spVar: !!CAL.sp, gsOn: !!CAL.gs, players: m.players, str: { us: ours, them: theirs }, style: { us: {}, them: oppStyle }, form: { them: m.oppForm }, blocks: { us: "mid", them: oppStyle.block || "mid" } });
   const D = ours - theirs;
   S.brk = { us: CAL.brk * Math.exp(-D / CAL.kb), them: CAL.brk * Math.exp(D / CAL.kb) };
   S.attackP = { us: sig(CAL.a0 + D / CAL.ka), them: sig(CAL.a0 - D / CAL.ka) };
@@ -950,6 +951,7 @@ function canSit(state, m, s) {
   if (!s.pos.includes(state.player.position) || (s.once && m.used[s.id]) || !meets(state, s.requires) || s.chainOnly) return false;
   if (s.detail && !s.detail.some(k => k === m.detailKey || k === m.detail?.group)) return false;   // 세부 포지션 장면 (윙어 1 대 1, 풀백 오버래핑…)은 그 자리에서만
   if (s.wx && !s.wx.includes(m.weather || "clear")) return false;
+  if (s.oppForm && !s.oppForm.includes(m.oppForm || "442")) return false;   // 상대 포메이션에 맞는 장면만 ("상대 공격수 둘이…"는 4-2-3-1에서 안 나옴, 포메이션 장면 §71)
   if (SCENES[s.id]?.mateCard && !(m.cardsUs || []).some(n => n !== m.me && m.sim?.P.some(p => p.name === n && p.team === "us"))) return false;   // "경고 한 장이 있는 동료" 장면은 실제로 경고 받은 동료가 있을 때만
   if ((s.flowUp && (m.flow || 0) < 0.3) || (s.flowDown && (m.flow || 0) > -0.3)) return false;   // 경기 흐름에 맞는 장면
   if ((s.late && !late) || (s.leading && a <= b) || (s.trailing && a >= b)) return false;

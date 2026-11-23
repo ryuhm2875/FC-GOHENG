@@ -31,6 +31,7 @@ for (let k = 0; k < N; k++) {
   if (!ctx.fx) continue;
   const m = prepareMatch(s, ctx.info, ctx.fx);
   if (process.env.WX) m.weather = process.env.WX;
+  if (process.env.FORM) { m.oppForm = process.env.FORM; m.sim.form.them = process.env.FORM; }   // 상대 포메이션 고정
   games++;
   const S = m.sim;
   const pool = NEW.map(id => SITUATIONS.find(x => x.id === id)).filter(x => x.pos.includes(pos));
