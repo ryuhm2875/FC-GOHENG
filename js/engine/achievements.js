@@ -1,6 +1,7 @@
 // 업적: 판이 바뀌어도 이 기기에 남는 도전 과제
 // check(s, ctx): s는 게임 상태, ctx.end는 졸업(엔딩) 순간인지, ctx.hall은 지금까지 끝낸 판 기록, ctx.endings는 본 엔딩 목록
 import { ovr } from "./team.js";
+import { ENDINGS } from "../../data/endings.js";
 
 const seen = (s, ids) => ids.every(id => s.seenEvents?.includes(id));
 const ms = s => s.record.matches;
@@ -41,7 +42,7 @@ export const ACHIEVEMENTS = [
   { id: "storyteller", icon: "📖", label: "이야기꾼", desc: "한 판에서 이벤트 120종을 본다", check: s => (s.seenEvents || []).length >= 120 },
   // ── 여러 판 ──
   { id: "endings_5", icon: "🎬", label: "다섯 갈래 길", desc: "서로 다른 엔딩 다섯 개", check: (s, c) => (c.endings || []).length >= 5 },
-  { id: "endings_all", icon: "👑", label: "모든 길", desc: "엔딩 열네 개를 모두 본다", check: (s, c) => (c.endings || []).length >= 14 },
+  { id: "endings_all", icon: "👑", label: "모든 길", desc: `엔딩 ${ENDINGS.length}개를 모두 본다`, check: (s, c) => ENDINGS.every(e => (c.endings || []).includes(e.id)) },
   { id: "three_pos", icon: "🔄", label: "멀티 플레이어", desc: "공격수·미드필더·수비수로 각각 졸업한다", check: (s, c) => ["FW", "MF", "DF"].every(p => (c.hall || []).some(h => h.position === p)) },
 ];
 

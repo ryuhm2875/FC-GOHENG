@@ -253,8 +253,9 @@ function captainVote(state, run, changes) {
   state.flags.captainVoted = true;
   const juniorVote = !!state.marks?.junior_cared && person(state, "junior");   // 예전에 챙겨 준 후배가 먼저 손을 듦
   const score = captainScore(state) + (rand() * 8 - 4) + (juniorVote ? 5 : 0);
-  const need = run ? 80 : 90;                        // 주장은 쉽게 되지 않게 (감독 신뢰·팀워크·생활태도·동료 관계가 고루 높아야)
+  const need = run ? 76 : 86;                        // 주장은 쉽게 되지 않게 (감독 신뢰·팀워크·생활태도·동료 관계가 고루 높아야). 80·90 → 76·86 (엔딩 점검: 주장이 열 판에 한 판도 안 나와서)
   const win = score >= need;
+  state.flags.captainScore = Math.round(score * 10) / 10;   // 점검 도구용 (tools/dev/ending-audit.mjs)
   if (win) {
     state.flags.captain = true;
     achieve(state, "captain");                         // 주장이 되면 '주장 후보' 목표도 이룬 셈

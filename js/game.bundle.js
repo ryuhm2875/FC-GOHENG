@@ -12872,8 +12872,9 @@ function captainVote(state, run, changes) {
   state.flags.captainVoted = true;
   const juniorVote = !!state.marks?.junior_cared && person(state, "junior");   // 예전에 챙겨 준 후배가 먼저 손을 듦
   const score = captainScore(state) + (rand() * 8 - 4) + (juniorVote ? 5 : 0);
-  const need = run ? 80 : 90;                        // 주장은 쉽게 되지 않게 (감독 신뢰·팀워크·생활태도·동료 관계가 고루 높아야)
+  const need = run ? 76 : 86;                        // 주장은 쉽게 되지 않게 (감독 신뢰·팀워크·생활태도·동료 관계가 고루 높아야). 80·90 → 76·86 (엔딩 점검: 주장이 열 판에 한 판도 안 나와서)
   const win = score >= need;
+  state.flags.captainScore = Math.round(score * 10) / 10;   // 점검 도구용 (tools/dev/ending-audit.mjs)
   if (win) {
     state.flags.captain = true;
     achieve(state, "captain");                         // 주장이 되면 '주장 후보' 목표도 이룬 셈
@@ -13022,6 +13023,7 @@ return { ensureOrder, judgeOrder };
 __m["data/endings.js"] = (function () {
 
 // 엔딩. 위에서부터 차례로 조건을 확인해, 먼저 맞는 엔딩이 나옵니다.
+// 순서: 특별한 경력(레전드·대표·프로) → 3년의 이야기(학업 부진·역전·주장·모범·부상·벤치) → 진학한 학교 → 일반 진학·평범
 // grade: S, A, B, C, D, 숨겨진(H), 전설(L)
 // img: assets/img/ 안의 엔딩 그림 이름
 // cond(c): c는 엔진이 계산한 3년 요약 (아래 career.js의 summarize 참고)
@@ -13038,7 +13040,7 @@ const ENDINGS = [
 
   { id: "national", grade: "S", title: "청소년 국가대표", img: "ending_national",
     cond: c => c.nationalTeam,
-    story: c => `U-15 대표팀 소집 명단, 맨 아래에 ${c.name}의 이름이 있었다.\n\n고흥에서 파주까지는 버스로 다섯 시간. 창밖을 보다가 입단 첫날 측정표가 떠올랐다. 그때 그 숫자들이 여기까지 왔다.\n\n봄에는 ${c.schoolName} 유니폼을 입는다.`,
+    story: c => `U-15 대표팀 소집 명단, 맨 아래에 ${c.name}의 이름이 있었다.\n\n고흥에서 파주까지는 버스로 다섯 시간. 창밖을 보다가 입단 첫날 측정표가 떠올랐다. 그때 그 숫자들이 여기까지 왔다.\n\n${c.tier === "general" ? "봄에는 축구부 대신 교실로 간다. 그래도 그 명단에 이름이 있었다는 건 바뀌지 않는다." : `봄에는 ${c.schoolName} 유니폼을 입는다.`}`,
     later: c => `대표팀 훈련장 라커룸. 옆자리 선수가 묻는다. "고흥? 거기서도 축구를 해?"\n\n웃으며 대답했다. "바다 보이는 운동장이 있어. 바람이 세서 공이 자꾸 밀려."\n\n그 바람 덕분에 크로스 하나는 누구보다 낮게 찬다.` },
 
   { id: "pro", grade: "S", title: "프로 유스 입단", img: "ending_pro",
@@ -13046,7 +13048,12 @@ const ENDINGS = [
     story: c => `${c.schoolName}의 하얀 훈련복을 받았다. 가슴에 프로 구단 엠블럼이 박혀 있다.\n\n중학교 3년 동안 ${c.apps}경기, ${c.goals}골. 숫자보다 오래 남는 건 비 오는 날 혼자 남아 찼던 슈팅들이다.\n\n이제부터는 매일이 시험이다.`,
     later: c => `프로 2군 경기장. 관중석은 듬성듬성하지만 맨 앞줄 아저씨 목소리는 크다. 아빠다.\n\n아직 1군 명단에 오른 적은 없다. 대신 한 번도 훈련에 늦은 적이 없다.\n\n코치가 그 이야기를 감독에게 했다는 소문이 돈다.` },
 
-  { id: "comeback", grade: "H", title: "역전의 아이콘", img: "ending_highschool",
+  { id: "academicBan", grade: "D", title: "학업 부진으로 출전 정지", img: "ending_setback",
+    cond: c => c.suspended >= 4,
+    story: c => `공식 경기에 ${c.suspended}번 나서지 못했다. 이유는 부상이 아니라 성적표였다.\n\n관중석에서 동료들 경기를 보던 날들이 가장 길었다. "공부도 훈련이다." 감독님 말이 그제야 들렸다.\n\n고등학교에서는 다르게 할 수 있다. 아직 늦지 않았다.`,
+    later: c => `대학 스포츠학과 2학년. 성적표 맨 위 평점이 생각보다 높다.\n\n중학교 때 관중석에서 보낸 그 경기들을 가끔 떠올린다. 그날의 억울함이 책상 앞에 앉게 만들었다.\n\n주말엔 지역 클럽에서 공을 찬다. 이번엔 출전 정지 같은 건 없다.` },
+
+  { id: "comeback", grade: "H", title: "역전의 아이콘", img: "ending_comeback",
     cond: c => c.wasBenchInG1 && c.g3StartRatio >= 0.85 && c.g3Rating >= 7.8 && c.ovr >= 74,
     story: c => `중1 때는 벤치에서 물통을 날랐다. 경기 명단에 이름이 없는 날이 더 많았다.\n\n중3, ${c.nameEun} 팀에서 가장 먼저 이름이 불리는 선수가 됐다. 3학년 평균 평점 ${c.g3Rating.toFixed(2)}.\n\n늦게 핀 꽃이 가장 오래간다는 말, 이제는 조금 믿게 됐다. ${c.schoolName}에서도 그럴 것이다.`,
     later: c => `대학 축구부 주전 명단 맨 위에 ${c.name}의 이름이 있다.\n\n후배 하나가 벤치에서 고개를 숙이고 있길래 옆에 앉았다. "나도 중1 땐 물통만 날랐어."\n\n그 말을 믿지 않는 눈치였다. 그래서 그날 훈련은 그 후배랑 같이 남았다.` },
@@ -13056,49 +13063,59 @@ const ENDINGS = [
     story: c => `1년 동안 주황색 완장을 찼다.\n\n잘한 날보다, 진 날 라커룸에서 먼저 일어나 박수를 친 날들이 더 기억에 남는다. 후배들은 ${c.nameEul} "형"보다 "주장"이라고 더 많이 불렀다.\n\n졸업식 날, 완장은 ${c.juniorName || "후배"}에게 넘어갔다. ${c.schoolName}에서 또 다른 시작이다.`,
     later: c => `고흥대서중 운동장. 휴가 나온 김에 들렀다가 후배들 훈련을 지켜본다.\n\n주황색 완장을 찬 아이가 동료들한테 소리를 지르고 있다. 목소리가 갈라진다. 그 모습이 낯설지 않다.\n\n훈련이 끝나고 그 아이에게 음료수 하나를 건넸다. "목은 아껴. 진 날 써야 하니까."` },
 
-  { id: "model", grade: "H", title: "모범 학생선수", img: "ending_graduate",
+  { id: "model", grade: "H", title: "모범 학생선수", img: "ending_model",
     cond: c => c.academic >= 75 && c.attitude >= 75,
-    story: c => `졸업식에서 ${c.teacherName}께서 ${c.name}의 이름을 한 번 더 부르셨다. 학교장상.\n\n훈련 끝나고 도서관, 시험 전날엔 단톡방 대신 문제집. 축구도 공부도 놓지 않은 3년이었다.\n\n${c.schoolName}에서도 그 균형은 계속된다.`,
+    story: c => `졸업식에서 ${c.teacherName}께서 ${c.name}의 이름을 한 번 더 부르셨다. 학교장상.\n\n훈련 끝나고 도서관, 시험 전날엔 단톡방 대신 문제집. 축구도 공부도 놓지 않은 3년이었다.\n\n${c.tier === "general" ? `이제 축구부는 아니다. 그래도 3년 동안 몸에 붙은 습관은 ${c.schoolName}에서도 그대로다.` : `${c.schoolName}에서도 그 균형은 계속된다.`}`,
     later: c => `체육교육과 강의실 맨 앞줄. 운동장과 책상 사이에서 3년을 버텼던 게 여기까지 이어졌다.\n\n교생 실습은 고흥대서중으로 신청했다. ${c.teacherName}께서 전화로 웃으셨다. "이제 선생님이라고 불러야 하냐?"\n\n아직은 아니다. 대신 축구부 아이들 공부는 봐 줄 수 있다.` },
 
   { id: "injury", grade: "D", title: "부상으로 좌절", img: "ending_setback",
-    cond: c => c.injuryWeeks >= 14 && c.g3Rating < 7.1 && ["footballHS", "general", "regional", "none"].includes(c.tier),
+    cond: c => c.injuryWeeks >= 11 && (c.g3Rating < 7.3 || c.g3StartRatio < 0.6) && ["footballHS", "general", "regional", "none"].includes(c.tier),
     story: c => `3년 중 ${c.injuryWeeks}주를 재활실에서 보냈다.\n\n몸이 회복되면 다른 곳이 아팠다. 쉬어야 할 때 쉬지 못했던 날들이 하나씩 떠오른다.\n\n그래도 축구화를 버리지는 않았다. 몸을 아끼는 법을 배운 것도 3년의 결과다.`,
     later: c => `재활 트레이너 자격증 시험장. 수험표를 쥔 손이 조금 떨린다.\n\n3년 동안 재활실에서 본 것, 들은 것, 아팠던 것. 그게 전부 공부가 됐다.\n\n언젠가 다친 아이가 찾아오면 제일 먼저 이렇게 말해 줄 거다. "아픈 건 숨기는 게 아니야."` },
-
-  { id: "nationalSchool", grade: "A", title: "전국 강호 진학", img: "ending_highschool",
-    cond: c => c.tier === "national",
-    story: c => `${c.schoolName}. 전국대회 단골 우승 후보.\n\n입학 테스트 날, 운동장에 선 1학년만 서른 명이 넘었다. 고흥에서는 에이스였지만 여기서는 다시 맨 아래부터다.\n\n괜찮다. 중1 때도 그랬으니까.`,
-    later: c => `대학 리그 결승전. 상대 팀 명단에 낯익은 이름이 보인다. ${c.rivalName ? `${c.rivalName}.` : "중학교 때 함께 뛰던 동기."}\n\n경기 전 악수를 하면서 둘 다 웃음을 참지 못했다. "아직도 오른쪽으로만 치고 가냐?"\n\n경기 결과는 중요하지 않았다. 아니, 사실 중요했다. 그래서 끝까지 뛰었다.` },
-
-  { id: "regionalBest", grade: "A", title: "지역 최고의 선수", img: "ending_highschool",
-    cond: c => c.tier === "regional" && (c.g3Rating >= 7.4 || c.g3LeagueTitle),
-    story: c => `전남 권역 주말리그에서 ${c.nameIrane} 이름을 모르는 지도자는 없었다.\n\n3년 통산 ${c.apps}경기 ${c.goals}골 ${c.assists}도움. ${c.schoolEun} 망설이지 않고 손을 내밀었다.\n\n더 큰 무대는 이제부터다.`,
-    later: c => `전남 지역 실업팀 입단 테스트. 운동장에 들어서자 바닷바람이 분다. 고흥에서 맡던 냄새다.\n\n테스트가 끝나고 감독이 다가와 물었다. "고흥대서중 출신이라고? 그 팀 경기 몇 번 봤다."\n\n합격 통보는 사흘 뒤에 왔다.` },
-
-  { id: "academicBan", grade: "D", title: "학업 부진으로 출전 정지", img: "ending_setback",
-    cond: c => c.suspended >= 4,
-    story: c => `공식 경기에 ${c.suspended}번 나서지 못했다. 이유는 부상이 아니라 성적표였다.\n\n관중석에서 동료들 경기를 보던 날들이 가장 길었다. "공부도 훈련이다." 감독님 말이 그제야 들렸다.\n\n고등학교에서는 다르게 할 수 있다. 아직 늦지 않았다.`,
-    later: c => `대학 스포츠학과 2학년. 성적표 맨 위 평점이 생각보다 높다.\n\n중학교 때 관중석에서 보낸 그 경기들을 가끔 떠올린다. 그날의 억울함이 책상 앞에 앉게 만들었다.\n\n주말엔 지역 클럽에서 공을 찬다. 이번엔 출전 정지 같은 건 없다.` },
 
   { id: "dream", grade: "C", title: "벤치의 꿈", img: "ending_bench",
     cond: c => c.g3StartRatio < 0.3 && c.apps > 0 && c.apps < 50,
     story: c => `3년 동안 경기에 나선 건 ${c.apps}번. 선발 명단에 이름이 오른 날은 손에 꼽았다.\n\n유니폼은 늘 깨끗했다. 그래도 경기 전날마다 축구화 끈을 새로 묶었다. 언젠가 부를지 모르니까.\n\n꿈은 아직 벤치 위에 그대로 있다.`,
     later: c => `지역 유소년 클럽 코치. 초등학생들이 공보다 먼저 달려와 다리에 매달린다.\n\n벤치에 앉아 있던 3년 동안 경기장을 누구보다 오래 봤다. 그 눈이 지금 아이들 움직임을 읽는다.\n\n"코치님은 선수 때 골 많이 넣었어요?" 웃으며 대답했다. "벤치에서 제일 크게 응원했어."` },
 
-  { id: "bench", grade: "C", title: "만년 후보", img: "ending_bench",
+  { id: "bench", grade: "B", title: "슈퍼 서브", img: "ending_supersub",
     cond: c => c.g3StartRatio < 0.3,
-    story: c => `3학년이 돼서도 선발 명단에 이름이 올라간 날은 손에 꼽았다.\n\n그래도 훈련엔 한 번도 빠지지 않았다. 대부분 교체로 나선 ${c.apps}경기, 그 몇 분을 위해 3년을 뛰었다.\n\n${c.schoolName}에서 다시 시작한다. 벤치에서 본 것들도 다 실력이 된다.`,
+    story: c => `후반 20분쯤이면 감독님이 늘 벤치 쪽으로 고개를 돌렸다. 선발로 나선 날은 손에 꼽는다.\n\n${c.subGoals >= 5 ? `그래도 교체로 들어간 ${c.subApps}경기에서 ${c.subGoals}골을 넣었다.` : `그래도 교체로 ${c.subApps}경기를 뛰었다. 지고 있을 때도, 앞선 점수를 지켜야 할 때도 감독님은 ${c.nameEul} 찾았다.`} 몸을 푸는 시간만큼은 누구보다 길었다.\n\n${c.tier === "general" ? "고등학교에서는 축구 대신 다른 길을 걷는다. 그래도 사이드라인에서 기다리던 그 마음은 남는다." : `${c.schoolName}에서는 선발 명단부터 노려 본다.`}`,
     later: c => `동네 조기축구회 최연소 회원. 아저씨들 사이에서 ${c.nameEun} 늘 선발이다.\n\n경기가 끝나면 아저씨들이 막걸리 대신 사이다를 따라 준다. "젊은 게 최고야."\n\n공을 차는 이유가 조금 바뀌었다. 그래도 축구화 끈은 여전히 두 번 묶는다.` },
 
-  { id: "study", grade: "B", title: "공부형 학생선수", img: "ending_graduate",
+  { id: "nationalSchool", grade: "A", title: "전국 강호 진학", img: "ending_highschool",
+    cond: c => c.tier === "national",
+    story: c => `${c.schoolName}. 전국대회 단골 우승 후보.\n\n입학 테스트 날, 운동장에 선 1학년만 서른 명이 넘었다. 고흥에서는 에이스였지만 여기서는 다시 맨 아래부터다.\n\n괜찮다. 중1 때도 그랬으니까.`,
+    later: c => `대학 리그 결승전. 상대 팀 명단에 낯익은 이름이 보인다. ${c.rivalName ? `${c.rivalName}.` : "중학교 때 함께 뛰던 동기."}\n\n경기 전 악수를 하면서 둘 다 웃음을 참지 못했다. "아직도 오른쪽으로만 치고 가냐?"\n\n경기 결과는 중요하지 않았다. 아니, 사실 중요했다. 그래서 끝까지 뛰었다.` },
+
+  { id: "regionalBest", grade: "A", title: "지역 최고의 선수", img: "ending_regional",
+    cond: c => c.tier === "regional" && (c.g3Rating >= 7.4 || c.g3LeagueTitle),
+    story: c => `전남 권역 주말리그에서 ${c.nameIrane} 이름을 모르는 지도자는 없었다.\n\n3년 통산 ${c.apps}경기 ${c.goals}골 ${c.assists}도움. ${c.schoolEun} 망설이지 않고 손을 내밀었다.\n\n더 큰 무대는 이제부터다.`,
+    later: c => `전남 지역 실업팀 입단 테스트. 운동장에 들어서자 바닷바람이 분다. 고흥에서 맡던 냄새다.\n\n테스트가 끝나고 감독이 다가와 물었다. "고흥대서중 출신이라고? 그 팀 경기 몇 번 봤다."\n\n합격 통보는 사흘 뒤에 왔다.` },
+
+  { id: "fhsLate", grade: "B", title: "늦게 출발한 선수", img: "ending_late",
+    cond: c => c.tier === "footballHS" && c.wasBenchInG1 && c.g3StartRatio >= 0.6,
+    story: c => `1학년 때는 물통만 날랐다. 경기 명단에 이름이 없는 날이 더 많았다.\n\n3학년이 되고 나서야 선발 명단에 이름이 자리를 잡았다. 3학년 평균 평점 ${c.g3Rating.toFixed(2)}.\n\n남들보다 늦게 출발했으니, ${c.schoolName}에서는 조금 더 오래 달리면 된다.`,
+    later: c => `스물두 살, K3리그 입단. 프로 선수들 사이에서는 늦은 나이다.\n\n입단식 날 ${c.friendName ? `${c.friendName}한테` : "친구한테"} 문자가 왔다. "너는 원래 늦게 오잖아."\n\n맞는 말이다. 그래서 아직 한참 더 뛸 수 있다.` },
+
+  { id: "fhsChoice", grade: "B", title: "뛸 수 있는 곳으로", img: "ending_choice",
+    cond: c => c.tier === "footballHS" && !!c.skippedHigher,
+    story: c => `${c.skippedLabel}에서도 연락이 왔다. 한참을 고민하다가 ${c.schoolName}에 가기로 했다.\n\n거기 가면 벤치가 아니라 1학년부터 뛸 수 있다. 감독님은 아무 말 없이 어깨만 두 번 두드렸다.\n\n아깝다는 말을 들을 때마다 대답은 같았다. "뛰어야 늘어요."`,
+    later: c => `${c.schoolName}에서 보낸 3년 동안 공식 경기에 빠진 날이 거의 없었다. 3학년 때는 주장 완장도 찼다.\n\n대학 축구부 테스트가 끝나고 감독이 물었다. "그때 왜 더 큰 학교에 안 갔어?"\n\n"경기를 뛰고 싶어서요." 감독은 서류에 뭔가를 적었다. 웃고 있었다.` },
+
+  { id: "fhsGrow", grade: "B", title: "계속 자라는 중", img: "ending_fhs",
+    cond: c => c.tier === "footballHS",
+    story: c => `${c.schoolName} 합격 문자를 받은 날, 운동장 끝에 오래 앉아 있었다.\n\n이름난 학교는 아니다. 그래도 거기서는 3년 동안 계속 공을 찰 수 있다. 중학교 3년, ${c.apps}경기 ${c.goals}골.\n\n아직 키도, 다리도 다 자란 게 아니니까.`,
+    later: c => `고등학교 3학년 가을, 대학 축구부 감독이 ${c.schoolName} 경기를 보러 왔다. 관중석에 앉은 사람은 열 명도 안 됐다.\n\n그날 ${c.nameEun} 80분을 다 뛰었다. 경기가 끝나고 감독이 이름을 물었다.\n\n중학교를 졸업하고 키가 한 뼘 가까이 컸다. 다리도, 생각도 그만큼 컸다.` },
+
+  { id: "study", grade: "B", title: "공부형 학생선수", img: "ending_study",
     cond: c => c.tier === "general" && c.academic >= 70,
     story: c => `${c.schoolName}에 진학했다. 축구부가 아니라 일반 진학이다.\n\n후회는 없다. 3년 동안 배운 건 공 차는 법만이 아니었다. 지는 법, 버티는 법, 다시 일어나는 법.\n\n주말이면 여전히 고흥대서중 운동장에 나가 후배들 공을 받아 준다.`,
     later: c => `대학 도서관에서 밤을 새우고 나오는 길. 학교 운동장에서 누군가 공을 차고 있다.\n\n가방을 내려놓고 한 번만 차 달라고 했다. 발등에 맞는 감각이 그대로다.\n\n${c.friendName ? `${c.friendName}한테 사진을 보냈다. "아직 안 죽었네 ㅋㅋ" 답장이 바로 왔다.` : "몸은 기억하고 있었다."}` },
 
   { id: "ordinary", grade: "B", title: "평범한 학생선수", img: "ending_graduate",
     cond: () => true,
-    story: c => `특별한 기록은 없었다. ${c.apps}경기, ${c.goals}골, 그리고 3년.\n\n그래도 운동장에서 웃던 날이 훨씬 많았다. ${c.friendName ? `친구 ${c.friendName}하고` : "친구하고"} 바닷가를 걷던 저녁도, 비 맞으며 찼던 공도 다 남았다.\n\n${c.schoolName}에서도 공은 계속 찬다.`,
+    story: c => `특별한 기록은 없었다. ${c.apps}경기, ${c.goals}골, 그리고 3년.\n\n그래도 운동장에서 웃던 날이 훨씬 많았다. ${c.friendName ? `친구 ${c.friendName}하고` : "친구하고"} 바닷가를 걷던 저녁도, 비 맞으며 찼던 공도 다 남았다.\n\n${c.tier === "general" ? `고등학교에서는 축구부 대신 교실을 골랐다. 그래도 주말 운동장은 그대로 있다.` : `${c.schoolName}에서도 공은 계속 찬다.`}`,
     later: c => `명절에 고흥에 내려왔다. ${c.friendName ? `${c.friendName}${batchim(c.friendName) ? "이랑" : "랑"}` : "친구랑"} 방파제에 앉아 캔 음료를 딴다.\n\n"우리 그때 진짜 열심히 했다." "그치. 근데 골은 네가 더 못 넣었어." "아니거든."\n\n바다 위로 해가 진다. 운동장 조명이 하나둘 켜지는 게 보인다. 누군가 아직 공을 차고 있다.` },
 ];
 
@@ -13271,7 +13288,9 @@ function chooseSchool(state, id) {
   const opts = schoolOptions(state).list;
   const s = opts.find(x => x.id === id && x.ok);
   if (!s) return { ok: false };
-  state.career.school = { id: s.id, name: s.name, tier: s.tier, tierLabel: s.tierLabel };
+  const rank = t => ["proYouth", "national", "regional", "footballHS", "general"].indexOf(t);
+  const skipped = opts.filter(x => x.ok && x.tier !== "general" && rank(x.tier) < rank(s.tier)).sort((x, y) => rank(x.tier) - rank(y.tier))[0];
+  state.career.school = { id: s.id, name: s.name, tier: s.tier, tierLabel: s.tierLabel, ...(skipped ? { skipped: skipped.tier } : {}) };   // skipped: 더 높은 학교도 갈 수 있었는데 이 학교를 골랐을 때 (엔딩 판정)
   state.pending = null;
   if (s.tier !== "general") {
     mailFrom(state, s.coach || "고등학교", "scout", `${s.name} 합격`,
@@ -13301,9 +13320,12 @@ function summarize(state) {
   const g3 = r.matches.filter(m => m.grade === 3 && m.official);
   const g3Played = g3.filter(m => m.rating != null);
   const school = state.career.school || { name: "고등학교", tier: "none" };
+  const played = r.matches.filter(m => m.official && m.minutes > 0), subs = played.filter(m => m.status !== "start");
+  const cleanName = String(school.name).replace(/\s*\(.*?\)\s*$/, "");      // "순천 일반고 (일반 진학)" → "순천 일반고" (엔딩 문장에 괄호가 들어가지 않게)
   return {
     name: p.name, nameEun: j(p.name, "은", "는"), nameEul: j(p.name, "을", "를"), nameIrane: j(p.name, "이라는", "라는"),
-    schoolName: school.name, schoolEun: j(school.name, "은", "는"), tier: school.tier,
+    schoolName: cleanName, schoolEun: j(cleanName, "은", "는"), tier: school.tier, skippedHigher: school.skipped || null, skippedLabel: { proYouth: "프로 유스", national: "전국 강호", regional: "지역 강호" }[school.skipped] || "",
+    subApps: subs.length, subGoals: subs.reduce((a, m) => a + (m.goals || 0), 0),
     ovr: Math.round(ovr(p)), apps: r.apps, goals: r.goals, assists: r.assists,
     g3StartRatio: g3.length ? g3.filter(m => m.status === "start").length / g3.length : 0,
     g3Rating: g3Played.length ? g3Played.reduce((a, m) => a + m.rating, 0) / g3Played.length : 6,
@@ -18031,6 +18053,7 @@ const AUTO_MS = 4300;
 // 배경 그림: .webp → .png → 없으면 색 그라데이션만
 // 아직 그림 파일이 없는 장면은 비슷한 기존 그림으로 대신 보여 줌 (나중에 같은 이름의 .webp를 넣으면 그 그림이 나옴)
 const BG_STANDIN = {
+  ending_comeback: "ending_highschool", ending_regional: "ending_highschool", ending_model: "ending_graduate", ending_study: "ending_graduate", ending_supersub: "ending_bench", ending_fhs: "ending_highschool", ending_choice: "ending_highschool", ending_late: "ending_highschool",
   ev_coach_talk: "ev_office", ev_classroom_talk: "ev_classroom", ev_window: "ev_classroom", ev_dad_box: "ev_home_talk", ev_phone_day: "ev_night_phone", ev_family_table: "ev_home_talk", ev_beach_clean: "ev_beach", ev_medal_give: "ev_award", ev_tug: "ev_sportsday", ev_bench_talk: "ev_bench", ev_junior_kick: "bg_field_day", ev_teacher_call: "ev_hallway", ev_coach_bday: "ev_birthday", ev_bus_left: "ev_bus_sunset", ev_naro_family: "ev_naro",
   ev_meeting: "bg_locker", ev_halftime: "bg_locker", ev_jn_halftime: "ev_halftime", ev_fight: "ev_classroom", ev_hallway: "ev_classroom",
   ev_cram: "ev_classroom", ev_groupwork: "ev_classroom", ev_newspaper: "ev_office", ev_award: "ev_festival",
@@ -18952,8 +18975,10 @@ return { sixStats, cardTier, fcCard, jerseyCard, unreadMail, mailRow, leagueTabl
 // ── js/engine/achievements.js
 __m["js/engine/achievements.js"] = (function () {
 const {ovr} = __m["js/engine/team.js"];
+const {ENDINGS} = __m["data/endings.js"];
 // 업적: 판이 바뀌어도 이 기기에 남는 도전 과제
 // check(s, ctx): s는 게임 상태, ctx.end는 졸업(엔딩) 순간인지, ctx.hall은 지금까지 끝낸 판 기록, ctx.endings는 본 엔딩 목록
+
 
 const seen = (s, ids) => ids.every(id => s.seenEvents?.includes(id));
 const ms = s => s.record.matches;
@@ -18994,7 +19019,7 @@ const ACHIEVEMENTS = [
   { id: "storyteller", icon: "📖", label: "이야기꾼", desc: "한 판에서 이벤트 120종을 본다", check: s => (s.seenEvents || []).length >= 120 },
   // ── 여러 판 ──
   { id: "endings_5", icon: "🎬", label: "다섯 갈래 길", desc: "서로 다른 엔딩 다섯 개", check: (s, c) => (c.endings || []).length >= 5 },
-  { id: "endings_all", icon: "👑", label: "모든 길", desc: "엔딩 열네 개를 모두 본다", check: (s, c) => (c.endings || []).length >= 14 },
+  { id: "endings_all", icon: "👑", label: "모든 길", desc: `엔딩 ${ENDINGS.length}개를 모두 본다`, check: (s, c) => ENDINGS.every(e => (c.endings || []).includes(e.id)) },
   { id: "three_pos", icon: "🔄", label: "멀티 플레이어", desc: "공격수·미드필더·수비수로 각각 졸업한다", check: (s, c) => ["FW", "MF", "DF"].every(p => (c.hall || []).some(h => h.position === p)) },
 ];
 

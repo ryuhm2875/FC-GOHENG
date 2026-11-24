@@ -143,7 +143,9 @@ export function chooseSchool(state, id) {
   const opts = schoolOptions(state).list;
   const s = opts.find(x => x.id === id && x.ok);
   if (!s) return { ok: false };
-  state.career.school = { id: s.id, name: s.name, tier: s.tier, tierLabel: s.tierLabel };
+  const rank = t => ["proYouth", "national", "regional", "footballHS", "general"].indexOf(t);
+  const skipped = opts.filter(x => x.ok && x.tier !== "general" && rank(x.tier) < rank(s.tier)).sort((x, y) => rank(x.tier) - rank(y.tier))[0];
+  state.career.school = { id: s.id, name: s.name, tier: s.tier, tierLabel: s.tierLabel, ...(skipped ? { skipped: skipped.tier } : {}) };   // skipped: 더 높은 학교도 갈 수 있었는데 이 학교를 골랐을 때 (엔딩 판정)
   state.pending = null;
   if (s.tier !== "general") {
     mailFrom(state, s.coach || "고등학교", "scout", `${s.name} 합격`,
@@ -173,9 +175,12 @@ export function summarize(state) {
   const g3 = r.matches.filter(m => m.grade === 3 && m.official);
   const g3Played = g3.filter(m => m.rating != null);
   const school = state.career.school || { name: "고등학교", tier: "none" };
+  const played = r.matches.filter(m => m.official && m.minutes > 0), subs = played.filter(m => m.status !== "start");
+  const cleanName = String(school.name).replace(/\s*\(.*?\)\s*$/, "");      // "순천 일반고 (일반 진학)" → "순천 일반고" (엔딩 문장에 괄호가 들어가지 않게)
   return {
     name: p.name, nameEun: j(p.name, "은", "는"), nameEul: j(p.name, "을", "를"), nameIrane: j(p.name, "이라는", "라는"),
-    schoolName: school.name, schoolEun: j(school.name, "은", "는"), tier: school.tier,
+    schoolName: cleanName, schoolEun: j(cleanName, "은", "는"), tier: school.tier, skippedHigher: school.skipped || null, skippedLabel: { proYouth: "프로 유스", national: "전국 강호", regional: "지역 강호" }[school.skipped] || "",
+    subApps: subs.length, subGoals: subs.reduce((a, m) => a + (m.goals || 0), 0),
     ovr: Math.round(ovr(p)), apps: r.apps, goals: r.goals, assists: r.assists,
     g3StartRatio: g3.length ? g3.filter(m => m.status === "start").length / g3.length : 0,
     g3Rating: g3Played.length ? g3Played.reduce((a, m) => a + m.rating, 0) / g3Played.length : 6,
