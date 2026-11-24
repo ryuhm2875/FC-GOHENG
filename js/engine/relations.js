@@ -43,6 +43,7 @@ export function adjustRel(state, key, n) {
   const r = person(state, key);
   if (!r) return 0;
   const before = r.value;
+  if (n > 0 && (key === "friend" || key === "junior") && state.player.traits.includes("moodMaker")) n *= 1.3;   // 분위기 메이커
   r.value = clamp(r.value + n, 0, 100);
   return r.value - before;
 }

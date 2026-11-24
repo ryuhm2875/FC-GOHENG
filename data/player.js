@@ -144,12 +144,23 @@ export const TRAITS = {
                desc: "1·2학년엔 남들보다 조금 더뎠지만, 중3 동안 키와 실력이 한꺼번에 자랍니다." },
   modelStudent: { label: "모범생",   good: true, earned: true, how: "학업 80 이상을 20주 동안 유지",
                desc: "감독님 신뢰가 매주 조금씩 더 오르고, 집중력이 필요한 경기 장면의 성공률이 오릅니다.", bonus: { "mental.focus": 2, "student.attitude": 2 } },
+  joker:     { label: "조커",        good: true, earned: true, how: "교체로 들어간 경기에서 골·도움 합쳐 4개",
+               desc: "교체로 들어간 경기에서 선택 성공률이 오릅니다.", bonus: { "mental.confidence": 2, "mental.competitive": 1 } },
+  unsungHero:{ label: "언성 히어로", good: true, earned: true, pos: "MF", how: "미드필더로 한 경기에 공을 3번 이상 끊어 낸 경기 8번",
+               desc: "상대 공을 끊는 장면 성공률이 오르고, 팀워크가 잘 오릅니다.", bonus: { "mental.teamwork": 2, "phys.stamina": 2 } },
+  setPiece:  { label: "세트피스 장인", good: true, earned: true, how: "프리킥·코너킥·페널티킥(승부차기 포함)에서 성공 16번",
+               desc: "프리킥·코너킥·페널티킥 장면 성공률이 오릅니다.", bonus: { "tech.shoot": 1, "tech.cross": 1, "mental.focus": 1 } },
+  moodMaker: { label: "분위기 메이커", good: true, earned: true, how: "단짝 친구 관계 80 이상 + 챙기는 후배 관계 70 이상",
+               desc: "경기에 져도 사기가 덜 떨어지고, 친구·후배와 더 빨리 가까워집니다.", bonus: { "mental.teamwork": 2 } },
+  strongHeart:{ label: "강심장",     good: true, earned: true, needs: "timid", how: "'소심함'을 안고 대회·진학 경기에서 평점 7.5 이상 5번",
+               desc: "대회와 진학 경기에서 실력이 더 나옵니다. '소심함'이 사라집니다.", bonus: { "mental.confidence": 2, "mental.competitive": 1 } },
 };
 
 // 기존 특성 중에도 경기와 생활 속에서 새로 얻을 수 있는 것
 export const EARNABLE = {
   clutch:     { how: "후반 승부처에서 동점골·역전골·결승골 3번", bonus: { "mental.competitive": 2, "mental.confidence": 2 } },
   leadership: { how: "주장 선출", bonus: { "mental.teamwork": 2 } },
+  diligent:   { how: "'게으름'을 안고 개인훈련을 한 주가 20주 (게으름이 사라짐)", needs: "lazy", bonus: { "student.attitude": 3 } },
 };
 
 export const FACES = ["face_01", "face_02", "face_03", "face_04", "face_05", "face_06"];

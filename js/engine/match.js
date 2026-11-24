@@ -1466,6 +1466,7 @@ function finishStaging(state, m) {
   const S = m.sim;
   if (SCENES[sit.id]?.goalline) { const gk = gkOf(S, "us"); if (gk) gk.stun = 2.5; }     // 쓰러진 골키퍼는 잠깐 못 일어남
   m._sitPoss = sit.poss || "us";
+  m._sitCat = ctx.cat || "";
   let noWing = false;
   if (SCENES[sit.id]?.scan) {                              // 흘려 보낼 동료: 선택지가 뜨는 순간 내 옆·뒤에 가장 가까운 동료 (멀면 흘려 보내기 선택지와 그 동료를 말하는 문장을 뺌)
     const M = meOf(S), w = M && nearestP(S, "us", M, p => !p.me && p.ri && p.pos !== "GK" && p.x <= M.x + 4);
@@ -1703,6 +1704,7 @@ function meets(state, req) {
   return !req || Object.entries(req).every(([k, v]) => getPath(state.player.stats, k) >= v);
 }
 
+const SETPIECE = /^set:(corner|cornerKick|fkKick|fkShot|pk|so)$/;   // 세트피스 (스로인 빼고, 승부차기 포함)
 export function prob(state, m, c) {
   const p = state.player;
   let s = 0, w = 0;
@@ -1721,6 +1723,10 @@ export function prob(state, m, c) {
   if (big && hasTrait(p, "timid")) x -= 0.06;
   if (big && hasTrait(p, "champion")) x += 0.03;
   if (m._sitPoss === "them" && hasTrait(p, "wall")) x += 0.05;
+  if (big && hasTrait(p, "strongHeart")) x += 0.05;
+  if (m.status === "sub" && hasTrait(p, "joker")) x += 0.06;                                  // 조커: 교체로 들어간 경기
+  if (m._sitPoss === "them" && m.myPos === "MF" && hasTrait(p, "unsungHero")) x += 0.05;     // 언성 히어로: 끊는 장면
+  if (SETPIECE.test(m._sitCat || "") && hasTrait(p, "setPiece")) x += 0.07;                  // 세트피스 장인
   if (hasTrait(p, "modelStudent") && (c.stats["mental.focus"] || 0) >= 0.3) x += 0.03;   // 모범생: 집중력 장면
   if (m.talk?.tag && choiceTag(c) === m.talk.tag) x += 0.04;
   if (m.prep && (!m.prep.tag || choiceTag(c) === m.prep.tag)) x += m.prep.bonus;   // 미팅에서 다짐한 대로
@@ -1858,6 +1864,7 @@ export function resolve(state, m, ci, timing = null) {
 
   const main = Object.entries(c.stats).sort((a, b) => b[1] - a[1])[0][0];
   m.my.decisions++; if (ok) m.my.successes++;
+  if (ok && /^set:(corner|cornerKick|fkKick|fkShot|pk)$/.test(pd.ctx?.cat || "") && (pd.sit.poss || "us") === "us") m.my.setOk = (m.my.setOk || 0) + 1;
   m.my.log.push({ sit: pd.sit.id, label: c.label, ok, out, stat: main, value: getPath(pl.stats, main), level: pd.choices[ci].level, minute: min, signature: !!c.signature,
     diff: c.diff ?? 0, sc: Math.sign(m.score[0] - m.score[1]), auto: !!(m.autoAll || m.autoNext),
     nb: pd.list.filter(x => (x.diff ?? 0) >= 5).length, ns: pd.list.filter(x => (x.diff ?? 0) <= -4).length, no: pd.list.length });   // diff·sc·auto: 선택 성향 기록용
@@ -2721,7 +2728,7 @@ function soPending(state, m) {
   const winIt = sudden ? so.them.length > so.us.length && a === b : a + 1 > b + themLeft;     // 넣으면 끝
   const pres = (mustScore ? -0.04 : 0) + (sudden ? -0.02 : 0);
   const p0 = c => { let s = 0, w = 0; for (const [path, k] of Object.entries(c.stats)) { s += getPath(pl.stats, path) * k; w += k; } s /= w;
-    return clamp(c.base + (s - 50) / 120 + (pl.stats.mental.confidence - 50) / 500 + conditionOf(pl).match * 0.5 + pres, 0.42, 0.94); };
+    return clamp(c.base + (s - 50) / 120 + (pl.stats.mental.confidence - 50) / 500 + conditionOf(pl).match * 0.5 + pres + (hasTrait(pl, "setPiece") ? 0.05 : 0), 0.42, 0.94); };   // 세트피스 장인
   const keeper = S.so.cur.keeper.name;
   const text = fill(`${nth(no)} 키커, 나다. ${soTally(so)}. ${mustScore ? "못 넣으면 끝이다. " : winIt ? "넣으면 이긴다. " : ""}공을 내려놓는다. {k|이/가} 골라인 위에서 양팔을 벌린다.`, { k: keeper });
   const list = SO_CHOICES.map(c => ({ ...c, win: "goal", lose: "miss" }));
@@ -2856,6 +2863,7 @@ export function finishMatch(state, m) {
   if (minutes > 0) {
     rec.apps++; if (m.status === "start") rec.starts++;
     rec.goals += m.my.goals; rec.assists += m.my.assists; rec.ratings.push(rating);
+    rec.setPieces = (rec.setPieces || 0) + (m.my.setOk || 0) + (m.my.so === true ? 1 : 0);   // 세트피스 성공 ('세트피스 장인')
     if (mom) rec.mom = (rec.mom || 0) + 1;
     state.relations.coach = clamp(state.relations.coach + (rating - 6.6) * 0.8, 0, 100);
     p.condition.fatigue = clamp(p.condition.fatigue + (fx.jn ? 9 : 16) * minutes / LENGTH, 0, 100);   // 소년체전은 하루 걸러 한 경기씩
@@ -2864,7 +2872,7 @@ export function finishMatch(state, m) {
     if (rating >= 7.5) applyGain(state, "mental.confidence", 0.5, { raw: true });
     if (rating < 5.8) applyGain(state, "mental.confidence", -0.6, { raw: true });
   }
-  p.condition.morale = clamp(p.condition.morale + (result === "승" ? 6 : result === "패" ? -5 : 0)
+  p.condition.morale = clamp(p.condition.morale + (result === "승" ? 6 : result === "패" ? (hasTrait(p, "moodMaker") ? -2 : -5) : 0)
     + (m.onPitch ? 0 : -3) + (mom ? 5 : 0), 0, 100);
 
   const notes = applyResult(state, fx, gf, ga, { shootoutWin: shootout?.win ?? null, rating,
@@ -2876,7 +2884,7 @@ export function finishMatch(state, m) {
     rating, reason: m.reason, shootout, mom, momName, school: fx.school?.name || null,
     possession: m.stats.poss, shots: [m.stats.us.shots, m.stats.them.shots], involved: m.my.involved || 0, stops: m.my.stops || 0,
     injury: m.injured || null, subbedOff: !!m.subbedOff, clutch, elementary: !!fx.elementary, ko: !!fx.ko,
-    decisions: m.my.decisions, successes: m.my.successes, detail: m.detailKey || null,
+    decisions: m.my.decisions, successes: m.my.successes, detail: m.detailKey || null, big: !!(fx.tournament || fx.comp === "hs"),
   };
   if (nemesisAfter(state, fx, res, m)) res.nemesis = m.nemesisOn;                    // 맞수와의 맞대결 기록·메일
   DEV.onFinish?.(m, res);                          // 시험 도구가 경기 내용을 들여다볼 때만

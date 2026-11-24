@@ -116,6 +116,7 @@ export function beginWeek(state) {
     report.actions.push(a.label);
   }
 
+  if (chosenSlots.some(x => x.a.cat === "personal" && actionAllowed(state, x.a).ok)) state.flags.personalWeeks = (state.flags.personalWeeks || 0) + 1;   // '게으름' 극복용
   report.minigames = state.planMult || null;
   state.planMult = null;
   state.history ||= [];
