@@ -55,7 +55,7 @@ self.OFFLINE_FILES = [
   ["data/actions.js","bee55461fc"],
   ["data/audio.js","17290eef49"],
   ["data/calendar.js","f684df7cc5"],
-  ["data/endings.js","bfaadc6775"],
+  ["data/endings.js","d2e7334760"],
   ["data/events.js","1f9727ebf1"],
   ["data/events2.js","e5df5106e4"],
   ["data/events3.js","c507fbbfc0"],

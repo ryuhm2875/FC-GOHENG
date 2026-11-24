@@ -31,7 +31,7 @@ export const ENDINGS = [
 
   { id: "comeback", grade: "H", title: "역전의 아이콘", img: "ending_comeback",
     cond: c => c.wasBenchInG1 && c.g3StartRatio >= 0.85 && c.g3Rating >= 7.8 && c.ovr >= 74,
-    story: c => `중1 때는 벤치에서 물통을 날랐다. 경기 명단에 이름이 없는 날이 더 많았다.\n\n중3, ${c.nameEun} 팀에서 가장 먼저 이름이 불리는 선수가 됐다. 3학년 평균 평점 ${c.g3Rating.toFixed(2)}.\n\n늦게 핀 꽃이 가장 오래간다는 말, 이제는 조금 믿게 됐다. ${c.schoolName}에서도 그럴 것이다.`,
+    story: c => `중1 때는 벤치에서 물통을 날랐다. 경기 명단에 이름이 없는 날이 더 많았다.\n\n중3이 되자 감독님은 선발 명단을 부를 때 ${c.name}${batchim(c.name) ? "이" : ""}부터 불렀다. 그 이름이 나와야 다른 이름들이 이어졌다.\n\n늦게 핀 꽃이 가장 오래간다는 말, 이제는 조금 믿게 됐다. ${c.schoolName}에서도 그럴 것이다.`,
     later: c => `대학 축구부 주전 명단 맨 위에 ${c.name}의 이름이 있다.\n\n후배 하나가 벤치에서 고개를 숙이고 있길래 옆에 앉았다. "나도 중1 땐 물통만 날랐어."\n\n그 말을 믿지 않는 눈치였다. 그래서 그날 훈련은 그 후배랑 같이 남았다.` },
 
   { id: "captain", grade: "H", title: "주장", img: "ending_captain",
@@ -51,7 +51,7 @@ export const ENDINGS = [
 
   { id: "dream", grade: "C", title: "벤치의 꿈", img: "ending_bench",
     cond: c => c.g3StartRatio < 0.3 && c.apps > 0 && c.apps < 50,
-    story: c => `3년 동안 경기에 나선 건 ${c.apps}번. 선발 명단에 이름이 오른 날은 손에 꼽았다.\n\n유니폼은 늘 깨끗했다. 그래도 경기 전날마다 축구화 끈을 새로 묶었다. 언젠가 부를지 모르니까.\n\n꿈은 아직 벤치 위에 그대로 있다.`,
+    story: c => `3년 동안 경기에 나선 건 ${c.apps}번. 선발 명단에 이름이 오른 날은 손에 꼽았다.\n\n유니폼은 늘 깨끗했다. 그래도 경기 전날이면 정강이 보호대를 가방에 넣었다. 언젠가 부를지 모르니까.\n\n꿈은 아직 벤치 위에 그대로 있다.`,
     later: c => `지역 유소년 클럽 코치. 초등학생들이 공보다 먼저 달려와 다리에 매달린다.\n\n벤치에 앉아 있던 3년 동안 경기장을 누구보다 오래 봤다. 그 눈이 지금 아이들 움직임을 읽는다.\n\n"코치님은 선수 때 골 많이 넣었어요?" 웃으며 대답했다. "벤치에서 제일 크게 응원했어."` },
 
   { id: "bench", grade: "B", title: "슈퍼 서브", img: "ending_supersub",
@@ -66,23 +66,23 @@ export const ENDINGS = [
 
   { id: "regionalBest", grade: "A", title: "지역 최고의 선수", img: "ending_regional",
     cond: c => c.tier === "regional" && (c.g3Rating >= 7.4 || c.g3LeagueTitle),
-    story: c => `전남 권역 주말리그에서 ${c.nameIrane} 이름을 모르는 지도자는 없었다.\n\n3년 통산 ${c.apps}경기 ${c.goals}골 ${c.assists}도움. ${c.schoolEun} 망설이지 않고 손을 내밀었다.\n\n더 큰 무대는 이제부터다.`,
+    story: c => `전남 권역 주말리그에서 ${c.nameIrane} 이름을 모르는 지도자는 없었다.\n\n경기가 끝날 무렵이면 관중석 맨 윗줄에서 고등학교 감독들이 수첩을 덮었다. 가장 먼저 걸려 온 전화는 ${c.schoolName} 감독님이었다.\n\n더 큰 무대는 이제부터다.`,
     later: c => `전남 지역 실업팀 입단 테스트. 운동장에 들어서자 바닷바람이 분다. 고흥에서 맡던 냄새다.\n\n테스트가 끝나고 감독이 다가와 물었다. "고흥대서중 출신이라고? 그 팀 경기 몇 번 봤다."\n\n합격 통보는 사흘 뒤에 왔다.` },
 
   { id: "fhsLate", grade: "B", title: "늦게 출발한 선수", img: "ending_late",
     cond: c => c.tier === "footballHS" && c.wasBenchInG1 && c.g3StartRatio >= 0.6,
-    story: c => `1학년 때는 물통만 날랐다. 경기 명단에 이름이 없는 날이 더 많았다.\n\n3학년이 되고 나서야 선발 명단에 이름이 자리를 잡았다. 3학년 평균 평점 ${c.g3Rating.toFixed(2)}.\n\n남들보다 늦게 출발했으니, ${c.schoolName}에서는 조금 더 오래 달리면 된다.`,
+    story: c => `1학년 때는 경기 날마다 벤치 끝에 앉아 기록지를 적었다. 남의 이름 옆에 골, 도움, 교체 시간을 적어 넣는 게 일이었다.\n\n3학년 가을, 기록지를 넘겨받은 후배가 맨 윗줄에 ${c.name}의 이름을 적었다. 선발 명단이었다.\n\n남들보다 늦게 출발했으니, ${c.schoolName}에서는 조금 더 오래 달리면 된다.`,
     later: c => `스물두 살, K3리그 입단. 프로 선수들 사이에서는 늦은 나이다.\n\n입단식 날 ${c.friendName ? `${c.friendName}한테` : "친구한테"} 문자가 왔다. "너는 원래 늦게 오잖아."\n\n맞는 말이다. 그래서 아직 한참 더 뛸 수 있다.` },
 
   { id: "fhsChoice", grade: "B", title: "뛸 수 있는 곳으로", img: "ending_choice",
     cond: c => c.tier === "footballHS" && !!c.skippedHigher,
     story: c => `${c.skippedLabel}에서도 연락이 왔다. 한참을 고민하다가 ${c.schoolName}에 가기로 했다.\n\n거기 가면 벤치가 아니라 1학년부터 뛸 수 있다. 감독님은 아무 말 없이 어깨만 두 번 두드렸다.\n\n아깝다는 말을 들을 때마다 대답은 같았다. "뛰어야 늘어요."`,
-    later: c => `${c.schoolName}에서 보낸 3년 동안 공식 경기에 빠진 날이 거의 없었다. 3학년 때는 주장 완장도 찼다.\n\n대학 축구부 테스트가 끝나고 감독이 물었다. "그때 왜 더 큰 학교에 안 갔어?"\n\n"경기를 뛰고 싶어서요." 감독은 서류에 뭔가를 적었다. 웃고 있었다.` },
+    later: c => `${c.schoolName}에서 보낸 3년 동안 공식 경기에 빠진 날이 거의 없었다. 3학년 때는 주장 완장도 찼다.\n\n그사이 더 큰 학교로 간 동기 몇은 벤치에서 고등학교를 마쳤다. 누가 옳았는지는 아무도 모른다.\n\n다만 운동장에서 보낸 시간만큼은 누구에게도 지지 않는다.` },
 
   { id: "fhsGrow", grade: "B", title: "계속 자라는 중", img: "ending_fhs",
     cond: c => c.tier === "footballHS",
-    story: c => `${c.schoolName} 합격 문자를 받은 날, 운동장 끝에 오래 앉아 있었다.\n\n이름난 학교는 아니다. 그래도 거기서는 3년 동안 계속 공을 찰 수 있다. 중학교 3년, ${c.apps}경기 ${c.goals}골.\n\n아직 키도, 다리도 다 자란 게 아니니까.`,
-    later: c => `고등학교 3학년 가을, 대학 축구부 감독이 ${c.schoolName} 경기를 보러 왔다. 관중석에 앉은 사람은 열 명도 안 됐다.\n\n그날 ${c.nameEun} 80분을 다 뛰었다. 경기가 끝나고 감독이 이름을 물었다.\n\n중학교를 졸업하고 키가 한 뼘 가까이 컸다. 다리도, 생각도 그만큼 컸다.` },
+    story: c => `${c.schoolName} 합격 문자를 받은 날, 운동장 끝에 오래 앉아 있었다.\n\n이름난 학교는 아니다. 그래도 거기서는 3년 동안 계속 공을 찰 수 있다. 해가 기우는 동안 골대 그림자가 천천히 길어졌다.\n\n아직 키도, 다리도 다 자란 게 아니니까.`,
+    later: c => `고등학교 졸업 사진을 찍는 날, 사진사가 뒷줄로 가라고 손짓했다. 중학교 때는 늘 맨 앞줄이었다.\n\n${c.schoolName}에서 보낸 3년 동안 키가 한 뼘 가까이 컸다. 공을 받는 자리도, 경기를 보는 눈도 그만큼 달라졌다.\n\n대학 축구부 합격 문자는 졸업식 전날 왔다. 이번에도 운동장 끝에 오래 앉아 있었다.` },
 
   { id: "study", grade: "B", title: "공부형 학생선수", img: "ending_study",
     cond: c => c.tier === "general" && c.academic >= 70,
