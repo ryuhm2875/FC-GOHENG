@@ -623,6 +623,13 @@ body:has(#modal-root .backdrop) .fs-btn { opacity: 0; pointer-events: none; }
   img[data-name="bg_locker"] { object-position: 72% 50%; }
   img[data-name="bg_field_day"] { object-position: 60% 50%; }
   img[data-name="ending_setback"] { object-position: 54% 50%; }
+  /* 엔딩 그림 (2026-11-24): 주인공이 화면 안에 들어오게 */
+  img[data-name="ending_fhs"] { object-position: 8% 50%; }
+  img[data-name="ending_late"] { object-position: 23% 50%; }
+  img[data-name="ending_supersub"] { object-position: 16% 50%; }
+  img[data-name="ending_choice"] { object-position: 31% 50%; }
+  img[data-name="ending_study"] { object-position: 80% 50%; }
+  img[data-name="ending_model"] { object-position: 72% 50%; }
   img[data-name="title"] { object-position: 50% 50%; }
 }
 

@@ -20,7 +20,7 @@
 4. 질문을 잘 모르겠으면 확인하기.
 5. 글투: 사람이 직접 쓴 것처럼. 다음 표현은 피하기 — "이유는 단순하다", "결론적으로", "핵심은 다음과 같다", "중요한 것은", "~라고 할 수 있습니다", "~하는 것이 중요합니다".
 6. **고칠 때마다 `node tools/bundle.mjs` 실행.** (js/game.bundle.js, offline-files.js, sw.js의 BUILD 값이 갱신됨)
-7. **깃허브 업로드는 사용자가 직접** 합니다. 웹에서 드래그로 올리며 한 번에 100개까지. 그래서 작업이 끝나면 **바뀐 파일만 폴더 구조 그대로 zip**으로 묶어 보내 주세요. (예: `고흥FC_엔진2안_N개.zip`)
+7. **깃허브 업로드**: 2026-11-24부터 사용자가 "네가 올려줘야지. 병합까지 다."라고 해서 Claude가 브랜치 → PR → main 병합까지 합니다(75절). 그 전에는 사용자가 직접 올렸습니다. 웹에서 드래그로 올리며 한 번에 100개까지. 그래서 작업이 끝나면 **바뀐 파일만 폴더 구조 그대로 zip**으로 묶어 보내 주세요. (예: `고흥FC_엔진2안_N개.zip`)
 8. 실제 학생 사진은 쓰지 않음. 저장소가 공개이므로 개인정보 금지.
 9. 입장 코드는 없어지고 학번 로그인(Firebase)으로 바뀜 (24절). 학생 비밀번호·관리자 비밀번호를 코드나 문서에 적지 말 것.
 10. "오류가 안 생기게." 고친 뒤엔 시뮬레이션과 브라우저로 꼭 확인하고 결과를 보고.
@@ -1350,3 +1350,35 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
 - 고친 뒤 같은 조건 3명×3년: 가장 많이 반복된 메일 25번 → 5번
 - 도구 `tools/dev/mail-shots.mjs`: 22주를 엔진으로 돌린 뒤 홈·메일 칸·단톡방 칸을 390px로 찍음 (시작 영상 #intro-splash, 열린 창 #modal-root를 지우고 찍음)
 - 점검: uiplay FW·MF·DF 엔딩까지 오류 0
+
+## 75. 엔딩 다양화 (2026-11-24, 사용자: "엔딩이 다양하게 나오길 바라는데", 축구부 일반고 엔딩 세 갈래 시안을 보고 "이렇게 나누는 게 좋을 것 같아", 점검 목록 1~7 "다 하자", 만년 후보는 '슈퍼 서브' 1안)
+### 진단 (tools/dev/ending-audit.mjs, 120판: 플레이 방식 6가지를 돌려 가며, 진학은 'mixed' = 대부분 가장 좋은 학교, 가끔 축구부 일반고·일반고·한 단계 아래)
+- 엔딩은 위에서부터 처음 맞는 것. 진학 엔딩(전국 강호·지역 최고)이 중간에 있어서 그 아래(학업 부진, 벤치)가 가려졌음. 예: 학업 부진 조건 14판 충족, 실제 4판
+- 축구부 일반고(footballHS)에 맞는 엔딩이 없어 평범·만년 후보로 끝남
+- 모범 학생선수(학업 75·태도 75)는 공부를 챙기는 방식(student)이면 잘 나옴(학업 80대). 조건 그대로 둠. 처음 0번이었던 건 simulate.mjs 방식들이 공부를 거의 안 해서
+- 주장 선거 점수(captainScore+보정) 10%/50%/90% ≈ 59/71/82, 기준 80(손 듦)·90(추천)이라 주장 8% 안팎
+### 바꾼 것
+- `data/endings.js` 순서: legend → national → pro → **academicBan → comeback → captain → model → injury → dream → bench** → nationalSchool → regionalBest → **fhsLate → fhsChoice → fhsGrow** → study → ordinary
+- 새 엔딩 3개 (B): `fhsLate` 늦게 출발한 선수(footballHS + wasBenchInG1 + 3학년 선발 60% 이상), `fhsChoice` 뛸 수 있는 곳으로(footballHS + 더 높은 학교 가능했음), `fhsGrow` 계속 자라는 중(footballHS)
+- `bench` 만년 후보 → **슈퍼 서브** (C → B, id는 도감 호환으로 그대로). 문장은 교체 골 5골 이상/미만으로 갈림. 5년 후는 예전 조기축구 그대로
+- injury: 14주·평점 7.1 미만 → 11주 이상 + (평점 7.3 미만 또는 3학년 선발 60% 미만)
+- 일반고(general) 문장 분기: model·ordinary·national·bench 마지막 줄
+- `career.js` summarize: `schoolName`에서 끝 괄호 제거("순천 일반고 (일반 진학)" → "순천 일반고"), `skippedHigher`·`skippedLabel`(chooseSchool이 `career.school.skipped`에 기록), `subApps`·`subGoals`(공식 경기 교체 출전·골)
+- `events.js` captainVote: 기준 80·90 → 76·86, `state.flags.captainScore` 기록(점검 도구용)
+- `achievements.js` endings_all: `ENDINGS.length` 기준, 모든 id를 봐야 함 (설명도 숫자 자동)
+- 그림 이름: ending_comeback, ending_regional, ending_model, ending_study, ending_supersub, ending_fhs, ending_choice, ending_late. 없으면 intro.js BG_STANDIN으로 옛 그림 대신 표시
+### 결과 (ending-audit 시드 7000~7300 각 30판, mixed)
+- 전: 전국 강호 45~63%(방식에 따라), 나온 엔딩 6~9가지
+- 후: 전국 강호 25%, 슈퍼 서브 13%, 학업 부진 13%(거의 축구만 하는 방식), 모범 12%, 국가대표·주장·지역 최고 7%씩, 늦게 출발 4%, 역전 4%, 뛸 수 있는 곳으로 3%, 평범 3%, 프로 유스 2%, 부상 2% (120판 13가지)
+- 레전드·벤치의 꿈·계속 자라는 중·공부형은 자동 플레이로는 드묾 (레전드는 주장+10번+전국 우승+대표, 계속 자라는 중은 축구부 일반고까지만 갈 수 있는 약한 선수)
+### 점검
+- `tools/dev/ending-shots.mjs`: 엔딩별 졸업 상태를 꾸며 gfc.load()로 엔딩 화면 → 11가지 모두 기대한 엔딩, 그림 표시, 괄호·undefined 없음, 오류 0
+- simulate 40판 오류 0 (balanced: 전국 강호 40, 지역 최고 40, 주장 15%)
+- uiplay MF 엔딩까지 오류 0 (실제 화면 진행으로 새 엔딩 fhsLate 도착)
+### 그림 (같은 날)
+- Canva 생성 8장(2720×1536)을 사용자가 내려받아 올림 → 위아래 9px씩 잘라 1376×768, webp 82: ending_fhs(차밭 운동장에 혼자 앉은 뒷모습), ending_choice(차밭고 운동장, 감독 손이 어깨에), ending_late(새벽 바닷길 달리기), ending_supersub(터치라인 교체 준비), ending_comeback(야간 조명 아래 주먹), ending_regional(노을 바다 경기장 트로피), ending_model(졸업식 단상), ending_study(밤 공부방 창밖 운동장)
+- ending_model: 맨 아래 책 제목이 깨진 글자('존씨')라 지우고 '국어'로 다시 씀 (Noto Sans CJK KR). 바닥 반사에 옛 글자가 아주 옅게 남음
+- 생성 도구 반짝이(✦) 없음. Canva 생성 그림은 도구로는 미리보기(200px)만 받을 수 있고, 원본은 사용자가 내려받아야 함
+- 휴대폰 세로 object-position (css/polish.css): fhs 8%, late 23%, supersub 16%, choice 31%, study 80%, model 72%
+- 점검: ending-shots 11가지 모두 새 그림 표시, 오류 0
+- 올리기: 이번부터 Claude가 브랜치 `ending-variety`로 올리고 PR 병합 (사용자: "네가 올려줘야지. 병합까지 다.")
