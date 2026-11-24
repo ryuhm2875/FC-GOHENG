@@ -19,7 +19,7 @@ const RULES = {
   modelStudent: s => (s.flags.acad80Weeks || 0) >= 20,
   joker:      s => s.record.matches.filter(m => m.status === "sub").reduce((a, m) => a + (m.goals || 0) + (m.assists || 0), 0) >= 4,
   unsungHero: s => s.player.position === "MF" && s.record.matches.filter(m => (m.stops || 0) >= 3).length >= 8,
-  setPiece:   s => (s.record.setPieces || 0) >= 10,
+  setPiece:   s => (s.record.setPieces || 0) >= 15,
   moodMaker:  s => { const P = s.relations.people || {}; return (P.friend?.value || 0) >= 80 && (P.junior?.value || 0) >= 70; },
   // 단점을 이겨 내는 특성: 단점이 있을 때만 얻고, 얻으면 단점이 사라짐
   strongHeart: s => s.player.traits.includes("timid") && s.record.matches.filter(m => m.big && m.rating >= 7.5).length >= 3,

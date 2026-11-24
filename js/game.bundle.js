@@ -155,7 +155,7 @@ const TRAITS = {
                desc: "교체로 들어간 경기에서 선택 성공률이 오릅니다.", bonus: { "mental.confidence": 2, "mental.competitive": 1 } },
   unsungHero:{ label: "언성 히어로", good: true, earned: true, pos: "MF", how: "미드필더로 한 경기에 공을 3번 이상 끊어 낸 경기 8번",
                desc: "상대 공을 끊는 장면 성공률이 오르고, 팀워크가 잘 오릅니다.", bonus: { "mental.teamwork": 2, "phys.stamina": 2 } },
-  setPiece:  { label: "세트피스 장인", good: true, earned: true, how: "프리킥·코너킥·페널티킥(승부차기 포함)에서 성공 10번",
+  setPiece:  { label: "세트피스 장인", good: true, earned: true, how: "프리킥·코너킥·페널티킥(승부차기 포함)에서 성공 15번",
                desc: "프리킥·코너킥·페널티킥 장면 성공률이 오릅니다.", bonus: { "tech.shoot": 1, "tech.cross": 1, "mental.focus": 1 } },
   moodMaker: { label: "분위기 메이커", good: true, earned: true, how: "단짝 친구 관계 80 이상 + 챙기는 후배 관계 70 이상",
                desc: "경기에 져도 사기가 덜 떨어지고, 친구·후배와 더 빨리 가까워집니다.", bonus: { "mental.teamwork": 2 } },
@@ -13414,7 +13414,7 @@ const RULES = {
   modelStudent: s => (s.flags.acad80Weeks || 0) >= 20,
   joker:      s => s.record.matches.filter(m => m.status === "sub").reduce((a, m) => a + (m.goals || 0) + (m.assists || 0), 0) >= 4,
   unsungHero: s => s.player.position === "MF" && s.record.matches.filter(m => (m.stops || 0) >= 3).length >= 8,
-  setPiece:   s => (s.record.setPieces || 0) >= 10,
+  setPiece:   s => (s.record.setPieces || 0) >= 15,
   moodMaker:  s => { const P = s.relations.people || {}; return (P.friend?.value || 0) >= 80 && (P.junior?.value || 0) >= 70; },
   // 단점을 이겨 내는 특성: 단점이 있을 때만 얻고, 얻으면 단점이 사라짐
   strongHeart: s => s.player.traits.includes("timid") && s.record.matches.filter(m => m.big && m.rating >= 7.5).length >= 3,
