@@ -56,13 +56,15 @@ export function fcCard(state, { big = false } = {}) {
       <span class="pc-side pc-front">
         <span class="pc-frame"></span>
         <span class="pc-bg">${img(faceOf(p, state.calendar.grade), "")}</span>
-        <span class="pc-top"><b class="num">${o}</b><span>${code}</span></span>
+        <svg class="pc-line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polygon points="50,2.4 97,7.2 97,84.8 50,97.4 3,84.8 3,7.2"></polygon></svg>
+        <span class="pc-top"><b class="num">${o}</b><span>${code}</span><i></i><img class="pc-club" src="assets/img/logo.png" alt=""></span>
         ${state.flags.captain ? `<span class="pc-cap" title="주장">C</span>` : ""}
         <span class="pc-name"><b>${esc(p.name)}</b><i></i><small>${esc(sub)}</small></span>
       </span>
       <span class="pc-side pc-back">
         <span class="pc-frame"></span>
         <span class="pc-bg2"></span>
+        <svg class="pc-line" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polygon points="50,2.4 97,7.2 97,84.8 50,97.4 3,84.8 3,7.2"></polygon></svg>
         <span class="pc-bhead"><span class="pc-bo"><b class="num">${o}</b><span>${code}</span></span><b class="pc-bn">${esc(p.name)}</b></span>
         <span class="pc-meta">#${p.number} · ${growthTypeOf(p.growthType).label}${role ? ` · ${role.label}` : ""}</span>
         <span class="pc-rule"></span>
