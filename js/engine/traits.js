@@ -17,7 +17,16 @@ const RULES = {
   ironLungs:  s => (s.record.camps || 0) >= 2 && s.player.stats.phys.stamina >= 65,
   scholar:    s => (s.record.topExams || 0) >= 2,
   modelStudent: s => (s.flags.acad80Weeks || 0) >= 20,
+  joker:      s => s.record.matches.filter(m => m.status === "sub").reduce((a, m) => a + (m.goals || 0) + (m.assists || 0), 0) >= 4,
+  unsungHero: s => s.player.position === "MF" && s.record.matches.filter(m => (m.stops || 0) >= 3).length >= 8,
+  setPiece:   s => (s.record.setPieces || 0) >= 16,
+  moodMaker:  s => { const P = s.relations.people || {}; return (P.friend?.value || 0) >= 80 && (P.junior?.value || 0) >= 70; },
+  // 단점을 이겨 내는 특성: 단점이 있을 때만 얻고, 얻으면 단점이 사라짐
+  strongHeart: s => s.player.traits.includes("timid") && s.record.matches.filter(m => m.big && m.rating >= 7.5).length >= 5,
+  diligent:   s => s.player.traits.includes("lazy") && (s.flags.personalWeeks || 0) >= 20,
 };
+// 얻으면 사라지는 단점
+const CURES = { comeback: "glassBody", strongHeart: "timid", diligent: "lazy" };
 
 const LINES = {
   champion:   "우승 메달을 목에 건 날부터, 큰 경기가 덜 무섭다.",
@@ -31,6 +40,12 @@ const LINES = {
   ironLungs:  "합숙을 두 번 버텼다. 후반 30분에도 다리가 가볍다.",
   scholar:    "운동장에서도 교실에서도 밀리지 않는다. 류봉두 선생님이 웃으셨다.",
   modelStudent: "감독님이 다른 선수들 앞에서 내 성적표 이야기를 꺼내셨다. \"공부하는 놈이 경기도 읽는다.\"",
+  joker:      "벤치에서 몸을 풀 때부터 상대 수비가 나를 본다. 들어가면 뭔가 일어난다는 걸, 이제 다들 안다.",
+  unsungHero: "골 장면엔 내 이름이 없다. 그래도 경기 끝나고 감독님이 제일 먼저 어깨를 두드린 건 나였다.",
+  setPiece:   "공을 내려놓고 숨을 한 번 고른다. 벽이 몇 명인지는 이제 세지 않는다.",
+  moodMaker:  "진 날 버스 안, 아무도 말이 없을 때 먼저 농담을 꺼냈다. 몇 명이 웃었다. 그거면 됐다.",
+  strongHeart: "결승 휘슬이 울리기 전, 손이 떨리지 않았다. 언제부터였는지는 모르겠다.",
+  diligent:   "알람이 울리기 전에 눈이 떠졌다. 운동장에 먼저 나와 있는 게 이제 내 쪽이다.",
 };
 
 export function traitInfo(id) {
@@ -51,9 +66,10 @@ export function checkTraits(state) {
     const changes = [];
     for (const [path, v] of Object.entries(expandGains(state, info.bonus || {}))) changes.push({ path, d: applyGain(state, path, v, { raw: true }) });
     let extra = "";
-    if (id === "comeback" && p.traits.includes("glassBody")) {
-      p.traits.splice(p.traits.indexOf("glassBody"), 1);
-      extra = "\n\n'유리몸' 특성이 사라졌다.";
+    const cure = CURES[id];
+    if (cure && p.traits.includes(cure)) {
+      p.traits.splice(p.traits.indexOf(cure), 1);
+      extra = `\n\n'${TRAITS[cure].label}' 특성이 사라졌다.`;
     }
     state.record.earned ||= [];
     state.record.earned.push({ id, turn: state.calendar.turn });

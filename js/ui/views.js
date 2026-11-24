@@ -339,7 +339,7 @@ export function playerView(state, tab = "stats") {
   if (tab === "traits") {
     const earnedIds = new Set((state.record.earned || []).map(e => e.id));
     const locked = Object.entries({ ...Object.fromEntries(Object.entries(TRAITS).filter(([, t]) => t.earned)), ...EARNABLE })
-      .filter(([id]) => !p.traits.includes(id));
+      .filter(([id, x]) => !p.traits.includes(id) && (!x.needs || p.traits.includes(x.needs)) && (!x.pos || x.pos === p.position));   // 단점 극복 특성은 그 단점이 있을 때만, 포지션 특성은 그 포지션만
     body = p.traits.map(t => `<div style="margin-bottom:12px"><span class="trait ${TRAITS[t].good ? "good" : "bad"}">${TRAITS[t].label}</span>${earnedIds.has(t) ? ` <span class="chip kit">획득</span>` : ""}
       <div class="mute" style="font-size:14px">${TRAITS[t].desc}</div></div>`).join("") +
       `<h3 style="font-size:14px;margin:18px 0 6px">얻을 수 있는 특성 <small class="mute">조건을 채우면 특성이 생기고 능력치도 오릅니다</small></h3>

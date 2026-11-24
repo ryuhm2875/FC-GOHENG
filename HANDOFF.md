@@ -1406,3 +1406,16 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
 - js/ui/modals.js `seasonBg()`: 이벤트 그림이 SUMMER_BG에 있고 그 주가 6~9월이면 `_s` 그림. 다른 화면(인트로·배경)은 손대지 않음
 - 캔바에서 하복 만들 때 요령: 긴 교복 설명은 서버 오류가 잦음. 검수 통과한 동복 그림을 참고로 "소매만 반팔, 바지만 검정 무릎 반바지"라고 하거나, 장면을 직접 묘사("창가 남자 선생님은 그대로, 앉은 학생만…")하면 잘 됨. aspectRatio를 빼야 실패가 적음. 발표 장면은 발표자를 따로 짚어야 반팔이 됨
 - 아직 교복을 안 바꾼 그림: award karaoke naro reading_autumn reading_spring retreat schooltrip vote teacher_call memorial umbrella singapore ending_model ending_graduate fight (fight·karaoke·retreat는 캔바 안전 필터에 막힌 적 있음)
+
+## 79. 새 특성 5개 + 단점 극복 (2026-11-25, 사용자가 고른 5가지 "조커, 언성 히어로, 세트피스 장인, 분위기 메이커, 부정 특성 극복" + "성실함 기준을 개인훈련 20주 이상으로")
+- data/player.js TRAITS / EARNABLE, 조건은 js/engine/traits.js RULES, 얻을 때 사라지는 단점은 CURES (comeback→glassBody, strongHeart→timid, diligent→lazy)
+- 조커 joker: 교체 출전 경기 골+도움 누적 4 → 교체 경기 선택 성공률 +0.06 (match.js prob, m.status === "sub")
+- 언성 히어로 unsungHero (MF만): 한 경기 차단(stops) 3번 이상인 경기 8번 → 상대 공 장면 +0.05, 팀워크 성장 ×1.2
+- 세트피스 장인 setPiece: record.setPieces 16 (코너킥·프리킥·PK 장면 성공 + 승부차기 성공, 스로인 제외) → 세트피스 장면 +0.07, 승부차기 +0.05. 장면 종류는 m._sitCat(ctx.cat)
+- 분위기 메이커 moodMaker: 단짝 친구 80 이상 + 후배 70 이상 → 패배 때 사기 −5가 −2로, 친구·후배 관계 오름 ×1.3 (relations.js adjustRel)
+- 강심장 strongHeart ('소심함'이 있을 때만): 대회·진학 경기(res.big) 평점 7.5 이상 5번 → 소심함 사라짐, 큰 경기 +0.05
+- 성실함 diligent ('게으름'이 있을 때만): 개인훈련을 한 주(flags.personalWeeks) 20주 → 게으름 사라짐. 사용자가 정한 숫자. 시뮬레이션에선 대개 30주 안팎(중1 2학기 초)에 얻음
+- 특성 화면의 '얻을 수 있는 특성'은 needs(그 단점이 있을 때만)·pos(그 포지션만)로 거름
+- 경기 기록에 big(대회·진학 경기) 추가. 예전 저장 파일의 경기에는 없음
+- 점검 도구 tools/dev/trait-audit.mjs [판수] [시드] (SOCIAL=1 이면 친구·후배 챙기는 학생): 60판 기준 조커 42% (36주쯤), 언성 히어로 MF의 50% (99주), 세트피스 45% (110주), 강심장 소심함 있는 선수의 70% (88주), 성실함 100% (31주), 분위기 메이커는 관계 행동을 하는 학생만 (SOCIAL 100%, 59주)
+- 점검: uiplay MF 끝까지 오류 0

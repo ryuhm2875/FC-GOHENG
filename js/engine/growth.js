@@ -56,6 +56,7 @@ export function applyGain(state, path, base, opts = {}) {
   if (!opts.raw) mult *= efficiency(state);
   if (path === "mental.teamwork" && hasTrait(p, "leadership")) mult *= 1.3;
   if (path === "mental.focus" && hasTrait(p, "footballIQ")) mult *= 1.3;
+  if (path === "mental.teamwork" && hasTrait(p, "unsungHero")) mult *= 1.2;
   if (opts.mult) mult *= opts.mult;
 
   const cap = capFor(p, path);
