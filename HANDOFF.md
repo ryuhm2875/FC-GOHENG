@@ -1397,3 +1397,12 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
 - 뒷면에 빛 그림자(drop-shadow 두 겹)를 걸면 뒤집힌 글자가 계단처럼 깨짐 → 앞면에만
 - 홈 로비(1안·2안)·위쪽 줄 정리는 시안만 있고 아직 안 함
 - 점검: 카드 앞·뒤 화면, uiplay DF 엔딩까지 오류 0
+
+## 78. 교복을 실제 고흥대서중 교복으로, 하복 그림 따로 (2026-11-25, 사용자: 실제 교복 사진을 주고 "뒷면 실수하지 말고", "여름에는 같은 스타일에 반소매, 남녀 모두 여름에는 검정 면 반바지, 겨울에는 검정 긴바지", "체육복은 그냥 둬도 돼")
+- 교복: 남색 면 폴로(살짝 넉넉), 깃은 연회색·흰색·남색 잔체크, 앞 단추 줄에 같은 체크 띠와 흰 단추 셋, 왼쪽 가슴 주머니(체크 테두리)와 작은 둥근 흰 교표. **뒷면은 무늬·줄·교표 없는 민무늬 남색**. 동복은 긴소매(남색 시보리)+검정 긴바지, 하복은 반소매+검정 무릎 반바지·흰 양말. 남녀 같음, 치마 없음. 주황 팀 재킷은 그대로(하복 장면에선 주황 반팔 팀 티)
+- 캔바 디자인 DAHb0DOLcO0 "고흥FC 교복 그림 (겨울·여름)": 1~21쪽 동복, 22~37쪽 하복. 사용자가 ZIP으로 받아 줌 → webp(1376×768, 복도·모둠은 1264×848)로 바꿔 넣음
+- 동복으로 바꾼 그림 21장(원래 이름 그대로): cafeteria classroom_talk cooking counsel doze exam gate groupwork hallway lab library music present seatmate window art appleday clubboard dokdo festival graduation
+- 하복 `ev_<이름>_s` 15장: 위 앞쪽 16장 중 music만 빠짐(하복 그림의 등에 체크 줄이 남아 불합격 → 여름에도 동복 그림). exam_s는 사용자가 Gemini로 만들어 줌
+- js/ui/modals.js `seasonBg()`: 이벤트 그림이 SUMMER_BG에 있고 그 주가 6~9월이면 `_s` 그림. 다른 화면(인트로·배경)은 손대지 않음
+- 캔바에서 하복 만들 때 요령: 긴 교복 설명은 서버 오류가 잦음. 검수 통과한 동복 그림을 참고로 "소매만 반팔, 바지만 검정 무릎 반바지"라고 하거나, 장면을 직접 묘사("창가 남자 선생님은 그대로, 앉은 학생만…")하면 잘 됨. aspectRatio를 빼야 실패가 적음. 발표 장면은 발표자를 따로 짚어야 반팔이 됨
+- 아직 교복을 안 바꾼 그림: award karaoke naro reading_autumn reading_spring retreat schooltrip vote teacher_call memorial umbrella singapore ending_model ending_graduate fight (fight·karaoke·retreat는 캔바 안전 필터에 막힌 적 있음)

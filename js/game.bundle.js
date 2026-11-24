@@ -14947,6 +14947,7 @@ const {STAFF} = __m["data/roster.js"];
 const {reduced, countUp} = __m["js/ui/fx.js"];
 const {sfx} = __m["js/ui/sfx.js"];
 const {crest} = __m["js/ui/crest.js"];
+const {turnInfo} = __m["js/engine/calendar.js"];
 // 팝업: 행동 고르기, 주간 결과, 메시지, 저장, 등번호, 학년 마무리, 졸업
 
 
@@ -14961,6 +14962,17 @@ const {crest} = __m["js/ui/crest.js"];
 
 
 
+
+
+// 하복 그림이 따로 있는 학교 장면: 6~9월엔 <이름>_s 그림을 씁니다 (반팔 + 검정 반바지)
+const SUMMER_BG = new Set(["ev_art", "ev_cafeteria", "ev_classroom_talk", "ev_cooking", "ev_counsel", "ev_doze", "ev_exam", "ev_gate",
+  "ev_groupwork", "ev_hallway", "ev_lab", "ev_library", "ev_present", "ev_seatmate", "ev_window"]);
+const SUMMER_MONTHS = [6, 7, 8, 9];
+function seasonBg(state, name) {
+  if (!name || !SUMMER_BG.has(name)) return name;
+  const m = turnInfo(state)?.month;
+  return SUMMER_MONTHS.includes(m) ? `${name}_s` : name;
+}
 
 const root = () => document.getElementById("modal-root");
 
@@ -15293,7 +15305,7 @@ function eventModal(app, done) {
       el.querySelector("[data-close]").focus({ preventScroll: true });
       sfx.play(score >= 0 ? "good" : "bad");
     }));
-  }, { dismissable: false, onClose: done, scene: (typeof v.ev.bg === "function" ? v.ev.bg(state) : v.ev.bg) || null, cls: "event" });   // 상황에 따라 그림이 바뀌는 이벤트도 있음
+  }, { dismissable: false, onClose: done, scene: seasonBg(state, typeof v.ev.bg === "function" ? v.ev.bg(state) : v.ev.bg) || null, cls: "event" });   // 상황에 따라 그림이 바뀌는 이벤트도 있음
 }
 
 // ── 경기 전 미팅: 정 코치 분석 → 감독님 한마디 → 내 대답 ──
@@ -15355,7 +15367,7 @@ function meetingModal(app, fx, done) {
   }, { dismissable: false, onClose: done, scene: "ev_meeting", cls: "event meeting" });
 }
 
-return { openModal, ask, actionPicker, weekReport, mailModal, saveModal, numberModal, yearModal, eventModal, meetingModal };
+return { seasonBg, openModal, ask, actionPicker, weekReport, mailModal, saveModal, numberModal, yearModal, eventModal, meetingModal };
 })();
 (__fix["js/ui/modals.js"] || []).forEach(f => f());
 

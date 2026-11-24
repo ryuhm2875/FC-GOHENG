@@ -13,6 +13,17 @@ import { STAFF } from "../../data/roster.js";
 import { reduced, countUp } from "./fx.js";
 import { sfx } from "./sfx.js";
 import { crest } from "./crest.js";
+import { turnInfo } from "../engine/calendar.js";
+
+// 하복 그림이 따로 있는 학교 장면: 6~9월엔 <이름>_s 그림을 씁니다 (반팔 + 검정 반바지)
+const SUMMER_BG = new Set(["ev_art", "ev_cafeteria", "ev_classroom_talk", "ev_cooking", "ev_counsel", "ev_doze", "ev_exam", "ev_gate",
+  "ev_groupwork", "ev_hallway", "ev_lab", "ev_library", "ev_present", "ev_seatmate", "ev_window"]);
+const SUMMER_MONTHS = [6, 7, 8, 9];
+export function seasonBg(state, name) {
+  if (!name || !SUMMER_BG.has(name)) return name;
+  const m = turnInfo(state)?.month;
+  return SUMMER_MONTHS.includes(m) ? `${name}_s` : name;
+}
 
 const root = () => document.getElementById("modal-root");
 
@@ -345,7 +356,7 @@ export function eventModal(app, done) {
       el.querySelector("[data-close]").focus({ preventScroll: true });
       sfx.play(score >= 0 ? "good" : "bad");
     }));
-  }, { dismissable: false, onClose: done, scene: (typeof v.ev.bg === "function" ? v.ev.bg(state) : v.ev.bg) || null, cls: "event" });   // 상황에 따라 그림이 바뀌는 이벤트도 있음
+  }, { dismissable: false, onClose: done, scene: seasonBg(state, typeof v.ev.bg === "function" ? v.ev.bg(state) : v.ev.bg) || null, cls: "event" });   // 상황에 따라 그림이 바뀌는 이벤트도 있음
 }
 
 // ── 경기 전 미팅: 정 코치 분석 → 감독님 한마디 → 내 대답 ──
