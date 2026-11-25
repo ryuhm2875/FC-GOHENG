@@ -164,6 +164,7 @@ const TIMING_RULES = [
   [/발리/, "발리", "발을 갖다 댄다!"],
   [/밀어 넣/, "마무리", "밀어 넣는다!"],
   [/구석으로|가운데로/, "페널티킥", "찬다!"],
+  [/버릇대로/, "페널티킥", "찬다!"],
   [/직접 찬다/, "프리킥", "감아 찬다!"],
   [/돌아선다/, "턴", "돌아선다!"],
   [/제친다/, "돌파", "제친다!"],
@@ -1860,6 +1861,7 @@ export function resolve(state, m, ci, timing = null) {
   // 결과 문장이 두 번째 상대({opp2})가 공을 받는다고 말하면: 그 선수가 받아 때림 (득점 기록·경기장 모두 그 선수)
   if (v.opp2 && /\{opp2[|}]/.test(outTpl) && ["danger", "keep", "turnover"].includes(out)) { v.oppHolder = v.opp; v.opp = v.opp2; }
   const scSit = SCENES[pd.sit.id] || {};
+  if (ok && c.trust) state.relations.coach = clamp(state.relations.coach + c.trust, 0, 100);   // 매너 있는 선택: 감독님 신뢰
   if (ok && pd.choices[ci].follow) outLines.push({ t: fill("{c|이/가} 벤치에서 주먹을 쥔다. 경기 전 지시 그대로다.", { c: staffOf(m, m.talk.who) }), k: "coach", minute: min, ts });
 
   const main = Object.entries(c.stats).sort((a, b) => b[1] - a[1])[0][0];
@@ -2403,7 +2405,13 @@ function scriptSteps(state, m, pd, c, out, R, tail, outTpl) {
         break;
       }
       case "throwUs": ensure(M); restart("throw", "us", M.x, sideY(M.y), { taker: nearMate({ x: M.x, y: sideY(M.y) }) }); break;
-      case "outReturn": ensure(M); steps.push({ do: "clear", by: M, out: "touch", main: true }); break;
+      case "outReturn": {                                                          // 쓰러진 상대 때문에 일부러 밖으로 찬 공: 상대가 스로인을 우리에게 돌려줌 (상대 공으로 이어지지 않게)
+        ensure(M); steps.push({ do: "clear", by: M, out: "touch", main: true });
+        steps.push({ do: "wait", t: 1.8 });
+        const ry = sideY(M.y);
+        restart("throw", "us", clamp(M.x + 6, 4, 100), ry, { taker: nearMate({ x: M.x + 6, y: ry }) });
+        break;
+      }
       case "outThem":
         if (ctx.poss === "them" && H && H.team === "them" && /밀어냈|몰아냈|어깨/.test(outTpl)) {   // 몸을 붙여 바깥으로: 상대가 터치라인 쪽으로 밀려가다 공이 나감 (내가 차 낸 게 아님)
           const ty = H.y < 34 ? 2.5 : 65.5, dy = clamp(ty - H.y, -16, 16);
