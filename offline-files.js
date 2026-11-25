@@ -29,7 +29,7 @@ self.OFFLINE_FILES = [
   ["js/engine/team.js","9135c63504"],
   ["js/engine/traits.js","1f164e7ac9"],
   ["js/engine/week.js","1b74560d51"],
-  ["js/main.js","b9fcb91f8f"],
+  ["js/main.js","2279445b66"],
   ["js/net/fb.js","eb7f19779f"],
   ["js/net/online.js","9062aa9b67"],
   ["js/rng.js","0c6689a4aa"],
