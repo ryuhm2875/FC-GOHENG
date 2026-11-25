@@ -13,7 +13,7 @@ import { startTutorial } from "./ui/tutorial.js";
 import { ACTION_MAP } from "../data/actions.js";
 import { renderCreate } from "./ui/create.js";
 import { renderIntro } from "./ui/intro.js";
-import { homeView, playerView, teamView, scheduleView, inboxView, unreadMail, avatarOf, ago } from "./ui/views.js";
+import { homeView, playerView, teamView, scheduleView, inboxView, unreadMail, avatarOf, ago, mailList } from "./ui/views.js";
 import { ask, eventModal, actionPicker, weekReport, mailModal, saveModal, numberModal, yearModal, meetingModal } from "./ui/modals.js";
 import { esc } from "./ui/util.js";
 import { admissionModal, nationalModal, detailModal, showEnding, galleryModal } from "./ui/career.js";
@@ -311,9 +311,10 @@ function renderShell(app) {
   r.querySelectorAll("[data-mail]").forEach(b => b.addEventListener("click", () => {
     const m = s.inbox.find(x => x.id === b.dataset.mail);
     if (!m) return;
+    const list = mailList(s); if (!list.includes(m)) list.unshift(m);   // 메일함에 보이는 순서 그대로 (읽음 표시 전에 정함), 단톡방 글은 안 섞임 (§86)
     m.read = true;
     const when = x => { const ti = turnInfo({ calendar: { turn: x.turn } }); return [ago(x, s), ti ? `중${ti.grade} ${ti.month}월 ${ti.week}주차` : ""].filter(Boolean).join(" · "); };
-    mailModal(m, { list: s.inbox, onRead: () => app.render(), avatar: avatarOf, when, important: isImportant }); app.render();
+    mailModal(m, { list, onRead: () => app.render(), avatar: avatarOf, when, important: isImportant }); app.render();
   }));
   if (app.view === "schedule") r.querySelector(".week.now")?.scrollIntoView({ block: "center" });
   if (app.view === "inbox" && app.sub.itab === "group") r.querySelector("#groupchat")?.lastElementChild?.scrollIntoView({ block: "end" });   // 단톡방은 최신 글(맨 아래)부터 보이게

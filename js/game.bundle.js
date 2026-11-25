@@ -18835,6 +18835,8 @@ function mailOrder(list, turn) {
   const imp = list.filter(m => !m.read && isImportant(m) && turn - m.turn <= 4).slice(0, 3);
   return [...imp, ...list.filter(m => !imp.includes(m) && !m.read), ...list.filter(m => !imp.includes(m) && m.read)];
 }
+// 메일 읽기 창에서 넘겨 볼 순서: 메일함에 보이는 순서 그대로, 단톡방 글은 빼고 (§86)
+const mailList = state => mailOrder(state.inbox.filter(m => !isGroup(m)), state.calendar.turn);
 function mailPreview(state) {
   const mails = state.inbox.filter(m => !isGroup(m)), unread = unreadMail(state);
   const list = mailOrder(mails, state.calendar.turn).slice(0, 3);
@@ -19180,7 +19182,7 @@ function groupChat(m, state) {
 }
 
 
-return { sixStats, cardTier, fcCard, jerseyCard, unreadMail, avatarOf, ago, mailRow, leagueTable, homeView, playerView, teamView, scheduleView, inboxView, label };
+return { sixStats, cardTier, fcCard, jerseyCard, unreadMail, mailList, avatarOf, ago, mailRow, leagueTable, homeView, playerView, teamView, scheduleView, inboxView, label };
 })();
 (__fix["js/ui/views.js"] || []).forEach(f => f());
 
@@ -19828,7 +19830,7 @@ const {startTutorial} = __m["js/ui/tutorial.js"];
 const {ACTION_MAP} = __m["data/actions.js"];
 const {renderCreate} = __m["js/ui/create.js"];
 const {renderIntro} = __m["js/ui/intro.js"];
-const {homeView, playerView, teamView, scheduleView, inboxView, unreadMail, avatarOf, ago} = __m["js/ui/views.js"];
+const {homeView, playerView, teamView, scheduleView, inboxView, unreadMail, avatarOf, ago, mailList} = __m["js/ui/views.js"];
 const {ask, eventModal, actionPicker, weekReport, mailModal, saveModal, numberModal, yearModal, meetingModal} = __m["js/ui/modals.js"];
 const {esc} = __m["js/ui/util.js"];
 const {admissionModal, nationalModal, detailModal, showEnding, galleryModal} = __m["js/ui/career.js"];
@@ -20151,9 +20153,10 @@ function renderShell(app) {
   r.querySelectorAll("[data-mail]").forEach(b => b.addEventListener("click", () => {
     const m = s.inbox.find(x => x.id === b.dataset.mail);
     if (!m) return;
+    const list = mailList(s); if (!list.includes(m)) list.unshift(m);   // 메일함에 보이는 순서 그대로 (읽음 표시 전에 정함), 단톡방 글은 안 섞임 (§86)
     m.read = true;
     const when = x => { const ti = turnInfo({ calendar: { turn: x.turn } }); return [ago(x, s), ti ? `중${ti.grade} ${ti.month}월 ${ti.week}주차` : ""].filter(Boolean).join(" · "); };
-    mailModal(m, { list: s.inbox, onRead: () => app.render(), avatar: avatarOf, when, important: isImportant }); app.render();
+    mailModal(m, { list, onRead: () => app.render(), avatar: avatarOf, when, important: isImportant }); app.render();
   }));
   if (app.view === "schedule") r.querySelector(".week.now")?.scrollIntoView({ block: "center" });
   if (app.view === "inbox" && app.sub.itab === "group") r.querySelector("#groupchat")?.lastElementChild?.scrollIntoView({ block: "end" });   // 단톡방은 최신 글(맨 아래)부터 보이게
