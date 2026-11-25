@@ -134,7 +134,7 @@ export function rollEvent(state) {
   let second = null;
   // 소년체전 주간엔 전남 대표로 집·학교를 떠나 있음: 전남 관련 이벤트만 (교실·집 이벤트가 끼지 않게)
   const away = state.jnCup?.alive && state.jnCup.grade === info.grade && info.month === JN_WEEK.month && info.week === JN_WEEK.week && !state.player.condition.injury;
-  if (away && first && !/^(jn_|goal_jn)/.test(first)) first = null;
+  if (away) first = [first, ...dated].find(id => id && /^(jn_|goal_jn)/.test(id)) || null;   // 소년체전 소집 장면이 다른 이야기에 밀리지 않게 (§84)
   if (away) { if (first) state.pendingEvent = { id: first }; return; }
   if (first) {
     second = dated.find(id => id !== first) || null;

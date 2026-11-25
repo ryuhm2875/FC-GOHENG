@@ -284,7 +284,7 @@ export function jnSelectedNews(state) {
   const again = (state.jnHistory || []).length > 0, given = p.name.length === 3 ? p.name.slice(1) : p.name;
   const nem = c.squad.find(x => x.nemesis);
   mailFrom(state, JN_STAFF.assistant, "coach", "전남 대표 소집 안내",
-    `${p.name} 선수, 전남 대표팀 ${JN_STAFF.assistant}다. ${JN_STAFF.assistantFrom}에서 왔다.\n\n5월 2주 전국소년체전. 대회 첫날 아침에 숙소로 모인다. 1회전, 준결승, 결승을 이틀 간격으로 치른다. 지면 그날 바로 집에 간다.\n\n챙길 것: 축구화 두 켤레, 정강이 보호대, 학교 체육복. 유니폼은 여기서 준다. 노란색이다.`
+    `${p.name} 선수, 전남 대표팀 ${JN_STAFF.assistant}다. ${JN_STAFF.assistantFrom}에서 왔다.\n\n${JN_WEEK.month}월 ${JN_WEEK.week}주 전국소년체전. 대회 첫날 아침에 숙소로 모인다. 1회전, 준결승, 결승을 이틀 간격으로 치른다. 지면 그날 바로 집에 간다.\n\n챙길 것: 축구화 두 켤레, 정강이 보호대, 학교 체육복. 유니폼은 여기서 준다. 노란색이다.`
     + (nem ? `\n\n명단 보니까 ${shortSchool(nem.school)}의 ${nem.name}도 있더라. 리그에서 둘이 자주 부딪혔다고 들었다. 이번 주는 같은 편이다.` : "")
     + `\n\n그때까지 다치지만 마라.`);
   mail(state, "mom", again ? "또 전남 대표!" : "우리 아들 전남 대표!", pick(again
@@ -367,6 +367,10 @@ export function matchMails(state, m, res, notes) {
   const scorers = side => m.goalsLog.filter(g => g.team === side).map(g => `${g.name} ${g.minute}'${g.assist ? ` (도움 ${g.assist})` : ""}`).join(", ");
   const body = [];
   body.push(fx.jn ? jnChat(state, res) : afterMatchChat(state, res, fx, res.grade === 3 && noFixtureLeft(state)));
+  if (res.reason?.includes("전남 대표")) body.push(chatText(state, pick(res.result === "패"
+    ? ["{mate}: {name} 없으니까 확실히 티 난다…\n\n{mentor}: 핑계 대지 마라. 우리 몫은 우리가 한다", "{friend}: {name} 소년체전 끝나면 바로 복귀해라 ㅠㅠ"]
+    : res.result === "승" ? ["{mate}: {name} 없어도 이겼다!! 소년체전 가서 보고 있냐 ㅋㅋ", "{friend}: 리그는 우리가 지켰다. 이제 너만 잘하면 됨 ㅋㅋ\n\n{mentor}: 고흥 걱정은 말고 거기 경기에 집중해라"]
+    : ["{mate}: 비겼다. {name} 있었으면 이겼을 듯 ㅋㅋ\n\n{mentor}: 승점 1점이라도 지켰다. 거기서 잘하고 와라"])));
   const aceGoals = m.oppAce ? m.goalsLog.filter(g => g.team === "them" && g.name === m.oppAce.name).length : 0;
   if (m.oppAce && aceGoals >= 1 && res.result !== "승" && chance(0.7)) body.push(aceText(state, pick(ACE_TALK.chatAfterScored), m.oppAce));
   else if (m.oppAce && aceGoals === 0 && res.ga <= 1 && chance(0.45)) body.push(aceText(state, pick(ACE_TALK.chatAfterHeld), m.oppAce));
@@ -462,7 +466,8 @@ export function matchMails(state, m, res, notes) {
     if (fx.elementary && res.result !== "승") fb.push("초등학생 팀한테 이 결과는 말이 안 된다. 방심했지? 다음 주 훈련에서 다시 보자.");
     if (fx.elementary && res.result === "승" && r >= 7) fb.push("동생들 앞에서 제대로 보여 줬다. 너를 보고 축구 시작하는 애가 생길지도 모른다.");
   } else if (res.status === "bench" || res.status === "out") {
-    if (res.reason?.includes("학업")) fb.push("성적 때문에 못 데려갔다. 나도 아쉽다. 공부도 훈련이다. 책상 앞에서 먼저 이기고 와라.");
+    if (res.reason?.includes("전남 대표")) fb.push(pick(["리그는 우리가 지킨다. 너는 거기서 고흥 이름 알리고 와라.", "이번 주 리그 결과는 신경 쓰지 마라. 소년체전에서 다치지만 말고."]));   // 소년체전 주간 (§84)
+    else if (res.reason?.includes("학업")) fb.push("성적 때문에 못 데려갔다. 나도 아쉽다. 공부도 훈련이다. 책상 앞에서 먼저 이기고 와라.");
     else if (res.reason?.includes("부상")) {
       state.advice ||= {};
       if (state.advice.injMeet == null || state.calendar.turn - state.advice.injMeet > 4) {   // 다쳐서 빠질 때마다 같은 말을 반복하지 않게

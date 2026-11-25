@@ -1,11 +1,11 @@
-// 전남 대표: 선발되면 5월 2주 전국소년체전에 나감 (1회전 → 준결승 → 결승, 지면 그 자리에서 끝)
+// 전남 대표: 선발되면 5월 3주 전국소년체전에 나감 (5월 2주 중2 싱가포르 국제교류와 겹치지 않게 §84). 그 주 고흥FC 리그 경기는 나 없이 치름 (1회전 → 준결승 → 결승, 지면 그 자리에서 끝)
 // 같은 주에 경기를 이어서 치르고, 결과는 고흥FC 리그·대회 기록과 따로 남음
 import { SURNAMES, GIVEN_NAMES, HIGH_SCHOOLS, LEAGUE_OPPONENTS, OPPONENT_STARS } from "../../data/world.js";
 import { POSITIONS } from "../../data/player.js";
 import { shuffle, weighted, pick } from "../rng.js";
 import { teamStrength } from "./team.js";
 
-export const JN_WEEK = { month: 5, week: 2 };
+export const JN_WEEK = { month: 5, week: 3 };
 export const JN_ROUNDS = ["1회전", "준결승", "결승"];
 export const JN_NAME = "전남 대표";
 export const PROVINCES = [

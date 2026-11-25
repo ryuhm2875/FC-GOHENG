@@ -1541,13 +1541,13 @@ const {SURNAMES, GIVEN_NAMES, HIGH_SCHOOLS, LEAGUE_OPPONENTS, OPPONENT_STARS} = 
 const {POSITIONS} = __m["data/player.js"];
 const {shuffle, weighted, pick} = __m["js/rng.js"];
 const {teamStrength} = __m["js/engine/team.js"];
-// 전남 대표: 선발되면 5월 2주 전국소년체전에 나감 (1회전 → 준결승 → 결승, 지면 그 자리에서 끝)
+// 전남 대표: 선발되면 5월 3주 전국소년체전에 나감 (5월 2주 중2 싱가포르 국제교류와 겹치지 않게 §84). 그 주 고흥FC 리그 경기는 나 없이 치름 (1회전 → 준결승 → 결승, 지면 그 자리에서 끝)
 // 같은 주에 경기를 이어서 치르고, 결과는 고흥FC 리그·대회 기록과 따로 남음
 
 
 
 
-const JN_WEEK = { month: 5, week: 2 };
+const JN_WEEK = { month: 5, week: 3 };
 const JN_ROUNDS = ["1회전", "준결승", "결승"];
 const JN_NAME = "전남 대표";
 const PROVINCES = [
@@ -1736,7 +1736,13 @@ function ensureSeason(state, info) {
 
 // ── 이번 주 경기 상대 ───────────────
 function matchFor(state, info) {
-  if (!info?.match) return jnFixture(state, info);            // 경기 없는 주: 전남 대표 소년체전이 있을 수 있음
+  const jn = jnFixture(state, info);                           // 전남 대표 소년체전 주간: 나는 소년체전, 고흥FC 경기는 나 없이 (clubAway, week.js playClubWhileAway)
+  if (jn) return info?.match ? { ...jn, clubAway: true } : jn;
+  return clubFixture(state, info);
+}
+// 고흥FC 경기 (소년체전과 상관없이)
+function clubFixture(state, info) {
+  if (!info?.match) return null;
   ensureSeason(state, info);
   const m = info.match, comp = COMPS[m.comp];
   const base = { comp: m.comp, compLabel: comp.label, round: m.round || null, official: comp.official, tournament: comp.tournament, ko: m.stage === "ko" };
@@ -1979,7 +1985,7 @@ function stillScheduled(state, i) {
 
 function tierLabel(tier) { return HS_TIERS[tier].label; }
 
-return { US, TEAM_NAME, simScore, sortTable, ensureSeason, matchFor, applyResult, scoutAfter, elementaryAfter, stillScheduled, tierLabel };
+return { US, TEAM_NAME, simScore, sortTable, ensureSeason, matchFor, clubFixture, applyResult, scoutAfter, elementaryAfter, stillScheduled, tierLabel };
 })();
 (__fix["js/engine/season.js"] || []).forEach(f => f());
 
@@ -5094,7 +5100,7 @@ function jnSelectedNews(state) {
   const again = (state.jnHistory || []).length > 0, given = p.name.length === 3 ? p.name.slice(1) : p.name;
   const nem = c.squad.find(x => x.nemesis);
   mailFrom(state, JN_STAFF.assistant, "coach", "전남 대표 소집 안내",
-    `${p.name} 선수, 전남 대표팀 ${JN_STAFF.assistant}다. ${JN_STAFF.assistantFrom}에서 왔다.\n\n5월 2주 전국소년체전. 대회 첫날 아침에 숙소로 모인다. 1회전, 준결승, 결승을 이틀 간격으로 치른다. 지면 그날 바로 집에 간다.\n\n챙길 것: 축구화 두 켤레, 정강이 보호대, 학교 체육복. 유니폼은 여기서 준다. 노란색이다.`
+    `${p.name} 선수, 전남 대표팀 ${JN_STAFF.assistant}다. ${JN_STAFF.assistantFrom}에서 왔다.\n\n${JN_WEEK.month}월 ${JN_WEEK.week}주 전국소년체전. 대회 첫날 아침에 숙소로 모인다. 1회전, 준결승, 결승을 이틀 간격으로 치른다. 지면 그날 바로 집에 간다.\n\n챙길 것: 축구화 두 켤레, 정강이 보호대, 학교 체육복. 유니폼은 여기서 준다. 노란색이다.`
     + (nem ? `\n\n명단 보니까 ${shortSchool(nem.school)}의 ${nem.name}도 있더라. 리그에서 둘이 자주 부딪혔다고 들었다. 이번 주는 같은 편이다.` : "")
     + `\n\n그때까지 다치지만 마라.`);
   mail(state, "mom", again ? "또 전남 대표!" : "우리 아들 전남 대표!", pick(again
@@ -5177,6 +5183,10 @@ function matchMails(state, m, res, notes) {
   const scorers = side => m.goalsLog.filter(g => g.team === side).map(g => `${g.name} ${g.minute}'${g.assist ? ` (도움 ${g.assist})` : ""}`).join(", ");
   const body = [];
   body.push(fx.jn ? jnChat(state, res) : afterMatchChat(state, res, fx, res.grade === 3 && noFixtureLeft(state)));
+  if (res.reason?.includes("전남 대표")) body.push(chatText(state, pick(res.result === "패"
+    ? ["{mate}: {name} 없으니까 확실히 티 난다…\n\n{mentor}: 핑계 대지 마라. 우리 몫은 우리가 한다", "{friend}: {name} 소년체전 끝나면 바로 복귀해라 ㅠㅠ"]
+    : res.result === "승" ? ["{mate}: {name} 없어도 이겼다!! 소년체전 가서 보고 있냐 ㅋㅋ", "{friend}: 리그는 우리가 지켰다. 이제 너만 잘하면 됨 ㅋㅋ\n\n{mentor}: 고흥 걱정은 말고 거기 경기에 집중해라"]
+    : ["{mate}: 비겼다. {name} 있었으면 이겼을 듯 ㅋㅋ\n\n{mentor}: 승점 1점이라도 지켰다. 거기서 잘하고 와라"])));
   const aceGoals = m.oppAce ? m.goalsLog.filter(g => g.team === "them" && g.name === m.oppAce.name).length : 0;
   if (m.oppAce && aceGoals >= 1 && res.result !== "승" && chance(0.7)) body.push(aceText(state, pick(ACE_TALK.chatAfterScored), m.oppAce));
   else if (m.oppAce && aceGoals === 0 && res.ga <= 1 && chance(0.45)) body.push(aceText(state, pick(ACE_TALK.chatAfterHeld), m.oppAce));
@@ -5272,7 +5282,8 @@ function matchMails(state, m, res, notes) {
     if (fx.elementary && res.result !== "승") fb.push("초등학생 팀한테 이 결과는 말이 안 된다. 방심했지? 다음 주 훈련에서 다시 보자.");
     if (fx.elementary && res.result === "승" && r >= 7) fb.push("동생들 앞에서 제대로 보여 줬다. 너를 보고 축구 시작하는 애가 생길지도 모른다.");
   } else if (res.status === "bench" || res.status === "out") {
-    if (res.reason?.includes("학업")) fb.push("성적 때문에 못 데려갔다. 나도 아쉽다. 공부도 훈련이다. 책상 앞에서 먼저 이기고 와라.");
+    if (res.reason?.includes("전남 대표")) fb.push(pick(["리그는 우리가 지킨다. 너는 거기서 고흥 이름 알리고 와라.", "이번 주 리그 결과는 신경 쓰지 마라. 소년체전에서 다치지만 말고."]));   // 소년체전 주간 (§84)
+    else if (res.reason?.includes("학업")) fb.push("성적 때문에 못 데려갔다. 나도 아쉽다. 공부도 훈련이다. 책상 앞에서 먼저 이기고 와라.");
     else if (res.reason?.includes("부상")) {
       state.advice ||= {};
       if (state.advice.injMeet == null || state.calendar.turn - state.advice.injMeet > 4) {   // 다쳐서 빠질 때마다 같은 말을 반복하지 않게
@@ -7722,6 +7733,7 @@ function poisson(lambda) {
 
 function eligibility(state, fx) {
   const p = state.player;
+  if (fx.jnAway) return { ok: false, reason: "전남 대표 소집으로 결장" };   // 소년체전 주간의 고흥FC 경기
   if (p.condition.injury) return { ok: false, reason: "부상으로 결장" };
   const lv = state.flags.academicLevel;
   if (fx.official && lv >= 4) return { ok: false, reason: "학업 부진으로 공식 경기 출전 정지" };
@@ -10709,7 +10721,7 @@ function fixedGoalEvent(state, info) {
   const tooLate = info.grade === 3 && (info.month >= 9 || info.month <= 2);
   if (!G.metAt && !G.main && after33 && !tooLate && !info.exam) return "goal_meeting";
   if (info.grade === 2 && at(9, 2) && !G.checkAt) return "goal_check";
-  // 전남 대표: 4월 1주 선발전 명단 → 4월 3주 발표 → 5월 2주 전국소년체전 (예전 저장 파일은 4월 2주·4주까지 기다려 줌)
+  // 전남 대표: 4월 1주 선발전 명단 → 4월 3주 발표 → 5월 3주 전국소년체전 (예전 저장 파일은 4월 2주·4주까지 기다려 줌)
   // 소년체전 주: 고흥에 남은 김 감독의 문자 한 통 (전남 대표 감독은 따로 있음)
   const jc = state.jnCup;
   if (jc && jc.alive && jc.stage === 0 && jc.grade === info.grade && at(5, 2) && !jc.homeMail) {
@@ -11562,7 +11574,7 @@ return { EVENTS_MORE };
 // ── data/events3.js
 __m["data/events3.js"] = (function () {
 const {turnInfo} = __m["js/engine/calendar.js"];
-const {shortSchool, JN_STAFF} = __m["js/engine/jn.js"];
+const {shortSchool, JN_STAFF, JN_WEEK} = __m["js/engine/jn.js"];
 const {rivalGap, person} = __m["js/engine/relations.js"];
 // 이야기 줄기 이벤트: 라이벌 3년, 부모님 장면, 고흥 이야기
 // date: [[월, 주]] 그 주에 반드시 / trigger: 상황이 맞으면 반드시 / when.grades: 학년
@@ -11698,9 +11710,9 @@ const EVENTS_STORY = [
     ] },
 
   // ── 전남 대표 소년체전 ─────────────────────────
-  // once 대신 그해 5월 2주에만 (중2·중3 두 번 뽑히면 두 번 나옴)
+  // once 대신 그해 소년체전 주간(JN_WEEK, 5월 3주)에만 (중2·중3 두 번 뽑히면 두 번 나옴)
   { id: "jn_camp", bg: "ev_jn_camp", who: "narr",
-    trigger: s => { const c = s.jnCup, i = turnInfo(s); return !!c && c.alive && c.stage === 0 && i?.grade === c.grade && i.month === 5 && i.week === 2 && !s.player.condition.injury; },
+    trigger: s => { const c = s.jnCup, i = turnInfo(s); return !!c && c.alive && c.stage === 0 && i?.grade === c.grade && i.month === JN_WEEK.month && i.week === JN_WEEK.week && !s.player.condition.injury; },
     // 전남 대표 동료는 도내 각 팀 에이스 (js/engine/jn.js). 다른 학교 맞수가 전남 팀이면 같은 방에 있음
     text: s => {
       const c = s.jnCup, nem = c?.squad?.find(x => x.nemesis), two = (c?.squad || []).filter(x => x.school && !x.nemesis).slice(0, 2);
@@ -11725,7 +11737,7 @@ const EVENTS_STORY = [
         result: "엄마 답장이 1초 만에 왔다. '밥 많이 먹고잉. 텔레비전 나오면 손 흔들어 📺'" },
     ] },
   { id: "jn_return", bg: s => (s.jnCup?.medal === "gold" ? "ev_medal" : "ev_bus_sunset"), who: "narr",
-    trigger: s => { const c = s.jnCup, i = turnInfo(s); return !!c && i?.grade === c.grade && i.month === 5 && i.week === 3; },
+    trigger: s => { const c = s.jnCup, i = turnInfo(s); return !!c && i?.grade === c.grade && i.month === JN_WEEK.month && i.week === JN_WEEK.week + 1; },   // 소년체전 다음 주
     text: s => {
       const c = s.jnCup, m = c.medal;
       return m === "gold" ? "고흥으로 돌아오는 버스. 목에 건 금메달이 덜컹거릴 때마다 가슴을 친다. 정류장에 내리자 축구부 동료들이 현수막을 들고 서 있다. '전남 대표 {name}, 금메달!'"
@@ -12872,7 +12884,7 @@ function rollEvent(state) {
   let second = null;
   // 소년체전 주간엔 전남 대표로 집·학교를 떠나 있음: 전남 관련 이벤트만 (교실·집 이벤트가 끼지 않게)
   const away = state.jnCup?.alive && state.jnCup.grade === info.grade && info.month === JN_WEEK.month && info.week === JN_WEEK.week && !state.player.condition.injury;
-  if (away && first && !/^(jn_|goal_jn)/.test(first)) first = null;
+  if (away) first = [first, ...dated].find(id => id && /^(jn_|goal_jn)/.test(id)) || null;   // 소년체전 소집 장면이 다른 이야기에 밀리지 않게 (§84)
   if (away) { if (first) state.pendingEvent = { id: first }; return; }
   if (first) {
     second = dated.find(id => id !== first) || null;
@@ -13583,7 +13595,7 @@ const {ACTION_MAP} = __m["data/actions.js"];
 const {STAT_GROUPS, TRAITS} = __m["data/player.js"];
 const {turnInfo, label, GRAD_INDEX} = __m["js/engine/calendar.js"];
 const {applyGain, expandGains, growBody, weeklyDrift, hasTrait} = __m["js/engine/growth.js"];
-const {matchFor} = __m["js/engine/season.js"];
+const {matchFor, clubFixture} = __m["js/engine/season.js"];
 const {prepareMatch, autoPlay, finishMatch} = __m["js/engine/match.js"];
 const {previewChat, weeklyAdvice, drillFor} = __m["js/engine/advice.js"];
 const {adjustRel, weeklyRelations, relationsNewYear, rivalGap, seniorsLeave} = __m["js/engine/relations.js"];
@@ -13665,9 +13677,22 @@ function academicLevel(v) {
   if (v < 10) return 4; if (v < 20) return 3; if (v < 30) return 2; if (v < 40) return 1; return 0;
 }
 
+// 소년체전 주간: 고흥FC 경기를 나 없이 자동으로 치름 (리그 순위·기록은 그대로 남음). 그 주에 한 번만
+function playClubWhileAway(state, info, fx) {
+  const c = state.jnCup;
+  if (!fx?.clubAway || !c || c.clubDone === info.turn) return null;
+  c.clubDone = info.turn;
+  const club = clubFixture(state, info);
+  if (!club) return null;
+  const m = prepareMatch(state, info, { ...club, jnAway: true });
+  autoPlay(state, m);
+  return finishMatch(state, m);
+}
+
 // 경기까지 자동으로 처리하는 한 주 (자동 시뮬레이션용)
 function runWeek(state) {
   const ctx = beginWeek(state);
+  playClubWhileAway(state, ctx.info, ctx.fx);
   let result = null;
   for (let fx = ctx.fx; fx;) {
     const m = prepareMatch(state, ctx.info, fx);
@@ -14072,7 +14097,7 @@ function diffStats(a, b) {
   return out.sort((x, y) => Math.abs(y.d) - Math.abs(x.d));
 }
 
-return { SLOTS, actionAllowed, currentFixture, weekOrder, slotLocked, planReady, runWeek, beginWeek, endWeek, seasonRecap, POPULAR, numberChoices, chooseNumber };
+return { SLOTS, actionAllowed, currentFixture, weekOrder, slotLocked, planReady, playClubWhileAway, runWeek, beginWeek, endWeek, seasonRecap, POPULAR, numberChoices, chooseNumber };
 })();
 (__fix["js/engine/week.js"] || []).forEach(f => f());
 
@@ -19772,7 +19797,7 @@ const {newGame, saveTo, readSlot, summaryOf, loadSettings, saveSettings, isImpor
 const {playMinigame, statFor} = __m["js/ui/minigames.js"];
 const {getPath} = __m["js/rng.js"];
 const {turnInfo, label} = __m["js/engine/calendar.js"];
-const {beginWeek, endWeek, planReady, SLOTS, slotLocked, actionAllowed, currentFixture} = __m["js/engine/week.js"];
+const {beginWeek, endWeek, planReady, SLOTS, slotLocked, actionAllowed, currentFixture, playClubWhileAway} = __m["js/engine/week.js"];
 const {prepareMatch} = __m["js/engine/match.js"];
 const {welcomeMails} = __m["js/engine/advice.js"];
 const {birthdayWeek} = __m["js/engine/birthday.js"];
@@ -19964,6 +19989,7 @@ const app = {
         this.view = "home"; this.finishWeek(ctx, result);
       });
     };
+    if (ctx.fx?.clubAway) playClubWhileAway(s, ctx.info, ctx.fx);   // 소년체전 주간: 고흥FC 리그 경기는 나 없이 (§84)
     if (ctx.fx) meetingModal(this, ctx.fx, () => play(ctx.fx));   // 경기 전 미팅 장면 → 경기
     else this.finishWeek(ctx, null);
   },

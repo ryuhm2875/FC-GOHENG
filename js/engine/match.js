@@ -51,6 +51,7 @@ function poisson(lambda) {
 
 export function eligibility(state, fx) {
   const p = state.player;
+  if (fx.jnAway) return { ok: false, reason: "전남 대표 소집으로 결장" };   // 소년체전 주간의 고흥FC 경기
   if (p.condition.injury) return { ok: false, reason: "부상으로 결장" };
   const lv = state.flags.academicLevel;
   if (fx.official && lv >= 4) return { ok: false, reason: "학업 부진으로 공식 경기 출전 정지" };
