@@ -15063,6 +15063,10 @@ const MOTIF = {
   leaf: (c, b) => `<path d="M28 78 C26 50 44 30 76 30 C76 60 58 80 28 78 Z" fill="${c}"/><path d="M30 76 C44 62 56 50 68 38" fill="none" stroke="${b}" stroke-width="3" stroke-linecap="round"/>`,
   sprout: (c) => `<path d="M50 86 V54" ${W(c, 5)}/><path d="M50 60 C36 60 26 50 26 36 C40 36 50 44 50 56 Z" fill="${c}"/><path d="M50 54 C50 40 60 30 76 30 C76 46 66 54 50 54 Z" fill="${c}"/>`,
   ball: (c, b) => `<circle cx="50" cy="55" r="24" fill="${c}"/><path d="M50 44 L60 51 L56 63 L44 63 L40 51 Z" fill="${b}"/><path d="M50 44 V31 M60 51 L72 47 M56 63 L63 74 M44 63 L37 74 M40 51 L28 47" stroke="${b}" stroke-width="2.5"/>`,
+  // 시·도 대표용 (§85)
+  rocket: (c, b) => `<path d="M50 22 C60 32 63 46 61 62 H39 C37 46 40 32 50 22 Z" fill="${c}"/><circle cx="50" cy="44" r="5" fill="${b}"/><path d="M39 54 L30 68 L39 64 Z M61 54 L70 68 L61 64 Z" fill="${c}"/><path d="M44 66 Q50 84 56 66" fill="${c}" opacity=".7"/><path d="M24 86 Q37 80 50 86 Q63 92 76 86" ${W(c, 3)}/>`,
+  apple: (c, b) => `<path d="M50 40 C38 30 22 38 24 56 C26 74 40 86 50 80 C60 86 74 74 76 56 C78 38 62 30 50 40 Z" fill="${c}"/><path d="M50 40 C50 32 54 26 60 24" ${W(c, 3.5)}/><path d="M52 32 C58 24 68 26 70 30 C64 34 56 34 52 32 Z" fill="${c}"/><path d="M36 50 Q34 58 38 64" fill="none" stroke="${b}" stroke-width="3" stroke-linecap="round" opacity=".6"/>`,
+  plane: (c) => `<path d="M50 22 C54 22 55 28 55 34 V48 L80 62 V68 L55 60 V74 L64 81 V86 L50 82 L36 86 V81 L45 74 V60 L20 68 V62 L45 48 V34 C45 28 46 22 50 22 Z" fill="${c}"/>`,
   unknown: (c) => `<text x="50" y="70" text-anchor="middle" font-size="44" font-weight="800" fill="${c}" font-family="Barlow Condensed, sans-serif">?</text>`,
 };
 // 팀 이름 속 낱말 → 그림 (위에서부터 먼저 맞는 것)
@@ -15077,8 +15081,25 @@ const hash = s => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0))
 const light = hex => { const n = parseInt(hex.slice(1), 16); return ((n >> 16) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000 > 150; };
 
 // 엠블럼 SVG. size: 너비(px). 모르는 팀(상대 미정 등)은 회색 방패에 물음표
+// 시·도 대표 엠블럼: 방패 위 띠에 지역 이름 두 글자, 아래에 지역 그림 (§85)
+const PROV_CREST = {
+  "전남 대표": ["#FFC93C", "#1A237E", "rocket"], "서울 대표": [null, null, "bridge"], "경기 대표": [null, null, "castle"], "경북 대표": [null, null, "crown"],
+  "부산 대표": [null, null, "gull"], "충남 대표": [null, null, "sun"], "경남 대표": [null, null, "wave"], "대구 대표": [null, null, "apple"],
+  "인천 대표": [null, null, "plane"], "강원 대표": [null, null, "peaks"], "전북 대표": [null, null, "leaf"],
+};
+function provCrest(n, size, cls) {
+  const [pf, ps, key] = PROV_CREST[n];
+  let [f, s] = pf ? [pf, ps] : COLOR[n];
+  if (light(f) && !light(s) && n !== "전남 대표") [f, s] = [s, f];
+  const short = n.slice(0, 2);
+  return `<svg class="crest-svg ${cls}" width="${size}" height="${Math.round(size * 1.1)}" viewBox="0 0 100 110" role="img" aria-label="${esc(n)} 엠블럼">${SHAPE[0](f, s)}
+    <path d="M16 20 H84 V40 H16 Z" fill="${s}"/><text x="50" y="35.5" text-anchor="middle" font-size="17" font-weight="800" fill="${f}" font-family="Pretendard, sans-serif">${esc(short)}</text>
+    <g transform="translate(50 71) scale(.72) translate(-50 -55)">${MOTIF[key](s, f)}</g></svg>`;
+}
+
 function crest(name, { size = 40, cls = "" } = {}) {
   const n = String(name || "");
+  if (PROV_CREST[n]) return provCrest(n, size, cls);
   const known = COLOR[n];
   let [f, s] = known || [`hsl(${hash(n) % 360} 45% 34%)`, "#E8ECF6"];
   if (!known && !/대표$/.test(n)) [f, s] = ["#2A3247", "#8E97AA"];
@@ -17645,7 +17666,7 @@ function showMatch(app, m, onDone) {
     <header class="board">
       <div class="comp">${esc(fx.compLabel)}${fx.round ? ` ${esc(fx.round)}` : ""}</div>
       <div class="teams">
-        <span class="tm home">${fx.jn ? `<i class="kit-dot jn-dot"></i>${esc(fx.usName)}` : `<img src="assets/img/logo.png" alt="">${esc(fx.usName || TEAM_NAME)}`}</span>
+        <span class="tm home">${fx.jn ? `${crest(fx.usName, { size: 26, cls: "bcrest" })}${esc(fx.usName)}` : `<img src="assets/img/logo.png" alt="">${esc(fx.usName || TEAM_NAME)}`}</span>
         <span class="sc num" id="sc">0 : 0</span>
         <span class="tm away">${crest(fx.opponent.name, { size: 26, cls: "bcrest" })}${esc(fx.opponent.name)}</span>
       </div>
