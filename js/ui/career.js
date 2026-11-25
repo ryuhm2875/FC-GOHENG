@@ -215,12 +215,28 @@ export function showEnding(app) {
   const text = ending.story(c);
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let n = 0;
-  const finish = () => { story.textContent = text; const lt = app.root.querySelector("#later"); if (lt) lt.hidden = false; app.root.querySelector("#letter").hidden = false; app.root.querySelector("#recap").hidden = false; app.root.querySelector("#eb").hidden = false; };
+  const finish = () => { story.textContent = text; const lt = app.root.querySelector("#later"); if (lt) lt.hidden = false; for (const k of ["#letter", "#recap", "#eb"]) { const el = app.root.querySelector(k); if (el) el.hidden = false; } };   // 엔딩 화면을 떠난 뒤 불려도 오류 없이
   const t = setInterval(() => { n += 2; story.textContent = text.slice(0, n); if (n >= text.length) { clearInterval(t); finish(); } }, reduce ? 1 : 32);
   app.root.querySelector(".ending").addEventListener("click", e => { if (!e.target.closest("button")) { clearInterval(t); finish(); } });
   app.root.querySelector("[data-gallery]").addEventListener("click", () => galleryModal());
-  app.root.querySelector("[data-title]").addEventListener("click", () => app.toTitle());
+  app.root.querySelector("[data-title]").addEventListener("click", () => showFinale(app));
   setTimeout(() => { try { checkAchievements(app, { end: true }); } catch (e) { console.warn(e); } }, 1500);
+}
+
+// 마지막 화면: 예전 시작 그림(바다 너머 발사체를 보는 아이) 위에 짧은 맺음말. 처음 화면과 짝이 됨 (§83)
+function showFinale(app) {
+  const name = app.state?.player?.name || "";
+  app.view = "finale";
+  app.root.innerHTML = `<div class="finale">
+    <picture><source media="(orientation: portrait)" srcset="assets/img/ending_final_m.webp"><img src="assets/img/ending_final.webp" alt=""></picture>
+    <div class="finale-text">
+      <span class="eyebrow">THE END</span>
+      <h1>고흥FC 드림</h1>
+      <p>${esc(name)}의 중학교 3년이 끝났다.</p>
+      <p class="mute">바다 너머로 오늘도 뭔가가 올라간다.<br>이번엔 네 차례다.</p>
+    </div>
+    <button class="btn btn-kit finale-btn" data-title>처음으로</button></div>`;
+  app.root.querySelector("[data-title]").addEventListener("click", () => app.toTitle());
 }
 
 export function galleryModal() {

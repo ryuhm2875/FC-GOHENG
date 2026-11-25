@@ -10,6 +10,7 @@ import { eventView, eventVars, chooseEvent, reqOk, reqText } from "../engine/eve
 import { track } from "../net/online.js";
 import { meetingScript, applyMeeting } from "../engine/advice.js";
 import { STAFF } from "../../data/roster.js";
+import { JN_STAFF } from "../engine/jn.js";
 import { reduced, countUp } from "./fx.js";
 import { sfx } from "./sfx.js";
 import { crest } from "./crest.js";
@@ -366,7 +367,8 @@ export function eventModal(app, done) {
 export function meetingModal(app, fx, done) {
   const state = app.state;
   const sc = meetingScript(state, fx);
-  const WHO = { assist: { name: STAFF.assistant, face: "npc_assistant" }, coach: { name: STAFF.coach, face: "npc_coach" } };
+  const WHO = fx.jn ? { assist: { name: JN_STAFF.assistant, face: "npc_jn_assistant" }, coach: { name: JN_STAFF.coach, face: "npc_jn_coach" } }   // 소년체전: 전남 대표 스태프 (§83)
+    : { assist: { name: STAFF.assistant, face: "npc_assistant" }, coach: { name: STAFF.coach, face: "npc_coach" } };
   let i = 0;
   const lineHtml = l => {
     const w = WHO[l.who];
@@ -418,5 +420,5 @@ export function meetingModal(app, fx, done) {
       ctl.querySelector("[data-k]")?.focus({ preventScroll: true });
     };
     show();
-  }, { dismissable: false, onClose: done, scene: "ev_meeting", cls: "event meeting" });
+  }, { dismissable: false, onClose: done, scene: fx.jn ? "ev_jn_halftime" : "ev_meeting", cls: "event meeting" });
 }

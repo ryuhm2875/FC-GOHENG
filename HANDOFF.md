@@ -1439,3 +1439,13 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
 - mailModal(js/ui/modals.js)에 avatar·when·important를 넘겨 받음 (main.js가 views.js의 avatarOf·ago, state.js의 isImportant를 넘김). 위: 얼굴 + 보낸 사람 + "이번 주 · 중1 8월 3주차", 가운데: 제목(중요 표시), 아래: 내용 카드(왼쪽 주황 줄). css/fc26.css 끝 .mv-*
 - 단톡방(inboxView group 탭): state.inbox는 새 글이 앞(unshift)이라 뒤집어서 오래된 글이 위. 탭을 열면 맨 아래(최신)로 스크롤 (main.js 렌더 끝)
 - tools/dev/mail-shots.mjs: 메일 하나 연 화면(2b_open)도 찍음
+
+## 83. 시작 그림 교체·마지막 화면, 전남 대표 경기 점검 (2026-11-25, 사용자: "3번은 시작 그림으로 바꿔보고 지금 시작 장면을 마지막 화면으로", "전남 대표 경기를 해야 하는데, 사전 라커룸 대화가 기존 인물들이 나오고 경기 중에서도 유니폼도 고흥FC 버전으로 나와", "전남 대표가 되었는데 뭐 멘트도 없고 좀 아쉽네")
+- 시작 그림: 사용자가 준 새 그림(바닷가 운동장, 공 위에 발 올린 소년, 나로호 발사)을 title.webp(1376 가로)로. 세로 화면용 title_m.webp는 소년이 다 보이는 자리(가로 310px부터)로 잘라서 발사체는 빠짐. 예전 시작 그림은 ending_final.webp / ending_final_m.webp
+- 마지막 화면: 엔딩 화면의 '타이틀로' → showFinale(js/ui/career.js) → "THE END / 고흥FC 드림 / ○○의 중학교 3년이 끝났다. / 바다 너머로 오늘도 뭔가가 올라간다. 이번엔 네 차례다." + '처음으로'. css/fc26.css .finale. 버튼은 .finale-text(애니메이션 transform) 밖에 둬야 자리 안 틀어짐
+- 엔딩 글자 타이핑이 화면을 떠난 뒤 끝나도 오류 안 나게 (#letter 등 없으면 건너뜀)
+- 전남 대표 미팅: meetingScript가 fx.jn이면 jnMeetingScript (js/engine/advice.js). 소년체전 대기실·같은 포지션 동료(학교 이름)·맞수 같은 편, 상대 분석 카드(상대·전력·우리 도내 n개 학교·지난 경기), 한 코치·서 감독 말, 라운드마다 다름. 대답 3개는 고흥 감독 신뢰를 건드리지 않음. 미팅 창은 전남 대표 스태프 이름·얼굴, 그림 ev_jn_halftime. 준결승·결승 전에도 미팅(main.js)
+- 경기장 유니폼: match.js usKitOf(fx) → svg에 --us 변수. 전남 대표는 노랑(#FFC93C)·남색, 상대가 노란색(인천)이면 남색 원정. 내 점은 평소 노랑이라 노란 유니폼일 땐 흰색(--me), 골키퍼 초록. css/fc26.css·fc.css .pitch .us
+- 경기 후: 고흥 단톡방의 정 코치 말은 '중계로 봤다'식으로, 경기 후 한마디 메일은 서 감독이 보냄(고흥FC 유니폼·단체훈련 문장은 뺌). 메일함 얼굴에 전남 대표 스태프 추가(views avatarOf)
+- 선발 소식: jnSelectedNews(advice.js), goal_jn_result에서 선발 + startJnCup 뒤. 한 코치 소집 안내(일정·준비물·노란 유니폼·맞수가 같은 편이면 언급), 엄마, 아빠, 류봉두 선생님(공결), 고흥FC 단톡방. 두 번째 선발이면 문장이 다름
+- 점검: /tmp/jn_test.mjs 식으로 선발→3경기 엔진 돌려 문장 확인, 화면(미팅·경기장·시작·마지막 화면) 찍어 확인, uiplay MF 끝까지 오류 0

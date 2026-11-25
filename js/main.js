@@ -166,7 +166,7 @@ const app = {
       window.scrollTo(0, 0);
       showMatch(this, m, result => {
         const nx = fx.jn && result?.result === "승" ? currentFixture(s) : null;
-        if (nx?.jn) return play(nx);
+        if (nx?.jn) return meetingModal(this, nx, () => play(nx));   // 준결승·결승 전에도 대기실 미팅 (§83)
         this.view = "home"; this.finishWeek(ctx, result);
       });
     };

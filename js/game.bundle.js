@@ -4806,7 +4806,7 @@ const {chance} = __m["js/rng.js"];
 const {isBirthdayWeek} = __m["js/engine/birthday.js"];
 const {chatText} = __m["js/engine/life.js"];
 const {aceOf, aceAbsent} = __m["js/engine/opponents.js"];
-const {JN_WEEK} = __m["js/engine/jn.js"];
+const {JN_WEEK, JN_STAFF, shortSchool} = __m["js/engine/jn.js"];
 const {ACE_TALK, COACH_TALK} = __m["data/messages.js"];
 const {LEAGUE_OPPONENTS, NATIONAL_OPPONENTS, HIGH_SCHOOLS, ELEMENTARY_OPPONENTS} = __m["data/world.js"];
 // 메시지 만들기: 경기 전 미팅, 경기 후 피드백, 주간 조언.
@@ -4934,6 +4934,7 @@ function streakOf(state) {
   return k;
 }
 function meetingScript(state, fx) {
+  if (fx.jn) return jnMeetingScript(state, fx);
   const info = turnInfo(state);
   const p = state.player;
   const style = styleOf(fx.opponent.name);
@@ -5085,6 +5086,69 @@ function meetingScript(state, fx) {
   return { lines: L, card, choices: ch.slice(0, 3), coach: coachName, assistant: asst };
 }
 
+// 전남 대표로 뽑힌 날 (§83): 전남 대표 코치의 소집 안내, 부모님, 담임 선생님, 고흥FC 단톡방
+// goal_jn_result(data/events2.js)에서 선발됐을 때 startJnCup 뒤에 부름
+function jnSelectedNews(state) {
+  const c = state.jnCup, p = state.player;
+  if (!c || c.grade !== state.calendar.grade) return;
+  const again = (state.jnHistory || []).length > 0, given = p.name.length === 3 ? p.name.slice(1) : p.name;
+  const nem = c.squad.find(x => x.nemesis);
+  mailFrom(state, JN_STAFF.assistant, "coach", "전남 대표 소집 안내",
+    `${p.name} 선수, 전남 대표팀 ${JN_STAFF.assistant}다. ${JN_STAFF.assistantFrom}에서 왔다.\n\n5월 2주 전국소년체전. 대회 첫날 아침에 숙소로 모인다. 1회전, 준결승, 결승을 이틀 간격으로 치른다. 지면 그날 바로 집에 간다.\n\n챙길 것: 축구화 두 켤레, 정강이 보호대, 학교 체육복. 유니폼은 여기서 준다. 노란색이다.`
+    + (nem ? `\n\n명단 보니까 ${shortSchool(nem.school)}의 ${nem.name}도 있더라. 리그에서 둘이 자주 부딪혔다고 들었다. 이번 주는 같은 편이다.` : "")
+    + `\n\n그때까지 다치지만 마라.`);
+  mail(state, "mom", again ? "또 전남 대표!" : "우리 아들 전남 대표!", pick(again
+    ? ["2년 연속이라니. 이모들 단톡방에 또 올렸어 😅 이번엔 다들 '역시' 그러더라.", "올해도 노란 유니폼 입는 거지? 작년 사진 옆에 나란히 걸어 둘게."]
+    : ["이모들 단톡방에 벌써 올렸어 😅 할머니는 전화 받자마자 우셨어. 밥 꼭 챙겨 먹고잉.", "아빠가 퇴근길에 전화해서 세 번이나 물어보더라. '진짜 전남 대표래?' 그래, 진짜래."]));
+  mail(state, "dad", "축하한다", pick(["회사 사람들한테 자랑했다. 아빠가 원래 이런 사람 아닌 거 알지? 오늘은 봐줘라.",
+    `${given}아, 고흥에서 전남까지 왔다. 다음은 어디까지 갈지 아빠는 그게 궁금하다.`]));
+  mail(state, "teacher", "교무실에 소문 다 났다", pick(["교무실에 소문 다 났다. 교장 선생님이 조회 때 말씀하실 수도 있으니 마음의 준비해라. 대회 기간 수업은 공결 처리된다. 대신 돌아오면 노트는 짝꿍한테 빌려 봐라.",
+    "축하한다. 선생님은 축구는 잘 모르지만, 네가 운동장에서 제일 늦게 들어오는 건 안다. 대회 기간 수업은 공결 처리된다. 몸 조심하고 와라."]));
+  mail(state, "group", again ? "또 전남 대표!" : "전남 대표 발표", chatText(state, pick(again
+    ? ["{mate}: 또 뽑혔대 ㅋㅋ 2년 연속 전남 대표\n\n{mentor}: 이번엔 메달 걸고 와라\n\n{friend}: 노란 유니폼 또 입냐 ㅋㅋ 잘 어울리긴 함"]
+    : ["{mate}: 야 {name} 전남 대표 됐대!!!!\n\n{friend}: ㅋㅋㅋ 진짜? 고흥에서??\n\n{mentor}: 축하한다. 가서 기죽지 마라. 거기 애들도 다 중학생이다",
+      "{friend}: 전남 대표 명단에 고흥FC 있는 거 봄?? 캡처했다 ㅋㅋ\n\n{mate2}: 유니폼 노란색이라던데 사진 꼭 보내라\n\n{mate}: 사인 미리 받아 둔다 ㅋㅋ"])));
+}
+
+// 전남 대표 경기 전 미팅 (§83): 고흥FC 라커룸·감독·코치 대신 소년체전 대기실과 전남 대표 감독·코치
+// 말하는 사람은 assist(한 코치)·coach(서 감독). 미팅 창(modals.js)이 fx.jn이면 이름·얼굴을 전남 대표 스태프로 바꿈
+function jnMeetingScript(state, fx) {
+  const c = state.jnCup, p = state.player, opp = fx.opponent, round = fx.round;
+  const L = [], A = t => L.push({ who: "assist", t }), C = t => L.push({ who: "coach", t }), N = t => L.push({ who: "nar", t });
+  const squad = c?.squad || [], nem = squad.find(x => x.nemesis);
+  const schools = new Set(squad.map(x => x.school).filter(Boolean)).size;
+  const mates = squad.filter(x => x.pos === p.position && !x.nemesis).slice(0, 2);
+  const lastWin = c?.log?.at(-1);
+  N(round === "1회전" ? pick(["소년체전 경기장 대기실. 의자마다 노란 전남 유니폼이 걸려 있다. 등에 박힌 '전남' 두 글자가 아직 낯설다.",
+      "경기장 대기실. 다들 자기 학교 가방을 발밑에 두고 앉았다. 유니폼만 같은 노란색이다."])
+    : round === "준결승" ? pick(["이틀 만에 같은 대기실. 이제 서로 이름을 부른다. 누가 먼저 시작했는지 모를 장난이 오간다.", "준결승 날 아침. 대기실 화이트보드에 이틀 전 경기 점수가 아직 지워지지 않았다."])
+    : pick(["결승전 대기실. 아무도 말이 없다. 축구화 끈 묶는 소리만 들린다.", "결승 날. 대기실 문 너머로 관중석 함성이 벌써 들린다."]));
+  if (round === "1회전" && nem) N(`옆자리에 ${shortSchool(nem.school)}의 ${nem.name}. 리그에선 매번 부딪히던 얼굴이다. 오늘은 같은 색 유니폼이다.`);
+  else if (round === "1회전" && mates.length) N(`같은 ${POSITIONS[p.position].label} 자리엔 ${mates.map(x => `${shortSchool(x.school)}의 ${x.name}`).join(", ")}. 다들 자기 학교에선 에이스였던 애들이다.`);
+  const diff = opp.strength - (c?.str ?? 60) * 0.6 - 20;
+  const power = diff > 1.5 ? "한 수 위" : diff > -0.5 ? "비슷함" : "우리가 앞섬";
+  const card = { title: opp.name, sub: `전국소년체전 ${round}`, rows: [["상대", opp.name], ["전력", power], ["우리", `전남 대표 · 도내 ${schools}개 학교`],
+    ...(lastWin ? [["지난 경기", `${lastWin.gf}:${lastWin.ga} vs ${lastWin.opponent}`]] : [])] };
+  A(round === "1회전" ? pick([`${opp.name}. 시·도 대표끼리는 다 비슷하다. 먼저 겁먹는 쪽이 진다.`, `상대는 ${opp.name}. 영상은 두 경기밖에 못 봤다. 대신 우리도 저쪽이 모른다.`])
+    : round === "준결승" ? pick([`${opp.name}. 여기까지 올라온 팀이다. 이틀 전 경기처럼 하면 안 된다. 한 단계 더 빨라야 한다.`, "다리 무거운 거 안다. 상대도 똑같다. 첫 10분만 버티면 몸이 풀린다."])
+    : pick([`${opp.name}. 결승이다. 분석은 어제 다 끝났다. 오늘은 할 말이 별로 없다.`, "여기까지 온 팀한테 전술 얘기는 길게 안 한다. 서로 믿어라. 그게 다다."]));
+  const given = p.name.length === 3 ? p.name.slice(1) : p.name, prevMe = state.record.matches.at(-1);
+  A(round === "1회전" ? pick([`그리고 고흥, ${given}. 오늘 네 자리 비워 뒀다. 학교에서 하던 대로 해라.`, "여기선 아무도 네 이름을 모른다. 그러니까 오늘 알려 주고 와라."])
+    : prevMe?.rating >= 7.5 ? pick([`고흥, ${given}. 지난 경기 좋았다. 저쪽 감독도 이제 네 번호를 안다. 한 번 더 움직여라.`, "지난 경기처럼만 해라. 대신 오늘은 너한테 한 명이 더 붙을 거다."])
+    : pick([`고흥, ${given}. 지난 경기는 잊어라. 오늘이 진짜다.`, "몸이 무거우면 말해라. 숨기는 게 제일 나쁘다."]));
+  C(round === "결승" ? pick(["전라남도가 이 대회 결승에 온 게 몇 년 만인지 아냐. 나도 모른다. 그만큼 오래됐다. 오늘 끝내자.", "메달 색은 70분 뒤에 정해진다. 그 전엔 아무것도 정해진 게 없다."])
+    : pick(["학교 유니폼 벗었으면 학교도 잠깐 잊어라. 오늘은 다 같은 전남이다.", "모인 지 며칠 안 된 팀이다. 그러니까 말을 많이 해라. 이름 부르고, 손 들고.", "각자 학교에선 다 주인공이었겠지. 여기선 열한 명이 한 명이다."]));
+  const ch = [
+    { label: "\"고흥 이름 걸고 뛰겠습니다\"", who: "coach", reply: pick(["좋다. 고흥도 전남이다. 오늘은 네 학교 이름이 우리 모두의 이름이다.", "그 마음이면 됐다. 대신 혼자 짊어지진 마라. 옆에 열 명 있다."]),
+      buff: { tag: null, bonus: 0.015, label: "모든 선택 성공률 +1.5%p" }, fx: { morale: 3 } },
+    { label: "옆자리 선수에게 먼저 말을 건다", who: "assist", reply: "그거다. 오늘 처음 만난 놈이랑 한 몸처럼 뛰는 게 대표팀이다.",
+      buff: { tag: "pass", bonus: 0.03, label: "패스 선택 성공률 +3%p" }, fx: { s: { "mental.teamwork": 0.3 } } },
+    p.position === "FW" ? { label: "\"첫 골은 제가 넣겠습니다\"", who: "coach", reply: "말했으면 넣어라. 못 넣어도 고개는 들고.", buff: { tag: "shoot", bonus: 0.025, label: "슈팅 선택 성공률 +2.5%p" }, fx: { morale: 2 } }
+      : { label: "\"뒤는 제가 받치겠습니다\"", who: "coach", reply: "좋다. 뒤가 든든하면 앞에 있는 애들이 마음껏 뛴다.", buff: { tag: "defend", bonus: 0.025, label: "수비 선택 성공률 +2.5%p" }, fx: { morale: 2 } },
+  ];
+  return { lines: L, card, choices: ch, coach: JN_STAFF.coach, assistant: JN_STAFF.assistant };
+}
+
 // 미팅에서 고른 대답 반영. 경기 중 효과는 state.meetingBuff에 남겨 prepareMatch가 가져감
 function applyMeeting(state, choice) {
   const p = state.player, out = [];
@@ -5130,7 +5194,7 @@ function matchMails(state, m, res, notes) {
   const cup = fx.jn ? state.jnCup : null;
   const nxt = cup ? (cup.alive ? `이틀 뒤 소년체전 ${["1회전", "준결승", "결승"][cup.stage]}` : null) : nextFixtureText(state);
   if (nxt) body.push(`다음 경기: ${nxt}`);
-  if (cup) body.push(`${STAFF.assistant}: ${res.result === "승" ? pick(["숙소 들어가서 바로 얼음찜질. 다음 경기까지 하루밖에 없다.", "잘했다. 오늘 밤엔 휴대폰 보지 말고 일찍 자라."]) : pick(["고개 들어라. 전남에서 뽑힌 것부터가 실력이다.", "버스 타기 전에 같이 뛴 애들한테 인사하고 와라. 고등학교 가면 또 만난다."])}`);
+  if (cup) body.push(`${STAFF.assistant}: ${res.result === "승" ? pick(["중계로 봤다. 거기 코치님 말 잘 듣고, 숙소 들어가면 얼음찜질부터 해라.", "잘했다. 고흥은 다 보고 있다. 오늘 밤엔 휴대폰 보지 말고 일찍 자라."]) : pick(["고개 들어라. 전남에서 뽑힌 것부터가 실력이다. 고흥에서 기다린다.", "버스 타기 전에 같이 뛴 애들한테 인사하고 와라. 고등학교 가면 또 만난다."])}`);
   else body.push(`${STAFF.assistant}: ${res.result === "패" ? pick(["월요일엔 영상 보면서 실점 장면 짚고 간다.", "오늘 진 거 오늘까지만 생각해라. 월요일에 다시 시작한다.", "고개 숙이고 집에 가지 마라. 월요일에 영상 보자."])
     : res.result === "승" ? pick(["월요일은 회복 훈련. 무리하지 마라.", "오늘 잘했다. 월요일엔 가볍게 몸만 푼다.", "이긴 날일수록 일찍 자라. 월요일 회복 훈련 빠지지 말고."])
     : pick(["월요일은 회복 훈련. 무리하지 마라.", "비긴 경기는 아쉬움이 오래 간다. 월요일에 털고 가자.", "승점 1점도 소중하다. 월요일은 가볍게 간다."])}`);
@@ -5232,7 +5296,7 @@ function matchMails(state, m, res, notes) {
   if (fx.round === "결승" && res.result !== "승" && !(res.shootout?.win)) fb.push("결승까지 온 것도 실력이다. 은메달 걸고 다녀도 된다. 다음엔 그 한 골을 우리가 넣자.");
   const lastOfAll = res.grade === 3 && noFixtureLeft(state);
   if (lastOfAll) fb.push("중학교에서 뛰는 마지막 경기였다. 3년 동안 고흥FC 유니폼 입어 줘서 고맙다.");
-  if (fb.length) mail(state, "coach", `경기 후 면담: vs ${fx.opponent.name}`, fb.join("\n\n"));
+  if (fb.length) { if (fx.jn) mailFrom(state, JN_STAFF.coach, "coach", `경기 후 한마디: vs ${fx.opponent.name}`, fb.filter(t => !/고흥FC 유니폼|단체훈련 때/.test(t)).join("\n\n")); else mail(state, "coach", `경기 후 면담: vs ${fx.opponent.name}`, fb.join("\n\n")); }   // 소년체전은 전남 대표 감독이 (§83)
   if (res.goals > 0 && res.minutes > 0 && state.record.matches.slice(0, -1).every(x => !x.goals))
     mail(state, "mom", "첫 골 축하해!", "아빠가 단톡방 보고 거실에서 소리를 질렀어. 오늘 저녁은 네가 먹고 싶은 걸로 하자.");
   if (res.status === "start" && state.record.starts === 1)
@@ -5475,7 +5539,7 @@ function welcomeMails(state) {
     `${STAFF.assistant}: 신입생들 환영한다~ 3월 2주부터 주말리그 시작이다.\n\n주장 ${captain}: 1학년들 선배 보면 인사 잘하고, 축구화는 각자 챙겨라. 물통 당번은 1학년 돌아가면서 😄`);
 }
 
-return { drillFor, styleOf, formOfTeam, meetingScript, applyMeeting, previewChat, matchMails, weeklyAdvice, welcomeMails };
+return { drillFor, styleOf, formOfTeam, meetingScript, jnSelectedNews, applyMeeting, previewChat, matchMails, weeklyAdvice, welcomeMails };
 })();
 (__fix["js/engine/advice.js"] || []).forEach(f => f());
 
@@ -10689,12 +10753,14 @@ const {STAFF} = __m["data/roster.js"];
 const {GOALS} = __m["data/goals.js"];
 const {goalsOf, achieve, jnScore, JN_NEED} = __m["js/engine/goals.js"];
 const {startJnCup} = __m["js/engine/jn.js"];
+const {jnSelectedNews} = __m["js/engine/advice.js"];
 // 추가 이벤트 86개 (학교생활 36, 시험 주 8, 축구부 22, 가족·고흥 10, 목표 10)
 // 형식은 data/events.js와 같습니다. 여기서 새로 쓰는 표시:
 //   exam  : true면 정기시험 주간에만 나오고, 시험 주간마다 이 가운데 하나가 반드시 나옴
 //   assess: true면 중1 1학기 수행평가 주간에 우선 나옴 (평소에도 가끔)
 //   family: true면 방학 때 더 자주 나옴
 //   act   : (선택지 안) 고르는 순간 실행할 일 (목표 기록 등)
+
 
 
 
@@ -11415,10 +11481,10 @@ const EVENTS_MORE = [
       : `전남 대표 명단이 발표됐다. 네 이름은… 없다. ${s.calendar.grade === 2 ? "내년에 한 번 더 기회가 있다." : "아쉽다. 여기서 끝이 아니다."}`,
     choices: [
       { label: "고개 숙여 인사한다", fx: { morale: 2 },
-        act: s => { const G = goalsOf(s); (G.jnResult ||= {})[s.calendar.grade] = true; if (G.jnOutcome) { achieve(s, "jn"); s.flags.jnSelected = true; s.player.condition.morale = Math.min(100, s.player.condition.morale + 6); if (turnInfo(s)?.month === 4) startJnCup(s); } },
+        act: s => { const G = goalsOf(s); (G.jnResult ||= {})[s.calendar.grade] = true; if (G.jnOutcome) { achieve(s, "jn"); s.flags.jnSelected = true; s.player.condition.morale = Math.min(100, s.player.condition.morale + 6); if (turnInfo(s)?.month === 4) { startJnCup(s); jnSelectedNews(s); } } },
         result: s => goalsOf(s).jnOutcome ? "\"고흥에서 전남 대표라. 오늘은 실컷 자랑해도 된다.\" 감독님 목소리가 평소보다 조금 높았다." : "\"떨어진 날 어떻게 하는지가 다음 기회를 정한다.\" 감독님이 등을 두드려 주셨다." },
       { label: "\"부족한 게 뭐였는지 알고 싶습니다\"", fx: { s: { "mental.focus": 0.5 } },
-        act: s => { const G = goalsOf(s); (G.jnResult ||= {})[s.calendar.grade] = true; if (G.jnOutcome) { achieve(s, "jn"); s.flags.jnSelected = true; if (turnInfo(s)?.month === 4) startJnCup(s); } },
+        act: s => { const G = goalsOf(s); (G.jnResult ||= {})[s.calendar.grade] = true; if (G.jnOutcome) { achieve(s, "jn"); s.flags.jnSelected = true; if (turnInfo(s)?.month === 4) { startJnCup(s); jnSelectedNews(s); } } },
         result: s => goalsOf(s).jnOutcome ? "\"붙은 날에도 그걸 묻는구나. 그래서 붙은 거다.\"" : `"선발 점수 기준이 ${JN_NEED[s.calendar.grade]}${"013678".includes(String(JN_NEED[s.calendar.grade]).at(-1)) ? "이었다" : "였다"}. 너는 ${goalsOf(s).jnLast ?? Math.round(jnScore(s))}. 경기 평점과 능력치, 둘 다 조금씩 모자랐다."` },
     ] },
   { id: "goal_award", bg: "ev_award", fixed: true, who: "narr",
@@ -15014,11 +15080,13 @@ const {eventView, eventVars, chooseEvent, reqOk, reqText} = __m["js/engine/event
 const {track} = __m["js/net/online.js"];
 const {meetingScript, applyMeeting} = __m["js/engine/advice.js"];
 const {STAFF} = __m["data/roster.js"];
+const {JN_STAFF} = __m["js/engine/jn.js"];
 const {reduced, countUp} = __m["js/ui/fx.js"];
 const {sfx} = __m["js/ui/sfx.js"];
 const {crest} = __m["js/ui/crest.js"];
 const {turnInfo} = __m["js/engine/calendar.js"];
 // 팝업: 행동 고르기, 주간 결과, 메시지, 저장, 등번호, 학년 마무리, 졸업
+
 
 
 
@@ -15385,7 +15453,8 @@ function eventModal(app, done) {
 function meetingModal(app, fx, done) {
   const state = app.state;
   const sc = meetingScript(state, fx);
-  const WHO = { assist: { name: STAFF.assistant, face: "npc_assistant" }, coach: { name: STAFF.coach, face: "npc_coach" } };
+  const WHO = fx.jn ? { assist: { name: JN_STAFF.assistant, face: "npc_jn_assistant" }, coach: { name: JN_STAFF.coach, face: "npc_jn_coach" } }   // 소년체전: 전남 대표 스태프 (§83)
+    : { assist: { name: STAFF.assistant, face: "npc_assistant" }, coach: { name: STAFF.coach, face: "npc_coach" } };
   let i = 0;
   const lineHtml = l => {
     const w = WHO[l.who];
@@ -15437,7 +15506,7 @@ function meetingModal(app, fx, done) {
       ctl.querySelector("[data-k]")?.focus({ preventScroll: true });
     };
     show();
-  }, { dismissable: false, onClose: done, scene: "ev_meeting", cls: "event meeting" });
+  }, { dismissable: false, onClose: done, scene: fx.jn ? "ev_jn_halftime" : "ev_meeting", cls: "event meeting" });
 }
 
 return { seasonBg, openModal, ask, actionPicker, weekReport, mailModal, saveModal, numberModal, yearModal, eventModal, meetingModal };
@@ -17494,8 +17563,16 @@ function buildPlayers(m) {
     x: m.sim.P[i].x, y: m.sim.P[i].y }));
 }
 
-function pitchSvg(players, kit) {
-  return `<svg class="pitch" viewBox="0 0 105 68" role="img" aria-label="경기장" style="--opp:${kit.fill};--opp2:${kit.stroke};--oppText:${kit.text};--oppGk:${kit.gk};--oppGkText:${kit.gkText}">
+// 우리 팀 유니폼: 평소엔 고흥FC 주황(css 기본값). 소년체전은 전남 대표 노랑·남색, 상대가 노란색이면 남색 원정 유니폼 (§83)
+function usKitOf(fx) {
+  if (!fx?.jn) return null;
+  const o = String(fx.opponent?.color || "").toUpperCase(), n = parseInt(o.slice(1) || "0", 16);
+  const yellowish = o && ((n >> 16) > 200 && ((n >> 8) & 255) > 170 && (n & 255) < 120);
+  return yellowish ? { fill: "#1A237E", stroke: "#FFC93C", text: "#FFC93C", gk: "#43A047", gkText: "#FFFFFF" }
+    : { fill: "#FFC93C", stroke: "#1A237E", text: "#1A237E", gk: "#43A047", gkText: "#FFFFFF", me: "#FFFFFF" };   // 노란 유니폼이면 내 점은 흰색 (평소 내 점이 노란색이라)
+}
+function pitchSvg(players, kit, us = null) {
+  return `<svg class="pitch" viewBox="0 0 105 68" role="img" aria-label="경기장" style="--opp:${kit.fill};--opp2:${kit.stroke};--oppText:${kit.text};--oppGk:${kit.gk};--oppGkText:${kit.gkText}${us ? `;--us:${us.fill};--us2:${us.stroke};--usText:${us.text}; --usGk:${us.gk};--usGkText:${us.gkText}${us.me ? `;--me:${us.me}` : ""}` : ""}">
     <rect x="0" y="0" width="105" height="68" class="turf"/>
     ${Array.from({ length: 7 }, (_, i) => `<rect x="${i * 15}" y="0" width="7.5" height="68" class="stripe"/>`).join("")}
     <g class="lines"><rect x="1" y="1" width="103" height="66"/><line x1="52.5" y1="1" x2="52.5" y2="67"/>
@@ -17550,7 +17627,7 @@ function showMatch(app, m, onDone) {
       <div class="clock num" id="clock">경기 전</div>
     </header>
     <div class="match-body">
-      <div class="pitch-wrap sky-${m.sky || "day"} wx-${m.weather || "clear"}" id="pitch">${pitchSvg(players, kitOf(fx.opponent))}${m.weather && m.weather !== "clear" ? `<div class="wx-layer" aria-hidden="true"></div>` : ""}<div class="goal-flash" id="flash" hidden>GOAL</div><div class="atk-dir" id="atk">공격 방향 ▶</div></div>
+      <div class="pitch-wrap sky-${m.sky || "day"} wx-${m.weather || "clear"}" id="pitch">${pitchSvg(players, kitOf(fx.opponent), usKitOf(fx))}${m.weather && m.weather !== "clear" ? `<div class="wx-layer" aria-hidden="true"></div>` : ""}<div class="goal-flash" id="flash" hidden>GOAL</div><div class="atk-dir" id="atk">공격 방향 ▶</div></div>
       <ol class="feed" id="feed" aria-live="polite"></ol>
     </div>
     <footer class="ctl" id="ctl"></footer>
@@ -18502,6 +18579,7 @@ const {SIGNATURE, SITUATIONS} = __m["data/match.js"];
 const {STAT_LABEL, STAT_INFO} = __m["data/player.js"];
 const {esc, img, faceOf, fl, stars, gauge, statLevel, AVATAR} = __m["js/ui/util.js"];
 const {isImportant} = __m["js/state.js"];
+const {JN_STAFF} = __m["js/engine/jn.js"];
 const {getPath} = __m["js/rng.js"];
 const {REL_ROLES, rivalGap, captainScore} = __m["js/engine/relations.js"];
 const {isBirthdayWeek} = __m["js/engine/birthday.js"];
@@ -18509,6 +18587,7 @@ const {blessedThisTerm} = __m["js/engine/events.js"];
 const {goalProgress} = __m["js/engine/goals.js"];
 const {jnFixture, JN_WEEK} = __m["js/engine/jn.js"];
 // 게임 안 화면들: 홈, 선수, 팀, 일정, 메시지
+
 
 
 
@@ -18724,7 +18803,7 @@ function mailPreview(state) {
 // 보낸 사람 얼굴: 감독·코치·선생님·부모님은 인물 그림, 선수는 그 선수 얼굴, 단톡방은 엠블럼
 const FACE_BY_NAME = Object.fromEntries(ROSTER.map(r => [r.name, r.face]));
 function avatarOf(m) {
-  const map = { [STAFF.coach]: "npc_coach", [STAFF.assistant]: "npc_assistant", [STAFF.teacher]: "npc_teacher", "엄마": "npc_mom", "아빠": "npc_dad" };
+  const map = { [STAFF.coach]: "npc_coach", [STAFF.assistant]: "npc_assistant", [STAFF.teacher]: "npc_teacher", "엄마": "npc_mom", "아빠": "npc_dad", [JN_STAFF.coach]: "npc_jn_coach", [JN_STAFF.assistant]: "npc_jn_assistant" };
   const face = map[m.from] || FACE_BY_NAME[m.from];
   if (face) return img(face, "");
   if (m.kind === "group") return `<img src="assets/img/logo.png" alt="">`;
@@ -19458,12 +19537,28 @@ function showEnding(app) {
   const text = ending.story(c);
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   let n = 0;
-  const finish = () => { story.textContent = text; const lt = app.root.querySelector("#later"); if (lt) lt.hidden = false; app.root.querySelector("#letter").hidden = false; app.root.querySelector("#recap").hidden = false; app.root.querySelector("#eb").hidden = false; };
+  const finish = () => { story.textContent = text; const lt = app.root.querySelector("#later"); if (lt) lt.hidden = false; for (const k of ["#letter", "#recap", "#eb"]) { const el = app.root.querySelector(k); if (el) el.hidden = false; } };   // 엔딩 화면을 떠난 뒤 불려도 오류 없이
   const t = setInterval(() => { n += 2; story.textContent = text.slice(0, n); if (n >= text.length) { clearInterval(t); finish(); } }, reduce ? 1 : 32);
   app.root.querySelector(".ending").addEventListener("click", e => { if (!e.target.closest("button")) { clearInterval(t); finish(); } });
   app.root.querySelector("[data-gallery]").addEventListener("click", () => galleryModal());
-  app.root.querySelector("[data-title]").addEventListener("click", () => app.toTitle());
+  app.root.querySelector("[data-title]").addEventListener("click", () => showFinale(app));
   setTimeout(() => { try { checkAchievements(app, { end: true }); } catch (e) { console.warn(e); } }, 1500);
+}
+
+// 마지막 화면: 예전 시작 그림(바다 너머 발사체를 보는 아이) 위에 짧은 맺음말. 처음 화면과 짝이 됨 (§83)
+function showFinale(app) {
+  const name = app.state?.player?.name || "";
+  app.view = "finale";
+  app.root.innerHTML = `<div class="finale">
+    <picture><source media="(orientation: portrait)" srcset="assets/img/ending_final_m.webp"><img src="assets/img/ending_final.webp" alt=""></picture>
+    <div class="finale-text">
+      <span class="eyebrow">THE END</span>
+      <h1>고흥FC 드림</h1>
+      <p>${esc(name)}의 중학교 3년이 끝났다.</p>
+      <p class="mute">바다 너머로 오늘도 뭔가가 올라간다.<br>이번엔 네 차례다.</p>
+    </div>
+    <button class="btn btn-kit finale-btn" data-title>처음으로</button></div>`;
+  app.root.querySelector("[data-title]").addEventListener("click", () => app.toTitle());
 }
 
 function galleryModal() {
@@ -19865,7 +19960,7 @@ const app = {
       window.scrollTo(0, 0);
       showMatch(this, m, result => {
         const nx = fx.jn && result?.result === "승" ? currentFixture(s) : null;
-        if (nx?.jn) return play(nx);
+        if (nx?.jn) return meetingModal(this, nx, () => play(nx));   // 준결승·결승 전에도 대기실 미팅 (§83)
         this.view = "home"; this.finishWeek(ctx, result);
       });
     };

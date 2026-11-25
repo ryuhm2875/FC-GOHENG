@@ -247,3 +247,24 @@ td.tn { white-space: nowrap; }
 .mail-view .mv-title .imp { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; margin-right: 8px; border-radius: 999px; background: var(--kit, #FF6B1A); color: #fff; vertical-align: 3px; font-family: inherit; }
 .mail-view .mv-body { background: rgba(255,255,255,.045); border: 1px solid rgba(255,255,255,.07); border-left: 3px solid var(--kit, #FF6B1A); border-radius: 12px; padding: 14px 16px; line-height: 1.75; font-size: 15.5px; white-space: pre-line; }
 #groupchat { padding-bottom: 28px; }   /* 단톡방 맨 아래 글이 아래 메뉴에 가리지 않게 */
+
+/* ── 마지막 화면 (엔딩 뒤 '타이틀로'): 예전 시작 그림 + 맺음말 (§83) ── */
+.finale { position: fixed; inset: 0; background: #000; color: #fff; overflow: hidden; animation: finIn 1.6s ease both; }
+.finale picture, .finale img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.finale img { animation: finZoom 14s ease-out both; }
+.finale::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.55) 0%, rgba(0,0,0,0) 38%, rgba(0,0,0,0) 62%, rgba(0,0,0,.7) 100%); }
+.finale-text { position: absolute; left: 0; right: 0; top: max(8vh, 40px); z-index: 1; text-align: center; padding: 0 24px; animation: finText 1.4s .9s ease both; }
+.finale-text h1 { font-family: var(--display); font-size: clamp(34px, 8vw, 56px); margin: 6px 0 10px; letter-spacing: -.01em; text-shadow: 0 2px 18px rgba(0,0,0,.6); }
+.finale-text p { margin: 4px 0; font-size: 16px; line-height: 1.7; text-shadow: 0 1px 8px rgba(0,0,0,.7); }
+.finale-text .mute { color: rgba(255,255,255,.78); }
+.finale-btn { position: absolute; z-index: 2; left: 0; right: 0; margin: 0 auto; width: max-content; bottom: calc(32px + env(safe-area-inset-bottom, 0px)); min-width: 180px; animation: finText 1.4s 1.8s ease both; }
+@keyframes finIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes finZoom { from { transform: scale(1.08); } to { transform: scale(1); } }
+@keyframes finText { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .finale, .finale img, .finale-text { animation: none; } }
+
+/* ── 경기장 우리 팀 유니폼: 소년체전은 전남 대표 색 (match.js usKitOf, §83). 값이 없으면 고흥FC 주황 ── */
+.pitch .us .body { fill: var(--us, var(--kit)); stroke: var(--us2, #fff); }
+.pitch .us .no { fill: var(--usText, #fff); }
+.pitch .us.gk .body { fill: var(--usGk, #F5C04A); stroke: #fff; }
+.pitch .us.gk .no { fill: var(--usGkText, var(--night)); }

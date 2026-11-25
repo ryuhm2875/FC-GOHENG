@@ -16,6 +16,7 @@ import { SIGNATURE, SITUATIONS } from "../../data/match.js";
 import { STAT_LABEL, STAT_INFO } from "../../data/player.js";
 import { esc, img, faceOf, fl, stars, gauge, statLevel, AVATAR } from "./util.js";
 import { isImportant } from "../state.js";
+import { JN_STAFF } from "../engine/jn.js";
 import { getPath } from "../rng.js";
 import { REL_ROLES, rivalGap, captainScore } from "../engine/relations.js";
 import { isBirthdayWeek } from "../engine/birthday.js";
@@ -215,7 +216,7 @@ function mailPreview(state) {
 // 보낸 사람 얼굴: 감독·코치·선생님·부모님은 인물 그림, 선수는 그 선수 얼굴, 단톡방은 엠블럼
 const FACE_BY_NAME = Object.fromEntries(ROSTER.map(r => [r.name, r.face]));
 export function avatarOf(m) {
-  const map = { [STAFF.coach]: "npc_coach", [STAFF.assistant]: "npc_assistant", [STAFF.teacher]: "npc_teacher", "엄마": "npc_mom", "아빠": "npc_dad" };
+  const map = { [STAFF.coach]: "npc_coach", [STAFF.assistant]: "npc_assistant", [STAFF.teacher]: "npc_teacher", "엄마": "npc_mom", "아빠": "npc_dad", [JN_STAFF.coach]: "npc_jn_coach", [JN_STAFF.assistant]: "npc_jn_assistant" };
   const face = map[m.from] || FACE_BY_NAME[m.from];
   if (face) return img(face, "");
   if (m.kind === "group") return `<img src="assets/img/logo.png" alt="">`;

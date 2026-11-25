@@ -9,6 +9,7 @@ import { STAFF } from "./roster.js";
 import { GOALS } from "./goals.js";
 import { goalsOf, achieve, jnScore, JN_NEED } from "../js/engine/goals.js";
 import { startJnCup } from "../js/engine/jn.js";
+import { jnSelectedNews } from "../js/engine/advice.js";
 
 const afterExam = s => !!s.lastExam && s.calendar.turn - s.lastExam.turn <= 1;
 const lastMatch = s => { const m = s.record.matches.at(-1); return m && s.calendar.turn - m.turn <= 1 ? m : null; };
@@ -725,10 +726,10 @@ export const EVENTS_MORE = [
       : `전남 대표 명단이 발표됐다. 네 이름은… 없다. ${s.calendar.grade === 2 ? "내년에 한 번 더 기회가 있다." : "아쉽다. 여기서 끝이 아니다."}`,
     choices: [
       { label: "고개 숙여 인사한다", fx: { morale: 2 },
-        act: s => { const G = goalsOf(s); (G.jnResult ||= {})[s.calendar.grade] = true; if (G.jnOutcome) { achieve(s, "jn"); s.flags.jnSelected = true; s.player.condition.morale = Math.min(100, s.player.condition.morale + 6); if (turnInfo(s)?.month === 4) startJnCup(s); } },
+        act: s => { const G = goalsOf(s); (G.jnResult ||= {})[s.calendar.grade] = true; if (G.jnOutcome) { achieve(s, "jn"); s.flags.jnSelected = true; s.player.condition.morale = Math.min(100, s.player.condition.morale + 6); if (turnInfo(s)?.month === 4) { startJnCup(s); jnSelectedNews(s); } } },
         result: s => goalsOf(s).jnOutcome ? "\"고흥에서 전남 대표라. 오늘은 실컷 자랑해도 된다.\" 감독님 목소리가 평소보다 조금 높았다." : "\"떨어진 날 어떻게 하는지가 다음 기회를 정한다.\" 감독님이 등을 두드려 주셨다." },
       { label: "\"부족한 게 뭐였는지 알고 싶습니다\"", fx: { s: { "mental.focus": 0.5 } },
-        act: s => { const G = goalsOf(s); (G.jnResult ||= {})[s.calendar.grade] = true; if (G.jnOutcome) { achieve(s, "jn"); s.flags.jnSelected = true; if (turnInfo(s)?.month === 4) startJnCup(s); } },
+        act: s => { const G = goalsOf(s); (G.jnResult ||= {})[s.calendar.grade] = true; if (G.jnOutcome) { achieve(s, "jn"); s.flags.jnSelected = true; if (turnInfo(s)?.month === 4) { startJnCup(s); jnSelectedNews(s); } } },
         result: s => goalsOf(s).jnOutcome ? "\"붙은 날에도 그걸 묻는구나. 그래서 붙은 거다.\"" : `"선발 점수 기준이 ${JN_NEED[s.calendar.grade]}${"013678".includes(String(JN_NEED[s.calendar.grade]).at(-1)) ? "이었다" : "였다"}. 너는 ${goalsOf(s).jnLast ?? Math.round(jnScore(s))}. 경기 평점과 능력치, 둘 다 조금씩 모자랐다."` },
     ] },
   { id: "goal_award", bg: "ev_award", fixed: true, who: "narr",
