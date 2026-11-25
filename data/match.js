@@ -1086,8 +1086,6 @@ export const SITUATIONS = [
         winText: ["공을 터치라인 밖으로 차 냈다. 양 팀 관중석에서 박수가 나온다. 재개 후 상대가 공을 우리에게 돌려준다."], loseText: ["공을 밖으로 찼다. 상대가 스로인을 우리에게 돌려준다."] },
       { label: "주심이 불 때까지 계속 플레이한다", by: { trail: ["한 골이 급하다, 주심이 불 때까지 계속 플레이한다", "한 골이 급했다."] }, stats: { "tech.pass": 0.6, "mental.focus": 0.4 }, diff: 2, win: "keyPass", lose: "turnover",
         winText: ["앞으로 빠르게 연결했다. 상대 벤치에서 항의가 쏟아진다. 주심은 그대로 진행시킨다."], loseText: ["서두른 패스가 끊겼다. 관중석에서 야유도 섞여 나온다."] },
-      { label: "공을 밖으로 차 내고 먼저 달려가 의료진을 부른다", requires: { "student.attitude": 68 }, stats: { "student.attitude": 0.7, "mental.teamwork": 0.3 }, diff: -12, win: "keep", lose: "keep", trust: 1.5,
-        winText: ["공을 터치라인 밖으로 차 내고 {opp}에게 먼저 달려갔다. 손을 크게 흔들어 의료진을 부른다. 상대 벤치에서도 박수가 나온다. 재개 후 상대가 공을 우리에게 돌려준다.", "공을 터치라인 밖으로 차 냈다. 쓰러진 {opp}에게 제일 먼저 달려가 무릎을 꿇었다. 재개 후 상대가 공을 우리에게 돌려준다."], loseText: ["공을 터치라인 밖으로 차 내고 {opp}에게 달려갔다. 재개 후 상대가 공을 우리에게 돌려준다."] },
     ] },
   // ── 현대 축구 장면 (경기장 움직임과 함께 추가. 연출은 data/scenes.js) ──
   { id: "mf_halfspace_turn", intro: false, pos: ["MF"], zone: "att", weight: 3, oppForm: ["442", "4231", "433"],

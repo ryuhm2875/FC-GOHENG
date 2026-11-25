@@ -2406,11 +2406,11 @@ function scriptSteps(state, m, pd, c, out, R, tail, outTpl) {
         break;
       }
       case "throwUs": ensure(M); restart("throw", "us", M.x, sideY(M.y), { taker: nearMate({ x: M.x, y: sideY(M.y) }) }); break;
-      case "outReturn": {                                                          // 쓰러진 상대 때문에 일부러 밖으로 찬 공: 상대가 스로인을 우리에게 돌려줌 (상대 공으로 이어지지 않게)
+      case "outReturn": {                                                          // 쓰러진 상대 때문에 일부러 밖으로 찬 공: 스로인은 상대 몫, 상대가 우리 선수에게 던져 돌려줌 (§87)
         ensure(M); steps.push({ do: "clear", by: M, out: "touch", main: true });
         steps.push({ do: "wait", t: 1.8 });
-        const ry = sideY(M.y);
-        restart("throw", "us", clamp(M.x + 6, 4, 100), ry, { taker: nearMate({ x: M.x + 6, y: ry }) });
+        const rx = clamp(M.x + 6, 4, 100), ry = sideY(M.y);
+        restart("throw", "them", rx, ry, { taker: nearOpp({ x: rx, y: ry }), giveBack: nearMate({ x: rx, y: ry }) });
         break;
       }
       case "outThem":
