@@ -3080,8 +3080,6 @@ const SITUATIONS = [
         winText: ["공을 터치라인 밖으로 차 냈다. 양 팀 관중석에서 박수가 나온다. 재개 후 상대가 공을 우리에게 돌려준다."], loseText: ["공을 밖으로 찼다. 상대가 스로인을 우리에게 돌려준다."] },
       { label: "주심이 불 때까지 계속 플레이한다", by: { trail: ["한 골이 급하다, 주심이 불 때까지 계속 플레이한다", "한 골이 급했다."] }, stats: { "tech.pass": 0.6, "mental.focus": 0.4 }, diff: 2, win: "keyPass", lose: "turnover",
         winText: ["앞으로 빠르게 연결했다. 상대 벤치에서 항의가 쏟아진다. 주심은 그대로 진행시킨다."], loseText: ["서두른 패스가 끊겼다. 관중석에서 야유도 섞여 나온다."] },
-      { label: "공을 밖으로 차 내고 먼저 달려가 의료진을 부른다", requires: { "student.attitude": 68 }, stats: { "student.attitude": 0.7, "mental.teamwork": 0.3 }, diff: -12, win: "keep", lose: "keep", trust: 1.5,
-        winText: ["공을 터치라인 밖으로 차 내고 {opp}에게 먼저 달려갔다. 손을 크게 흔들어 의료진을 부른다. 상대 벤치에서도 박수가 나온다. 재개 후 상대가 공을 우리에게 돌려준다.", "공을 터치라인 밖으로 차 냈다. 쓰러진 {opp}에게 제일 먼저 달려가 무릎을 꿇었다. 재개 후 상대가 공을 우리에게 돌려준다."], loseText: ["공을 터치라인 밖으로 차 내고 {opp}에게 달려갔다. 재개 후 상대가 공을 우리에게 돌려준다."] },
     ] },
   // ── 현대 축구 장면 (경기장 움직임과 함께 추가. 연출은 data/scenes.js) ──
   { id: "mf_halfspace_turn", intro: false, pos: ["MF"], zone: "att", weight: 3, oppForm: ["442", "4231", "433"],
@@ -7127,6 +7125,13 @@ function takeRestart(S) {
   S.lastRestart = R.kind;
   emit(S, "restart", { kind: R.kind, team, taker: T.name, me: T.me, x: ox(team, R.spot[0]) });
   if (R.script) return;                                  // 내 장면이 이어서 정함
+  if (R.giveBack) {                                      // 페어플레이: 상대가 스로인을 우리 선수에게 돌려줌 (가로채기·경합 없이 그대로 받음)
+    const r = R.giveBack; emit(S, "giveBack", { team, a: T.name, b: r.name });
+    S.last = T; S.lastTeam = team; T.ov = null;
+    launch(S, r.x, r.y, { air: true, kind: "pass", then: S2 => { give(S2, r); emit(S2, "recv", { p: r.name, team: r.team, from: T.name, fx: T.x, fy: T.y, kind: "throw", me: r.me, x: S2.ball.x, y: S2.ball.y, air: true }); } });
+    r.ov = OV(r.x, r.y, RUN, "recv");
+    return;
+  }
   const mates = S.P.filter(p => p.team === team && p !== T && p.pos !== "GK");
   if (R.kind === "pk") return shoot(S, T, { kind: "pk" });
   if (R.kind === "corner" && R.v && R.v !== "far" && R.to && R.to.team === team && !R.to.me) {   // 코너킥 갈래: 니어포스트·짧게·박스 바깥 (먼 쪽으로 띄우는 예전 방식은 아래)
@@ -7633,7 +7638,8 @@ function startStep(S, st) {
   if (st.do === "restart") {
     setRestart(S, st.kind, st.team, st.x, st.y);
     S.restart.taker = st.taker || null;
-    S.restart.script = true;
+    S.restart.script = !st.giveBack;                     // giveBack: 상대가 우리 선수에게 공을 돌려주는 스로인 (쓰러진 선수 장면)
+    S.restart.giveBack = st.giveBack || null;
     S.restart.at = S.t + (st.delay ?? 1.4);
     S.restart.pack = !!st.pack;                          // 먼 프리킥: 박스 안에 모임
     if (st.runner) st.runner.ov = OV(st.runTo[0], st.runTo[1], SPRINT, "recv");   // 받을 동료는 먼저 박스로 뛰어 들어감 (공을 받으면 풀림)
@@ -10088,11 +10094,11 @@ function scriptSteps(state, m, pd, c, out, R, tail, outTpl) {
         break;
       }
       case "throwUs": ensure(M); restart("throw", "us", M.x, sideY(M.y), { taker: nearMate({ x: M.x, y: sideY(M.y) }) }); break;
-      case "outReturn": {                                                          // 쓰러진 상대 때문에 일부러 밖으로 찬 공: 상대가 스로인을 우리에게 돌려줌 (상대 공으로 이어지지 않게)
+      case "outReturn": {                                                          // 쓰러진 상대 때문에 일부러 밖으로 찬 공: 스로인은 상대 몫, 상대가 우리 선수에게 던져 돌려줌 (§87)
         ensure(M); steps.push({ do: "clear", by: M, out: "touch", main: true });
         steps.push({ do: "wait", t: 1.8 });
-        const ry = sideY(M.y);
-        restart("throw", "us", clamp(M.x + 6, 4, 100), ry, { taker: nearMate({ x: M.x + 6, y: ry }) });
+        const rx = clamp(M.x + 6, 4, 100), ry = sideY(M.y);
+        restart("throw", "them", rx, ry, { taker: nearOpp({ x: rx, y: ry }), giveBack: nearMate({ x: rx, y: ry }) });
         break;
       }
       case "outThem":

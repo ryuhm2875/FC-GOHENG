@@ -1252,6 +1252,13 @@ function takeRestart(S) {
   S.lastRestart = R.kind;
   emit(S, "restart", { kind: R.kind, team, taker: T.name, me: T.me, x: ox(team, R.spot[0]) });
   if (R.script) return;                                  // 내 장면이 이어서 정함
+  if (R.giveBack) {                                      // 페어플레이: 상대가 스로인을 우리 선수에게 돌려줌 (가로채기·경합 없이 그대로 받음)
+    const r = R.giveBack; emit(S, "giveBack", { team, a: T.name, b: r.name });
+    S.last = T; S.lastTeam = team; T.ov = null;
+    launch(S, r.x, r.y, { air: true, kind: "pass", then: S2 => { give(S2, r); emit(S2, "recv", { p: r.name, team: r.team, from: T.name, fx: T.x, fy: T.y, kind: "throw", me: r.me, x: S2.ball.x, y: S2.ball.y, air: true }); } });
+    r.ov = OV(r.x, r.y, RUN, "recv");
+    return;
+  }
   const mates = S.P.filter(p => p.team === team && p !== T && p.pos !== "GK");
   if (R.kind === "pk") return shoot(S, T, { kind: "pk" });
   if (R.kind === "corner" && R.v && R.v !== "far" && R.to && R.to.team === team && !R.to.me) {   // 코너킥 갈래: 니어포스트·짧게·박스 바깥 (먼 쪽으로 띄우는 예전 방식은 아래)
@@ -1758,7 +1765,8 @@ function startStep(S, st) {
   if (st.do === "restart") {
     setRestart(S, st.kind, st.team, st.x, st.y);
     S.restart.taker = st.taker || null;
-    S.restart.script = true;
+    S.restart.script = !st.giveBack;                     // giveBack: 상대가 우리 선수에게 공을 돌려주는 스로인 (쓰러진 선수 장면)
+    S.restart.giveBack = st.giveBack || null;
     S.restart.at = S.t + (st.delay ?? 1.4);
     S.restart.pack = !!st.pack;                          // 먼 프리킥: 박스 안에 모임
     if (st.runner) st.runner.ov = OV(st.runTo[0], st.runTo[1], SPRINT, "recv");   // 받을 동료는 먼저 박스로 뛰어 들어감 (공을 받으면 풀림)

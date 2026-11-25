@@ -20,7 +20,7 @@ const LABELS = {
   f4231_am_drop: "공부해 둔 대로 미드필더에게 넘기고 뒤를 지킨다",
   wx_wind_cross: "바람이 잦아드는 순간을 기다렸다 올린다",
   fw_mindgame: "고개 숙여 인사하고 돌아선다",
-  df_player_down: process.env.ORIG ? "공을 밖으로 차 내 경기를 멈춘다" : "공을 밖으로 차 내고 먼저 달려가 의료진을 부른다",
+  df_player_down: "공을 밖으로 차 내 경기를 멈춘다",
   mate_yellow: "주심에게 먼저 손을 들어 사과하고 동료를 떼어 낸다",
   df_last: "손을 쓰지 않고 어깨로만 깨끗하게 막는다",
   fw_far_post: "먼 쪽 포스트로 날아들어 헤더",
@@ -84,10 +84,20 @@ for (let k = 0; k < N; k++) {
     if (r.outcome === "danger" && !shots.some(e => e.team === "them") && !(S.holder && S.holder.team === "them") && !has("goal", e => e.team === "them"))
       bad("위기 허용인데 상대가 공을 못 가짐", `${tag} 공:${S.holder?.name || "없음"}`);
     if (/돌려준다/.test(r.outTpl || "") && r.act !== "outReturn") bad("돌려준다는데 공을 밖으로 안 참", tag);
+    if (r.act === "outReturn") {                                              // §87: 스로인은 상대가, 공은 우리에게
+      let g3 = 0; while (!S.ev.slice(n0).some(e => e.type === "giveBack") && !m.done && g3++ < 200) next(s, m);
+      const ev2 = S.ev.slice(n0), rs = ev2.find(e => e.type === "restart" && e.kind === "throw"), gb = ev2.find(e => e.type === "giveBack");
+      let g4 = 0; const fr = () => { const a = S.ev.slice(n0), k = a.findIndex(e => e.type === "giveBack"); return a.slice(k + 1).find(e => ["recv", "intercept", "header", "win", "steal"].includes(e.type)); };
+      while (gb && !fr() && !m.done && g4++ < 80) next(s, m);
+      const f = gb && fr();
+      if (!rs || rs.team !== "them" || !gb) bad("페어플레이 스로인이 상대 몫이 아님", `${tag} ${rs ? rs.team : "스로인 없음"}`);
+      else if (!f || f.team !== "us" || f.type !== "recv") bad("돌려준 공이 우리에게 안 옴", `${tag} ${f ? f.type + ":" + (f.p || f.by) : "받은 사람 없음"}`);
+      else (st.gb ||= []).push(`${gb.a} → ${gb.b}`);
+    }
     const c = pd.list[ci];
     if (c.trust) { trustN++; if (s.relations.coach > coach0 + 0.5) trustUp++; }
     const kx = r.outcome;
-    (st.ex[kx] ||= []).length < SHOW && st.ex[kx].push(`  · ${sceneText}\n    ▶ ${LABELS[id]}\n    ${feed.slice(0, 4).join("\n    ")}`);
+    (st.ex[kx] ||= []).length < SHOW && st.ex[kx].push(`  · ${sceneText}\n    ▶ ${LABELS[id]}\n    ${(r.act === "outReturn" ? m.feed.slice(f0).map(l => l.t).filter(Boolean) : feed).slice(0, 6).join("\n    ")}`);
   }
 }
 
@@ -95,6 +105,7 @@ for (const id of ids) {
   const st = stat[id];
   console.log(`\n■ ${id} — 나온 ${st.seen}, 선택지 뜸 ${st.offered} | 성공 확률 ${st.offered ? (st.pMe / st.offered * 100).toFixed(0) : "-"}% (보통 선택지 ${st.nOther ? (st.pOther / st.nOther * 100).toFixed(0) : "-"}%) | 결과 ${JSON.stringify(st.out)} | 연출 ${JSON.stringify(st.act)}`);
   for (const [k, xs] of Object.entries(st.ex)) { console.log(` [${k}]`); for (const x of xs) console.log(x); }
+  if (st.gb) console.log(` [돌려준 스로인] ${st.gb.length}회 · 예: ${st.gb.slice(0, 3).join(" / ")}`);
 }
 console.log(`\n감독 신뢰 오른 비율 (trust 선택 성공 포함 전체): ${trustUp}/${trustN}`);
 const ks = Object.keys(issues);
