@@ -3,7 +3,7 @@ import { ACTION_MAP } from "../../data/actions.js";
 import { STAT_GROUPS, TRAITS } from "../../data/player.js";
 import { turnInfo, label, GRAD_INDEX } from "./calendar.js";
 import { applyGain, expandGains, growBody, weeklyDrift, hasTrait } from "./growth.js";
-import { matchFor } from "./season.js";
+import { matchFor, clubFixture } from "./season.js";
 import { prepareMatch, autoPlay, finishMatch } from "./match.js";
 import { previewChat, weeklyAdvice, drillFor } from "./advice.js";
 import { adjustRel, weeklyRelations, relationsNewYear, rivalGap, seniorsLeave } from "./relations.js";
@@ -63,9 +63,22 @@ function academicLevel(v) {
   if (v < 10) return 4; if (v < 20) return 3; if (v < 30) return 2; if (v < 40) return 1; return 0;
 }
 
+// 소년체전 주간: 고흥FC 경기를 나 없이 자동으로 치름 (리그 순위·기록은 그대로 남음). 그 주에 한 번만
+export function playClubWhileAway(state, info, fx) {
+  const c = state.jnCup;
+  if (!fx?.clubAway || !c || c.clubDone === info.turn) return null;
+  c.clubDone = info.turn;
+  const club = clubFixture(state, info);
+  if (!club) return null;
+  const m = prepareMatch(state, info, { ...club, jnAway: true });
+  autoPlay(state, m);
+  return finishMatch(state, m);
+}
+
 // 경기까지 자동으로 처리하는 한 주 (자동 시뮬레이션용)
 export function runWeek(state) {
   const ctx = beginWeek(state);
+  playClubWhileAway(state, ctx.info, ctx.fx);
   let result = null;
   for (let fx = ctx.fx; fx;) {
     const m = prepareMatch(state, ctx.info, fx);

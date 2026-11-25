@@ -3,7 +3,7 @@
 // 문장 안의 {rival} {friend} {mentor} {junior} {teacher} {coach} {name} {given}은 자동으로 바뀝니다.
 
 import { turnInfo } from "../js/engine/calendar.js";
-import { shortSchool, JN_STAFF } from "../js/engine/jn.js";
+import { shortSchool, JN_STAFF, JN_WEEK } from "../js/engine/jn.js";
 import { rivalGap, person } from "../js/engine/relations.js";
 
 const marked = (s, k, gap = 0) => s.marks?.[k] != null && s.calendar.turn - s.marks[k] >= gap;   // 예전 선택 기억
@@ -133,9 +133,9 @@ export const EVENTS_STORY = [
     ] },
 
   // ── 전남 대표 소년체전 ─────────────────────────
-  // once 대신 그해 5월 2주에만 (중2·중3 두 번 뽑히면 두 번 나옴)
+  // once 대신 그해 소년체전 주간(JN_WEEK, 5월 3주)에만 (중2·중3 두 번 뽑히면 두 번 나옴)
   { id: "jn_camp", bg: "ev_jn_camp", who: "narr",
-    trigger: s => { const c = s.jnCup, i = turnInfo(s); return !!c && c.alive && c.stage === 0 && i?.grade === c.grade && i.month === 5 && i.week === 2 && !s.player.condition.injury; },
+    trigger: s => { const c = s.jnCup, i = turnInfo(s); return !!c && c.alive && c.stage === 0 && i?.grade === c.grade && i.month === JN_WEEK.month && i.week === JN_WEEK.week && !s.player.condition.injury; },
     // 전남 대표 동료는 도내 각 팀 에이스 (js/engine/jn.js). 다른 학교 맞수가 전남 팀이면 같은 방에 있음
     text: s => {
       const c = s.jnCup, nem = c?.squad?.find(x => x.nemesis), two = (c?.squad || []).filter(x => x.school && !x.nemesis).slice(0, 2);
@@ -160,7 +160,7 @@ export const EVENTS_STORY = [
         result: "엄마 답장이 1초 만에 왔다. '밥 많이 먹고잉. 텔레비전 나오면 손 흔들어 📺'" },
     ] },
   { id: "jn_return", bg: s => (s.jnCup?.medal === "gold" ? "ev_medal" : "ev_bus_sunset"), who: "narr",
-    trigger: s => { const c = s.jnCup, i = turnInfo(s); return !!c && i?.grade === c.grade && i.month === 5 && i.week === 3; },
+    trigger: s => { const c = s.jnCup, i = turnInfo(s); return !!c && i?.grade === c.grade && i.month === JN_WEEK.month && i.week === JN_WEEK.week + 1; },   // 소년체전 다음 주
     text: s => {
       const c = s.jnCup, m = c.medal;
       return m === "gold" ? "고흥으로 돌아오는 버스. 목에 건 금메달이 덜컹거릴 때마다 가슴을 친다. 정류장에 내리자 축구부 동료들이 현수막을 들고 서 있다. '전남 대표 {name}, 금메달!'"

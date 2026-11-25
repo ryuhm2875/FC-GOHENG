@@ -103,7 +103,7 @@ export function fixedGoalEvent(state, info) {
   const tooLate = info.grade === 3 && (info.month >= 9 || info.month <= 2);
   if (!G.metAt && !G.main && after33 && !tooLate && !info.exam) return "goal_meeting";
   if (info.grade === 2 && at(9, 2) && !G.checkAt) return "goal_check";
-  // 전남 대표: 4월 1주 선발전 명단 → 4월 3주 발표 → 5월 2주 전국소년체전 (예전 저장 파일은 4월 2주·4주까지 기다려 줌)
+  // 전남 대표: 4월 1주 선발전 명단 → 4월 3주 발표 → 5월 3주 전국소년체전 (예전 저장 파일은 4월 2주·4주까지 기다려 줌)
   // 소년체전 주: 고흥에 남은 김 감독의 문자 한 통 (전남 대표 감독은 따로 있음)
   const jc = state.jnCup;
   if (jc && jc.alive && jc.stage === 0 && jc.grade === info.grade && at(5, 2) && !jc.homeMail) {

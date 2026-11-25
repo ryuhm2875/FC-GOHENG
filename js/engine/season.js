@@ -76,7 +76,13 @@ export function ensureSeason(state, info) {
 
 // ── 이번 주 경기 상대 ───────────────
 export function matchFor(state, info) {
-  if (!info?.match) return jnFixture(state, info);            // 경기 없는 주: 전남 대표 소년체전이 있을 수 있음
+  const jn = jnFixture(state, info);                           // 전남 대표 소년체전 주간: 나는 소년체전, 고흥FC 경기는 나 없이 (clubAway, week.js playClubWhileAway)
+  if (jn) return info?.match ? { ...jn, clubAway: true } : jn;
+  return clubFixture(state, info);
+}
+// 고흥FC 경기 (소년체전과 상관없이)
+export function clubFixture(state, info) {
+  if (!info?.match) return null;
   ensureSeason(state, info);
   const m = info.match, comp = COMPS[m.comp];
   const base = { comp: m.comp, compLabel: comp.label, round: m.round || null, official: comp.official, tournament: comp.tournament, ko: m.stage === "ko" };

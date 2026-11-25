@@ -3,7 +3,7 @@ import { newGame, saveTo, readSlot, summaryOf, loadSettings, saveSettings, isImp
 import { playMinigame, statFor } from "./ui/minigames.js";
 import { getPath } from "./rng.js";
 import { turnInfo, label } from "./engine/calendar.js";
-import { beginWeek, endWeek, planReady, SLOTS, slotLocked, actionAllowed, currentFixture } from "./engine/week.js";
+import { beginWeek, endWeek, planReady, SLOTS, slotLocked, actionAllowed, currentFixture, playClubWhileAway } from "./engine/week.js";
 import { prepareMatch } from "./engine/match.js";
 import { welcomeMails } from "./engine/advice.js";
 import { birthdayWeek } from "./engine/birthday.js";
@@ -170,6 +170,7 @@ const app = {
         this.view = "home"; this.finishWeek(ctx, result);
       });
     };
+    if (ctx.fx?.clubAway) playClubWhileAway(s, ctx.info, ctx.fx);   // 소년체전 주간: 고흥FC 리그 경기는 나 없이 (§84)
     if (ctx.fx) meetingModal(this, ctx.fx, () => play(ctx.fx));   // 경기 전 미팅 장면 → 경기
     else this.finishWeek(ctx, null);
   },
