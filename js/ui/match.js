@@ -93,7 +93,7 @@ export function showMatch(app, m, onDone) {
     <header class="board">
       <div class="comp">${esc(fx.compLabel)}${fx.round ? ` ${esc(fx.round)}` : ""}</div>
       <div class="teams">
-        <span class="tm home">${fx.jn ? `<i class="kit-dot jn-dot"></i>${esc(fx.usName)}` : `<img src="assets/img/logo.png" alt="">${esc(fx.usName || TEAM_NAME)}`}</span>
+        <span class="tm home">${fx.jn ? `${crest(fx.usName, { size: 26, cls: "bcrest" })}${esc(fx.usName)}` : `<img src="assets/img/logo.png" alt="">${esc(fx.usName || TEAM_NAME)}`}</span>
         <span class="sc num" id="sc">0 : 0</span>
         <span class="tm away">${crest(fx.opponent.name, { size: 26, cls: "bcrest" })}${esc(fx.opponent.name)}</span>
       </div>
