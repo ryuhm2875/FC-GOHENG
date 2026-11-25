@@ -29,6 +29,7 @@ for (let k = 0; k < 10 && await click("#skip"); k++) await sleep(800);   // ì‹œì
 await ev(`document.querySelectorAll("#intro-splash, .cine, .modal, .tut-layer, .tut-welcome, #modal-root > *").forEach(x => x.remove()); document.body.className = document.body.className.replace(/\\b(modal-open|blur\\w*)\\b/g, ""); gfc.go("home")`); await sleep(800);
 await ev(`document.querySelectorAll(".modal, .tut-layer, .tut-welcome").forEach(x => x.remove()); document.querySelector(".mailbox")?.scrollIntoView({ block: "start" })`); await sleep(500); console.log("view", await ev("gfc.view"), await ev("[...document.body.children].map(e => e.tagName + \".\" + e.className + \"#\" + e.id).join(\" \")")); await shot("1_home");
 await ev(`gfc.sub.itab = "mail"; gfc.go("inbox")`); await sleep(700); await shot("2_mail");
+await click("[data-mail]"); await sleep(900); await shot("2b_open"); await ev(`document.querySelector(".mail-view")?.closest(".backdrop")?.querySelector("[data-close]")?.click()`); await sleep(500);
 await click('.tabs2 [data-itab="group"]'); await sleep(700); await shot("3_group");
 console.log("errors:", errs.length ? errs.slice(0, 5) : "none");
 ws.close(); chrome.kill(); process.exit(0);

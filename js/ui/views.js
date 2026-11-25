@@ -214,14 +214,14 @@ function mailPreview(state) {
 
 // 보낸 사람 얼굴: 감독·코치·선생님·부모님은 인물 그림, 선수는 그 선수 얼굴, 단톡방은 엠블럼
 const FACE_BY_NAME = Object.fromEntries(ROSTER.map(r => [r.name, r.face]));
-function avatarOf(m) {
+export function avatarOf(m) {
   const map = { [STAFF.coach]: "npc_coach", [STAFF.assistant]: "npc_assistant", [STAFF.teacher]: "npc_teacher", "엄마": "npc_mom", "아빠": "npc_dad" };
   const face = map[m.from] || FACE_BY_NAME[m.from];
   if (face) return img(face, "");
   if (m.kind === "group") return `<img src="assets/img/logo.png" alt="">`;
   return AVATAR[m.kind] || "💬";
 }
-const ago = (m, state) => {
+export const ago = (m, state) => {
   if (!state) return "";
   const d = state.calendar.turn - m.turn;
   return d <= 1 ? "이번 주" : `${d}주 전`;
@@ -526,7 +526,7 @@ export function inboxView(state, tab = "mail") {
   const tabs = `<div class="tabs2" role="tablist"><button data-itab="mail" class="${tab === "mail" ? "on" : ""}" aria-selected="${tab === "mail"}">메일${unread ? ` <span class="n">${unread}</span>` : ""}</button>
     <button data-itab="group" class="${tab === "group" ? "on" : ""}" aria-selected="${tab === "group"}">단톡방${gNew ? ` <span class="n">${gNew}</span>` : ""}</button></div>`;
   if (tab === "group") return `<section class="panel inbox" style="max-width:720px;margin:0 auto;width:100%"><h2>메시지</h2>${tabs}
-    <div class="chat">${group.map(m => groupChat(m, state)).join("") || `<p class="mute">아직 단톡방 글이 없습니다.</p>`}</div></section>`;
+    <div class="chat" id="groupchat">${group.slice().reverse().map(m => groupChat(m, state)).join("") || `<p class="mute">아직 단톡방 글이 없습니다.</p>`}</div></section>`;
   const order = mailOrder(mails, state.calendar.turn), imp = order.filter(m => !m.read && isImportant(m) && state.calendar.turn - m.turn <= 4).slice(0, 3), rest = order.filter(m => !imp.includes(m));
   return `<section class="panel inbox" style="max-width:720px;margin:0 auto;width:100%"><h2>메시지</h2>${tabs}
     <div class="inbox-bar"><span class="mute">${unread ? `안 읽은 메일 <b class="num">${unread}</b>개` : "모두 읽었습니다"}</span>

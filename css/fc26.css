@@ -235,3 +235,15 @@ td.tn { white-space: nowrap; }
 .cardwrap .pcard { transform: rotate(-1.6deg); transition: transform .5s ease; }
 .cardwrap .pcard.flipped { transform: none; }
 @media (prefers-reduced-motion: reduce) { .pc-front::after { animation: none; display: none; } .cardwrap .pcard { transform: none; } }
+
+/* ── 메시지 읽기 창: 보낸 사람 · 제목 · 내용을 칸으로 나눔 (§82) ── */
+.mail-view .mv-head { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.mail-view .mv-av { width: 46px; height: 46px; flex: 0 0 46px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; background: #1C2759; font-size: 22px; box-shadow: 0 0 0 2px rgba(255,107,26,.55); }
+.mail-view .mv-av img { width: 100%; height: 100%; object-fit: cover; }
+.mail-view .mv-who { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mail-view .mv-who b { font-size: 16px; color: #fff; }
+.mail-view .mv-when { font-size: 12.5px; color: var(--mute); }
+.mail-view .mv-title { font-size: 21px; line-height: 1.35; margin: 0 0 14px; }
+.mail-view .mv-title .imp { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; margin-right: 8px; border-radius: 999px; background: var(--kit, #FF6B1A); color: #fff; vertical-align: 3px; font-family: inherit; }
+.mail-view .mv-body { background: rgba(255,255,255,.045); border: 1px solid rgba(255,255,255,.07); border-left: 3px solid var(--kit, #FF6B1A); border-radius: 12px; padding: 14px 16px; line-height: 1.75; font-size: 15.5px; white-space: pre-line; }
+#groupchat { padding-bottom: 28px; }   /* 단톡방 맨 아래 글이 아래 메뉴에 가리지 않게 */

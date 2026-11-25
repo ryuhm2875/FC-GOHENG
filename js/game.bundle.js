@@ -15169,7 +15169,7 @@ function weekReport(app, rep, done) {
 }
 
 // list: 메시지함 순서(위에서 아래) 그대로. 이전 = 목록에서 위, 다음 = 목록에서 아래
-function mailModal(m, { list = [m], onRead } = {}) {
+function mailModal(m, { list = [m], onRead, avatar = () => "💬", when = () => "", important = () => false } = {}) {
   let i = Math.max(0, list.indexOf(m)), key = null;
   openModal(`<button class="close" data-close aria-label="닫기">×</button><div class="mail-view" id="mv"></div>
     <div class="mail-nav"><button class="btn btn-ghost" data-prev>◀ 이전</button><span class="mail-pos num" id="mpos"></span><button class="btn btn-ghost" data-next>다음 ▶</button></div>
@@ -15179,7 +15179,10 @@ function mailModal(m, { list = [m], onRead } = {}) {
       i = Math.max(0, Math.min(list.length - 1, k));
       const cur = list[i];
       if (!cur.read) { cur.read = true; onRead?.(); }
-      view.innerHTML = `<p class="sub">${esc(cur.from)}</p><h2>${esc(cur.title)}</h2><p class="mail-body">${esc(cur.body)}</p>`;
+      view.innerHTML = `<div class="mv-head"><span class="mv-av" aria-hidden="true">${avatar(cur)}</span>
+          <span class="mv-who"><b>${esc(cur.from)}</b><span class="mv-when">${esc(when(cur))}</span></span></div>
+        <h2 class="mv-title">${important(cur) ? `<span class="imp">중요</span>` : ""}${esc(cur.title)}</h2>
+        <div class="mv-body mail-body">${esc(cur.body)}</div>`;   // 보낸 사람 · 제목 · 내용을 칸으로 나눔
       view.classList.remove("in-l", "in-r"); void view.offsetWidth; if (dir) view.classList.add(dir > 0 ? "in-r" : "in-l");
       const left = list.filter(x => !x.read).length;
       pos.textContent = `${i + 1} / ${list.length}${left ? ` · 안 읽음 ${left}` : ""}`;
@@ -19032,7 +19035,7 @@ function inboxView(state, tab = "mail") {
   const tabs = `<div class="tabs2" role="tablist"><button data-itab="mail" class="${tab === "mail" ? "on" : ""}" aria-selected="${tab === "mail"}">메일${unread ? ` <span class="n">${unread}</span>` : ""}</button>
     <button data-itab="group" class="${tab === "group" ? "on" : ""}" aria-selected="${tab === "group"}">단톡방${gNew ? ` <span class="n">${gNew}</span>` : ""}</button></div>`;
   if (tab === "group") return `<section class="panel inbox" style="max-width:720px;margin:0 auto;width:100%"><h2>메시지</h2>${tabs}
-    <div class="chat">${group.map(m => groupChat(m, state)).join("") || `<p class="mute">아직 단톡방 글이 없습니다.</p>`}</div></section>`;
+    <div class="chat" id="groupchat">${group.slice().reverse().map(m => groupChat(m, state)).join("") || `<p class="mute">아직 단톡방 글이 없습니다.</p>`}</div></section>`;
   const order = mailOrder(mails, state.calendar.turn), imp = order.filter(m => !m.read && isImportant(m) && state.calendar.turn - m.turn <= 4).slice(0, 3), rest = order.filter(m => !imp.includes(m));
   return `<section class="panel inbox" style="max-width:720px;margin:0 auto;width:100%"><h2>메시지</h2>${tabs}
     <div class="inbox-bar"><span class="mute">${unread ? `안 읽은 메일 <b class="num">${unread}</b>개` : "모두 읽었습니다"}</span>
@@ -19052,7 +19055,7 @@ function groupChat(m, state) {
 }
 
 
-return { sixStats, cardTier, fcCard, jerseyCard, unreadMail, mailRow, leagueTable, homeView, playerView, teamView, scheduleView, inboxView, label };
+return { sixStats, cardTier, fcCard, jerseyCard, unreadMail, avatarOf, ago, mailRow, leagueTable, homeView, playerView, teamView, scheduleView, inboxView, label };
 })();
 (__fix["js/ui/views.js"] || []).forEach(f => f());
 
@@ -19670,7 +19673,7 @@ return { renderLogin, renderSignup, renderLock, renderLoading };
 
 // ── js/main.js
 __m["js/main.js"] = (function () {
-const {newGame, saveTo, readSlot, summaryOf, loadSettings, saveSettings} = __m["js/state.js"];
+const {newGame, saveTo, readSlot, summaryOf, loadSettings, saveSettings, isImportant} = __m["js/state.js"];
 const {playMinigame, statFor} = __m["js/ui/minigames.js"];
 const {getPath} = __m["js/rng.js"];
 const {turnInfo, label} = __m["js/engine/calendar.js"];
@@ -19684,7 +19687,7 @@ const {startTutorial} = __m["js/ui/tutorial.js"];
 const {ACTION_MAP} = __m["data/actions.js"];
 const {renderCreate} = __m["js/ui/create.js"];
 const {renderIntro} = __m["js/ui/intro.js"];
-const {homeView, playerView, teamView, scheduleView, inboxView, unreadMail} = __m["js/ui/views.js"];
+const {homeView, playerView, teamView, scheduleView, inboxView, unreadMail, avatarOf, ago} = __m["js/ui/views.js"];
 const {ask, eventModal, actionPicker, weekReport, mailModal, saveModal, numberModal, yearModal, meetingModal} = __m["js/ui/modals.js"];
 const {esc} = __m["js/ui/util.js"];
 const {admissionModal, nationalModal, detailModal, showEnding, galleryModal} = __m["js/ui/career.js"];
@@ -20006,9 +20009,12 @@ function renderShell(app) {
   r.querySelectorAll("[data-mail]").forEach(b => b.addEventListener("click", () => {
     const m = s.inbox.find(x => x.id === b.dataset.mail);
     if (!m) return;
-    m.read = true; mailModal(m, { list: s.inbox, onRead: () => app.render() }); app.render();
+    m.read = true;
+    const when = x => { const ti = turnInfo({ calendar: { turn: x.turn } }); return [ago(x, s), ti ? `중${ti.grade} ${ti.month}월 ${ti.week}주차` : ""].filter(Boolean).join(" · "); };
+    mailModal(m, { list: s.inbox, onRead: () => app.render(), avatar: avatarOf, when, important: isImportant }); app.render();
   }));
   if (app.view === "schedule") r.querySelector(".week.now")?.scrollIntoView({ block: "center" });
+  if (app.view === "inbox" && app.sub.itab === "group") r.querySelector("#groupchat")?.lastElementChild?.scrollIntoView({ block: "end" });   // 단톡방은 최신 글(맨 아래)부터 보이게
 }
 
 // ── 전체 화면 버튼 (모든 화면 오른쪽 위) ──

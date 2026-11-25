@@ -1434,3 +1434,8 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
 - 새 점검 도구 tools/dev/skill-audit.mjs: LABELS의 장면을 억지로 띄우고 그 선택지를 골라 결과·연출·해설 예시·성공 확률(같은 장면 보통 선택지와 비교)을 봄. LV=70 SPAN=4 (조건을 막 넘은 선수), WIND=1, ORIG=1(쓰러진 선수 장면은 원래 선택지로)
 - 점검 결과: 14개 모두 뜨고 연출이 문장과 맞음, 성공 확률은 같은 장면 보통 선택지와 ±5%p. mf_cover·df_player_down의 '대본 시간 초과'는 원래 선택지에서도 같은 시드에 나옴(기존). baseline 70판: FW·DF 그대로, MF 평점 7.22→7.17·최우수 21.3→19.2%(자동 선택이 새 압박 특기를 고르는 몫), sync-audit 5.9→6.7%(시드 차이 범위, 새 특기 관련 불일치 0), moment-audit 문제 0, uiplay DF 끝까지 오류 0
 - wx_wind_cross는 바람 부는 날·측면 깊은 곳 연출이라 원래 아주 드물게 나옴(150경기에 1번)
+
+## 82. 메시지 읽기 창 칸 나누기, 단톡방 순서 (2026-11-25, 사용자: "메시지 칸이 보낸 사람, 제목, 메시지 내용이 다 한 박스 안에 있어서 구분이 잘 안 돼", "단톡방이 오래된 게 위로, 최신 게 아래로")
+- mailModal(js/ui/modals.js)에 avatar·when·important를 넘겨 받음 (main.js가 views.js의 avatarOf·ago, state.js의 isImportant를 넘김). 위: 얼굴 + 보낸 사람 + "이번 주 · 중1 8월 3주차", 가운데: 제목(중요 표시), 아래: 내용 카드(왼쪽 주황 줄). css/fc26.css 끝 .mv-*
+- 단톡방(inboxView group 탭): state.inbox는 새 글이 앞(unshift)이라 뒤집어서 오래된 글이 위. 탭을 열면 맨 아래(최신)로 스크롤 (main.js 렌더 끝)
+- tools/dev/mail-shots.mjs: 메일 하나 연 화면(2b_open)도 찍음
