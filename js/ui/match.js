@@ -36,8 +36,16 @@ function buildPlayers(m) {
     x: m.sim.P[i].x, y: m.sim.P[i].y }));
 }
 
-function pitchSvg(players, kit) {
-  return `<svg class="pitch" viewBox="0 0 105 68" role="img" aria-label="경기장" style="--opp:${kit.fill};--opp2:${kit.stroke};--oppText:${kit.text};--oppGk:${kit.gk};--oppGkText:${kit.gkText}">
+// 우리 팀 유니폼: 평소엔 고흥FC 주황(css 기본값). 소년체전은 전남 대표 노랑·남색, 상대가 노란색이면 남색 원정 유니폼 (§83)
+function usKitOf(fx) {
+  if (!fx?.jn) return null;
+  const o = String(fx.opponent?.color || "").toUpperCase(), n = parseInt(o.slice(1) || "0", 16);
+  const yellowish = o && ((n >> 16) > 200 && ((n >> 8) & 255) > 170 && (n & 255) < 120);
+  return yellowish ? { fill: "#1A237E", stroke: "#FFC93C", text: "#FFC93C", gk: "#43A047", gkText: "#FFFFFF" }
+    : { fill: "#FFC93C", stroke: "#1A237E", text: "#1A237E", gk: "#43A047", gkText: "#FFFFFF", me: "#FFFFFF" };   // 노란 유니폼이면 내 점은 흰색 (평소 내 점이 노란색이라)
+}
+function pitchSvg(players, kit, us = null) {
+  return `<svg class="pitch" viewBox="0 0 105 68" role="img" aria-label="경기장" style="--opp:${kit.fill};--opp2:${kit.stroke};--oppText:${kit.text};--oppGk:${kit.gk};--oppGkText:${kit.gkText}${us ? `;--us:${us.fill};--us2:${us.stroke};--usText:${us.text}; --usGk:${us.gk};--usGkText:${us.gkText}${us.me ? `;--me:${us.me}` : ""}` : ""}">
     <rect x="0" y="0" width="105" height="68" class="turf"/>
     ${Array.from({ length: 7 }, (_, i) => `<rect x="${i * 15}" y="0" width="7.5" height="68" class="stripe"/>`).join("")}
     <g class="lines"><rect x="1" y="1" width="103" height="66"/><line x1="52.5" y1="1" x2="52.5" y2="67"/>
@@ -92,7 +100,7 @@ export function showMatch(app, m, onDone) {
       <div class="clock num" id="clock">경기 전</div>
     </header>
     <div class="match-body">
-      <div class="pitch-wrap sky-${m.sky || "day"} wx-${m.weather || "clear"}" id="pitch">${pitchSvg(players, kitOf(fx.opponent))}${m.weather && m.weather !== "clear" ? `<div class="wx-layer" aria-hidden="true"></div>` : ""}<div class="goal-flash" id="flash" hidden>GOAL</div><div class="atk-dir" id="atk">공격 방향 ▶</div></div>
+      <div class="pitch-wrap sky-${m.sky || "day"} wx-${m.weather || "clear"}" id="pitch">${pitchSvg(players, kitOf(fx.opponent), usKitOf(fx))}${m.weather && m.weather !== "clear" ? `<div class="wx-layer" aria-hidden="true"></div>` : ""}<div class="goal-flash" id="flash" hidden>GOAL</div><div class="atk-dir" id="atk">공격 방향 ▶</div></div>
       <ol class="feed" id="feed" aria-live="polite"></ol>
     </div>
     <footer class="ctl" id="ctl"></footer>
