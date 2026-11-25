@@ -150,7 +150,7 @@ export function weekReport(app, rep, done) {
 }
 
 // list: 메시지함 순서(위에서 아래) 그대로. 이전 = 목록에서 위, 다음 = 목록에서 아래
-export function mailModal(m, { list = [m], onRead } = {}) {
+export function mailModal(m, { list = [m], onRead, avatar = () => "💬", when = () => "", important = () => false } = {}) {
   let i = Math.max(0, list.indexOf(m)), key = null;
   openModal(`<button class="close" data-close aria-label="닫기">×</button><div class="mail-view" id="mv"></div>
     <div class="mail-nav"><button class="btn btn-ghost" data-prev>◀ 이전</button><span class="mail-pos num" id="mpos"></span><button class="btn btn-ghost" data-next>다음 ▶</button></div>
@@ -160,7 +160,10 @@ export function mailModal(m, { list = [m], onRead } = {}) {
       i = Math.max(0, Math.min(list.length - 1, k));
       const cur = list[i];
       if (!cur.read) { cur.read = true; onRead?.(); }
-      view.innerHTML = `<p class="sub">${esc(cur.from)}</p><h2>${esc(cur.title)}</h2><p class="mail-body">${esc(cur.body)}</p>`;
+      view.innerHTML = `<div class="mv-head"><span class="mv-av" aria-hidden="true">${avatar(cur)}</span>
+          <span class="mv-who"><b>${esc(cur.from)}</b><span class="mv-when">${esc(when(cur))}</span></span></div>
+        <h2 class="mv-title">${important(cur) ? `<span class="imp">중요</span>` : ""}${esc(cur.title)}</h2>
+        <div class="mv-body mail-body">${esc(cur.body)}</div>`;   // 보낸 사람 · 제목 · 내용을 칸으로 나눔
       view.classList.remove("in-l", "in-r"); void view.offsetWidth; if (dir) view.classList.add(dir > 0 ? "in-r" : "in-l");
       const left = list.filter(x => !x.read).length;
       pos.textContent = `${i + 1} / ${list.length}${left ? ` · 안 읽음 ${left}` : ""}`;
