@@ -1473,3 +1473,21 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
   - sim.js: restart 단계에 giveBack이 있으면 대본으로 멈추지 않고, takeRestart가 그 선수에게 바로 던짐 (가로채기·경합 없이 받음, "giveBack" 이벤트)
 - df_player_down의 태도 특기 "공을 밖으로 차 내고 먼저 달려가 의료진을 부른다" 삭제 (보통 선택지 "공을 밖으로 차 내 경기를 멈춘다"와 겹침)
 - skill-audit: outReturn이면 상대가 던졌는지, 첫 터치가 우리 선수인지 확인. 25회 모두 상대 스로인 → 우리 선수, 문제 없음
+
+## 88. 오프라인 허용: 선생님이 켜 준 학생만 인터넷 없이 플레이 (2026-11-25, 사용자: "만약 몇몇 친구들만 그렇게 바꾸는 이런 건!?" → "좋다")
+- 지금까지는 인터넷이 없으면 누구든(선생님 계정까지) 잠금 화면이었음 → `fcg_login/{학번}.offline` 을 켜 준 학생과 선생님 계정만 인터넷 없이 엽니다. 나머지 학생은 그대로 잠금 화면
+- js/net/online.js
+  - login(): `sess.offline = !!lg.offline` (기기에도 남겨, 다음에 인터넷 없이 열 때 씀). 가입 직후는 false
+  - checkAccess(): `sess.admin || sess.offline` 이면 ① `!navigator.onLine` 이면 서버 응답(12초 timeout)을 기다리지 않고 바로 `{ ok: true }` ② getDoc 이 실패(NETWORK 등)해도 `{ ok: true }` ③ 서버에 붙으면 `fcg_login` 의 최신 offline 을 sess 에 반영(writeSess)한 뒤 기존 blocked·cfg.open·cfg.quiet 검사를 그대로 — 허용을 껐으면 다음 접속부터 잠김
+  - 오프라인 중 기록·클라우드 저장은 예전처럼 실패를 삼키고, 랭킹은 gfc_rank_q 에 쌓아 두었다가 다음 접속 때 전송 (flush 는 dirty 로 남겨 재시도)
+- 관리자 페이지(js/admin/admin.js)
+  - 학생 목록 상태 칸에 '오프라인' 표시(tag safe), 줄마다 [오프라인 허용]/[오프라인 해제] 버튼 → `setDoc(fcg_login/{학번}, { offline }, tok, ["offline"])`
+  - 차단 버튼도 `["blocked"]`, 비밀번호 변경은 `["key"]` 로 바꿔 offline 칸을 지우지 않게 (예전엔 칸 지정 없이 문서를 통째로 바꿔 offline 이 사라질 수 있었음)
+  - CSV 에 '오프라인 허용' 열, 상세 창 제목에 '오프라인 허용' 표시, 학생 목록·게임 스위치 안내 문구
+- firestore.rules: `fcg_login` update 가 `isAdmin()` 이라 새 칸을 따로 막지 않음 → 규칙은 그대로(주석 한 줄만). **콘솔에 다시 게시할 필요 없음**
+- 검증 (작업 환경에 node 가 없어, tools/bundle.mjs 와 같은 결과를 내는 파이썬 포트로 대신함)
+  - 포트 검증: HEAD 그대로에서 돌려 기존 js/game.bundle.js·offline-files.js·sw.js BUILD(c041155b5b26)와 **바이트 동일** 확인 → 그 포트로 번들·오프라인 목록·sw.js BUILD(f5915f583429) 갱신. 번들 차이는 online.js·main.js 주석 부분에만
+  - QuickJS 로 js·data 62개 파일 구문 검사 오류 0
+  - QuickJS 에 game.bundle.js 를 올리고 document/localStorage/navigator/fetch 를 흉내 내어 입장 판정 13가지: 일반 학생 인터넷 끊김→잠금, 오프라인 허용 학생 인터넷 끊김→타이틀(서버에 안 물음), 서버 실패→타이틀, 허용 유지/해제 반영, 차단·게임 닫힘은 인터넷이 될 때 그대로 적용, 선생님 인터넷 끊김→타이틀, 로그인 안 됨→로그인 화면 — 모두 통과
+  - 관리자 페이지 렌더 시험: 오프라인 허용 학생은 '오프라인' 표시 + [오프라인 해제], 필드가 없는 학생은 [오프라인 허용] — 통과
+  - tools/dev/audit.mjs(12경기)도 같은 방식으로 돌려 오류 없이 끝남 (골키퍼 거리·같은 문장 반복 경고는 이번 변경과 무관한 기존 것)

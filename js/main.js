@@ -349,6 +349,7 @@ bgm.set(app.settings.music);
 
 // ── 학번 로그인과 입장 확인 (js/net/online.js) ──
 // 게임이 닫혀 있거나(관리자 페이지 스위치) 차단된 학번이면 들어갈 수 없습니다. 인터넷이 없으면 들어갈 수 없습니다.
+// 다만 선생님이 '오프라인 허용'을 켜 준 학생은 인터넷이 없어도 이 기기에 저장하며 플레이합니다 (js/net/online.js checkAccess).
 async function boot(notice = "") {
   // 개발용: 내 컴퓨터(localhost)에서 ?dev 를 붙여 열면 로그인 없이 (기록도 남지 않음)
   if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).has("dev")) { app.render(); return; }
