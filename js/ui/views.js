@@ -202,6 +202,8 @@ function mailOrder(list, turn) {
   const imp = list.filter(m => !m.read && isImportant(m) && turn - m.turn <= 4).slice(0, 3);
   return [...imp, ...list.filter(m => !imp.includes(m) && !m.read), ...list.filter(m => !imp.includes(m) && m.read)];
 }
+// 메일 읽기 창에서 넘겨 볼 순서: 메일함에 보이는 순서 그대로, 단톡방 글은 빼고 (§86)
+export const mailList = state => mailOrder(state.inbox.filter(m => !isGroup(m)), state.calendar.turn);
 function mailPreview(state) {
   const mails = state.inbox.filter(m => !isGroup(m)), unread = unreadMail(state);
   const list = mailOrder(mails, state.calendar.turn).slice(0, 3);
