@@ -5923,6 +5923,25 @@ const BLOCK = { low: [24, 9, 24], mid: [25, 16, 38], high: [21, 24, 50], deep: [
 const KICKOFF_X = { GK: 4, DF: 25, MF: 37, FW: 47 };
 const JOG = 6.2, RUN = 7.4, SPRINT = 8.6, DRIB = 6.2;
 
+// ── 날씨·후반 피로 (경기 맛만 조금 바꿈: 승부 계산의 큰 틀은 그대로) ──
+// roll: 흘러가는 공이 한 틱(0.1초)에 남기는 속도 비율 (작을수록 빨리 멈춤) / err: 패스가 빗나갈 확률에 더하는 값
+// shot: 슈팅 기대 득점에 곱하는 값 / fat: 후반 다리 무거움에 곱하는 값 / drift: 바람 부는 날 공중볼이 옆으로 밀리는 최대 거리(m)
+const WX = {
+  clear: { err: 0,     shot: 1,     roll: 0.8,  fat: 1 },
+  rain:  { err: 0.012, shot: 0.975, roll: 0.84, fat: 1.05 },    // 젖은 공·젖은 잔디: 패스가 조금 미끄러지고 공이 조금 더 굴러감
+  wind:  { err: 0.008, shot: 0.99,  roll: 0.8,  fat: 1,    drift: 1.2 },   // 바람: 긴 공이 조금 밀림
+  hot:   { err: 0.004, shot: 0.99,  roll: 0.78, fat: 1.3 },     // 더위: 공은 덜 굴러가고 다리는 더 무거움
+  cold:  { err: 0.006, shot: 0.985, roll: 0.83, fat: 1.1 },     // 추위: 몸이 굳어 패스·슈팅이 조금 무디고 공은 단단한 땅에서 더 굴러감
+};
+const wxOf = S => WX[S.wx] || WX.clear;
+// 후반 중반부터 다들 다리가 무거워짐: 이동·스프린트가 조금씩 느려져 자연스럽게 공간이 생긴다
+// (장면 연출·대본·승부차기는 그대로: 그때는 속도를 줄이지 않음)
+function legSpeed(S) {
+  if (S.stage || S.so) return 1;
+  const k = clamp((playT(S) * RATE / 60 - 46) / 22, 0, 1);        // 46분부터 68분까지 서서히
+  return 1 - 0.055 * k * wxOf(S).fat;
+}
+
 // 대본 목표 (모양을 하나로 맞춰 두면 빨라짐)
 const OV = (x, y, v, f = "") => ({ x, y, v, recv: f === "recv", carry: f === "carry", plan: f === "plan", keep: f === "keep", stage: f === "stage" });
 const other = t => (t === "us" ? "them" : "us");
@@ -5970,6 +5989,7 @@ function createSim(cfg) {
     gs: { us: { cur: null, want: null, k: 0, said: false, fb: null }, them: { cur: null, want: null, k: 0, said: false, fb: null } },
     spVar: !!cfg.spVar, fShot: null, gsOn: !!cfg.gsOn, sc: { us: 0, them: 0 }, surge: { us: -1, them: -1 }, surgeSaid: { us: true, them: true }, openSaid: false,   // 경기 국면(점수·시간): lock 잠그기 / chase 쫓아가기 / open 난타전, k는 0→1로 천천히. surge 몰아치기: 골 넣은 팀이 그 뒤 4분(경기 시간) 압박형처럼
     shot: null, pending: null, clockOff: 0, tk: cfg.tk ?? 0.32, ik: cfg.ik ?? 0.8, prog: cfg.prog ?? 0.00045, dw: cfg.dw ?? 17, ft: cfg.ft ?? 1, brk0: cfg.brk ?? 1,
+    wx: cfg.weather && WX[cfg.weather] ? cfg.weather : "clear",   // 날씨 (연출이 아니라 실제 움직임·패스·슈팅에 조금 영향)
   };
   S.GK = P.filter(p => p.pos === "GK");
   kickoffSetup(S, "us", true);
@@ -6004,9 +6024,10 @@ function moveBall(S) {
       const step = Math.min(d, 40 * DT + (d < 2 ? d : 0));
       if (d > 0.001) { b.x += dx / d * step; b.y += dy / d * step; }
       b.z *= 0.4;
-    } else if (b.roll) {                     // 흘러가는 공은 천천히 멈춤
+    } else if (b.roll) {                     // 흘러가는 공은 천천히 멈춤 (젖은 잔디는 더 굴러가고, 마른 잔디는 조금 일찍 멈춤)
       b.x += b.roll[0] * DT; b.y += b.roll[1] * DT;
-      b.roll[0] *= 0.8; b.roll[1] *= 0.8;
+      const k = wxOf(S).roll;
+      b.roll[0] *= k; b.roll[1] *= k;
       if (hyp(b.roll[0], b.roll[1]) < 0.3) b.roll = null;
     }
     return;
@@ -6283,11 +6304,11 @@ function targets(S) {
   }
 }
 function movePlayers(S) {
-  const ACC = 16 * DT;
+  const ACC = 16 * DT, fat = legSpeed(S);          // fat: 후반으로 갈수록 1 → 0.95 정도
   for (const p of S.P) {
     if (p.stun > 0) p.stun -= DT;
     const dx = p.tx - p.x, dy = p.ty - p.y, d = hyp(dx, dy);
-    const v = d < 0.05 ? 0 : Math.min(p.v, d * 2.2);
+    const v = d < 0.05 ? 0 : Math.min(p.v * fat, d * 2.2);
     const wx = d < 0.05 ? 0 : dx / d * v, wy = d < 0.05 ? 0 : dy / d * v;
     let ax = wx - p.vx, ay = wy - p.vy; const am = hyp(ax, ay);
     const acc = p.ov && p.ov.v >= 11 ? ACC * 2 : ACC;
@@ -6561,7 +6582,7 @@ function passTo(S, H, r, tp, { air = false, cross = false, force = false, kind, 
       return;
     }
   }
-  const err = force ? 0 : clamp(0.035 + (55 - H.st.pass) / 650 + (air ? 0.04 : 0), 0.01, 0.12) * (step != null ? 0.5 : 1)
+  const err = force ? 0 : clamp(0.035 + (55 - H.st.pass) / 650 + (air ? 0.04 : 0) + (step != null ? 0 : wxOf(S).err), 0.01, 0.12) * (step != null ? 0.5 : 1)
     * (S.plan?.build && S.plan.team === team && !air && d < 20 ? 0.5 : 1);                 // 빌드업의 짧은 패스는 실수가 적음
   let roll = rand();
   if (roll < err) {                                    // 빗나간 패스: 엉뚱한 곳으로 흘러감
@@ -6595,15 +6616,18 @@ function passTo(S, H, r, tp, { air = false, cross = false, force = false, kind, 
     return;
   }
   if (S.plan && S.plan.team === team) S.plan.expect = step != null ? { r, i: step } : null;
+  // 바람 부는 날: 공중볼이 조금 옆으로 밀린다 (대본 연출·강제 패스는 그대로)
+  const drift = S.wx === "wind" && air && !force && step == null ? range(-wxOf(S).drift, wxOf(S).drift) : 0;
+  const tp2 = drift ? [tp[0], clamp(tp[1] + drift, 1.5, 66.5)] : tp;
   let chaser = null;
   if (space) {                                          // 수비 뒤 공간: 가장 가까운 수비가 반 박자 늦게 쫓아감
     chaser = S.P.filter(p => p.team !== team && p.ri && p.pos !== "GK" && !(p.stun > 0)).sort((a, b) => hyp(a.x - tp[0], a.y - tp[1]) - hyp(b.x - tp[0], b.y - tp[1]))[0] || null;
     if (chaser) chaser.ov = OV(tp[0] - dirOf(team) * 2.4, tp[1] + (chaser.y < tp[1] ? -1.3 : 1.3), 7.5, "recv");
   }
-  const T = launch(S, tp[0], tp[1], { air, kind: "pass", h: cross ? 3.2 : air && space ? Math.min(9, 2.5 + d * 0.12) : undefined, then: S2 => arrive(S2, r, H, pk, offside, space ? chaser?.name || "" : null) });
-  if (space && S.ball.fl) { const need = hyp(r.x - tp[0], r.y - tp[1]) / 8.4 + 0.1; if (S.ball.fl.T < need) S.ball.fl.T = need; }
-  const need = hyp(r.x - tp[0], r.y - tp[1]) / Math.max(0.2, S.ball.fl?.T ?? T);
-  r.ov = OV(tp[0] - dirOf(team) * 0.6, tp[1], clamp(Math.max(space ? SPRINT : RUN, need * 1.05), RUN, 9.5), "recv");
+  const T = launch(S, tp2[0], tp2[1], { air, kind: "pass", h: cross ? 3.2 : air && space ? Math.min(9, 2.5 + d * 0.12) : undefined, then: S2 => arrive(S2, r, H, pk, offside, space ? chaser?.name || "" : null) });
+  if (space && S.ball.fl) { const need = hyp(r.x - tp2[0], r.y - tp2[1]) / 8.4 + 0.1; if (S.ball.fl.T < need) S.ball.fl.T = need; }
+  const need = hyp(r.x - tp2[0], r.y - tp2[1]) / Math.max(0.2, S.ball.fl?.T ?? T);
+  r.ov = OV(tp2[0] - dirOf(team) * 0.6, tp2[1], clamp(Math.max(space ? SPRINT : RUN, need * 1.05), RUN, 9.5), "recv");
   if (cross) { let n = 0; for (const p of S.P) if (p.team === team && p !== H && p.ri && (p.boxRun || ox(team, p.x) > 86)) n++; if (n >= 2) emit(S, "boxRun", { by: H.name, team, n, me: H.me }); }
 }
 function arrive(S, r, from, kind, offside, space = null) {
@@ -6697,6 +6721,7 @@ function shoot(S, H, opts = {}) {
     q *= 1 + (team === "us" ? 1 : -1) * (S.flow || 0) * 0.3;
     if (H.qMul) q *= H.qMul(kind);
     if (opts.qm) q *= opts.qm;                              // 상황 보정 (프리킥을 옆으로 받아 찬 슈팅: 벽이 뛰어나와 막음)
+    q *= wxOf(S).shot;                                      // 비·눈 오는 날은 공이 미끄럽고 무거워 슈팅이 조금 약해짐
     if (opts.pot || kind === "fk") q = clamp(q * (kind === "fk" ? FK_Q : POT_Q), 0.005, 0.2);   // 중거리 시도·직접 프리킥: 전력 보정(conv) 없이 실제 확률 가깝게 (§90)
     else q = clamp(q * (S.conv?.[team] ?? 1), 0.005, 0.8);
     const gk0 = gkOf(S, def); if (gk0 && gk0.stun > 0) q = Math.max(q, 0.35);                       // 골키퍼를 제친 뒤 빈 골문
@@ -8173,7 +8198,7 @@ function prepareMatch(state, info, fx) {
   m.players = pitchPlayers(state, m);
   const oppStyle = styleSim(fx.opponent.name);
   m.oppForm = fx.practice || fx.elementary ? "442" : formOfTeam(fx.opponent.name);   // 상대 포메이션 (청백전·초등부는 4-4-2)
-  const S = createSim({ spVar: !!CAL.sp, gsOn: !!CAL.gs, players: m.players, str: { us: ours, them: theirs }, style: { us: {}, them: oppStyle }, form: { them: m.oppForm }, blocks: { us: "mid", them: oppStyle.block || "mid" } });
+  const S = createSim({ spVar: !!CAL.sp, gsOn: !!CAL.gs, players: m.players, str: { us: ours, them: theirs }, style: { us: {}, them: oppStyle }, form: { them: m.oppForm }, blocks: { us: "mid", them: oppStyle.block || "mid" }, weather });
   const D = ours - theirs;
   S.brk = { us: CAL.brk * Math.exp(-D / CAL.kb), them: CAL.brk * Math.exp(D / CAL.kb) };
   S.attackP = { us: sig(CAL.a0 + D / CAL.ka), them: sig(CAL.a0 - D / CAL.ka) };
@@ -9464,9 +9489,11 @@ function prob(state, m, c) {
   x += (p.stats.mental.confidence - 50) / 350;
   x += conditionOf(p).match;                       // 컨디션 (피로 + 사기)
   // 후반이 될수록 체력이 낮거나 지친 선수는 무뎌짐
-  if (m.minute > HALF) {
+  // 교체 투입 선수는 경기 전체 시간이 아니라 들어온 뒤 실제로 뛴 시간으로만 잰다 (후반 50분에 들어간 선수는 65분이 되어도 15분치)
+  const onFrom = m.status === "sub" ? Math.max(HALF, m.minIn || 0) : HALF;
+  if (m.minute > onFrom) {
     const tired = Math.max(0, (p.condition.fatigue - 40) / 100) + Math.max(0, (60 - p.stats.phys.stamina) / 100);
-    x -= tired * ((m.minute - HALF) / HALF) * 0.15 * (hasTrait(p, "ironLungs") ? 0.4 : 1);
+    x -= tired * ((m.minute - onFrom) / HALF) * 0.15 * (hasTrait(p, "ironLungs") ? 0.4 : 1);
   }
   const big = m.fx.tournament || m.fx.comp === "hs";
   if (big && hasTrait(p, "bigGame")) x += 0.05;
