@@ -9,7 +9,7 @@ export const DT = 0.1;                      // 한 틱 (초)
 export const RATE = 20;                     // 시뮬레이션 1초 = 경기 시간 20초
 export const HALF_T = 35 * 60 / RATE;       // 전반 길이 (시뮬레이션 초)
 
-const PEN_FOUL = 10;                        // 박스 안 반칙은 다른 곳의 10배 (태클이 박스 안에서 잘 안 일어나서, 1배면 페널티킥이 양 팀 합쳐 80경기에 한 번 → 10배면 열 경기에 한 번)
+const PEN_FOUL = 16;                        // 박스 안 반칙은 다른 곳의 16배 (§93: 양 팀 합 0.1~0.12/경기, 우리 팀 열다섯 경기에 한 번)
 const ROLES = { GK: ["GK"], DF: ["LB", "LCB", "RCB", "RB"], MF: ["LM", "LCM", "RCM", "RM"], FW: ["ST1", "ST2"] };
 // 4-4-2. 자기 진영 기준 [수비 라인에서 앞으로 몇 m, 좌우 비율]. d 수비할 때, a 공격할 때
 const FORM = {
@@ -524,7 +524,7 @@ function oneOnOneAct(S, H) {
 }
 function decide(S) {
   const H = S.holder; if (!H) return;
-  if (S.fShot) { const f = S.fShot; S.fShot = null; if (f.p === H && S.t < f.until && !H.me) return shoot(S, H, { qm: 0.5 }); }   // 프리킥을 옆으로 받은 선수: 바로 슈팅 (2초 안, 다른 판단이 먼저면 없던 일)
+  if (S.fShot) { const f = S.fShot; S.fShot = null; if (f.p === H && S.t < f.until && !H.me) return shoot(S, H, { qm: f.qm ?? 0.5, kind: f.kind, pot: !!f.pot }); }   // 프리킥·코너킥을 옆으로 받은 선수: 바로 슈팅 (2초 안, 다른 판단이 먼저면 없던 일)
   if (oneOnOne(S, H) && oneOnOneAct(S, H)) return;
   if (S.oneOn && S.oneOn !== H) S.oneOn = null;
   if (!S.plan || S.plan.team !== H.team) newPlan(S, H);
@@ -766,7 +766,7 @@ function arrive(S, r, from, kind, offside, space = null) {
     const rd = hyp(r.x - b.x, r.y - b.y);
     if (space != null && rd < 3.4) { give(S, r); emit(S, "recv", { p: r.name, team: r.team, from: from.name, fx: from.x, fy: from.y, kind, me: r.me, x: b.x, y: b.y, air: true, behind: true, chaser: space || null }); planRecv(S, r); return; }
     if (rd > 3.4 && !ds.length) { if (S.dbg) S.dbg["missA_" + kind] = (S.dbg["missA_" + kind] || 0) + 1; return landLoose(S); }
-    let pAtt = rd > 3.4 ? 0 : ds.length ? clamp(0.5 + (r.st.jump - Math.max(...ds.map(d => d.st.jump))) / 70 - (ds.length - 1) * 0.12, 0.12, 0.85) : 0.92;
+    let pAtt = rd > 3.4 ? 0 : ds.length ? clamp(0.5 + (r.st.jump - Math.max(...ds.map(d => d.st.jump))) / 70 - (ds.length - 1) * 0.12 + (kind === "cross" && S.lastRestart === "corner" ? 0.04 : 0), 0.12, 0.85) : 0.92;   // 코너킥 크로스: 문전에서 한 발 먼저 뛰어드는 쪽이 조금 유리 (§93)
     if (S.dbg) S.dbg["duelA_" + kind] = (S.dbg["duelA_" + kind] || 0) + 1;
     if (rand() < pAtt) {
       if (inBox && ox(r.team, b.x) > 90 && kind !== "long" && !(r.me && S.bias?.me)) { planRecv(S, r, true); return shoot(S, r, { kind: "head", assist: from }); }   // 내 장면을 기다릴 때는 내가 받고 멈춤
@@ -1256,15 +1256,20 @@ function cornerPlan(S, R, taker, spot) {
   const mine = S.P.filter(p => p.team === team && p !== taker && p.pos !== "GK" && !p.me);
   const near = (pt, list) => list.sort((a, b) => hyp(a.x - pt[0], a.y - pt[1]) - hyp(b.x - pt[0], b.y - pt[1]))[0];
   let pt, who = null;
-  if (R.v === "near") { pt = [goalX - g * 5.5, 34 + sd * 4.5]; who = mine.filter(p => p.ov && ox(team, p.ov.x) > 85).sort((a, b) => b.st.jump - a.st.jump)[0]; }
+  if (R.v === "near") { pt = [goalX - g * 5.2, 34 + sd * 3.4]; who = mine.filter(p => p.ov && ox(team, p.ov.x) > 85).sort((a, b) => b.st.jump - a.st.jump)[0]; }
   else if (R.v === "short") { pt = [spot[0] - g * 4, clamp(spot[1] - sd * 7, 3, 65)]; who = near(pt, mine.filter(p => p.pos !== "DF")); }
-  else { pt = [goalX - g * 20, 34 - sd * 4]; who = near(pt, mine.filter(p => !p.ov && p.pos === "MF")); }
+  else { pt = [goalX - g * (R.v === "edge" ? 24.5 : 20), 34 - sd * (R.v === "edge" ? 2.5 : 4)]; who = near(pt, mine.filter(p => !p.ov && p.pos === "MF")); }   // edge: 골문 24.5m (각이 서는 자리) — 20m에서 때리면 거의 다 들어갔다 (§93)
   if (!who || hyp((who.ov?.x ?? who.x) - pt[0], (who.ov?.y ?? who.y) - pt[1]) > 30) { R.v = "far"; return; }   // 받을 선수가 너무 멀면 예전 방식 (박스에 자리 잡으러 가는 선수는 그 자리에서 잼)
   who.ov = OV(pt[0], pt[1], RUN, "keep"); R.to = who; R.pt = pt;
   if (R.v !== "near") {                                   // 짧게·박스 바깥: 수비 하나가 따라 나와 골문 쪽 2.5m에 붙음
     const gx = goalX - pt[0], gy = 34 - pt[1], gd = hyp(gx, gy) || 1;
-    const mk = near(pt, S.P.filter(p => p.team !== team && p.pos !== "GK" && !p.ov));
-    if (mk) mk.ov = OV(pt[0] + gx / gd * 2.5, pt[1] + gy / gd * 2.5, RUN, "keep");
+    const pool = S.P.filter(p => p.team !== team && p.pos !== "GK" && !p.ov);
+    const mk = near(pt, pool);
+    if (mk) mk.ov = OV(pt[0] + gx / gd * (R.v === "edge" ? 1.6 : 2.5), pt[1] + gy / gd * (R.v === "edge" ? 1.6 : 2.5), RUN, "keep");
+    if (R.v === "edge") {                                 // 박스 바깥 코너: 두 번째 수비가 옆에서 함께 막아 섬 (슈팅 각을 좀힘, §93)
+      const mk2 = near(pt, pool.filter(p => p !== mk));
+      if (mk2) mk2.ov = OV(pt[0] + gx / gd * 1.6, clamp(pt[1] + (sd > 0 ? 3.0 : -3.0), 4, 64), RUN, "keep");
+    }
   }
 }
 // 재시작 때 상대가 들어가면 안 되는 곳 (프리킥·코너 9.15m, 스로인 2m, 골킥 상대는 박스 밖, 페널티킥은 키커·골키퍼 말고 모두 박스·아크 밖)
@@ -1337,6 +1342,7 @@ function takeRestart(S) {
     emit(S, "spKind", { team, k: R.v, a: T.name, me: T.me });
     const r = R.to;
     if (R.v === "near") return passTo(S, T, r, R.pt, { air: true, cross: true, noOff: true, kind: "cross" });
+    if (R.v === "edge") S.fShot = { p: r, until: S.t + 3.5, qm: 0.55, kind: "long" };   // 박스 바깥으로 빼 준 공: 받는 선수가 바로 때림 (등지고 받은 자리라 힘이 덜 실림, §93)
     return passTo(S, T, r, R.pt, { force: true, kind: "ground" });            // 받을 자리로 (아직 뛰어오는 중이어도 그 자리에서 만남)
   }
   if (R.kind === "fk" && R.v === "layoff" && R.to && !R.to.me && !T.me) {   // 프리킥 갈래: 옆으로 살짝 밀어 주고 그 선수가 바로 슈팅
@@ -1599,7 +1605,7 @@ export function stageStart(S, hint) {
 function stageTick(S) {
   const st = S.stage;
   // 공이 날아가는 중이면 받는 선수가 잡을 때까지 기다림 (그 선수 기준으로 자리를 잡게)
-  if (!st.holder || st.holder !== S.holder) { if (S.holder && !S.ball.fl) { st.holder = S.holder; st.pressers = null; } else { if (S.t >= st.until + 3) { S.stage = null; for (const p of S.P) if (p.ov?.stage) p.ov = null; } return; } }
+  if (!st.holder || st.holder !== S.holder) { if (S.holder && !S.ball.fl) { st.holder = S.holder; st.pressers = null; } else if (!S.holder && !S.ball.fl) { S.stage = null; for (const p of S.P) if (p.ov?.stage) p.ov = null; return; } else { if (S.t >= st.until + 3) { S.stage = null; for (const p of S.P) if (p.ov?.stage) p.ov = null; } return; } }
   const H = st.holder;
   const def = other(H.team);
   const n = st.press ?? (H.team === "us" ? 1 : 0);
@@ -1696,6 +1702,26 @@ function startStep(S, st) {
     if (H) { H.stun = 0.8; H.ov = OV(H.x, H.y, 1.2); }
     S.pickOnly = p;
     emit(S, "steal", { by: p.name, team: p.team, victim: H?.name, silent: true });
+    if (p.pos === "GK") {
+      // 골키퍼는 골문을 비우고 공을 쫓아 25~35m까지 나가지 않음 (§93): 가까운 공만 골문 앞에서 잡고,
+      // 멀리 있는 공은 대본 문장("골키퍼가 잡았다")대로 골키퍼가 나온 자리로 와서 품에 안김
+      const goalX = p.team === "us" ? 0 : 105, g = dirOf(p.team), far = hyp(S.ball.x - goalX, S.ball.y - 34) > 16;
+      const tx = far ? clamp(goalX + g * 11, 1, 104) : clamp(S.ball.x, Math.min(goalX, goalX + g * 2), Math.max(goalX, goalX + g * 16));
+      const ty = far ? clamp(34 + (S.ball.y - 34) * 0.55, 22, 46) : clamp(S.ball.y, 4, 64);
+      p.ov = OV(tx, ty, SPRINT);
+      return { until: S2 => {
+          if (S2.holder === p) { p.ov = null; S2.pickOnly = null; return true; }
+          const b = S2.ball;
+          if (!far) { p.ov = OV(b.x, b.y, SPRINT);
+            if (!b.fl && hyp(p.x - b.x, p.y - b.y) < 1.4) { p.ov = null; give(S2, p); S2.decideAt = S2.t + range(0.3, 0.6); S2.pickOnly = null; return true; }
+            return false; }
+          if (!b.fl && hyp(p.x - tx, p.y - ty) < 2.2) {     // 골키퍼가 나온 자리로 공이 굴러와 품에 (그 자리에 선 채로 받음)
+            p.ov = null; S2.holder = null; S2.last = p; S2.lastTeam = p.team;
+            launch(S2, p.x, p.y, { T: Math.max(0.3, hyp(b.x - p.x, b.y - p.y) / 20), kind: "pass", then: S3 => { S3.pickOnly = null; give(S3, p); } });
+          }
+          return false; },
+        deadline: S.t + (far ? 4.5 : 1.2 + hyp(p.x - S.ball.x, p.y - S.ball.y) / 7.5) };
+    }
     return { until: S2 => { const b = S2.ball; p.ov = OV(b.x, b.y, SPRINT);
         if (S2.holder === p) { p.ov = null; S2.pickOnly = null; return true; }
         if (!b.fl && hyp(p.x - b.x, p.y - b.y) < 1.4) { p.ov = null; give(S2, p); S2.decideAt = S2.t + range(0.3, 0.6); S2.pickOnly = null; return true; }
