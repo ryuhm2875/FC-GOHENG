@@ -197,7 +197,7 @@ export function timingOf(c) {
 // 모두 우리 전력 − 상대 전력(D)에 따라 바뀜
 // 시험 도구(tools/dev)가 경기 끝마다 내용을 받아 볼 수 있게
 export const DEV = { onFinish: null };
-export const CAL = { sp: 1, gs: 1, brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 5.3, kcu: 5.8, kcun: 80, ct: 2.65, kct: 22, kctn: 13, ft: 0.2, meShot: 1.08, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.105, dfk: 1.45, mfk: 0.6, rk: { FW: 0.82, MF: 1.08, DF: 1.1 }, dfCS: 0.45 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비 기여 배수, mfk: 미드필더 선택 하나가 평점에 주는 몫 (선택이 많은 만큼), rk: 포지션별 평점 배율, dfCS: 수비수 무실점 가산
+export const CAL = { sp: 1, gs: 1, brk: 0.1, kb: 30, a0: 2, ka: 14, cu: 6.0, kcu: 5.8, kcun: 80, ct: 2.95, kct: 22, kctn: 13, ft: 0.2, meShot: 1.08, meBias: 0.62, meBiasMF: 1.0, luck: 0.5, mq: 0.8, fin: 0.105, dfk: 1.45, mfk: 0.6, rk: { FW: 0.82, MF: 1.08, DF: 1.1 }, dfCS: 0.45 };   // mq: 선발 경기에서 내 순간이 하나 더 생길 확률, fin: 내 순간 슈팅 성공률 보정, dfk: 수비수가 경기 흐름 중 해낸 수비 기여 배수, mfk: 미드필더 선택 하나가 평점에 주는 몫 (선택이 많은 만큼), rk: 포지션별 평점 배율, dfCS: 수비수 무실점 가산
 const sig = x => 1 / (1 + Math.exp(-x));
 
 // 상대 성향 → 경기장 움직임
@@ -522,7 +522,7 @@ function narrate(state, m, e) {
         break;
       }
       const near = e.x == null || Math.abs(e.x - st.at[0]) <= 13;                 // 문장이 말하는 자리와 실제 공 자리가 맞을 때만
-      const tx = st.t.filter(t => (!/\{b[|}]/.test(t) || (e.b && e.b !== e.a)) && !(/길게/.test(t) && e.d != null && e.d < 24));   // 짧은 패스에 '길게'라고 하지 않음
+      const tx = st.t.filter(t => (!/\{b[|}]/.test(t) || (e.b && e.b !== e.a)) && !(/길게/.test(t) && e.d != null && e.d < 24) && !(/머리|공중볼/.test(t) && e.air === false) && !(/찔러|수비 뒤로|뒷공간/.test(t) && e.deep === false));   // 짧은 패스에 '길게', 땅볼에 '머리로'라고 하지 않음
       if (e.me && e.team === "us") {
         my.involved = (my.involved || 0) + 1; my.delta += m.myPos === "MF" ? 0.008 : 0.02;
         if (S.bias?.me) break;                                                   // 곧 내 장면이 이어지면 따로 적지 않음
@@ -585,15 +585,21 @@ function narrate(state, m, e) {
       if (e.me) {
         my.delta += m.myPos === "DF" ? 0.24 * CAL.dfk : 0.2; my.stops = (my.stops || 0) + 1; my.involved = (my.involved || 0) + 1;
         if (!m.chainSit && m.onPitch && meOf(S) && (my.chained || 0) < 3 && chance(m.myPos === "MF" ? 0.35 : m.myPos === "DF" ? 0.12 : 0)) { m.chainSit = { id: chainFor(m), t: S.t }; my.chained = (my.chained || 0) + 1; }   // 빼앗자마자 내 판단
-        add(fill(pick(ME_IN_PLAY.stop.slice(0, 2)), { me: m.me }), "me-auto");
+        add(fill(pick(e.out ? ME_IN_PLAY.stopOut : ME_IN_PLAY.stop.slice(0, 2)), { me: m.me }), "me-auto");
       } else if (e.victimMe) {
-        my.delta -= 0.04;
-        add(fill(pick(BREAK.tackle), { d: e.by, a: m.me }), "them");
+        my.delta -= e.out ? 0.02 : 0.04;
+        add(fill(pick(e.out ? BREAK.tackleOut : e.loose ? BREAK.tackleLoose : BREAK.tackle), { d: e.by, a: m.me }), "them");
       } else if (e.silent) {                                                        // 내 장면 결과로 끊긴 패스: 결과 문장이 말함
       } else if (ax > 58 && !quiet()) {
-        if (e.type === "intercept") add(fill(pick(BREAK.intercept), { d: e.by, a: e.from, r: e.r }), kt(e.team));
-        else add(fill(pick(BREAK.tackle), { d: e.by, a: e.victim }), kt(e.team));
+        if (e.type === "intercept") add(fill(pick(e.out ? BREAK.cutOut : BREAK.intercept), { d: e.by, a: e.from, r: e.r }), kt(e.team));
+        else add(fill(pick(e.out ? BREAK.tackleOut : e.loose ? BREAK.tackleLoose : BREAK.tackle), { d: e.by, a: e.victim }), kt(e.team));
       }
+      break;
+    }
+    case "crossBlock": {                                                          // 측면 크로스가 바로 앞 수비 발에 맞음 (§88). 코너킥이면 코너킥 문장이 이어 말함
+      if (e.me) { my.delta += 0.1 * (m.myPos === "DF" ? CAL.dfk : 1); my.stops = (my.stops || 0) + 1; my.involved = (my.involved || 0) + 1; add(fill(pick(ME_IN_PLAY.crossBlock), { me: m.me }), "me-auto"); }
+      else if (e.fromMe) add(fill(pick(BREAK.crossBlockMe), { d: e.by }), "them");
+      else if (!quiet() && chance(0.6)) add(fill(pick(BREAK.crossBlock), { d: e.by, a: e.from }), kt(e.team));
       break;
     }
     case "header": {
