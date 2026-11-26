@@ -29,7 +29,7 @@ const RULES = [
   { id: "through", name: "스루패스·뒷공간", re: /스루패스|스루 패스|뒷공간(으로|에|을 향|을 노린 (패스|공))|수비 뒤(로|쪽으로) (찔|넣|보|떨|넘)|침투 패스|찔러 (준|줬|넣)/, not: /막|차단|읽|노리는 눈|손짓/, win: [4, 5],
     test: c => any(c.legs, l => l.dx >= 8 && l.x1 >= l.lineX - 6, l => l.dx) },
   { id: "cross", name: "크로스", re: /크로스(를|가|!|\.| 올| 한)/, not: /크로스를 (막|차단|기다|노리|준비|올리려|못)|크로스가 (올라오면|올라올|막)|손짓|크로스를 올리기 전|크로스 길/, win: [4, 4],
-    test: c => any(c.legsAny, l => side(l.y0) >= 13 && l.x0 >= 62 && l.x1 >= 82 && side(l.y1) <= 22, l => l.x0) },
+    test: c => c.crossBlock ? [true, "크로스가 수비 발에 막힘"] : any(c.legsAny, l => side(l.y0) >= 13 && l.x0 >= 62 && l.x1 >= 82 && side(l.y1) <= 22, l => l.x0) },   // 찬 순간 앞 수비 발에 막힌 크로스도 크로스 (§90)
   { id: "cutback", name: "컷백", re: /컷백/, not: /컷백 (길|자리|을 막|을 기다|을 노)|컷백을 (막|기다|노|읽)|컷백이 (올|막)|손짓/, win: [4, 4],
     test: c => any(c.legsAny, l => l.x0 >= 84 && side(l.y0) >= 7 && l.dx <= 3 && side(l.y1) < side(l.y0), l => l.x0) },
   { id: "long", name: "길게·롱볼", re: /길게 (차|찬|넘|올|내|때|뿌|연결|찔)|롱볼|롱패스|롱 패스|긴 패스/, not: /길게 (끌|잡|가져|걸)|손짓|노리|막/, win: [4, 5],
@@ -154,7 +154,7 @@ for (let k = 0; k < N; k++) {
       const them = src === "line" && /^(them|goal-them)/.test(l.k), team = them ? "them" : "us";
       const [w0, w1] = src === "pick" ? [0.5, R.win[1] + 4] : R.win, a = l.ts - w0, b = l.ts + w1;
       const inWin = legs.filter(g => g.t0 >= a - 0.05 && g.t0 <= b);
-      const c = { legsAny: inWin, legs: inWin.filter(g => g.team === team), shots: inWin.filter(g => g.shot), carries: carries.filter(x => x.t1 >= a && x.t0 <= b), changes: changes.filter(t => t >= a && t <= b).length, maxZ: 0, minPress: { n8: 0, d1: 99 }, possAge: 99, adv5: 0 };
+      const c = { legsAny: inWin, legs: inWin.filter(g => g.team === team), shots: inWin.filter(g => g.shot), carries: carries.filter(x => x.t1 >= a && x.t0 <= b), changes: changes.filter(t => t >= a && t <= b).length, maxZ: 0, minPress: { n8: 0, d1: 99 }, possAge: 99, adv5: 0, crossBlock: S.ev.some(e => e.type === "crossBlock" && e.t >= a && e.t <= b) };
       if (/상대|{opp}/.test(l.t) || src === "pick") c.legs = inWin;                 // 문장이 상대 동작을 말할 수 있음 → 어느 팀이든 조건에 맞는 이동이 있으면 일치
       const i0 = at(a), i1 = at(b);
       for (let i = i0; i <= i1; i++) {
