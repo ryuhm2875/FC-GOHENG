@@ -79,7 +79,7 @@ function threat(ax, ay) {
 // 슈팅 기대 득점 (그 팀 기준 좌표)
 export const setSimK = kv => { for (const [k, v] of Object.entries(kv)) { if (k === "potU") POT_U = v; else if (k === "potP") POT_P = v; else if (k === "fkQ") FK_Q = v; else if (k in OUT_K) OUT_K[k] = v; } };   // 점검 도구용 (SIMK="potP:0,crossBlock:0")
 export const OUT_K = { headBehind: 0.3, crossBlock: 0.3, touchTackle: 0.7, clearTouch: 0.5, errTouch: 0.7, cutTouch: 0.55 };   // §90 공이 라인 밖으로 나가는 경우 (tools/dev/shot-audit.mjs 재개 수)
-export let POT_U = 0.25, POT_P = 0.2, FK_Q = 1.2; export const POT_Q = 1;   // §90 중거리 시도 선택 가치·득점 배율, 직접 프리킥 득점 배율 (tools/dev/shot-audit.mjs로 맞춤)
+export let POT_U = 0.25, POT_P = 0.2, FK_Q = 3.2; export const POT_Q = 1;   // §90 중거리 시도 선택 가치·득점 배율, 직접 프리킥 득점 배율 (tools/dev/shot-audit.mjs로 맞춤). §92 박스 앞 직접 프리킥 골 20% (±2%p)
 export function xgAt(ax, ay) {
   const dx = Math.max(0.5, 105 - ax), dy = Math.abs(34 - ay), d = hyp(dx, dy);
   const cos = dx / d;
@@ -842,7 +842,7 @@ export function shoot(S, H, opts = {}) {
     if (H.qMul) q *= H.qMul(kind);
     if (opts.qm) q *= opts.qm;                              // 상황 보정 (프리킥을 옆으로 받아 찬 슈팅: 벽이 뛰어나와 막음)
     q *= wxOf(S).shot;                                      // 비·눈 오는 날은 공이 미끄럽고 무거워 슈팅이 조금 약해짐
-    if (opts.pot || kind === "fk") q = clamp(q * (kind === "fk" ? FK_Q : POT_Q), 0.005, 0.2);   // 중거리 시도·직접 프리킥: 전력 보정(conv) 없이 실제 확률 가깝게 (§90)
+    if (opts.pot || kind === "fk") q = clamp(q * (kind === "fk" ? FK_Q : POT_Q), 0.005, 0.2);   // 중거리 시도·직접 프리킥: 전력 보정(conv) 없이 실제 확률 가깝게 (§90, 프리킥 배율은 §92에서 3.2로 — 0.2 상한이 곧 "프리킥은 20%까지")
     else q = clamp(q * (S.conv?.[team] ?? 1), 0.005, 0.8);
     const gk0 = gkOf(S, def); if (gk0 && gk0.stun > 0) q = Math.max(q, 0.35);                       // 골키퍼를 제친 뒤 빈 골문
     const r = rand();
