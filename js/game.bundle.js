@@ -3826,11 +3826,11 @@ const PLAYS = [
 const BREAK = {
   intercept: ["{d|이/가} 패스 길을 읽고 끊어 낸다.", "{d|이/가} 발을 쭉 뻗어 공을 가로챘다.", "{d|이/가} 한 발 먼저 들어와 패스를 잘라 낸다."],
   tackle:    ["{d}의 태클! {a|이/가} 공을 빼앗겼다.", "{d|이/가} 몸을 붙여 {a}의 공을 빼냈다.", "{d|이/가} 뒤에서 발을 넣어 {a}의 공을 걷어 낸다."],
-  tackleOut: ["{d|이/가} 발을 뻗어 {a}의 공을 터치라인 밖으로 걷어 낸다.", "{d|이/가} 몸을 붙여 {a}의 공을 밖으로 밀어냈다. 스로인이다."],   // 터치라인 가까이에서 태클한 공이 밖으로 (§88)
+  tackleOut: ["{d|이/가} 발을 뻗어 {a}의 공을 터치라인 밖으로 걷어 낸다.", "{d|이/가} 몸을 붙여 {a}의 공을 밖으로 밀어냈다. 스로인이다."],   // 터치라인 가까이에서 태클한 공이 밖으로 (§90)
   cutOut: ["{d|이/가} 발을 뻗어 패스를 건드렸다. 공은 터치라인 밖으로.", "{a}의 패스를 {d|이/가} 발끝으로 걷어 냈다. 스로인."],
   crossBlock: ["{a}의 크로스가 {d}의 발에 걸렸다.", "{d|이/가} 몸을 던져 {a}의 크로스를 막는다!"],
   crossBlockMe: ["올린 크로스가 {d}의 발에 맞았다.", "{d|이/가} 다리를 뻗어 내 크로스를 막았다."],
-  tackleLoose: ["{d|이/가} 발을 뻗어 {a}의 공을 쳐 냈다. 공이 흘러간다.", "{d|이/가} 뒤에서 발을 넣었다. {a}의 발에서 공이 떨어진다."],   // 태클했지만 공이 흘러감 (§88)
+  tackleLoose: ["{d|이/가} 발을 뻗어 {a}의 공을 쳐 냈다. 공이 흘러간다.", "{d|이/가} 뒤에서 발을 넣었다. {a}의 발에서 공이 떨어진다."],   // 태클했지만 공이 흘러감 (§90)
   offside:   ["{r|이/가} 한 발 먼저 나갔다. 부심 깃발이 올라간다. 오프사이드.", "오프사이드. {r|이/가} 아쉬운 듯 고개를 젓는다.", "수비 라인이 한 발 올라섰다. {r|은/는} 오프사이드에 걸렸다."],
   out:       ["{a}의 패스가 길었다. 공이 골라인을 넘어간다.", "{a}의 패스가 너무 강했다. 골라인 아웃.", "{a}의 크로스가 너무 길었다. 그대로 골라인 밖이다."],
   claim:     ["골키퍼 {gk|이/가} 뛰어나와 공을 잡아 낸다.", "{gk|이/가} 먼저 나와 공을 품에 안았다.", "{gk|이/가} 높이 떠서 크로스를 두 손으로 낚아챈다."],
@@ -3965,7 +3965,7 @@ const ME_IN_PLAY = {
   head:  ["{me}의 헤더!", "{me|이/가} 수비 머리 위로 솟구친다!", "{me|이/가} 공 떨어지는 자리를 먼저 잡고 머리를 갖다 댄다!"],
   fk:    ["{me|이/가} 프리킥 키커로 나섰다. 숨을 고르고… 찼다!"],
   pk:    ["{me|이/가} 페널티킥 키커로 나선다. 심장이 쿵쾅거린다…"],
-  stopOut: ["{me|이/가} 발을 뻗어 공을 터치라인 밖으로 걷어 냈다.", "{me|이/가} 몸으로 밀어붙여 공을 밖으로 내보냈다."],   // §88
+  stopOut: ["{me|이/가} 발을 뻗어 공을 터치라인 밖으로 걷어 냈다.", "{me|이/가} 몸으로 밀어붙여 공을 밖으로 내보냈다."],   // §90
   crossBlock: ["{me|이/가} 몸을 던져 크로스를 막아 낸다!", "{me|이/가} 다리를 쭉 뻗어 크로스 길을 막았다!"],
   stop:  ["{me|이/가} 태클로 끊어 낸다!", "{me|이/가} 길목을 막고 공을 빼앗는다!", "{me|이/가} 몸을 날려 슈팅을 막아 낸다!"],
   marked: ["상대 감독이 {me|을/를} 가리키며 수비수에게 뭔가 지시한다.", "상대 수비수 둘이 {me} 주변에 붙어 다닌다."],
@@ -5939,8 +5939,8 @@ function threat(ax, ay) {
 }
 // 슈팅 기대 득점 (그 팀 기준 좌표)
 const setSimK = kv => { for (const [k, v] of Object.entries(kv)) { if (k === "potU") POT_U = v; else if (k === "potP") POT_P = v; else if (k === "fkQ") FK_Q = v; else if (k in OUT_K) OUT_K[k] = v; } };   // 점검 도구용 (SIMK="potP:0,crossBlock:0")
-const OUT_K = { headBehind: 0.3, crossBlock: 0.3, touchTackle: 0.7, clearTouch: 0.5, errTouch: 0.7, cutTouch: 0.55 };   // §88 공이 라인 밖으로 나가는 경우 (tools/dev/shot-audit.mjs 재개 수)
-let POT_U = 0.25, POT_P = 0.2, FK_Q = 1.2; export const POT_Q = 1;   // §88 중거리 시도 선택 가치·득점 배율, 직접 프리킥 득점 배율 (tools/dev/shot-audit.mjs로 맞춤)
+const OUT_K = { headBehind: 0.3, crossBlock: 0.3, touchTackle: 0.7, clearTouch: 0.5, errTouch: 0.7, cutTouch: 0.55 };   // §90 공이 라인 밖으로 나가는 경우 (tools/dev/shot-audit.mjs 재개 수)
+let POT_U = 0.25, POT_P = 0.2, FK_Q = 1.2; export const POT_Q = 1;   // §90 중거리 시도 선택 가치·득점 배율, 직접 프리킥 득점 배율 (tools/dev/shot-audit.mjs로 맞춤)
 function xgAt(ax, ay) {
   const dx = Math.max(0.5, 105 - ax), dy = Math.abs(34 - ay), d = hyp(dx, dy);
   const cos = dx / d;
@@ -6416,7 +6416,7 @@ function decide(S) {
       const q = xgAt(hx, hy) * (near < 1.6 ? 0.55 : near < 3 ? 0.8 : 1);
       opts.push({ k: "shoot", u: (q * 1.5 + 0.02) * noise() * (S.shootMul?.[team] ?? 1) });
     } else if (POT_U && hx >= 66 && dGoal > 21 && dGoal <= 30 && Math.abs(hy - 34) < 17 && near > 1.5 && !H.me && !S.bias && !S.scur && !S.script.length && !(S.plan && !S.plan.recycle)) {
-      opts.push({ k: "shoot", pot: true, u: POT_U * (near > 4 ? 1.4 : 1) * noise() * (S.shootMul?.[team] ?? 1) });   // 중거리 시도 (§88): 공격 계획 없이 박스 앞에서 공을 잡으면 가끔 때려 봄. 대부분 막히거나 빗나감
+      opts.push({ k: "shoot", pot: true, u: POT_U * (near > 4 ? 1.4 : 1) * noise() * (S.shootMul?.[team] ?? 1) });   // 중거리 시도 (§90): 공격 계획 없이 박스 앞에서 공을 잡으면 가끔 때려 봄. 대부분 막히거나 빗나감
     }
     // 패스
     const off = offLine(S, team);
@@ -6513,7 +6513,7 @@ function act(S, H, o) {
     return;
   }
   if (o.k === "clear") {
-    const touch = Math.abs(H.y - 34) > 16 && rand() < OUT_K.clearTouch;   // 측면에서 몰리면 터치라인 밖으로 (§88)
+    const touch = Math.abs(H.y - 34) > 16 && rand() < OUT_K.clearTouch;   // 측면에서 몰리면 터치라인 밖으로 (§90)
     const tx = clamp(H.x + g * (touch ? range(12, 28) : range(35, 50)), 3, 102), ty = touch ? (H.y < 34 ? -3 : 71) : clamp(H.y + range(-18, 18), 2, 66);
     emit(S, "clear", { by: H.name, team: H.team, me: H.me, x: ox(H.team, H.x) });
     launch(S, tx, ty, { air: true, h: 9, kind: "clear", then: S2 => landLoose(S2) });
@@ -6534,7 +6534,7 @@ function passTo(S, H, r, tp, { air = false, cross = false, force = false, kind, 
   const d = hyp(tp[0] - S.ball.x, tp[1] - S.ball.y);
   const offside = !force && !noOff && ox(team, r.x) > offLine(S, team) + 0.3 && ox(team, tp[0]) > 52.5;
   S.passD = d;                                             // 방금 찬 패스 길이 (해설이 길게라고 말해도 되는지)
-  S.passAir = !!air;                                       // 방금 찬 패스가 떴는지 (해설이 '머리로'라고 말해도 되는지, §88)
+  S.passAir = !!air;                                       // 방금 찬 패스가 떴는지 (해설이 '머리로'라고 말해도 되는지, §90)
   const lr = laneRisk(S, H, r, tp, air);
   const pk = kind || (cross ? "cross" : air ? (d > 40 ? "long" : "air") : (ox(team, tp[0]) - ox(team, H.x) > 14 && ox(team, tp[0]) > 60 ? "through" : "ground"));
   emit(S, "pass", { from: H.name, to: r.name, team, kind: pk, fx: ox(team, H.x), fy: oy(team, H.y), tx: ox(team, tp[0]), ty: oy(team, tp[1]), me: H.me, toMe: r.me });
@@ -6549,7 +6549,7 @@ function passTo(S, H, r, tp, { air = false, cross = false, force = false, kind, 
   S.last = H; S.lastTeam = team;
   S.chain.push(H);
   H.ov = null;
-  if (!force && air && ox(team, H.x) >= 72 && Math.abs(oy(team, H.y) - 34) > 12 && ox(team, tp[0]) > 84 && Math.abs(oy(team, tp[1]) - 34) < 16) {   // 측면 크로스가 바로 앞 수비 발에 맞음 (§88)
+  if (!force && air && ox(team, H.x) >= 72 && Math.abs(oy(team, H.y) - 34) > 12 && ox(team, tp[0]) > 84 && Math.abs(oy(team, tp[1]) - 34) < 16) {   // 측면 크로스가 바로 앞 수비 발에 맞음 (§90)
     const bl = S.P.filter(p => p.team !== team && p.pos !== "GK" && p.ri && hyp(p.x - H.x, p.y - H.y) < 2.4 && (tp[0] - H.x) * (p.x - H.x) + (tp[1] - H.y) * (p.y - H.y) > 0)[0];
     if (bl && rand() < OUT_K.crossBlock) {
       emit(S, "crossBlock", { by: bl.name, team: bl.team, from: H.name, me: bl.me, fromMe: H.me });
@@ -6566,7 +6566,7 @@ function passTo(S, H, r, tp, { air = false, cross = false, force = false, kind, 
   let roll = rand();
   if (roll < err) {                                    // 빗나간 패스: 엉뚱한 곳으로 흘러감
     let ex = clamp(tp[0] + range(-7, 7), -2, 107), ey = clamp(tp[1] + range(-7, 7), -2, 70);
-    if (Math.abs(tp[1] - 34) > 20 && rand() < OUT_K.errTouch) ey = tp[1] < 34 ? range(-3, -0.8) : range(68.8, 71);   // 측면으로 보낸 패스가 길어 터치라인 밖으로 (§88)
+    if (Math.abs(tp[1] - 34) > 20 && rand() < OUT_K.errTouch) ey = tp[1] < 34 ? range(-3, -0.8) : range(68.8, 71);   // 측면으로 보낸 패스가 길어 터치라인 밖으로 (§90)
     launch(S, ex, ey, { air, kind: "pass", then: S2 => landLoose(S2) });
     r.ov = OV(ex, ey, SPRINT, "recv");
     return;
@@ -6579,7 +6579,7 @@ function passTo(S, H, r, tp, { air = false, cross = false, force = false, kind, 
     const [o, , pt, s] = pick;
     const T = 0.1 + s * lr.T;
     launch(S, pt[0], pt[1], { air: air && s > 0.85, T, kind: "pass", then: S2 => {
-      if (hyp(o.x - pt[0], o.y - pt[1]) < 2.8 && Math.abs(pt[1] - 34) > 22 && !o.me && rand() < OUT_K.cutTouch) {   // 측면에서 발을 뻗어 끊었지만 공이 터치라인 밖으로 (§88)
+      if (hyp(o.x - pt[0], o.y - pt[1]) < 2.8 && Math.abs(pt[1] - 34) > 22 && !o.me && rand() < OUT_K.cutTouch) {   // 측면에서 발을 뻗어 끊었지만 공이 터치라인 밖으로 (§90)
         emit(S2, "intercept", { by: o.name, team: o.team, from: H.name, r: r.name, me: o.me, x: pt[0], out: true });
         S2.last = o; S2.lastTeam = o.team;
         launch(S2, clamp(pt[0] + range(-4, 4), 2, 103), pt[1] < 34 ? -1.5 : 69.5, { h: 0.8, kind: "deflect", then: S3 => landLoose(S3) });
@@ -6636,7 +6636,7 @@ function arrive(S, r, from, kind, offside, space = null) {
     const g = dirOf(d.team);
     const mate = ox(d.team, b.x) > 30 && rand() < 0.5 ? S.P.filter(p => p.team === d.team && p !== d && p.ri && hyp(p.x - b.x, p.y - b.y) < 16).sort((p, q) => hyp(p.x - b.x, p.y - b.y) - hyp(q.x - b.x, q.y - b.y))[0] : null;
     if (mate) { S.poss = d.team; S.chain = []; return passTo(S, d, mate, [mate.x, mate.y], { air: true, force: true, kind: "head" }); }
-    if (kind === "cross" && ox(d.team, b.x) < 16 && rand() < OUT_K.headBehind) {    // 자기 골문 앞 크로스를 머리로 골라인 밖으로 (코너킥, §88)
+    if (kind === "cross" && ox(d.team, b.x) < 16 && rand() < OUT_K.headBehind) {    // 자기 골문 앞 크로스를 머리로 골라인 밖으로 (코너킥, §90)
       const gy = b.y + range(-9, 9), ty = Math.abs(gy - 34) < 7 ? 34 + (gy < 34 ? -1 : 1) * range(7, 13) : gy;
       S.deflect = { kind: "clear", t: S.t };
       launch(S, d.team === "us" ? -1.5 : 106.5, clamp(ty, 4, 64), { air: true, h: 3.5, kind: "clear", then: S2 => landLoose(S2) });
@@ -6697,7 +6697,7 @@ function shoot(S, H, opts = {}) {
     q *= 1 + (team === "us" ? 1 : -1) * (S.flow || 0) * 0.3;
     if (H.qMul) q *= H.qMul(kind);
     if (opts.qm) q *= opts.qm;                              // 상황 보정 (프리킥을 옆으로 받아 찬 슈팅: 벽이 뛰어나와 막음)
-    if (opts.pot || kind === "fk") q = clamp(q * (kind === "fk" ? FK_Q : POT_Q), 0.005, 0.2);   // 중거리 시도·직접 프리킥: 전력 보정(conv) 없이 실제 확률 가깝게 (§88)
+    if (opts.pot || kind === "fk") q = clamp(q * (kind === "fk" ? FK_Q : POT_Q), 0.005, 0.2);   // 중거리 시도·직접 프리킥: 전력 보정(conv) 없이 실제 확률 가깝게 (§90)
     else q = clamp(q * (S.conv?.[team] ?? 1), 0.005, 0.8);
     const gk0 = gkOf(S, def); if (gk0 && gk0.stun > 0) q = Math.max(q, 0.35);                       // 골키퍼를 제친 뒤 빈 골문
     const r = rand();
@@ -6774,7 +6774,7 @@ function shotEnd(S) {
     S.last = sh.blocker; S.lastTeam = def;
     if (rand() < 0.3) return overLine("block", 12);
     const g = dirOf(def);
-    if (sh.pot && rand() < 0.75) {                          // 중거리 시도가 몸에 맞고 흘러나옴: 공격하던 쪽 동료 앞으로 (공격이 이어짐, §88)
+    if (sh.pot && rand() < 0.75) {                          // 중거리 시도가 몸에 맞고 흘러나옴: 공격하던 쪽 동료 앞으로 (공격이 이어짐, §90)
       const mt = S.P.filter(p => p.team === team && p !== by && p.ri && p.pos !== "GK" && ox(team, p.x) > 55).sort((a, b) => hyp(a.x - S.ball.x, a.y - S.ball.y) - hyp(b.x - S.ball.x, b.y - S.ball.y))[0];
       if (mt) { launch(S, clamp(mt.x + range(-2, 2), 2, 103), clamp(mt.y + range(-2, 2), 2, 66), { air: rand() < 0.5, h: 1.6, kind: "deflect", then: S2 => landLoose(S2) }); mt.ov = OV(mt.x, mt.y, RUN, "recv"); return; }
     }
@@ -6918,8 +6918,8 @@ function planDecide(S, H) {
   let near = 99; for (const o of S.P) if (o.team !== team && o.ri) near = Math.min(near, hyp(o.x - H.x, o.y - H.y));
   // 좋은 슈팅 자리면 계획과 상관없이 때림
   if (hx >= 70 && dGoal <= 21 && xgAt(hx, hy) * (near < 1.6 ? 0.55 : 1) > 0.17) { shoot(S, H, {}); return true; }
-  // 중거리 시도 (§88): 박스 앞에서 앞이 조금 열리면 가끔 때려 봄. 대부분 막히거나 빗나감 (경기 결과는 거의 그대로, 통계의 슈팅 수가 축구다워짐)
-  // 중거리 시도 (§88): 박스 앞에서 앞이 조금 열리면 가끔 때려 봄. 대부분 막히거나 빗나가고, 흘러나온 공으로 공격이 이어지기도 함
+  // 중거리 시도 (§90): 박스 앞에서 앞이 조금 열리면 가끔 때려 봄. 대부분 막히거나 빗나감 (경기 결과는 거의 그대로, 통계의 슈팅 수가 축구다워짐)
+  // 중거리 시도 (§90): 박스 앞에서 앞이 조금 열리면 가끔 때려 봄. 대부분 막히거나 빗나가고, 흘러나온 공으로 공격이 이어지기도 함
   if (!P.pot && !H.me && !S.bias && !S.scur && !S.script.length && H.pos !== "DF" && hx >= 66 && dGoal > 18 && dGoal <= 30 && Math.abs(hy - 34) < 17 && near > 1.2) {
     P.pot = true;
     if (rand() < POT_P) { shoot(S, H, { kind: "long", pot: true }); return true; }
@@ -7010,8 +7010,8 @@ function duels(S) {
     let p = clamp((S.tk * (ox(H.team, H.x) > 70 ? S.ft : 1) + (d.st.def - H.st.drib) / 85) * (inPlan ? (S.brk?.[H.team] ?? S.brk0) : 1) * (building ? 0.75 : 1), 0.04, 0.75);
     const r = rand();
     if (r < p) {
-      const keep = rand() < 0.75;                            // 뺏어서 가짐 / 발로 쳐 내 흘러감 (해설이 '빼앗았다'라고 말해도 되는지, §88)
-      const toTouch = Math.abs(H.y - 34) > 23 && rand() < OUT_K.touchTackle;   // 터치라인 가까이에서는 발을 뻗어 밖으로 걷어 냄: 상대 스로인 (§88)
+      const keep = rand() < 0.75;                            // 뺏어서 가짐 / 발로 쳐 내 흘러감 (해설이 '빼앗았다'라고 말해도 되는지, §90)
+      const toTouch = Math.abs(H.y - 34) > 23 && rand() < OUT_K.touchTackle;   // 터치라인 가까이에서는 발을 뻗어 밖으로 걷어 냄: 상대 스로인 (§90)
       emit(S, "tackle", { by: d.name, team: d.team, victim: H.name, me: d.me, victimMe: H.me, x: ox(d.team, H.x), loose: !keep || toTouch, out: toTouch });
       H.stun = 0.5; H.ov = null;
       if (toTouch) { S.last = d; S.lastTeam = d.team; S.holder = null; launch(S, clamp(H.x + range(-3, 3), 2, 103), H.y < 34 ? -1.5 : 69.5, { h: 0.6, kind: "deflect", then: S2 => landLoose(S2) }); }
@@ -8338,7 +8338,7 @@ function narrate(state, m, e) {
       }
       break;
     }
-    case "crossBlock": {                                                          // 측면 크로스가 바로 앞 수비 발에 맞음 (§88). 코너킥이면 코너킥 문장이 이어 말함
+    case "crossBlock": {                                                          // 측면 크로스가 바로 앞 수비 발에 맞음 (§90). 코너킥이면 코너킥 문장이 이어 말함
       if (e.me) { my.delta += 0.1 * (m.myPos === "DF" ? CAL.dfk : 1); my.stops = (my.stops || 0) + 1; my.involved = (my.involved || 0) + 1; add(fill(pick(ME_IN_PLAY.crossBlock), { me: m.me }), "me-auto"); }
       else if (e.fromMe) add(fill(pick(BREAK.crossBlockMe), { d: e.by }), "them");
       else if (!quiet() && chance(0.6)) add(fill(pick(BREAK.crossBlock), { d: e.by, a: e.from }), kt(e.team));
@@ -14519,7 +14519,8 @@ const {ENDINGS} = __m["data/endings.js"];
 // 학번 로그인, 입장 확인(게임 열림·차단), 클라우드 저장, 플레이 기록
 // 서버 데이터 모양
 //   fcg_config/main      { open, message, quiet: { on, from, to, message } }   누구나 읽음, 관리자만 씀
-//   fcg_login/{학번}      { key, blocked }                                       누구나 읽음, 관리자만 씀
+//   fcg_login/{학번}      { key, blocked, offline }                              누구나 읽음, 관리자만 씀
+//   offline: 선생님이 켜 준 학생만 인터넷이 없어도 게임을 열 수 있음 (관리자 페이지 학생 목록)
 //   fcg_students/{학번}   { name, created, ...관리자 칸 / play, now, lastSeen (학생이 씀) }
 //   fcg_saves/{학번}      { enc, data, at, summary }                             자기 것만
 //   fcg_rank/{기록}       { uid, run, name, pos, grade, ending, at, s: {부문: 값}, hidden }   로그인한 사람 누구나 읽음 (학번 없음)
@@ -14539,7 +14540,7 @@ const CHECK_EVERY = 3 * 60 * 1000;          // 게임 중 입장 확인 간격
 const SAVE_GAP = 60 * 1000;                 // 클라우드 저장 최소 간격
 const MAX_EVENTS = 500;
 
-let sess = null;            // { sid, key, admin, name, idToken, refreshToken, exp }
+let sess = null;            // { sid, key, admin, offline, name, idToken, refreshToken, exp }
 let play = null;            // 서버에서 받아 온 플레이 기록 (받기 전에는 null → 덮어쓰지 않음)
 let now = null;             // 지금 판 요약
 let dirty = false, onLock = null, timers = [], watching = false;
@@ -14573,7 +14574,7 @@ async function login(id, pw) {
       if (!lg?.key) throw new Error("등록되지 않은 학번입니다. 선생님께 확인해 주세요.");
       if (lg.blocked) throw new Error("지금은 이 학번으로 들어갈 수 없습니다. 선생님께 문의해 주세요.");
       const a = await signIn(studentEmail(id, lg.key), studentPassword(pw));
-      sess = { ...a, admin: false, sid: id, key: lg.key, name: "" };
+      sess = { ...a, admin: false, sid: id, key: lg.key, offline: !!lg.offline, name: "" };   // 오프라인 허용 여부를 기기에도 남겨 둠
     }
   } catch (e) {
     if (e.code) throw new Error(authMessage(e));
@@ -14602,7 +14603,7 @@ async function signup(sid, name, pw, pw2) {
     const a = await signUp(studentEmail(sid, key), studentPassword(pw));
     await setDoc(`fcg_login/${sid}`, { key, blocked: false }, a.idToken, null, { mustNotExist: true });
     await setDoc(`fcg_students/${sid}`, { name, created: new Date(), self: true }, a.idToken, null, { mustNotExist: true });
-    sess = { ...a, admin: false, sid, key, name };
+    sess = { ...a, admin: false, sid, key, offline: false, name };   // 새로 가입한 학생은 오프라인 허용 전
   } catch (e) {
     if (e.code) throw new Error(authMessage(e));
     throw e;
@@ -14632,15 +14633,21 @@ async function afterLogin() {
 
 // ── 입장 확인 ─────────────────────────
 // → { ok } 또는 { ok:false, kind: "login"|"closed"|"blocked"|"relogin"|"offline", message }
+// 선생님 계정과 '오프라인 허용'을 켜 준 학생은 인터넷이 없어도 들어갈 수 있음 (관리자 페이지 학생 목록).
+// 다만 인터넷이 될 때는 서버에 다시 물어봐서, 선생님이 허용을 껐거나 차단했으면 그대로 잠감.
 async function checkAccess() {
   if (!sess) sess = readSess();
   if (!sess) return { ok: false, kind: "login" };
+  const mayOffline = !!(sess.admin || sess.offline);
+  if (mayOffline && !navigator.onLine) return { ok: true };          // 인터넷이 끊긴 게 확실하면 서버 응답(12초)을 기다리지 않고 바로
   let cfg, lg = null;
   try {
     [cfg, lg] = await Promise.all([getDoc("fcg_config/main"), sess.sid ? getDoc(`fcg_login/${encodeURIComponent(sess.sid)}`) : null]);
   } catch (e) {
+    if (mayOffline) return { ok: true };                             // 서버에 못 물어봐도 허용된 사람은 연다
     return { ok: false, kind: "offline", message: e.code === "NETWORK" ? "인터넷에 연결되어 있지 않습니다.\n연결한 뒤 다시 시도해 주세요." : `서버에 연결하지 못했습니다. (${e.code || e.message})` };
   }
+  if (sess.sid && lg && sess.offline !== !!lg.offline) { sess.offline = !!lg.offline; writeSess(sess); }   // 서버가 최신: 허용을 껐으면 다음부터 잠김
   if (sess.admin) return { ok: true };                                         // 선생님은 언제나
   if (!lg?.key) return { ok: false, kind: "relogin", message: "등록되지 않은 학번입니다. 선생님께 확인해 주세요." };
   if (lg.key !== sess.key) return { ok: false, kind: "relogin", message: "비밀번호가 바뀌었습니다. 새 비밀번호로 다시 로그인해 주세요." };
@@ -19954,7 +19961,7 @@ const app = {
   draft: null,
   settings: loadSettings(),
 
-  go(view) { this.view = view; this._enter = true; this.render(); this._enter = false; window.scrollTo(0, 0); },
+  go(view) { this.view = view; this._enter = true; window.scrollTo(0, 0); this.render(); this._enter = false; },   // 맨 위로 올리는 건 render 전에 (뒤에 하면 화면이 잡아 둔 자리를 덮어씀)
   toTitle() { this.state = null; this.go("title"); },
 
   startGame(player) {
@@ -20165,7 +20172,38 @@ function renderTitle(app) {
   });
 }
 
+// ── 화면을 열 때 자동 스크롤 ──
+// 단톡방은 최신 글(맨 아래), 일정은 이번 주가 보이게 잡습니다. 화면이 바뀌며 높이가 늦게 바뀌어도
+// (진입 연출·글꼴 로딩) 자리를 다시 잡고, 그 사이 사용자가 직접 움직이면 그대로 둡니다.
+let heldScroll = null;
+function holdScroll(pin) {
+  if (heldScroll) heldScroll();
+  let raf = 0, timer = 0, stopped = false;
+  const run = () => { if (!stopped) pin(); };
+  const stop = () => {
+    stopped = true;
+    if (heldScroll === stop) heldScroll = null;
+    cancelAnimationFrame(raf); clearTimeout(timer);
+    ["wheel", "touchstart", "keydown"].forEach(t => window.removeEventListener(t, stop, true));
+  };
+  heldScroll = stop;
+  ["wheel", "touchstart", "keydown"].forEach(t => window.addEventListener(t, stop, true));
+  run();
+  raf = requestAnimationFrame(() => { run(); raf = requestAnimationFrame(run); });
+  if (document.fonts?.ready?.then) document.fonts.ready.then(run);
+  timer = setTimeout(() => { run(); stop(); }, 800);
+}
+
+// 단톡방 맨 아래 글: 화면 아래에 붙은 메뉴(.nav)에 가리지 않게 그 위까지
+function scrollChatEnd(el) {
+  if (!el || !el.isConnected) return;
+  const navH = document.querySelector(".nav")?.offsetHeight || 0;
+  const bottom = el.getBoundingClientRect().bottom + window.scrollY;
+  window.scrollTo(0, Math.max(0, Math.round(bottom + navH + 8 - window.innerHeight)));
+}
+
 function renderShell(app) {
+  if (heldScroll) heldScroll();   // 앞 화면이 잡아 둔 자동 스크롤은 여기서 끝냅니다
   const s = app.state;
   const info = turnInfo(s);
   const unread = unreadMail(s);   // 단톡방 글은 빼고 셈 (§74)
@@ -20224,8 +20262,10 @@ function renderShell(app) {
     const when = x => { const ti = turnInfo({ calendar: { turn: x.turn } }); return [ago(x, s), ti ? `중${ti.grade} ${ti.month}월 ${ti.week}주차` : ""].filter(Boolean).join(" · "); };
     mailModal(m, { list, onRead: () => app.render(), avatar: avatarOf, when, important: isImportant }); app.render();
   }));
-  if (app.view === "schedule") r.querySelector(".week.now")?.scrollIntoView({ block: "center" });
-  if (app.view === "inbox" && app.sub.itab === "group") r.querySelector("#groupchat")?.lastElementChild?.scrollIntoView({ block: "end" });   // 단톡방은 최신 글(맨 아래)부터 보이게
+  const nowWeek = app.view === "schedule" ? r.querySelector(".week.now") : null;
+  if (nowWeek) holdScroll(() => nowWeek.scrollIntoView({ block: "center" }));                       // 일정은 이번 주가 가운데 보이게
+  const chat = app.view === "inbox" && app.sub.itab === "group" ? r.querySelector("#groupchat") : null;
+  if (chat) holdScroll(() => scrollChatEnd(chat));                                                  // 단톡방은 최신 글(맨 아래)부터 보이게
 }
 
 // ── 전체 화면 버튼 (모든 화면 오른쪽 위) ──
@@ -20257,6 +20297,7 @@ bgm.set(app.settings.music);
 
 // ── 학번 로그인과 입장 확인 (js/net/online.js) ──
 // 게임이 닫혀 있거나(관리자 페이지 스위치) 차단된 학번이면 들어갈 수 없습니다. 인터넷이 없으면 들어갈 수 없습니다.
+// 다만 선생님이 '오프라인 허용'을 켜 준 학생은 인터넷이 없어도 이 기기에 저장하며 플레이합니다 (js/net/online.js checkAccess).
 async function boot(notice = "") {
   // 개발용: 내 컴퓨터(localhost)에서 ?dev 를 붙여 열면 로그인 없이 (기록도 남지 않음)
   if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).has("dev")) { app.render(); return; }

@@ -596,7 +596,7 @@ function narrate(state, m, e) {
       }
       break;
     }
-    case "crossBlock": {                                                          // 측면 크로스가 바로 앞 수비 발에 맞음 (§88). 코너킥이면 코너킥 문장이 이어 말함
+    case "crossBlock": {                                                          // 측면 크로스가 바로 앞 수비 발에 맞음 (§90). 코너킥이면 코너킥 문장이 이어 말함
       if (e.me) { my.delta += 0.1 * (m.myPos === "DF" ? CAL.dfk : 1); my.stops = (my.stops || 0) + 1; my.involved = (my.involved || 0) + 1; add(fill(pick(ME_IN_PLAY.crossBlock), { me: m.me }), "me-auto"); }
       else if (e.fromMe) add(fill(pick(BREAK.crossBlockMe), { d: e.by }), "them");
       else if (!quiet() && chance(0.6)) add(fill(pick(BREAK.crossBlock), { d: e.by, a: e.from }), kt(e.team));

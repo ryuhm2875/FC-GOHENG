@@ -12,7 +12,7 @@ if (process.env.GAIN) TUNE.gain = +process.env.GAIN;   // 성장 배율 시험
 // 경기 수치 조절값 시험: CAL="brk:0.2,c0:1.5" node tools/dev/baseline.mjs 30
 if (process.env.CAL) for (const kv of process.env.CAL.split(",")) { const [k, v] = kv.split(":"); CAL[k] = +v; }
 import { setSimK } from "../../js/engine/sim.js";
-if (process.env.SIMK) setSimK(Object.fromEntries(process.env.SIMK.split(",").map(kv => { const [k, v] = kv.split(":"); return [k, +v]; })));   // 경기장 조절값 시험 (§88): SIMK="potP:0,crossBlock:0"
+if (process.env.SIMK) setSimK(Object.fromEntries(process.env.SIMK.split(",").map(kv => { const [k, v] = kv.split(":"); return [k, +v]; })));   // 경기장 조절값 시험 (§90): SIMK="potP:0,crossBlock:0"
 
 const N = +process.argv[2] || 120;
 const KEY = { FW: ["shoot", "dribble", "sprint"], MF: ["pass", "tactics", "conditioning"], DF: ["defend", "weight", "tactics"] };

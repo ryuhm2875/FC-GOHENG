@@ -1,7 +1,8 @@
 // 학번 로그인, 입장 확인(게임 열림·차단), 클라우드 저장, 플레이 기록
 // 서버 데이터 모양
 //   fcg_config/main      { open, message, quiet: { on, from, to, message } }   누구나 읽음, 관리자만 씀
-//   fcg_login/{학번}      { key, blocked }                                       누구나 읽음, 관리자만 씀
+//   fcg_login/{학번}      { key, blocked, offline }                              누구나 읽음, 관리자만 씀
+//   offline: 선생님이 켜 준 학생만 인터넷이 없어도 게임을 열 수 있음 (관리자 페이지 학생 목록)
 //   fcg_students/{학번}   { name, created, ...관리자 칸 / play, now, lastSeen (학생이 씀) }
 //   fcg_saves/{학번}      { enc, data, at, summary }                             자기 것만
 //   fcg_rank/{기록}       { uid, run, name, pos, grade, ending, at, s: {부문: 값}, hidden }   로그인한 사람 누구나 읽음 (학번 없음)
@@ -22,7 +23,7 @@ const CHECK_EVERY = 3 * 60 * 1000;          // 게임 중 입장 확인 간격
 const SAVE_GAP = 60 * 1000;                 // 클라우드 저장 최소 간격
 const MAX_EVENTS = 500;
 
-let sess = null;            // { sid, key, admin, name, idToken, refreshToken, exp }
+let sess = null;            // { sid, key, admin, offline, name, idToken, refreshToken, exp }
 let play = null;            // 서버에서 받아 온 플레이 기록 (받기 전에는 null → 덮어쓰지 않음)
 let now = null;             // 지금 판 요약
 let dirty = false, onLock = null, timers = [], watching = false;
@@ -56,7 +57,7 @@ export async function login(id, pw) {
       if (!lg?.key) throw new Error("등록되지 않은 학번입니다. 선생님께 확인해 주세요.");
       if (lg.blocked) throw new Error("지금은 이 학번으로 들어갈 수 없습니다. 선생님께 문의해 주세요.");
       const a = await signIn(studentEmail(id, lg.key), studentPassword(pw));
-      sess = { ...a, admin: false, sid: id, key: lg.key, name: "" };
+      sess = { ...a, admin: false, sid: id, key: lg.key, offline: !!lg.offline, name: "" };   // 오프라인 허용 여부를 기기에도 남겨 둠
     }
   } catch (e) {
     if (e.code) throw new Error(authMessage(e));
@@ -85,7 +86,7 @@ export async function signup(sid, name, pw, pw2) {
     const a = await signUp(studentEmail(sid, key), studentPassword(pw));
     await setDoc(`fcg_login/${sid}`, { key, blocked: false }, a.idToken, null, { mustNotExist: true });
     await setDoc(`fcg_students/${sid}`, { name, created: new Date(), self: true }, a.idToken, null, { mustNotExist: true });
-    sess = { ...a, admin: false, sid, key, name };
+    sess = { ...a, admin: false, sid, key, offline: false, name };   // 새로 가입한 학생은 오프라인 허용 전
   } catch (e) {
     if (e.code) throw new Error(authMessage(e));
     throw e;
@@ -115,15 +116,21 @@ async function afterLogin() {
 
 // ── 입장 확인 ─────────────────────────
 // → { ok } 또는 { ok:false, kind: "login"|"closed"|"blocked"|"relogin"|"offline", message }
+// 선생님 계정과 '오프라인 허용'을 켜 준 학생은 인터넷이 없어도 들어갈 수 있음 (관리자 페이지 학생 목록).
+// 다만 인터넷이 될 때는 서버에 다시 물어봐서, 선생님이 허용을 껐거나 차단했으면 그대로 잠감.
 export async function checkAccess() {
   if (!sess) sess = readSess();
   if (!sess) return { ok: false, kind: "login" };
+  const mayOffline = !!(sess.admin || sess.offline);
+  if (mayOffline && !navigator.onLine) return { ok: true };          // 인터넷이 끊긴 게 확실하면 서버 응답(12초)을 기다리지 않고 바로
   let cfg, lg = null;
   try {
     [cfg, lg] = await Promise.all([getDoc("fcg_config/main"), sess.sid ? getDoc(`fcg_login/${encodeURIComponent(sess.sid)}`) : null]);
   } catch (e) {
+    if (mayOffline) return { ok: true };                             // 서버에 못 물어봐도 허용된 사람은 연다
     return { ok: false, kind: "offline", message: e.code === "NETWORK" ? "인터넷에 연결되어 있지 않습니다.\n연결한 뒤 다시 시도해 주세요." : `서버에 연결하지 못했습니다. (${e.code || e.message})` };
   }
+  if (sess.sid && lg && sess.offline !== !!lg.offline) { sess.offline = !!lg.offline; writeSess(sess); }   // 서버가 최신: 허용을 껐으면 다음부터 잠김
   if (sess.admin) return { ok: true };                                         // 선생님은 언제나
   if (!lg?.key) return { ok: false, kind: "relogin", message: "등록되지 않은 학번입니다. 선생님께 확인해 주세요." };
   if (lg.key !== sess.key) return { ok: false, kind: "relogin", message: "비밀번호가 바뀌었습니다. 새 비밀번호로 다시 로그인해 주세요." };

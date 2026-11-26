@@ -59,8 +59,8 @@ function threat(ax, ay) {
 }
 // 슈팅 기대 득점 (그 팀 기준 좌표)
 export const setSimK = kv => { for (const [k, v] of Object.entries(kv)) { if (k === "potU") POT_U = v; else if (k === "potP") POT_P = v; else if (k === "fkQ") FK_Q = v; else if (k in OUT_K) OUT_K[k] = v; } };   // 점검 도구용 (SIMK="potP:0,crossBlock:0")
-export const OUT_K = { headBehind: 0.3, crossBlock: 0.3, touchTackle: 0.7, clearTouch: 0.5, errTouch: 0.7, cutTouch: 0.55 };   // §88 공이 라인 밖으로 나가는 경우 (tools/dev/shot-audit.mjs 재개 수)
-export let POT_U = 0.25, POT_P = 0.2, FK_Q = 1.2; export const POT_Q = 1;   // §88 중거리 시도 선택 가치·득점 배율, 직접 프리킥 득점 배율 (tools/dev/shot-audit.mjs로 맞춤)
+export const OUT_K = { headBehind: 0.3, crossBlock: 0.3, touchTackle: 0.7, clearTouch: 0.5, errTouch: 0.7, cutTouch: 0.55 };   // §90 공이 라인 밖으로 나가는 경우 (tools/dev/shot-audit.mjs 재개 수)
+export let POT_U = 0.25, POT_P = 0.2, FK_Q = 1.2; export const POT_Q = 1;   // §90 중거리 시도 선택 가치·득점 배율, 직접 프리킥 득점 배율 (tools/dev/shot-audit.mjs로 맞춤)
 export function xgAt(ax, ay) {
   const dx = Math.max(0.5, 105 - ax), dy = Math.abs(34 - ay), d = hyp(dx, dy);
   const cos = dx / d;
@@ -536,7 +536,7 @@ function decide(S) {
       const q = xgAt(hx, hy) * (near < 1.6 ? 0.55 : near < 3 ? 0.8 : 1);
       opts.push({ k: "shoot", u: (q * 1.5 + 0.02) * noise() * (S.shootMul?.[team] ?? 1) });
     } else if (POT_U && hx >= 66 && dGoal > 21 && dGoal <= 30 && Math.abs(hy - 34) < 17 && near > 1.5 && !H.me && !S.bias && !S.scur && !S.script.length && !(S.plan && !S.plan.recycle)) {
-      opts.push({ k: "shoot", pot: true, u: POT_U * (near > 4 ? 1.4 : 1) * noise() * (S.shootMul?.[team] ?? 1) });   // 중거리 시도 (§88): 공격 계획 없이 박스 앞에서 공을 잡으면 가끔 때려 봄. 대부분 막히거나 빗나감
+      opts.push({ k: "shoot", pot: true, u: POT_U * (near > 4 ? 1.4 : 1) * noise() * (S.shootMul?.[team] ?? 1) });   // 중거리 시도 (§90): 공격 계획 없이 박스 앞에서 공을 잡으면 가끔 때려 봄. 대부분 막히거나 빗나감
     }
     // 패스
     const off = offLine(S, team);
@@ -633,7 +633,7 @@ function act(S, H, o) {
     return;
   }
   if (o.k === "clear") {
-    const touch = Math.abs(H.y - 34) > 16 && rand() < OUT_K.clearTouch;   // 측면에서 몰리면 터치라인 밖으로 (§88)
+    const touch = Math.abs(H.y - 34) > 16 && rand() < OUT_K.clearTouch;   // 측면에서 몰리면 터치라인 밖으로 (§90)
     const tx = clamp(H.x + g * (touch ? range(12, 28) : range(35, 50)), 3, 102), ty = touch ? (H.y < 34 ? -3 : 71) : clamp(H.y + range(-18, 18), 2, 66);
     emit(S, "clear", { by: H.name, team: H.team, me: H.me, x: ox(H.team, H.x) });
     launch(S, tx, ty, { air: true, h: 9, kind: "clear", then: S2 => landLoose(S2) });
@@ -654,7 +654,7 @@ export function passTo(S, H, r, tp, { air = false, cross = false, force = false,
   const d = hyp(tp[0] - S.ball.x, tp[1] - S.ball.y);
   const offside = !force && !noOff && ox(team, r.x) > offLine(S, team) + 0.3 && ox(team, tp[0]) > 52.5;
   S.passD = d;                                             // 방금 찬 패스 길이 (해설이 길게라고 말해도 되는지)
-  S.passAir = !!air;                                       // 방금 찬 패스가 떴는지 (해설이 '머리로'라고 말해도 되는지, §88)
+  S.passAir = !!air;                                       // 방금 찬 패스가 떴는지 (해설이 '머리로'라고 말해도 되는지, §90)
   const lr = laneRisk(S, H, r, tp, air);
   const pk = kind || (cross ? "cross" : air ? (d > 40 ? "long" : "air") : (ox(team, tp[0]) - ox(team, H.x) > 14 && ox(team, tp[0]) > 60 ? "through" : "ground"));
   emit(S, "pass", { from: H.name, to: r.name, team, kind: pk, fx: ox(team, H.x), fy: oy(team, H.y), tx: ox(team, tp[0]), ty: oy(team, tp[1]), me: H.me, toMe: r.me });
@@ -669,7 +669,7 @@ export function passTo(S, H, r, tp, { air = false, cross = false, force = false,
   S.last = H; S.lastTeam = team;
   S.chain.push(H);
   H.ov = null;
-  if (!force && air && ox(team, H.x) >= 72 && Math.abs(oy(team, H.y) - 34) > 12 && ox(team, tp[0]) > 84 && Math.abs(oy(team, tp[1]) - 34) < 16) {   // 측면 크로스가 바로 앞 수비 발에 맞음 (§88)
+  if (!force && air && ox(team, H.x) >= 72 && Math.abs(oy(team, H.y) - 34) > 12 && ox(team, tp[0]) > 84 && Math.abs(oy(team, tp[1]) - 34) < 16) {   // 측면 크로스가 바로 앞 수비 발에 맞음 (§90)
     const bl = S.P.filter(p => p.team !== team && p.pos !== "GK" && p.ri && hyp(p.x - H.x, p.y - H.y) < 2.4 && (tp[0] - H.x) * (p.x - H.x) + (tp[1] - H.y) * (p.y - H.y) > 0)[0];
     if (bl && rand() < OUT_K.crossBlock) {
       emit(S, "crossBlock", { by: bl.name, team: bl.team, from: H.name, me: bl.me, fromMe: H.me });
@@ -686,7 +686,7 @@ export function passTo(S, H, r, tp, { air = false, cross = false, force = false,
   let roll = rand();
   if (roll < err) {                                    // 빗나간 패스: 엉뚱한 곳으로 흘러감
     let ex = clamp(tp[0] + range(-7, 7), -2, 107), ey = clamp(tp[1] + range(-7, 7), -2, 70);
-    if (Math.abs(tp[1] - 34) > 20 && rand() < OUT_K.errTouch) ey = tp[1] < 34 ? range(-3, -0.8) : range(68.8, 71);   // 측면으로 보낸 패스가 길어 터치라인 밖으로 (§88)
+    if (Math.abs(tp[1] - 34) > 20 && rand() < OUT_K.errTouch) ey = tp[1] < 34 ? range(-3, -0.8) : range(68.8, 71);   // 측면으로 보낸 패스가 길어 터치라인 밖으로 (§90)
     launch(S, ex, ey, { air, kind: "pass", then: S2 => landLoose(S2) });
     r.ov = OV(ex, ey, SPRINT, "recv");
     return;
@@ -699,7 +699,7 @@ export function passTo(S, H, r, tp, { air = false, cross = false, force = false,
     const [o, , pt, s] = pick;
     const T = 0.1 + s * lr.T;
     launch(S, pt[0], pt[1], { air: air && s > 0.85, T, kind: "pass", then: S2 => {
-      if (hyp(o.x - pt[0], o.y - pt[1]) < 2.8 && Math.abs(pt[1] - 34) > 22 && !o.me && rand() < OUT_K.cutTouch) {   // 측면에서 발을 뻗어 끊었지만 공이 터치라인 밖으로 (§88)
+      if (hyp(o.x - pt[0], o.y - pt[1]) < 2.8 && Math.abs(pt[1] - 34) > 22 && !o.me && rand() < OUT_K.cutTouch) {   // 측면에서 발을 뻗어 끊었지만 공이 터치라인 밖으로 (§90)
         emit(S2, "intercept", { by: o.name, team: o.team, from: H.name, r: r.name, me: o.me, x: pt[0], out: true });
         S2.last = o; S2.lastTeam = o.team;
         launch(S2, clamp(pt[0] + range(-4, 4), 2, 103), pt[1] < 34 ? -1.5 : 69.5, { h: 0.8, kind: "deflect", then: S3 => landLoose(S3) });
@@ -756,7 +756,7 @@ function arrive(S, r, from, kind, offside, space = null) {
     const g = dirOf(d.team);
     const mate = ox(d.team, b.x) > 30 && rand() < 0.5 ? S.P.filter(p => p.team === d.team && p !== d && p.ri && hyp(p.x - b.x, p.y - b.y) < 16).sort((p, q) => hyp(p.x - b.x, p.y - b.y) - hyp(q.x - b.x, q.y - b.y))[0] : null;
     if (mate) { S.poss = d.team; S.chain = []; return passTo(S, d, mate, [mate.x, mate.y], { air: true, force: true, kind: "head" }); }
-    if (kind === "cross" && ox(d.team, b.x) < 16 && rand() < OUT_K.headBehind) {    // 자기 골문 앞 크로스를 머리로 골라인 밖으로 (코너킥, §88)
+    if (kind === "cross" && ox(d.team, b.x) < 16 && rand() < OUT_K.headBehind) {    // 자기 골문 앞 크로스를 머리로 골라인 밖으로 (코너킥, §90)
       const gy = b.y + range(-9, 9), ty = Math.abs(gy - 34) < 7 ? 34 + (gy < 34 ? -1 : 1) * range(7, 13) : gy;
       S.deflect = { kind: "clear", t: S.t };
       launch(S, d.team === "us" ? -1.5 : 106.5, clamp(ty, 4, 64), { air: true, h: 3.5, kind: "clear", then: S2 => landLoose(S2) });
@@ -817,7 +817,7 @@ export function shoot(S, H, opts = {}) {
     q *= 1 + (team === "us" ? 1 : -1) * (S.flow || 0) * 0.3;
     if (H.qMul) q *= H.qMul(kind);
     if (opts.qm) q *= opts.qm;                              // 상황 보정 (프리킥을 옆으로 받아 찬 슈팅: 벽이 뛰어나와 막음)
-    if (opts.pot || kind === "fk") q = clamp(q * (kind === "fk" ? FK_Q : POT_Q), 0.005, 0.2);   // 중거리 시도·직접 프리킥: 전력 보정(conv) 없이 실제 확률 가깝게 (§88)
+    if (opts.pot || kind === "fk") q = clamp(q * (kind === "fk" ? FK_Q : POT_Q), 0.005, 0.2);   // 중거리 시도·직접 프리킥: 전력 보정(conv) 없이 실제 확률 가깝게 (§90)
     else q = clamp(q * (S.conv?.[team] ?? 1), 0.005, 0.8);
     const gk0 = gkOf(S, def); if (gk0 && gk0.stun > 0) q = Math.max(q, 0.35);                       // 골키퍼를 제친 뒤 빈 골문
     const r = rand();
@@ -894,7 +894,7 @@ function shotEnd(S) {
     S.last = sh.blocker; S.lastTeam = def;
     if (rand() < 0.3) return overLine("block", 12);
     const g = dirOf(def);
-    if (sh.pot && rand() < 0.75) {                          // 중거리 시도가 몸에 맞고 흘러나옴: 공격하던 쪽 동료 앞으로 (공격이 이어짐, §88)
+    if (sh.pot && rand() < 0.75) {                          // 중거리 시도가 몸에 맞고 흘러나옴: 공격하던 쪽 동료 앞으로 (공격이 이어짐, §90)
       const mt = S.P.filter(p => p.team === team && p !== by && p.ri && p.pos !== "GK" && ox(team, p.x) > 55).sort((a, b) => hyp(a.x - S.ball.x, a.y - S.ball.y) - hyp(b.x - S.ball.x, b.y - S.ball.y))[0];
       if (mt) { launch(S, clamp(mt.x + range(-2, 2), 2, 103), clamp(mt.y + range(-2, 2), 2, 66), { air: rand() < 0.5, h: 1.6, kind: "deflect", then: S2 => landLoose(S2) }); mt.ov = OV(mt.x, mt.y, RUN, "recv"); return; }
     }
@@ -1038,8 +1038,8 @@ function planDecide(S, H) {
   let near = 99; for (const o of S.P) if (o.team !== team && o.ri) near = Math.min(near, hyp(o.x - H.x, o.y - H.y));
   // 좋은 슈팅 자리면 계획과 상관없이 때림
   if (hx >= 70 && dGoal <= 21 && xgAt(hx, hy) * (near < 1.6 ? 0.55 : 1) > 0.17) { shoot(S, H, {}); return true; }
-  // 중거리 시도 (§88): 박스 앞에서 앞이 조금 열리면 가끔 때려 봄. 대부분 막히거나 빗나감 (경기 결과는 거의 그대로, 통계의 슈팅 수가 축구다워짐)
-  // 중거리 시도 (§88): 박스 앞에서 앞이 조금 열리면 가끔 때려 봄. 대부분 막히거나 빗나가고, 흘러나온 공으로 공격이 이어지기도 함
+  // 중거리 시도 (§90): 박스 앞에서 앞이 조금 열리면 가끔 때려 봄. 대부분 막히거나 빗나감 (경기 결과는 거의 그대로, 통계의 슈팅 수가 축구다워짐)
+  // 중거리 시도 (§90): 박스 앞에서 앞이 조금 열리면 가끔 때려 봄. 대부분 막히거나 빗나가고, 흘러나온 공으로 공격이 이어지기도 함
   if (!P.pot && !H.me && !S.bias && !S.scur && !S.script.length && H.pos !== "DF" && hx >= 66 && dGoal > 18 && dGoal <= 30 && Math.abs(hy - 34) < 17 && near > 1.2) {
     P.pot = true;
     if (rand() < POT_P) { shoot(S, H, { kind: "long", pot: true }); return true; }
@@ -1130,8 +1130,8 @@ function duels(S) {
     let p = clamp((S.tk * (ox(H.team, H.x) > 70 ? S.ft : 1) + (d.st.def - H.st.drib) / 85) * (inPlan ? (S.brk?.[H.team] ?? S.brk0) : 1) * (building ? 0.75 : 1), 0.04, 0.75);
     const r = rand();
     if (r < p) {
-      const keep = rand() < 0.75;                            // 뺏어서 가짐 / 발로 쳐 내 흘러감 (해설이 '빼앗았다'라고 말해도 되는지, §88)
-      const toTouch = Math.abs(H.y - 34) > 23 && rand() < OUT_K.touchTackle;   // 터치라인 가까이에서는 발을 뻗어 밖으로 걷어 냄: 상대 스로인 (§88)
+      const keep = rand() < 0.75;                            // 뺏어서 가짐 / 발로 쳐 내 흘러감 (해설이 '빼앗았다'라고 말해도 되는지, §90)
+      const toTouch = Math.abs(H.y - 34) > 23 && rand() < OUT_K.touchTackle;   // 터치라인 가까이에서는 발을 뻗어 밖으로 걷어 냄: 상대 스로인 (§90)
       emit(S, "tackle", { by: d.name, team: d.team, victim: H.name, me: d.me, victimMe: H.me, x: ox(d.team, H.x), loose: !keep || toTouch, out: toTouch });
       H.stun = 0.5; H.ov = null;
       if (toTouch) { S.last = d; S.lastTeam = d.team; S.holder = null; launch(S, clamp(H.x + range(-3, 3), 2, 103), H.y < 34 ? -1.5 : 69.5, { h: 0.6, kind: "deflect", then: S2 => landLoose(S2) }); }

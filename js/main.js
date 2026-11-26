@@ -46,7 +46,7 @@ const app = {
   draft: null,
   settings: loadSettings(),
 
-  go(view) { this.view = view; this._enter = true; this.render(); this._enter = false; window.scrollTo(0, 0); },
+  go(view) { this.view = view; this._enter = true; window.scrollTo(0, 0); this.render(); this._enter = false; },   // 맨 위로 올리는 건 render 전에 (뒤에 하면 화면이 잡아 둔 자리를 덮어씀)
   toTitle() { this.state = null; this.go("title"); },
 
   startGame(player) {
@@ -257,7 +257,38 @@ function renderTitle(app) {
   });
 }
 
+// ── 화면을 열 때 자동 스크롤 ──
+// 단톡방은 최신 글(맨 아래), 일정은 이번 주가 보이게 잡습니다. 화면이 바뀌며 높이가 늦게 바뀌어도
+// (진입 연출·글꼴 로딩) 자리를 다시 잡고, 그 사이 사용자가 직접 움직이면 그대로 둡니다.
+let heldScroll = null;
+function holdScroll(pin) {
+  if (heldScroll) heldScroll();
+  let raf = 0, timer = 0, stopped = false;
+  const run = () => { if (!stopped) pin(); };
+  const stop = () => {
+    stopped = true;
+    if (heldScroll === stop) heldScroll = null;
+    cancelAnimationFrame(raf); clearTimeout(timer);
+    ["wheel", "touchstart", "keydown"].forEach(t => window.removeEventListener(t, stop, true));
+  };
+  heldScroll = stop;
+  ["wheel", "touchstart", "keydown"].forEach(t => window.addEventListener(t, stop, true));
+  run();
+  raf = requestAnimationFrame(() => { run(); raf = requestAnimationFrame(run); });
+  if (document.fonts?.ready?.then) document.fonts.ready.then(run);
+  timer = setTimeout(() => { run(); stop(); }, 800);
+}
+
+// 단톡방 맨 아래 글: 화면 아래에 붙은 메뉴(.nav)에 가리지 않게 그 위까지
+function scrollChatEnd(el) {
+  if (!el || !el.isConnected) return;
+  const navH = document.querySelector(".nav")?.offsetHeight || 0;
+  const bottom = el.getBoundingClientRect().bottom + window.scrollY;
+  window.scrollTo(0, Math.max(0, Math.round(bottom + navH + 8 - window.innerHeight)));
+}
+
 function renderShell(app) {
+  if (heldScroll) heldScroll();   // 앞 화면이 잡아 둔 자동 스크롤은 여기서 끝냅니다
   const s = app.state;
   const info = turnInfo(s);
   const unread = unreadMail(s);   // 단톡방 글은 빼고 셈 (§74)
@@ -316,8 +347,10 @@ function renderShell(app) {
     const when = x => { const ti = turnInfo({ calendar: { turn: x.turn } }); return [ago(x, s), ti ? `중${ti.grade} ${ti.month}월 ${ti.week}주차` : ""].filter(Boolean).join(" · "); };
     mailModal(m, { list, onRead: () => app.render(), avatar: avatarOf, when, important: isImportant }); app.render();
   }));
-  if (app.view === "schedule") r.querySelector(".week.now")?.scrollIntoView({ block: "center" });
-  if (app.view === "inbox" && app.sub.itab === "group") r.querySelector("#groupchat")?.lastElementChild?.scrollIntoView({ block: "end" });   // 단톡방은 최신 글(맨 아래)부터 보이게
+  const nowWeek = app.view === "schedule" ? r.querySelector(".week.now") : null;
+  if (nowWeek) holdScroll(() => nowWeek.scrollIntoView({ block: "center" }));                       // 일정은 이번 주가 가운데 보이게
+  const chat = app.view === "inbox" && app.sub.itab === "group" ? r.querySelector("#groupchat") : null;
+  if (chat) holdScroll(() => scrollChatEnd(chat));                                                  // 단톡방은 최신 글(맨 아래)부터 보이게
 }
 
 // ── 전체 화면 버튼 (모든 화면 오른쪽 위) ──
@@ -349,6 +382,7 @@ bgm.set(app.settings.music);
 
 // ── 학번 로그인과 입장 확인 (js/net/online.js) ──
 // 게임이 닫혀 있거나(관리자 페이지 스위치) 차단된 학번이면 들어갈 수 없습니다. 인터넷이 없으면 들어갈 수 없습니다.
+// 다만 선생님이 '오프라인 허용'을 켜 준 학생은 인터넷이 없어도 이 기기에 저장하며 플레이합니다 (js/net/online.js checkAccess).
 async function boot(notice = "") {
   // 개발용: 내 컴퓨터(localhost)에서 ?dev 를 붙여 열면 로그인 없이 (기록도 남지 않음)
   if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).has("dev")) { app.render(); return; }

@@ -1,4 +1,4 @@
-// 슈팅·재개 통계 점검 (§88): 경기당 슈팅·유효·골, 골/슈팅 비율, 우리 유효 슈팅이 전부 골인 경기 비율, 중거리 시도, 스로인·코너킥 수
+// 슈팅·재개 통계 점검 (§90): 경기당 슈팅·유효·골, 골/슈팅 비율, 우리 유효 슈팅이 전부 골인 경기 비율, 중거리 시도, 스로인·코너킥 수
 // node tools/dev/shot-audit.mjs [경기 수]  PICK=auto|random  CAL="cu:5"  SIMK="potP:0"
 import { setSeed, rand } from "../../js/rng.js";
 import { rollPlayer, newGame } from "../../js/state.js";

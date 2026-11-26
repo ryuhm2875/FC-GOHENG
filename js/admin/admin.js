@@ -58,7 +58,7 @@ async function loadAll() {
   const t = await tok();
   const [logins, docs, c] = await Promise.all([listDocs("fcg_login"), listDocs("fcg_students", t), getDoc("fcg_config/main")]);
   const byId = new Map(docs.map(d => [d.id, d]));
-  students = logins.map(l => ({ sid: l.id, key: l.key, blocked: !!l.blocked, ...(byId.get(l.id) || {}) }));
+  students = logins.map(l => ({ sid: l.id, key: l.key, blocked: !!l.blocked, offline: !!l.offline, ...(byId.get(l.id) || {}) }));
   cfg = c || { open: true, signup: true, message: "", quiet: { on: false, from: "22:00", to: "07:00", message: "" } };
 }
 
@@ -151,7 +151,7 @@ function studentsTab(main) {
         <thead><tr>${th("sid", "학번")}${th("name", "이름")}${th("status", "상태")}${th("when", "진행")}${th("ovr", "종합", "num")}${th("tend", "경기 성향")}${th("minutes", "플레이", "num")}${th("seen", "마지막 접속")}<th></th></tr></thead>
         <tbody>${rows.map(s => `<tr class="${s.blocked ? "blocked" : ""}">
           <td>${esc(s.sid)}</td><td>${esc(s.name || "")}${s.self ? ` <span class="tag" title="학생이 직접 가입">가입</span>` : ""}</td>
-          <td>${s.blocked ? `<span class="tag off">차단</span>` : `<span class="tag on">사용</span>`}</td>
+          <td>${s.blocked ? `<span class="tag off">차단</span>` : `<span class="tag on">사용</span>`}${s.offline ? ` <span class="tag safe" title="인터넷이 없어도 게임을 열 수 있음">오프라인</span>` : ""}</td>
           <td>${s.now ? `${esc(s.now.when)}${s.now.ending ? ` · <b>${esc(s.now.ending)}</b>` : ""}<br><small class="mute">${esc(s.now.pos)}${s.now.detail ? ` ${esc(s.now.detail)}` : ""} · ${s.play?.run || 1}번째 판</small>` : `<span class="mute">아직 시작 전</span>`}</td>
           <td class="num">${s.now?.ovr ?? "–"}</td>
           <td>${tagOf(s.t)}</td>
@@ -160,11 +160,13 @@ function studentsTab(main) {
           <td><div class="row" style="flex-wrap:nowrap">
             <button class="btn sm" data-detail="${esc(s.sid)}">상세</button>
             <button class="btn sm" data-block="${esc(s.sid)}">${s.blocked ? "해제" : "차단"}</button>
+            <button class="btn sm" data-offline="${esc(s.sid)}">${s.offline ? "오프라인 해제" : "오프라인 허용"}</button>
             <button class="btn sm" data-name="${esc(s.sid)}">이름</button>
             <button class="btn sm" data-pw="${esc(s.sid)}">비밀번호</button>
             <button class="btn sm danger" data-del="${esc(s.sid)}">삭제</button></div></td>
         </tr>`).join("")}</tbody></table></div>` : `<p class="empty">등록된 학생이 없습니다. 위에서 학생을 등록하세요.</p>`}
       <p class="note" style="margin-top:10px">경기 성향은 학생이 직접 고른 경기 선택(15번 이상)으로 계산합니다. '알아서 하기'와 '결과만 보기'로 넘긴 장면은 빠집니다.</p>
+      <p class="note"><b>오프라인 허용</b>을 켜면 그 학생은 인터넷이 없을 때도 게임을 열어 이 기기에 저장하며 플레이할 수 있습니다. 끄면 다음에 그 기기가 인터넷에 연결됐을 때부터 잠깁니다(인터넷이 없는 동안은 서버에 물어볼 수 없어 바로 반영되지 않습니다). 허용한 학생도 인터넷이 되면 서버에 기록·저장을 올리고, 차단·게임 닫힘은 그때 다시 확인합니다.</p>
     </div>`;
   const msg = $("#a-msg", main);
   const say = (t, ok = true) => { msg.textContent = t; msg.className = `msg ${ok ? "ok" : "err"}`; };
@@ -195,7 +197,14 @@ function studentsTab(main) {
   main.querySelectorAll("[data-block]").forEach(b => b.addEventListener("click", async () => {
     const s = students.find(x => x.sid === b.dataset.block);
     b.disabled = true;
-    try { await setDoc(`fcg_login/${s.sid}`, { key: s.key, blocked: !s.blocked }, await tok()); s.blocked = !s.blocked; render(); }
+    try { await setDoc(`fcg_login/${s.sid}`, { blocked: !s.blocked }, await tok(), ["blocked"]); s.blocked = !s.blocked; render(); }
+    catch (err) { alert(friendly(err)); b.disabled = false; }
+  }));
+  // 오프라인 허용: 인터넷이 없어도 게임을 열 수 있게 (fcg_login 의 offline 칸만 바꿈)
+  main.querySelectorAll("[data-offline]").forEach(b => b.addEventListener("click", async () => {
+    const s = students.find(x => x.sid === b.dataset.offline);
+    b.disabled = true;
+    try { await setDoc(`fcg_login/${s.sid}`, { offline: !s.offline }, await tok(), ["offline"]); s.offline = !s.offline; render(); }
     catch (err) { alert(friendly(err)); b.disabled = false; }
   }));
   main.querySelectorAll("[data-name]").forEach(b => b.addEventListener("click", async () => {
@@ -235,7 +244,7 @@ async function addStudent(sid, name, pw) {
   await signUp(studentEmail(sid, key), studentPassword(pw));
   const t = await tok();
   await setDoc(`fcg_students/${sid}`, { name, created: new Date() }, t);
-  await setDoc(`fcg_login/${sid}`, { key, blocked: false }, t);
+  await setDoc(`fcg_login/${sid}`, { key, blocked: false, offline: false }, t);
 }
 // 무료 요금제에서는 남의 비밀번호를 직접 바꿀 수 없어서, 새 열쇠로 계정을 새로 만들고 학번이 그 계정을 가리키게 바꿉니다
 async function changePassword(s, pw) {
@@ -243,15 +252,15 @@ async function changePassword(s, pw) {
   if (pw.length < 4) throw new Error("비밀번호는 4자 이상이어야 합니다.");
   const key = newKey();
   await signUp(studentEmail(s.sid, key), studentPassword(pw));
-  await setDoc(`fcg_login/${s.sid}`, { key, blocked: s.blocked }, await tok());
+  await setDoc(`fcg_login/${s.sid}`, { key }, await tok(), ["key"]);   // 열쇠만 바뀜: 차단·오프라인 허용은 그대로
 }
 
 function downloadCsv(rows) {
-  const head = ["학번", "이름", "상태", "판", "진행", "포지션", "세부 포지션", "종합", "출전", "골", "도움", "평균 평점", "주장", "진학", "엔딩", "맞수", "경기 성향", "도전 선택", "보통 선택", "안정 선택", "직접 고른 선택", "넘긴 선택", "개인훈련", "단체훈련", "학교생활", "휴식", "이벤트 수", "플레이(분)", "마지막 접속"];
+  const head = ["학번", "이름", "상태", "오프라인 허용", "판", "진행", "포지션", "세부 포지션", "종합", "출전", "골", "도움", "평균 평점", "주장", "진학", "엔딩", "맞수", "경기 성향", "도전 선택", "보통 선택", "안정 선택", "직접 고른 선택", "넘긴 선택", "개인훈련", "단체훈련", "학교생활", "휴식", "이벤트 수", "플레이(분)", "마지막 접속"];
   const q = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
   const lines = rows.map(s => {
     const n = s.now || {}, M = s.play?.match || {}, b = M.band || {}, c = s.play?.plan?.cat || {};
-    return [s.sid, s.name, s.blocked ? "차단" : "사용", s.play?.run || "", n.when, n.pos, n.detail, n.ovr, n.apps, n.goals, n.assists, n.rating, n.captain ? "주장" : "", n.school, n.ending, n.nemesis,
+    return [s.sid, s.name, s.blocked ? "차단" : "사용", s.offline ? "허용" : "", s.play?.run || "", n.when, n.pos, n.detail, n.ovr, n.apps, n.goals, n.assists, n.rating, n.captain ? "주장" : "", n.school, n.ending, n.nemesis,
       s.t.label, b.bold || 0, b.mid || 0, b.safe || 0, (b.bold || 0) + (b.mid || 0) + (b.safe || 0), M.auto || 0, c.personal || 0, c.team || 0, c.school || 0, c.rest || 0,
       s.play?.events?.length || 0, s.play?.minutes || 0, s.lastSeen ? new Date(s.lastSeen).toLocaleString("ko-KR") : ""].map(q).join(",");
   });
@@ -273,7 +282,7 @@ function detail(sid) {
   const acts = Object.entries(P.plan?.act || {}).sort((a, b) => b[1] - a[1]).slice(0, 8);
   const tm = M.timing || {}, tmN = sum(tm);
   const evs = [...(P.events || [])].reverse();
-  dlg.innerHTML = `<div class="dhead"><h2>${esc(s.sid)} ${esc(s.name || "")}</h2>${tagOf(t)}<button class="btn sm" data-close>닫기</button></div>
+  dlg.innerHTML = `<div class="dhead"><h2>${esc(s.sid)} ${esc(s.name || "")}</h2>${tagOf(t)}${s.offline ? ` <span class="tag safe" title="인터넷이 없어도 게임을 열 수 있음">오프라인 허용</span>` : ""}<button class="btn sm" data-close>닫기</button></div>
   <div class="dbody">
     ${s.now ? `<div class="kpis">
       <div class="kpi"><b>${esc(n.when)}</b><span>${P.run || 1}번째 판 진행</span></div>
@@ -398,7 +407,7 @@ function switchTab(main) {
       <div class="formgrid" style="margin-top:12px">
         <span>닫혔을 때 안내</span><input type="text" id="s-msg" value="${esc(cfg.message || "")}" placeholder="지금은 게임이 닫혀 있습니다.">
       </div>
-      <p class="note">닫으면 학생 화면은 3분 안에 안내 화면으로 바뀝니다. 진행은 자동 저장되어 있어 다시 열면 이어서 할 수 있습니다. 선생님 계정은 닫혀 있어도 들어갈 수 있습니다.</p>
+      <p class="note">닫으면 학생 화면은 3분 안에 안내 화면으로 바뀝니다. 진행은 자동 저장되어 있어 다시 열면 이어서 할 수 있습니다. 선생님 계정은 닫혀 있어도 들어갈 수 있습니다. 오프라인 허용을 켜 준 학생도 인터넷이 되는 동안은 똑같이 닫힙니다(인터넷이 끊긴 기기만 잠금 없이 열립니다).</p>
     </div>
     <div class="card"><h2>학생 가입</h2>
       <label class="row"><input type="checkbox" id="su-on" ${cfg.signup !== false ? "checked" : ""}> <span>학생이 로그인 화면에서 직접 가입할 수 있게</span></label>
