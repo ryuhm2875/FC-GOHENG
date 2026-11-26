@@ -431,7 +431,7 @@ export function prepareMatch(state, info, fx) {
   m.players = pitchPlayers(state, m);
   const oppStyle = styleSim(fx.opponent.name);
   m.oppForm = fx.practice || fx.elementary ? "442" : formOfTeam(fx.opponent.name);   // 상대 포메이션 (청백전·초등부는 4-4-2)
-  const S = createSim({ spVar: !!CAL.sp, gsOn: !!CAL.gs, players: m.players, str: { us: ours, them: theirs }, style: { us: {}, them: oppStyle }, form: { them: m.oppForm }, blocks: { us: "mid", them: oppStyle.block || "mid" } });
+  const S = createSim({ spVar: !!CAL.sp, gsOn: !!CAL.gs, players: m.players, str: { us: ours, them: theirs }, style: { us: {}, them: oppStyle }, form: { them: m.oppForm }, blocks: { us: "mid", them: oppStyle.block || "mid" }, weather });
   const D = ours - theirs;
   S.brk = { us: CAL.brk * Math.exp(-D / CAL.kb), them: CAL.brk * Math.exp(D / CAL.kb) };
   S.attackP = { us: sig(CAL.a0 + D / CAL.ka), them: sig(CAL.a0 - D / CAL.ka) };
@@ -1716,9 +1716,11 @@ export function prob(state, m, c) {
   x += (p.stats.mental.confidence - 50) / 350;
   x += conditionOf(p).match;                       // 컨디션 (피로 + 사기)
   // 후반이 될수록 체력이 낮거나 지친 선수는 무뎌짐
-  if (m.minute > HALF) {
+  // 교체 투입 선수는 경기 전체 시간이 아니라 들어온 뒤 실제로 뛴 시간으로만 잰다 (후반 50분에 들어간 선수는 65분이 되어도 15분치)
+  const onFrom = m.status === "sub" ? Math.max(HALF, m.minIn || 0) : HALF;
+  if (m.minute > onFrom) {
     const tired = Math.max(0, (p.condition.fatigue - 40) / 100) + Math.max(0, (60 - p.stats.phys.stamina) / 100);
-    x -= tired * ((m.minute - HALF) / HALF) * 0.15 * (hasTrait(p, "ironLungs") ? 0.4 : 1);
+    x -= tired * ((m.minute - onFrom) / HALF) * 0.15 * (hasTrait(p, "ironLungs") ? 0.4 : 1);
   }
   const big = m.fx.tournament || m.fx.comp === "hs";
   if (big && hasTrait(p, "bigGame")) x += 0.05;
