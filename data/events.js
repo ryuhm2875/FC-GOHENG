@@ -2,6 +2,7 @@ import { CAPTAINS } from "./roster.js";
 import { EVENTS_MORE } from "./events2.js";
 import { EVENTS_STORY } from "./events3.js";
 import { EVENTS_ORIGIN } from "./events4.js";
+import { EVENTS_NEW } from "./events5.js";
 import { turnInfo } from "../js/engine/calendar.js";
 import { pick } from "../js/rng.js";
 // 이번 주(이벤트가 보이는 주)에 경기가 있는지 / 다음 주에 정기시험이 있는지
@@ -618,6 +619,7 @@ export const EVENTS = [
   ...EVENTS_MORE,
   ...EVENTS_STORY,
   ...EVENTS_ORIGIN,
+  ...EVENTS_NEW,          // 새 이벤트 3종 (data/events5.js)
 ];
 
 // 주장 선거 (중3 3월 2주차에 반드시 일어남). 결과는 엔진이 계산합니다.

@@ -1587,3 +1587,25 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
   - `sync-audit.mjs 60` 불일치 5.0% (전 5.1%), `restart-audit.mjs 100` 경고 없음, `moment-audit.mjs 40` 새 종류 없음
   - `node --check` js/engine/sim.js·js/engine/match.js·data/*.js·js/game.bundle.js·offline-files.js·sw.js 통과. `node tools/bundle.mjs`로 번들·offline-files.js·sw.js BUILD 갱신
 - PR: `feat/engine-polish-1to4` 브랜치 (병합은 하지 않음)
+
+## 94. 새 이벤트 3종: 류봉두 선생님의 시험 내기(2부작), 유튜브 개인기, 크로스바 내기 (2026-11-28, 사용자: 새 이벤트 3종과 그림 3장을 PR로)
+
+- 그림: 받은 미리보기 PNG 3장(1672×941)을 기존 이벤트 그림과 같은 **1376×768 webp**(quality 82)로 변환
+  - `assets/img/ev_teacher_bet.webp`(76KB), `ev_trick_kick.webp`(131KB), `ev_crossbar.webp`(154KB). 16:9에서 0.8% 어긋나는 비율은 가운데 기준으로 3px씩 잘라 맞춤
+- `data/events5.js` 새로 만듦 (`EVENTS_NEW` 3종 = 4장면). `data/events.js` 끝에서 `...EVENTS_NEW`로 합침 → 이벤트 202 → **205개**
+  - ① `teacher_bet_start` → `teacher_bet_result` (2부작 연쇄). 다음 주가 정기시험인 주(중1 1학기 수행평가 주간 제외)에 `trigger`로 반드시 찾아옴
+    - 목표는 **그 순간 학업 + 3 (최대 95)**. 수락하면 `flags.teacherBet = { target, examTurn, startTurn }`, 거절하면 태도·사기·담임 신뢰가 조금 내려감
+    - 시험 주가 지난 직후 1회 결과 이야기. 판정은 **그 시험 주에 받은 점수**(`lastExam.score`, 같은 주 기록이 없으면 학업)와 목표 비교 — 성공은 사기·생활태도·팀워크·친구 관계·담임 신뢰 상승과 아이스크림, 실패는 아침자습으로 피로 상승
+    - 방어: `flags?.teacherBet` 옵셔널 체이닝, `examTurn`이 없거나 8주가 지난 내기는 플래그만 지우고 아무 일도 안 함 → 예전 저장 파일(teacherBet 없음)·flags 빈 객체에서도 에러 없음
+  - ② `trick_kick_challenge`: 도전 40%(드리블 +3·슈팅 +3·친구 관계 +6·사기 +10) / 실패 60%(피로 +10·사기 −5), 안전(퍼스트터치 +1·포지션 +0.3)
+  - ③ `crossbar_bet`: 도전 50%(슈팅 +2·승부욕 +2·사기 +12) / 실패(피로 +12·사기 −6), 안전(피로 −3)
+  - 무게·쿨: 개인기 2.2·16주, 크로스바 2.0·14주 → 3년에 각 1~3회. 시험 내기는 시험마다(3년 10회)
+- 엔진 최소 확장 (`js/engine/events.js`): 선택지에 `resolve(state)`가 있으면 **한 번의 판정**으로 `fx`와 `result`를 함께 받음 (`branch?.fx ?? c.fx`). `resolve`가 없는 기존 선택지는 지금과 똑같이 `c.fx`·`c.result`를 쓰므로 **기존 202개 이벤트는 동작 불변**. `chooseEvent` 안 순서는 `act` → `resolve` → `fx` → `result`
+- 덤으로 고친 버그 (`js/engine/sim.js`): `export const POT_Q = 1;`이 `export let POT_U …`와 **한 줄에 붙어 있어** `tools/bundle.mjs`의 줄 앞 `^export` 규칙에 걸리지 않았고, 그래서 `js/game.bundle.js`에 `export` 문이 남아 **파일을 더블클릭해 여는 오프라인 경로가 통째로 실행되지 않는 상태**였다(§92에서 생김, GitHub Pages의 모듈 경로는 정상). 줄을 나눠 번들에서 빠지지 않게 함
+- 검증
+  - `node --check`: data/events.js·data/events5.js·js/engine/events.js·js/engine/sim.js·js/game.bundle.js·offline-files.js·sw.js 통과. 번들을 `new Function`으로 실행 검사 — 수정 전 번들은 `Unexpected token 'export'`로 실패, 수정 뒤 통과
+  - 임시 점검 스크립트(저장소에 넣지 않음, node로 실행): 이벤트 205개·중복 0·새 3종 포함. 1화 문장의 목표 숫자와 기록된 `target` 일치, 시험 다음 주에 2화 발동, 성공·실패 양쪽 효과, `flags` 없음·`teacherBet` 없음·8주 묵은 내기 모두 조용히 정리, 확률 4만 회 **개인기 40.1% / 크로스바 49.8%**, 기존 이벤트(`group_project`) 효과 그대로
+  - 6판 졸업까지 자동 플레이: 전부 졸업(130턴), 새 4장면 모두 등장, 1화 10회/판(정기시험 10회와 일치) → 2화 3~6회(거절 섞인 무작위 선택), 개인기 1~2회·크로스바 1~3회
+  - `tools/simulate.mjs 60`: 이벤트/판 162.3 → 172.2, 종류 195 → 199, **시험 주 이벤트 600/600 그대로**, 종합 능력치 10/50/90% 64.3/67.8/71.6 (전 64.3/68.2/73.4), FW 득점/경기 1.46 (전 1.37) — 판마다 난수 흐름이 달라지는 폭
+  - `offline-files.js` 258 → 262개 파일(새 그림 3장·data/events5.js 등록), `sw.js` BUILD 갱신. 작업 환경에 node가 없어 포터블 node v22.14.0을 임시 폴더에 받아 쓰고 지움
+- PR: `feat/new-events-bet-dopamine` 브랜치 (병합은 하지 않음)

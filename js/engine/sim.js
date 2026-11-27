@@ -79,7 +79,8 @@ function threat(ax, ay) {
 // 슈팅 기대 득점 (그 팀 기준 좌표)
 export const setSimK = kv => { for (const [k, v] of Object.entries(kv)) { if (k === "potU") POT_U = v; else if (k === "potP") POT_P = v; else if (k === "fkQ") FK_Q = v; else if (k in OUT_K) OUT_K[k] = v; } };   // 점검 도구용 (SIMK="potP:0,crossBlock:0")
 export const OUT_K = { headBehind: 0.3, crossBlock: 0.3, touchTackle: 0.7, clearTouch: 0.5, errTouch: 0.7, cutTouch: 0.55 };   // §90 공이 라인 밖으로 나가는 경우 (tools/dev/shot-audit.mjs 재개 수)
-export let POT_U = 0.25, POT_P = 0.2, FK_Q = 3.2; export const POT_Q = 1;   // §90 중거리 시도 선택 가치·득점 배율, 직접 프리킥 득점 배율 (tools/dev/shot-audit.mjs로 맞춤). §92 박스 앞 직접 프리킥 골 20% (±2%p)
+export let POT_U = 0.25, POT_P = 0.2, FK_Q = 3.2;   // §90 중거리 시도 선택 가치·득점 배율, 직접 프리킥 득점 배율 (tools/dev/shot-audit.mjs로 맞춤). §92 박스 앞 직접 프리킥 골 20% (±2%p)
+export const POT_Q = 1;
 export function xgAt(ax, ay) {
   const dx = Math.max(0.5, 105 - ax), dy = Math.abs(34 - ay), d = hyp(dx, dy);
   const cos = dx / d;
