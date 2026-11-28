@@ -217,6 +217,7 @@ export function reqText(c) {
 }
 
 // 선택 반영. 돌려주는 값: 결과 문장과 바뀐 수치
+// 선택지에 resolve(state)가 있으면 한 번의 판정으로 효과(fx)와 문장(result)을 함께 정합니다 (data/events5.js의 확률 분기)
 export function chooseEvent(state, idx) {
   const pe = state.pendingEvent;
   const ev = findEvent(pe.id);
@@ -228,9 +229,11 @@ export function chooseEvent(state, idx) {
   else {
     try { c.act?.(state); } catch (e) { console.warn(e); }   // 목표 기록 같은 일
     if (c.mark) (state.marks ||= {})[c.mark] ??= state.calendar.turn;   // 나중에 되돌아올 선택 (복선)
-    applyFx(state, c.fx, changes);
-    applyFx(state, c.fxAfter, changes);
-    result = typeof c.result === "function" ? c.result(state) : c.result;
+    let branch = null;                                      // 확률로 갈리는 선택의 판정 결과
+    if (typeof c.resolve === "function") { try { branch = c.resolve(state); } catch (e) { console.warn(e); branch = null; } }
+    applyFx(state, branch?.fx ?? c.fx, changes);
+    applyFx(state, branch?.fxAfter ?? c.fxAfter, changes);
+    result = branch?.result ?? (typeof c.result === "function" ? c.result(state) : c.result);
     // 다칠 수 있는 선택 (스키캠프 상급 코스 등)
     if (c.hurt && !state.player.condition.injury && chance(c.hurt.p)) {
       const r = injure(state, c.hurt.type, c.hurt.cause);
