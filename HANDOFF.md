@@ -1637,3 +1637,21 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
   - 상대 팀 PK도 함께 늘어(0.064 → 0.194) 우리가 범하는 박스 반칙이 더 많아짐(0.166 대 0.144). 원래부터 상대가 우리 박스에서 수비와 붙는 틱이 더 많았고(1.76 대 1.25), 이번 변경은 그 비율을 그대로 키운 것
   - 사용자가 차는 PK는 우리 PK의 약 55%(0.077/경기). PK 키커는 `shoot`가 가장 높은 선수라 내 슈팅이 팀에서 가장 높지 않으면 동료가 참. DF는 `set:pk` 장면이 없음(기존 설계 그대로)
 - PR: `fix/pk-frequency` 브랜치 (병합은 하지 않음)
+
+## 96. 전남 대표 노란 유니폼에서 내 점도 노란색으로 (2026-11-28, 사용자: "전국소년체전 전남 대표 노란색 유니폼 경기 때 내 선수 점이 흰색이라 상대 팀과 헷갈린다")
+
+- 배경: 소년체전(전남 대표) 노란 유니폼 경기에서 내 점만 흰색(`#FFFFFF`)으로 나와, 흰 유니폼 상대 팀 선수와 헷갈림
+- 원인: §83에서 `usKitOf`(js/ui/match.js)가 노란 유니폼일 때 `me: "#FFFFFF"`를 넘겼고, `pitchSvg`가 이를 svg 인라인 `--me`로 넣어 `.pitch .dot.me .body { fill: var(--me, #FFC93C) }`(css/fc.css 407줄)에 흰색이 들어갔음
+- 바꾼 것 (한 곳): `usKitOf` 노란 유니폼 쪽에서 `me: "#FFFFFF"` 제거 → `--me`가 없어져 내 점도 전남 대표 노란색 `#FFC93C`. `pitchSvg`의 `us.me` 분기는 그대로 둠(지금은 어떤 유니폼도 `me`를 넘기지 않아 인라인 `--me`가 나가지 않음). 남색 원정 유니폼(상대가 노란색)은 원래 `me`가 없어 변화 없음
+- 동료와의 구분 (계산된 스타일로 확인, 노란 유니폼 기준)
+  - 내 점 `.body`: 채움 `#FFC93C` · 테두리 흰색 `#fff` 0.5 (동료 `.us .body`는 테두리 남색 `#1A237E` 0.3)
+  - 깜빡이는 링 `.ring`: `#FFC93C` · `mering` 1.2s (점 바깥으로 번지는 고리)
+  - 등번호 `.no`: `#1a1300`(거의 검정) — 동료는 `#1A237E`
+  - `나` 태그 `.tag`: `display: block` (노란 글씨, 머리 위)
+  - CSS 특이도: `.pitch .dot.me .body`(0,4,0, `!important`) > `.pitch .us .body`(0,3,0) → 테두리·번호도 `me` 쪽이 이김
+- 검증
+  - `usKitOf`·`pitchSvg`를 실제 `js/ui/match.js` 소스에서 떼어 내 실행: 전남 대표·상대 흰색 / 상대 노랑 / 상대 색 없음 / 고흥FC 평소 경기 네 경우 모두 인라인 `--me` **없음**, `--us:#FFC93C;--us2:#1A237E;--usText:#1A237E` 그대로
+  - 브라우저(about:blank에 pitch 관련 CSS 규칙만 넣어) 계산된 스타일: 수정 전 `fill rgb(255,255,255)` → 수정 후 `rgb(255,201,60)`, 테두리 `rgb(255,255,255)` 0.5px, 링 `rgb(255,201,60)`·`mering`, 번호 `rgb(26,19,0)`, 태그 `block`. 확대 그림으로 수정 전·후를 나란히 눈으로 확인
+  - `node --check` js/ui/match.js·js/game.bundle.js·offline-files.js·sw.js 통과, 번들을 `new Function`으로 실행 검사 통과(번들 안 `export` 0). `tools/simulate.mjs 3` 정상(소년체전 목표 달성 100%, 엔진 수치 그대로)
+  - `node tools/bundle.mjs`로 번들·offline-files.js·sw.js BUILD **b3133915c4fb** 갱신(전 f14beb030b5e). 작업 환경에 node가 없어 포터블 node v22.14.0을 임시로 받아 쓰고 지움
+- PR: `fix/jn-me-dot-color` 브랜치 (병합은 하지 않음)
