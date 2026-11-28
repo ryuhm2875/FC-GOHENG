@@ -1593,7 +1593,7 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
 - 그림: 받은 미리보기 PNG 3장(1672×941)을 기존 이벤트 그림과 같은 **1376×768 webp**(quality 82)로 변환
   - `assets/img/ev_teacher_bet.webp`(76KB), `ev_trick_kick.webp`(131KB), `ev_crossbar.webp`(154KB). 16:9에서 0.8% 어긋나는 비율은 가운데 기준으로 3px씩 잘라 맞춤
 - `data/events5.js` 새로 만듦 (`EVENTS_NEW` 3종 = 4장면). `data/events.js` 끝에서 `...EVENTS_NEW`로 합침 → 이벤트 202 → **205개**
-  - ① `teacher_bet_start` → `teacher_bet_result` (2부작 연쇄). 다음 주가 정기시험인 주(중1 1학기 수행평가 주간 제외)에 `trigger`로 반드시 찾아옴
+  - ① `teacher_bet_start` → `teacher_bet_win`/`teacher_bet_lose` (2부작 연쇄, §97에서 성공·실패로 나눔). 다음 주가 정기시험인 주(중1 1학기 수행평가 주간 제외)에 `trigger`로 반드시 찾아옴
     - 목표는 **그 순간 학업 + 3 (최대 95)**. 수락하면 `flags.teacherBet = { target, examTurn, startTurn }`, 거절하면 태도·사기·담임 신뢰가 조금 내려감
     - 시험 주가 지난 직후 1회 결과 이야기. 판정은 **그 시험 주에 받은 점수**(`lastExam.score`, 같은 주 기록이 없으면 학업)와 목표 비교 — 성공은 사기·생활태도·팀워크·친구 관계·담임 신뢰 상승과 아이스크림, 실패는 아침자습으로 피로 상승
     - 방어: `flags?.teacherBet` 옵셔널 체이닝, `examTurn`이 없거나 8주가 지난 내기는 플래그만 지우고 아무 일도 안 함 → 예전 저장 파일(teacherBet 없음)·flags 빈 객체에서도 에러 없음
@@ -1655,3 +1655,20 @@ Firebase 프로젝트 `fcgoheung` (무료 Spark). SDK 없이 REST로 직접 부�
   - `node --check` js/ui/match.js·js/game.bundle.js·offline-files.js·sw.js 통과, 번들을 `new Function`으로 실행 검사 통과(번들 안 `export` 0). `tools/simulate.mjs 3` 정상(소년체전 목표 달성 100%, 엔진 수치 그대로)
   - `node tools/bundle.mjs`로 번들·offline-files.js·sw.js BUILD **b3133915c4fb** 갱신(전 f14beb030b5e). 작업 환경에 node가 없어 포터블 node v22.14.0을 임시로 받아 쓰고 지움
 - PR: `fix/jn-me-dot-color` 브랜치 (병합은 하지 않음)
+
+## 97. 시험 내기 결과 선택지를 본문에 맞춤 (2026-11-28, 사용자: 결과 이벤트 선택지가 본문과 따로 논다)
+
+- 문제: `teacher_bet_result` 하나에 성공·실패 본문을 다 넣고 선택지를 "말없이 고개를 끄덕인다" / "먼저 다가가 말을 건다"로 두어, 아이스크림 장면에도 아침자습 장면에도 선택지가 어색했음
+- 바꾼 것 (`data/events5.js`)
+  - 결과 이벤트를 성공·실패로 분리: `teacher_bet_win`(`trigger: betDue && betWon`), `teacher_bet_lose`(`trigger: betDue && !betWon`). 본문은 각각 한쪽 문장만 남김
+  - 선택지: 성공 "내 컵부터 챙겨 받는다" / "친구들 것부터 나눠 준다", 실패 "내일 아침 8시에 나오겠다고 한다" / "다음 시험에서 만회하겠다고 한다". 효과·결과 문장은 기존 `betResult(0)`/`betResult(1)` 값을 그대로 옮김
+  - 내기 정리는 `resolve` 대신 선택지마다 `act: clearBet`으로 옮김(네 선택지 모두 `flags.teacherBet = null`). `betResult` 함수는 지움
+  - `trick_kick_challenge` 선택지 "해 본다 (한 번에 붙는다)" → "해 본다 (성공하면 대박)" (결과 문장이 "여섯 번째 시도"라 한 번에 붙는다는 말과 어긋났음)
+- 판정 시점: `rollEvent`는 주 끝(시험 채점 뒤, `lastExam` 기록 뒤)에 돌아 다음 주 이벤트를 예약하므로, 예약할 때의 성공·실패와 화면 문장·효과가 같은 값을 씀
+- 검증 (포터블 node v22.11.0, 저장소에 넣지 않은 임시 스크립트)
+  - 트리거: 목표 70에 75·70점이면 win만, 69·30점이면 lose만 발동. 내기가 없거나 시험 주 전이면 둘 다 안 뜸. 10주 묵은 내기는 둘 다 안 뜨고 플래그만 정리
+  - 선택 4가지: 본문·결과 문장·효과(사기·담임 신뢰·피로·학업·친구 관계)가 기존 값과 같고, 고른 뒤 `flags.teacherBet`이 `null`로 정리됨
+  - 실제 주 진행 60판: 내기 시작 60/60판, 결과 이벤트 120회(성공 49·실패 71), **성적과 반대 이벤트가 뜬 경우 0, 정리 실패로 다시 뜬 경우 0**
+  - `tools/simulate.mjs 20`: 시험 주 이벤트 200/200, 이벤트 종류 195, 오류 없음
+  - `node --check` data/events5.js·js/game.bundle.js 통과. `node tools/bundle.mjs`로 번들(62개 파일 1304KB)·offline-files.js·sw.js BUILD **08359b632108** 갱신(전 b3133915c4fb)
+- PR: `fix/teacher-bet-choices` 브랜치 (병합은 하지 않음)
