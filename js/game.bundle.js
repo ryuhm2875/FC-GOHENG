@@ -5889,7 +5889,8 @@ const DT = 0.1;                      // 한 틱 (초)
 const RATE = 20;                     // 시뮬레이션 1초 = 경기 시간 20초
 const HALF_T = 35 * 60 / RATE;       // 전반 길이 (시뮬레이션 초)
 
-const PEN_FOUL = 16;                        // 박스 안 반칙은 다른 곳의 16배 (§93: 양 팀 합 0.1~0.12/경기, 우리 팀 열다섯 경기에 한 번)
+const PEN_FOUL = 16;                        // 박스 안 반칙은 다른 곳의 16배 (§93. §94에서 박스 안 수비의 몫(BOX_CUT)을 더해 우리 팀 일곱 경기에 한 번꼴 PK)
+let BOX_CUT = 0.18;                         // 박스 안에서 수비가 견디지 않고 발을 넣는 정도 (§94)
 const ROLES = { GK: ["GK"], DF: ["LB", "LCB", "RCB", "RB"], MF: ["LM", "LCM", "RCM", "RM"], FW: ["ST1", "ST2"] };
 // 4-4-2. 자기 진영 기준 [수비 라인에서 앞으로 몇 m, 좌우 비율]. d 수비할 때, a 공격할 때
 const FORM = {
@@ -5957,7 +5958,7 @@ function threat(ax, ay) {
   return 0.6 * Math.exp(-d / 10) * (0.3 + 0.7 * c * c) + 0.025 * Math.exp(-d / 40);
 }
 // 슈팅 기대 득점 (그 팀 기준 좌표)
-const setSimK = kv => { for (const [k, v] of Object.entries(kv)) { if (k === "potU") POT_U = v; else if (k === "potP") POT_P = v; else if (k === "fkQ") FK_Q = v; else if (k in OUT_K) OUT_K[k] = v; } };   // 점검 도구용 (SIMK="potP:0,crossBlock:0")
+const setSimK = kv => { for (const [k, v] of Object.entries(kv)) { if (k === "potU") POT_U = v; else if (k === "potP") POT_P = v; else if (k === "fkQ") FK_Q = v; else if (k === "boxCut") BOX_CUT = v; else if (k in OUT_K) OUT_K[k] = v; } };   // 점검 도구용 (SIMK="potP:0,crossBlock:0")
 const OUT_K = { headBehind: 0.3, crossBlock: 0.3, touchTackle: 0.7, clearTouch: 0.5, errTouch: 0.7, cutTouch: 0.55 };   // §90 공이 라인 밖으로 나가는 경우 (tools/dev/shot-audit.mjs 재개 수)
 let POT_U = 0.25, POT_P = 0.2, FK_Q = 3.2;   // §90 중거리 시도 선택 가치·득점 배율, 직접 프리킥 득점 배율 (tools/dev/shot-audit.mjs로 맞춤). §92 박스 앞 직접 프리킥 골 20% (±2%p)
 const POT_Q = 1;
@@ -7027,8 +7028,9 @@ function duels(S) {
     if (d.team === H.team || d.pos === "GK" || d.cool > S.t || d.stun > 0) continue;
     if (fresh < (S.style[d.team]?.press ? 0.4 : 0.9)) continue;
     if (hyp(d.x - H.x, d.y - H.y) > 1.7) { d.eng = 0; continue; }
+    const hx = ox(H.team, H.x), hy = oy(H.team, H.y), pen = hx > 88.5 && Math.abs(hy - 34) < 20;   // 박스 안
     if (!d.eng) { d.eng = S.t + range(0.3, 0.6); continue; }          // 붙자마자 들어가지 않고 잠깐 맞섬 (그사이 패스할 수 있음)
-    if (S.t < d.eng) continue;
+    if (S.t < d.eng && !(pen && rand() < BOX_CUT)) continue;         // 박스 안에서는 오래 버티지 않고 발을 넣는다 (§94 페널티킥)
     d.cool = S.t + range(1.0, 1.6); d.eng = 0;
     const rough = S.style[d.team]?.rough ? 1.5 : 1;
     const inPlan = S.plan && !S.plan.recycle && S.plan.team === H.team;
@@ -7045,8 +7047,7 @@ function duels(S) {
       else { S.last = d; S.lastTeam = d.team; loose(S, dirOf(d.team) * range(2, 6), range(-4, 4)); }
       return;
     }
-    const hx = ox(H.team, H.x), hy = oy(H.team, H.y), pen = hx > 88.5 && Math.abs(hy - 34) < 20;
-    if (r < p + 0.05 * rough * (pen ? PEN_FOUL : 1) && !(S.noFoulUntil > S.t)) {   // 반칙 (내 수비 장면 직후 몇 초는 없음). 박스 안은 더 자주 (페널티킥 열 경기에 한 번쯤)
+    if (r < p + 0.05 * rough * (pen ? PEN_FOUL : 1) && !(S.noFoulUntil > S.t)) {   // 반칙 (내 수비 장면 직후 몇 초는 없음). 박스 안은 더 자주
       const card = rand() < (pen ? 0.35 : 0.14 * rough);
       emit(S, "foul", { by: d.name, team: d.team, victim: H.name, me: d.me, victimMe: H.me, card, pen, x: hx, y: hy });
       d.stun = 0.4;
