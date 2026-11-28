@@ -17890,7 +17890,7 @@ function usKitOf(fx) {
   const o = String(fx.opponent?.color || "").toUpperCase(), n = parseInt(o.slice(1) || "0", 16);
   const yellowish = o && ((n >> 16) > 200 && ((n >> 8) & 255) > 170 && (n & 255) < 120);
   return yellowish ? { fill: "#1A237E", stroke: "#FFC93C", text: "#FFC93C", gk: "#43A047", gkText: "#FFFFFF" }
-    : { fill: "#FFC93C", stroke: "#1A237E", text: "#1A237E", gk: "#43A047", gkText: "#FFFFFF", me: "#FFFFFF" };   // 노란 유니폼이면 내 점은 흰색 (평소 내 점이 노란색이라)
+    : { fill: "#FFC93C", stroke: "#1A237E", text: "#1A237E", gk: "#43A047", gkText: "#FFFFFF" };   // 내 점도 같은 노란색 — 흰 테두리·깜빡이는 링·등번호·"나" 태그로 동료와 구분 (§96)
 }
 function pitchSvg(players, kit, us = null) {
   return `<svg class="pitch" viewBox="0 0 105 68" role="img" aria-label="경기장" style="--opp:${kit.fill};--opp2:${kit.stroke};--oppText:${kit.text};--oppGk:${kit.gk};--oppGkText:${kit.gkText}${us ? `;--us:${us.fill};--us2:${us.stroke};--usText:${us.text}; --usGk:${us.gk};--usGkText:${us.gkText}${us.me ? `;--me:${us.me}` : ""}` : ""}">
